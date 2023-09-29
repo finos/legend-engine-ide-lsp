@@ -14,6 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+/**
+ * An LSP extension representing a Legend Engine top level grammar.
+ */
 public interface LegendLSPGrammarExtension extends LegendLSPExtension
 {
 }

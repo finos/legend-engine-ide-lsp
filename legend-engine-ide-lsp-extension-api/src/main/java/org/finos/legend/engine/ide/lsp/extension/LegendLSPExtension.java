@@ -16,10 +16,23 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import java.util.Collections;
 
+/**
+ * An LSP extension for Legend Engine representing some kind of grammar or DSL.
+ */
 public interface LegendLSPExtension
 {
+    /**
+     * The name of the extension. This should be a non-empty string.
+     *
+     * @return extension name
+     */
     String getName();
 
+    /**
+     * A collection of keywords defined by the extension.
+     *
+     * @return collection of keywords
+     */
     default Iterable<? extends String> getKeywords()
     {
         return Collections.emptySet();
