@@ -29,6 +29,7 @@ jobs:
     permissions:
       actions: read
       checks: write
+      contents: read
       pull-requests: write
 
     steps:
