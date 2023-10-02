@@ -70,15 +70,15 @@ jobs:
           theme: dark
 
       - name: Build + Test
-        if: (github.repository != 'finos/legend-engine-ide-lsp') || (github.ref != 'refs/heads/main')
+#        if: (github.repository != 'finos/legend-engine-ide-lsp') || (github.ref != 'refs/heads/main')
         run: mvn install javadoc:javadoc -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
 
-      - name: Build + Test + Maven Deploy + Sonar + Docker Snapshot
-        if: (github.repository == 'finos/legend-engine-ide-lsp') && (github.ref == 'refs/heads/main')
-        env:
-          DOCKER_USERNAME: finos
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        run: mvn javadoc:javadoc deploy -P sonar -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
+#      - name: Build + Test + Maven Deploy + Sonar + Docker Snapshot
+#        if: (github.repository == 'finos/legend-engine-ide-lsp') && (github.ref == 'refs/heads/main')
+#        env:
+#          DOCKER_USERNAME: finos
+#          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+#        run: mvn javadoc:javadoc deploy -P sonar -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
 
       - name: Upload Test Results
         if: always()
