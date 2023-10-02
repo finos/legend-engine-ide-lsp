@@ -29,6 +29,7 @@ jobs:
     permissions:
       actions: read
       checks: write
+      contents: read
       pull-requests: write
 
     steps:
@@ -47,7 +48,7 @@ jobs:
             unzip -d "$name" "$name.zip"
           done
       - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action/composite@v1.35
+        uses: EnricoMi/publish-unit-test-result-action/composite@v2.10.0
         with:
           commit: ${{ github.event.workflow_run.head_sha }}
           check_name: Test Results
