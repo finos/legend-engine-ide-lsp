@@ -14,7 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import java.util.Collections;
+import java.util.Set;
 
 /**
  * An LSP extension for Legend Engine representing some kind of grammar or DSL.
@@ -35,6 +35,6 @@ public interface LegendLSPExtension
      */
     default Iterable<? extends String> getKeywords()
     {
-        return Collections.emptySet();
+        return Set.of();
     }
 }

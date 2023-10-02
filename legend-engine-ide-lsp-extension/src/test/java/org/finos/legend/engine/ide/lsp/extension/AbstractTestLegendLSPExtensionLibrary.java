@@ -14,13 +14,11 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.eclipse.collections.api.factory.Sets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Set;
 
 @SuppressWarnings("unchecked")
@@ -32,8 +30,8 @@ abstract class AbstractTestLegendLSPExtensionLibrary<E extends LegendLSPExtensio
     public void testEmpty()
     {
         this.library = newLibrary();
-        Assertions.assertEquals(Collections.emptySet(), this.library.getExtensionNames());
-        Assertions.assertEquals(Collections.emptyList(), this.library.getExtensions());
+        Assertions.assertEquals(Set.of(), this.library.getExtensionNames());
+        Assertions.assertEquals(Set.of(), Set.copyOf(this.library.getExtensions()));
     }
 
     @Test
@@ -43,11 +41,11 @@ abstract class AbstractTestLegendLSPExtensionLibrary<E extends LegendLSPExtensio
         E ext2 = newExtension("ext2");
         E ext3 = newExtension("ext3");
         this.library = newLibrary(ext1, ext2, ext3);
-        Assertions.assertEquals(Sets.mutable.with("ext1", "ext2", "ext3"), this.library.getExtensionNames());
+        Assertions.assertEquals(Set.of("ext1", "ext2", "ext3"), this.library.getExtensionNames());
         Assertions.assertSame(ext1, this.library.getExtension("ext1"));
         Assertions.assertSame(ext2, this.library.getExtension("ext2"));
         Assertions.assertSame(ext3, this.library.getExtension("ext3"));
-        Assertions.assertEquals(Sets.mutable.with(ext1, ext2, ext3), Sets.mutable.withAll(this.library.getExtensions()));
+        Assertions.assertEquals(Set.of(ext1, ext2, ext3), Set.copyOf(this.library.getExtensions()));
     }
 
     @Test
@@ -58,12 +56,12 @@ abstract class AbstractTestLegendLSPExtensionLibrary<E extends LegendLSPExtensio
         E ext3 = newExtension("ext3");
         this.library = newLibrary(ext1, ext2, ext3);
 
-        Set<String> names = library.getExtensionNames();
-        Assertions.assertEquals(Sets.mutable.with("ext1", "ext2", "ext3"), names);
+        Set<String> names = this.library.getExtensionNames();
+        Assertions.assertEquals(Set.of("ext1", "ext2", "ext3"), names);
         assertUnmodifiable(names, "ext1", Arrays.asList("ext1", "ext2", "ext3"), "ext4", Arrays.asList("ext4", "ext5", "ext6"));
 
-        Collection<E> extensions = library.getExtensions();
-        Assertions.assertEquals(Sets.mutable.with(ext1, ext2, ext3), Sets.mutable.withAll(library.getExtensions()));
+        Collection<E> extensions = this.library.getExtensions();
+        Assertions.assertEquals(Set.of(ext1, ext2, ext3), Set.copyOf(this.library.getExtensions()));
         assertUnmodifiable(extensions, ext1, Arrays.asList(ext1, ext2, ext3), newExtension("ext4"), Arrays.asList(newExtension("ext4"), newExtension("ext5")));
     }
 
@@ -79,28 +77,21 @@ abstract class AbstractTestLegendLSPExtensionLibrary<E extends LegendLSPExtensio
     public void testNameConflict()
     {
         String name = "ext1";
+
         IllegalArgumentException e = Assertions.assertThrows(
                 IllegalArgumentException.class,
                 () -> newLibrary(newExtension(name), newExtension("otherName"), newExtension(name), newExtension("otherOtherName")));
         Assertions.assertEquals("Multiple extensions named: \"" + name + "\"", e.getMessage());
     }
 
-    protected L newLibrary()
-    {
-        return newLibrary(Collections.emptyList());
-    }
-
     protected L newLibrary(E... extensions)
     {
-        return newLibrary(Arrays.asList(extensions));
+        LegendLSPExtensionLibrary.AbstractBuilder<E, L> builder = libraryBuilder();
+        builder.addExtensions(extensions);
+        return builder.build();
     }
 
-    protected abstract L newLibrary(Iterable<? extends E> extensions);
+    protected abstract LegendLSPExtensionLibrary.AbstractBuilder<E, L> libraryBuilder();
 
-    protected E newExtension(String name, String... keywords)
-    {
-        return newExtension(name, Collections.unmodifiableList(Arrays.asList(keywords)));
-    }
-
-    protected abstract E newExtension(String name, Iterable<? extends String> keywords);
+    protected abstract E newExtension(String name);
 }
