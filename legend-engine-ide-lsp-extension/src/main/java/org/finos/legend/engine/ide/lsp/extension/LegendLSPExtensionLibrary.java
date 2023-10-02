@@ -23,6 +23,12 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.Set;
 
+/**
+ * Abstract base class for Legend LSP extension libraries. Within the context of a single library, all extensions must
+ * have a unique name.
+ *
+ * @param <T> extension type
+ */
 public abstract class LegendLSPExtensionLibrary<T extends LegendLSPExtension>
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLSPExtensionLibrary.class);
@@ -34,16 +40,32 @@ public abstract class LegendLSPExtensionLibrary<T extends LegendLSPExtension>
         this.extensionsByName = extensionsByName;
     }
 
+    /**
+     * Get an extension by its name. Returns null if it cannot find the named extension in the library.
+     *
+     * @param name extension name
+     * @return named extension or null
+     */
     public T getExtension(String name)
     {
         return this.extensionsByName.get(name);
     }
 
+    /**
+     * Get an unmodifiable set of all extension names in the library.
+     *
+     * @return unmodifiable set of extension names
+     */
     public Set<String> getExtensionNames()
     {
         return this.extensionsByName.castToMap().keySet();
     }
 
+    /**
+     * Get an unmodifiable collection of all extensions in the library.
+     *
+     * @return unmodifiable collection of extensions
+     */
     public Collection<T> getExtensions()
     {
         return this.extensionsByName.castToMap().values();
