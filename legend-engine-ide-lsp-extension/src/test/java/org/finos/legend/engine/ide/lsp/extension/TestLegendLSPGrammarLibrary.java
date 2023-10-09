@@ -17,7 +17,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestLegendLSPGrammarExtensionLibrary extends AbstractTestLegendLSPExtensionLibrary<LegendLSPGrammarExtension, LegendLSPGrammarExtensionLibrary>
+public class TestLegendLSPGrammarLibrary extends AbstractTestLegendLSPExtensionLibrary<LegendLSPGrammarExtension, LegendLSPGrammarLibrary>
 {
     @Test
     public void testNonEmpty()
@@ -27,27 +27,14 @@ public class TestLegendLSPGrammarExtensionLibrary extends AbstractTestLegendLSPE
     }
 
     @Override
-    protected LegendLSPGrammarExtensionLibrary newLibrary(Iterable<? extends LegendLSPGrammarExtension> extensions)
+    protected LegendLSPExtensionLibrary.AbstractBuilder<LegendLSPGrammarExtension, LegendLSPGrammarLibrary> libraryBuilder()
     {
-        return LegendLSPGrammarExtensionLibrary.fromExtensions(extensions);
+        return LegendLSPGrammarLibrary.builder();
     }
 
     @Override
-    protected LegendLSPGrammarExtension newExtension(String name, Iterable<? extends String> keywords)
+    protected LegendLSPGrammarExtension newExtension(String name)
     {
-        return new LegendLSPGrammarExtension()
-        {
-            @Override
-            public String getName()
-            {
-                return name;
-            }
-
-            @Override
-            public Iterable<? extends String> getKeywords()
-            {
-                return keywords;
-            }
-        };
+        return () -> name;
     }
 }

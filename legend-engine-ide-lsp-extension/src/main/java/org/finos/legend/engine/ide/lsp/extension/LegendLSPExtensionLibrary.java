@@ -14,13 +14,14 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.eclipse.collections.api.factory.Maps;
-import org.eclipse.collections.api.map.ImmutableMap;
-import org.eclipse.collections.api.map.MutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 /**
@@ -33,11 +34,17 @@ public abstract class LegendLSPExtensionLibrary<T extends LegendLSPExtension>
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLSPExtensionLibrary.class);
 
-    protected final ImmutableMap<String, T> extensionsByName;
+    private final Map<String, T> extensionsByName;
 
-    protected LegendLSPExtensionLibrary(ImmutableMap<String, T> extensionsByName)
+    /**
+     * Constructor for the library, which takes an index of extensions by name. Generally, this should be the index
+     * created by the builder.
+     *
+     * @param extensionsByName index of extensions by name
+     */
+    protected LegendLSPExtensionLibrary(Map<String, T> extensionsByName)
     {
-        this.extensionsByName = extensionsByName;
+        this.extensionsByName = Map.copyOf(extensionsByName);
     }
 
     /**
@@ -58,7 +65,7 @@ public abstract class LegendLSPExtensionLibrary<T extends LegendLSPExtension>
      */
     public Set<String> getExtensionNames()
     {
-        return this.extensionsByName.castToMap().keySet();
+        return this.extensionsByName.keySet();
     }
 
     /**
@@ -68,22 +75,103 @@ public abstract class LegendLSPExtensionLibrary<T extends LegendLSPExtension>
      */
     public Collection<T> getExtensions()
     {
-        return this.extensionsByName.castToMap().values();
+        return this.extensionsByName.values();
     }
 
-    protected static <T extends LegendLSPExtension> ImmutableMap<String, T> indexExtensions(Iterable<? extends T> extensions)
+    /**
+     * Abstract base class for extension library builders.
+     *
+     * @param <E> extension class
+     * @param <L> extension library class
+     */
+    public abstract static class AbstractBuilder<E extends LegendLSPExtension, L extends LegendLSPExtensionLibrary<E>>
     {
-        MutableMap<String, T> index = Maps.mutable.empty();
-        extensions.forEach(ext ->
+        private final Map<String, E> extensions = new HashMap<>();
+
+        /**
+         * Build the extension library.
+         *
+         * @return extension library
+         */
+        public L build()
         {
-            String name = ext.getName();
-            LOGGER.debug("Indexing extension {}", name);
-            T old = index.put(name, ext);
-            if ((old != null) && (old != ext))
+            Map<String, E> map = Map.copyOf(this.extensions);
+            LOGGER.debug("Building library with extensions: {}", map.keySet());
+            return build(map);
+        }
+
+        /**
+         * Build the extension library from the given unmodifiable map of extensions by name.
+         *
+         * @param extensionIndex unmodifiable map of extensions by name
+         * @return extension library
+         */
+        protected abstract L build(Map<String, E> extensionIndex);
+
+        /**
+         * Add the extension to the builder. Throws an {@link IllegalArgumentException} if there is already an extension
+         * with that name.
+         *
+         * @param extension extension to add
+         */
+        public void addExtension(E extension)
+        {
+            Objects.requireNonNull(extension, "extension may not be null");
+            String name = extension.getName();
+            E old = this.extensions.putIfAbsent(name, extension);
+            if (old == extension)
             {
-                throw new IllegalArgumentException("Multiple extensions named: \"" + name + "\"");
+                LOGGER.warn("Extension {} already added", name);
             }
-        });
-        return index.toImmutable();
+            else if (old != null)
+            {
+                String message = "Multiple extensions named: \"" + name + "\"";
+                LOGGER.error(message);
+                throw new IllegalArgumentException(message);
+            }
+        }
+
+        /**
+         * Add all the given extensions to the builder. This is equivalent to repeatedly calling {@link #addExtension}
+         * on the individual extensions.
+         *
+         * @param extensions extensions to add
+         */
+        @SuppressWarnings("unchecked")
+        public void addExtensions(E... extensions)
+        {
+            for (E extension : extensions)
+            {
+                addExtension(extension);
+            }
+        }
+
+        /**
+         * Add all the given extensions to the builder. This is equivalent to repeatedly calling {@link #addExtension}
+         * on the individual extensions.
+         *
+         * @param extensions extensions to add
+         */
+        public void addExtensions(Iterable<? extends E> extensions)
+        {
+            extensions.forEach(this::addExtension);
+        }
+
+        /**
+         * Add all extensions found in the given class loader.
+         *
+         * @param classLoader class loader to load extensions from
+         */
+        public void addExtensionsFrom(ClassLoader classLoader)
+        {
+            addExtensions(ServiceLoader.load(getExtensionClass(), classLoader));
+        }
+
+        /**
+         * Get the extension class for the library.
+         *
+         * @return extension class
+         */
+        protected abstract Class<E> getExtensionClass();
     }
 }

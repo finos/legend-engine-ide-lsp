@@ -17,7 +17,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestLegendLSPInlineDSLExtensionLibrary extends AbstractTestLegendLSPExtensionLibrary<LegendLSPInlineDSLExtension, LegendLSPInlineDSLExtensionLibrary>
+public class TestLegendLSPInlineDSLLibrary extends AbstractTestLegendLSPExtensionLibrary<LegendLSPInlineDSLExtension, LegendLSPInlineDSLLibrary>
 {
     @Test
     public void testNonEmpty()
@@ -27,27 +27,14 @@ public class TestLegendLSPInlineDSLExtensionLibrary extends AbstractTestLegendLS
     }
 
     @Override
-    protected LegendLSPInlineDSLExtensionLibrary newLibrary(Iterable<? extends LegendLSPInlineDSLExtension> extensions)
+    protected LegendLSPExtensionLibrary.AbstractBuilder<LegendLSPInlineDSLExtension, LegendLSPInlineDSLLibrary> libraryBuilder()
     {
-        return LegendLSPInlineDSLExtensionLibrary.fromExtensions(extensions);
+        return LegendLSPInlineDSLLibrary.builder();
     }
 
     @Override
-    protected LegendLSPInlineDSLExtension newExtension(String name, Iterable<? extends String> keywords)
+    protected LegendLSPInlineDSLExtension newExtension(String name)
     {
-        return new LegendLSPInlineDSLExtension()
-        {
-            @Override
-            public String getName()
-            {
-                return name;
-            }
-
-            @Override
-            public Iterable<? extends String> getKeywords()
-            {
-                return keywords;
-            }
-        };
+        return () -> name;
     }
 }
