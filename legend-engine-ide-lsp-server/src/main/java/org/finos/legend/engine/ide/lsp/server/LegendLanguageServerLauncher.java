@@ -10,6 +10,7 @@ public class LegendLanguageServerLauncher
     {
         LegendLanguageServer.Builder builder = new LegendLanguageServer.Builder();
         LegendLanguageServer server = builder.build();
+        server.initialize(null);
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
