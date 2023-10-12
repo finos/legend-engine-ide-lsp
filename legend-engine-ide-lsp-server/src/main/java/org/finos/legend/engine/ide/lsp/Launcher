@@ -1,0 +1,19 @@
+package org.finos.legend.engine.ide.lsp;
+
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.lsp4j.jsonrpc.launcher;
+import org.eclipse.lsp4j.launch.LSPLauncher;
+import org.eclipse.lsp4j.services.LanguageClient;
+import org.finos.legend.lsp.server.LegendLanguageServer;
+
+public class LegendLanguageServerLauncher
+{
+    public static void main()(string[] args)
+    {
+        LegendLanguageServer = new LegendLanguageServer();
+        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, Sytem.out);
+        server.connect(launcher.getRemoteProxy());
+        launcher.startListening();
+    }
+}
+
