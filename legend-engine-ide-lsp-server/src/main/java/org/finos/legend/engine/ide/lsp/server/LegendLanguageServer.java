@@ -60,7 +60,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final LegendLSPGrammarLibrary grammars;
     private final LegendLSPInlineDSLLibrary inlineDSLs;
 
-    private LegendLanguageServer(boolean async, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
+    LegendLanguageServer(boolean async, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
         this.textDocumentService = new LegendTextDocumentService();
         this.workspaceService = new LegendWorkspaceService();
