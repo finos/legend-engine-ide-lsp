@@ -60,7 +60,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final LegendLSPGrammarLibrary grammars;
     private final LegendLSPInlineDSLLibrary inlineDSLs;
 
-    LegendLanguageServer(boolean async, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
+    private LegendLanguageServer(boolean async, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
         this.textDocumentService = new LegendTextDocumentService();
         this.workspaceService = new LegendWorkspaceService();
@@ -393,7 +393,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         private final LegendLSPGrammarLibrary.Builder grammars = LegendLSPGrammarLibrary.builder();
         private final LegendLSPInlineDSLLibrary.Builder inlineDSLs = LegendLSPInlineDSLLibrary.builder();
 
-        private Builder()
+        Builder() // this should probably be kept private
         {
         }
 

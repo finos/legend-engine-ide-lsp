@@ -8,7 +8,8 @@ public class LegendLanguageServerLauncher
 {
     public static void main(String[] args)
     {
-        LegendLanguageServer server = new LegendLanguageServer(false, null, null);
+        LegendLanguageServer.Builder builder = new LegendLanguageServer.Builder();
+        LegendLanguageServer server = builder.build();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
