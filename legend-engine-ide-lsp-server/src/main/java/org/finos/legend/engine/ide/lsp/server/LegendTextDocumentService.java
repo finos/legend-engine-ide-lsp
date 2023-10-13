@@ -18,17 +18,15 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
-import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.services.TextDocumentService;
-import org.finos.legend.engine.ide.lsp.tools.TextTools;
+import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -140,8 +138,7 @@ class LegendTextDocumentService implements TextDocumentService
     private static class DocumentState
     {
         private int version;
-        private String text;
-        private int[] lineIndex;
+        private LineIndexedText text;
 
         private DocumentState(int version, String text)
         {
@@ -149,74 +146,14 @@ class LegendTextDocumentService implements TextDocumentService
             setText(text);
         }
 
-        int getLineStart(int line)
+        String getText()
         {
-            checkLine(line);
-            return getLineStart_internal(line);
-        }
-
-        int getLineEnd(int line)
-        {
-            checkLine(line);
-            return getLineEnd_internal(line);
-        }
-
-        int getIndex(Position position)
-        {
-            return getIndex(position.getLine(), position.getCharacter());
-        }
-
-        int getIndex(int line, int character)
-        {
-            checkLine(line);
-            int lineStart = getLineStart_internal(line);
-            int lineEnd = getLineEnd_internal(line);
-            int lineLen = lineEnd - lineStart;
-            if (character >= lineLen)
-            {
-                throw new IndexOutOfBoundsException("Invalid character offset in line " + line + ": " + character + " (line length: " + lineLen + ")");
-            }
-            return lineStart + character;
-        }
-
-        int getLine(int index)
-        {
-            if ((index < 0) || (index >= this.text.length()))
-            {
-                throw new StringIndexOutOfBoundsException("index " + index + ", length " + this.text.length());
-            }
-            return getLine_internal(index);
+            return this.text.getText();
         }
 
         void setText(String newText)
         {
-            this.text = newText;
-            this.lineIndex = TextTools.indexLines(newText);
-        }
-
-        private int getLineStart_internal(int line)
-        {
-            return this.lineIndex[line];
-        }
-
-        private int getLineEnd_internal(int line)
-        {
-            int nextLine = line + 1;
-            return (nextLine == this.lineIndex.length) ? this.text.length() : this.lineIndex[nextLine];
-        }
-
-        private int getLine_internal(int index)
-        {
-            int i = Arrays.binarySearch(this.lineIndex, index);
-            return (i >= 0) ? i : -(i + 2);
-        }
-
-        private void checkLine(int line)
-        {
-            if ((line < 0) || (line >= this.lineIndex.length))
-            {
-                throw new IndexOutOfBoundsException("Invalid line: " + line);
-            }
+            this.text = LineIndexedText.index(newText);
         }
     }
 }
