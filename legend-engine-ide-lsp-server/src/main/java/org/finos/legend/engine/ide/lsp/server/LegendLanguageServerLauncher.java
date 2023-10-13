@@ -18,13 +18,12 @@ import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 
-public class LegendLanguageServerLauncher
+public class LegendLanguageServerLauncher 
 {
-    public static void main(String[] args)
+    public static void main(String[] args) throws Exception 
     {
-        LegendLanguageServer.Builder builder = new LegendLanguageServer.Builder();
-        LegendLanguageServer server = builder.build();
-        server.initialize(null); //FIXME: should probably be non-null
+        LegendLanguageServer server = LegendLanguageServer.builder().build();
+        server.initialize(null).get();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
