@@ -523,7 +523,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     public static void main(String[] args) throws Exception 
     {
         LegendLanguageServer server = LegendLanguageServer.builder().build();
-        server.initialize(null).get();
+        //server.initialize(null).get();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
