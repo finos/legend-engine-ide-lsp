@@ -395,7 +395,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         private final LegendLSPGrammarLibrary.Builder grammars = LegendLSPGrammarLibrary.builder();
         private final LegendLSPInlineDSLLibrary.Builder inlineDSLs = LegendLSPInlineDSLLibrary.builder();
 
-        Builder() // this should probably be kept private
+        private Builder()
         {
         }
 
