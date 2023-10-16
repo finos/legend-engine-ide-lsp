@@ -24,19 +24,24 @@ class LegendWorkspaceService implements WorkspaceService
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendWorkspaceService.class);
 
-    LegendWorkspaceService()
+    private final LegendLanguageServer server;
+
+    LegendWorkspaceService(LegendLanguageServer server)
     {
+        this.server = server;
     }
 
     @Override
     public void didChangeConfiguration(DidChangeConfigurationParams params)
     {
+        this.server.checkReady();
         LOGGER.debug("Configuration change: {}", params);
     }
 
     @Override
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params)
     {
+        this.server.checkReady();
         LOGGER.debug("Watched files change: {}", params);
     }
 }

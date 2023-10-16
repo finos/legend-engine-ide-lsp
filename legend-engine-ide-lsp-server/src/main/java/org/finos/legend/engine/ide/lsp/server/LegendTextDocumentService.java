@@ -35,15 +35,18 @@ class LegendTextDocumentService implements TextDocumentService
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendTextDocumentService.class);
 
+    private final LegendLanguageServer server;
     private final Map<String, DocumentState> docStates = new HashMap<>();
 
-    LegendTextDocumentService()
+    LegendTextDocumentService(LegendLanguageServer server)
     {
+        this.server = server;
     }
 
     @Override
     public void didOpen(DidOpenTextDocumentParams params)
     {
+        this.server.checkReady();
         TextDocumentItem doc = params.getTextDocument();
         String uri = doc.getUri();
         if (isLegendFile(uri))
@@ -59,6 +62,7 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didChange(DidChangeTextDocumentParams params)
     {
+        this.server.checkReady();
         VersionedTextDocumentIdentifier doc = params.getTextDocument();
         String uri = doc.getUri();
         if (isLegendFile(uri))
@@ -70,6 +74,7 @@ class LegendTextDocumentService implements TextDocumentService
                 if (state == null)
                 {
                     LOGGER.warn("cannot process change for {}: no state", uri);
+                    this.server.logWarningToClient("cannot process change for " + uri + ": not open on language server");
                     return;
                 }
                 state.version = doc.getVersion();
@@ -82,7 +87,9 @@ class LegendTextDocumentService implements TextDocumentService
                 {
                     if (changes.size() > 1)
                     {
-                        LOGGER.warn("Expected at most one change, got: {}", changes.size());
+                        String message = "Expected at most one change, got " + changes.size() + "; processing only the first";
+                        LOGGER.warn(message);
+                        this.server.logWarningToClient(message);
                     }
                     state.setText(changes.get(0).getText());
                 }
@@ -93,6 +100,7 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didClose(DidCloseTextDocumentParams params)
     {
+        this.server.checkReady();
         TextDocumentIdentifier doc = params.getTextDocument();
         String uri = doc.getUri();
         if (isLegendFile(uri))
@@ -108,6 +116,7 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didSave(DidSaveTextDocumentParams params)
     {
+        this.server.checkReady();
         TextDocumentIdentifier doc = params.getTextDocument();
         String uri = doc.getUri();
         if (isLegendFile(uri))
@@ -118,7 +127,8 @@ class LegendTextDocumentService implements TextDocumentService
                 DocumentState state = this.docStates.get(uri);
                 if (state == null)
                 {
-                    LOGGER.warn("no state for {}", uri);
+                    LOGGER.warn("cannot process save for {}: no state", uri);
+                    this.server.logWarningToClient("cannot process save for " + uri + ": not open on language server");
                     return;
                 }
                 String text = params.getText();
