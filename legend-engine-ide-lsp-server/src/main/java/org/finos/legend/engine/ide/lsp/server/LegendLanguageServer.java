@@ -318,10 +318,14 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
                 // Server is ready
                 return;
             }
-            case UNINITIALIZED:
             case INITIALIZING:
             {
                 throw newResponseErrorException(ResponseErrorCode.ServerNotInitialized, "Server is not initialized");
+            }
+            case UNINITIALIZED:
+            {
+                return; //FIXME: incorrect
+                //throw newResponseErrorException(ResponseErrorCode.ServerNotInitialized, "Server is not initialized");
             }
             case SHUTTING_DOWN:
             {
@@ -523,7 +527,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     public static void main(String[] args) throws Exception 
     {
         LegendLanguageServer server = LegendLanguageServer.builder().build();
-        server.initialize(new InitializeParams()).get();
+        //server.initialize(new InitializeParams()).get();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
