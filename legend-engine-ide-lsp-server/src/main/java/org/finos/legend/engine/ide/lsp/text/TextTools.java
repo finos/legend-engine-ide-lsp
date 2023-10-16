@@ -76,7 +76,7 @@ public class TextTools
     /**
      * <p>Return an index of all the lines in the text. If {@code ignoreEmptyFinalLine} is true, then the final line
      * will be ignored if it is empty. Otherwise, it will be indexed, regardless of whether it is empty.</p>
-     *
+     * <br>
      * <p>The result is an array of indices, where the Nth value is the index of the start of the Nth line of the
      * string. Note that if the text is empty and {@code ignoreEmptyFinalLine} is true, the result will be empty.
      * Otherwise, it will be non-empty and contain {@code 0} as its first value.</p>
@@ -110,7 +110,7 @@ public class TextTools
      * <p>Return an index of all the lines in a region of text. If {@code ignoreEmptyFinalLine} is true, then the final
      * line of the region will be ignored if it is empty. Otherwise, it will be indexed, regardless of whether it is
      * empty.</p>
-     *
+     * <br>
      * <p>The result is an array of indices, where the Nth value is the index of the start of the Nth line of the
      * region. Note that if the region is empty and {@code ignoreEmptyFinalLine} is true, the result will be empty.
      * Otherwise, it will be non-empty and contain {@code start} as its first value.</p>
