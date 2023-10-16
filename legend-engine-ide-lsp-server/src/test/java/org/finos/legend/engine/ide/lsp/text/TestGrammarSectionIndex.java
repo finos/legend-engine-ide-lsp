@@ -14,12 +14,11 @@
 
 package org.finos.legend.engine.ide.lsp.text;
 
+import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class TestGrammarSectionIndex
 {
@@ -211,7 +210,7 @@ public class TestGrammarSectionIndex
         GrammarSectionIndex index = GrammarSectionIndex.parse(text);
         Assertions.assertEquals(index, GrammarSectionIndex.parse(indexedText));
         Assertions.assertEquals(sections.length, index.getSectionCount());
-        Assertions.assertEquals(Arrays.stream(sections).map(s -> s.toGrammarSection(indexedText)).collect(Collectors.toList()), index.getSections());
+        Assertions.assertEquals(sections.length, index.getSections().size());
         for (int i = 0; i < index.getSectionCount(); i++)
         {
             GrammarSection actualSection = index.getSection(i);
@@ -220,10 +219,6 @@ public class TestGrammarSectionIndex
             Assertions.assertEquals(
                     List.of(expectedSection.grammar, expectedSection.startLine, expectedSection.endLine),
                     List.of(actualSection.getGrammar(), actualSection.getStartLine(), actualSection.getEndLine()));
-
-            Assertions.assertEquals(
-                    List.of(indexedText.getLineStart(expectedSection.startLine), indexedText.getLineEnd(expectedSection.endLine)),
-                    List.of(actualSection.getStartIndex(), actualSection.getEnd()));
 
             Assertions.assertEquals(indexedText.getLines(expectedSection.startLine, expectedSection.endLine), actualSection.getText());
         }
@@ -245,11 +240,6 @@ public class TestGrammarSectionIndex
             this.grammar = grammar;
             this.startLine = startLine;
             this.endLine = endLine;
-        }
-
-        GrammarSection toGrammarSection(LineIndexedText text)
-        {
-            return new GrammarSection(text, this.grammar, this.startLine, this.endLine);
         }
     }
 }

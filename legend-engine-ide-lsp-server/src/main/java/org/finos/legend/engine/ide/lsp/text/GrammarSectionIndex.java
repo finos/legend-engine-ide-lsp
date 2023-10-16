@@ -14,9 +14,12 @@
 
 package org.finos.legend.engine.ide.lsp.text;
 
+import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,7 +28,7 @@ import java.util.regex.Pattern;
  * <br>
  * <p>A grammar section ({@link GrammarSection}) is a continuous interval of lines, possibly starting with a grammar
  * declaration line of the form "{@code ###GrammarName}". A grammar declaration line indicates the start of a new
- * section, so they occur only as the first line of a section. Sections after the first must begin with an explicit
+ * section, so it will occur only as the first line of a section. Sections after the first must begin with an explicit
  * grammar declaration line. The first section may optionally begin with an explicit grammar declaration line. If an
  * explicit one is not present, the section is deemed to have an implicit grammar declaration line equivalent to
  * {@code ###Pure}.</p>
@@ -184,24 +187,112 @@ public class GrammarSectionIndex
         Matcher matcher = GRAMMAR_LINE_PATTERN.matcher(text.getText());
         if (!matcher.find())
         {
-            return new GrammarSectionIndex(text, new GrammarSection(text, PURE_GRAMMAR_NAME, 0, text.getLineCount() - 1));
+            return new GrammarSectionIndex(text, newGrammarSection(text, PURE_GRAMMAR_NAME, 0, text.getLineCount() - 1));
         }
 
         List<GrammarSection> sections = new ArrayList<>();
         if ((matcher.start() > 0) && !TextTools.isBlank(text.getText(), 0, matcher.start()))
         {
-            sections.add(new GrammarSection(text, PURE_GRAMMAR_NAME, 0, text.getLineNumber(matcher.start() - 1)));
+            sections.add(newGrammarSection(text, PURE_GRAMMAR_NAME, 0, text.getLineNumber(matcher.start() - 1)));
         }
 
         int index = matcher.start();
         String grammarName = matcher.group("parser");
         while (matcher.find())
         {
-            sections.add(new GrammarSection(text, grammarName, text.getLineNumber(index), text.getLineNumber(matcher.start() - 1)));
+            sections.add(newGrammarSection(text, grammarName, text.getLineNumber(index), text.getLineNumber(matcher.start() - 1)));
             index = matcher.start();
             grammarName = matcher.group("parser");
         }
-        sections.add(new GrammarSection(text, grammarName, text.getLineNumber(index), text.getLineCount() - 1));
+        sections.add(newGrammarSection(text, grammarName, text.getLineNumber(index), text.getLineCount() - 1));
         return new GrammarSectionIndex(text, List.copyOf(sections));
+    }
+
+    private static GrammarSection newGrammarSection(LineIndexedText text, String grammar, int startLine, int endLine)
+    {
+        return new SimpleGrammarSection(text, grammar, startLine, endLine);
+    }
+
+    private static class SimpleGrammarSection implements GrammarSection
+    {
+        private final LineIndexedText fullText;
+        private final String grammar;
+        private final int startLine;
+        private final int endLine;
+        private String sectionText;
+
+        private SimpleGrammarSection(LineIndexedText fullText, String grammar, int startLine, int endLine)
+        {
+            this.fullText = Objects.requireNonNull(fullText);
+            this.grammar = Objects.requireNonNull(grammar);
+            this.startLine = startLine;
+            this.endLine = endLine;
+        }
+
+        @Override
+        public boolean equals(Object other)
+        {
+            if (other == this)
+            {
+                return true;
+            }
+
+            if (!(other instanceof GrammarSection))
+            {
+                return false;
+            }
+
+            GrammarSection that = (GrammarSection) other;
+            return (this.startLine == that.getStartLine()) &&
+                    (this.endLine == that.getEndLine()) &&
+                    this.fullText.getText().equals(that.getFullText()) &&
+                    this.grammar.equals(that.getGrammar());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return this.fullText.hashCode() + 41 * (this.startLine + (41 * this.endLine));
+        }
+
+        @Override
+        public String toString()
+        {
+            return getClass().getSimpleName() + "{grammar=" + this.grammar + " startLine=" + this.startLine + " endLine=" + this.endLine + "}";
+        }
+
+        @Override
+        public String getGrammar()
+        {
+            return this.grammar;
+        }
+
+        @Override
+        public int getStartLine()
+        {
+            return this.startLine;
+        }
+
+        @Override
+        public int getEndLine()
+        {
+            return this.endLine;
+        }
+
+        @Override
+        public String getText()
+        {
+            if (this.sectionText == null)
+            {
+                this.sectionText = this.fullText.getLines(this.startLine, this.endLine);
+            }
+            return this.sectionText;
+        }
+
+        @Override
+        public String getFullText()
+        {
+            return this.fullText.getText();
+        }
     }
 }
