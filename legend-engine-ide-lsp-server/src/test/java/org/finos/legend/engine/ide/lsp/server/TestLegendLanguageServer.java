@@ -14,19 +14,13 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.eclipse.lsp4j.DidChangeConfigurationParams;
-import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.InitializeParams;
-import org.eclipse.lsp4j.InitializeResult;
-import org.eclipse.lsp4j.InitializedParams;
-import org.eclipse.lsp4j.MessageActionItem;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
 import org.junit.jupiter.api.Assertions;
@@ -35,9 +29,11 @@ import org.junit.jupiter.api.function.Executable;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 public class TestLegendLanguageServer
 {
+
     @Test
     public void testServerInitShutdown() throws Exception
     {
@@ -152,6 +148,32 @@ public class TestLegendLanguageServer
         Assertions.assertEquals("Multiple extensions named: \"ext1\"", e.getMessage());
     }
 
+
+    @Test
+    public void testKeywordHighlighting()
+    {
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
+
+        String uri = "file:///testKeywordHighlighting.pure";
+        String code = "###Dummy\n" +
+                "Dummy dummy\n" +
+                "{\n" +
+                " field: values;\n" +
+                "}\n\n";
+
+        CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0,0),new Position(6,0))));
+        System.out.println(0);
+        try {
+            Assertions.assertEquals(Lists.mutable.of(1,1,5,0,0,2,2,5,0,0,0,7,6,0,0), semanticTokens.get().getData());
+        } catch (InterruptedException e) {
+            System.out.println(1);
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            System.out.println(2);
+            throw new RuntimeException(e);
+        }
+    }
+
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)
     {
         ResponseErrorException e = Assertions.assertThrows(ResponseErrorException.class, executable);
@@ -195,4 +217,6 @@ public class TestLegendLanguageServer
             }
         };
     }
+
+
 }

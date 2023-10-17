@@ -579,6 +579,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             return new LegendLanguageServer(this.async, this.grammars.build(), this.inlineDSLs.build());
         }
     }
+
     public static void main(String[] args) throws Exception
     {
         LegendLanguageServer server = LegendLanguageServer.builder().build();

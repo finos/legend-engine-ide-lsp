@@ -14,14 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.eclipse.lsp4j.DidChangeTextDocumentParams;
-import org.eclipse.lsp4j.DidCloseTextDocumentParams;
-import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.DidSaveTextDocumentParams;
-import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
-import org.eclipse.lsp4j.TextDocumentIdentifier;
-import org.eclipse.lsp4j.TextDocumentItem;
-import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.slf4j.Logger;
@@ -30,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 class LegendTextDocumentService implements TextDocumentService
 {
@@ -166,4 +162,13 @@ class LegendTextDocumentService implements TextDocumentService
             this.text = LineIndexedText.index(newText);
         }
     }
+
+    @Override
+    public CompletableFuture<SemanticTokens> semanticTokensRange(SemanticTokensRangeParams params)
+    {
+        MutableList<Integer> data = Lists.mutable.empty();
+        data = Lists.mutable.of(1,1,5,0,0,2,2,5,0,0,0,7,6,0,0);
+        return CompletableFuture.completedFuture(new SemanticTokens(data));
+    }
+
 }
