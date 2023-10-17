@@ -51,6 +51,30 @@ public class TestTextInterval
     }
 
     @Test
+    public void testSubsumes()
+    {
+        assertSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 10, 5, 17));
+        assertSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 12, 5, 0));
+        assertSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(2, 0, 4, 95));
+
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 10, 5, 18));
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 9, 5, 17));
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 12, 6, 0));
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(6, 0, 7, 95));
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(0, 0, 1, 9));
+    }
+
+    private void assertSubsumes(TextInterval interval1, TextInterval interval2)
+    {
+        Assertions.assertTrue(interval1.subsumes(interval2), () -> interval1.toCompactString() + " should subsume " + interval2.toCompactString());
+    }
+
+    private void assertNotSubsumes(TextInterval interval1, TextInterval interval2)
+    {
+        Assertions.assertFalse(interval1.subsumes(interval2), () -> interval1.toCompactString() + " should NOT subsume " + interval2.toCompactString());
+    }
+
+    @Test
     public void testToString()
     {
         Assertions.assertEquals("0:0-75:0", TextInterval.newInterval(0, 0, 75, 0).toString(true));

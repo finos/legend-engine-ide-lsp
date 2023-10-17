@@ -14,6 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp.text;
 
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -83,7 +86,7 @@ public class LineIndexedText
      */
     public int getLineStart(int line)
     {
-        checkLineNumber(line);
+        checkLine(line);
         return lineStart(line);
     }
 
@@ -99,7 +102,7 @@ public class LineIndexedText
      */
     public int getLineEnd(int line)
     {
-        checkLineNumber(line);
+        checkLine(line);
         return lineEnd(line);
     }
 
@@ -112,8 +115,21 @@ public class LineIndexedText
      */
     public int getLineLength(int line)
     {
-        checkLineNumber(line);
-        return lineEnd(line) - lineStart(line);
+        checkLine(line);
+        return lineLength(line);
+    }
+
+    /**
+     * Get the text index of a {@link TextPosition}.
+     *
+     * @param position text position
+     * @return text index
+     * @throws IndexOutOfBoundsException if there is no such line or column
+     * @see #getIndex(int, int)
+     */
+    public int getIndex(TextPosition position)
+    {
+        return getIndex(position.getLine(), position.getColumn());
     }
 
     /**
@@ -126,14 +142,9 @@ public class LineIndexedText
      */
     public int getIndex(int line, int column)
     {
-        checkLineNumber(line);
-        int lineStart = lineStart(line);
-        int lineLen = lineEnd(line) - lineStart;
-        if ((column < 0) || (column >= lineLen))
-        {
-            throw new IndexOutOfBoundsException("Invalid column for line " + line + ": " + column + "; length: " + lineLen);
-        }
-        return lineStart + column;
+        checkLine(line);
+        checkColumn(line, column);
+        return lineStart(line) + column;
     }
 
     /**
@@ -146,12 +157,12 @@ public class LineIndexedText
      */
     public String getLine(int line)
     {
-        checkLineNumber(line);
+        checkLine(line);
         return lineText(line);
     }
 
     /**
-     * Get a multi-line segment of the text as a {@link String}. Note that both {@code start} and {@code end} are
+     * Get a multi-line interval of the text as a {@link String}. Note that both {@code start} and {@code end} are
      * inclusive. This is equivalent to {@code getText().substring(getLineStart(start), getLineEnd(end))}.
      *
      * @param start start line (inclusive)
@@ -174,6 +185,72 @@ public class LineIndexedText
     }
 
     /**
+     * Get an interval of the text as a {@link String}. The is equivalent to
+     * {@code getText().substring(getIndex(interval.getStart()), getIndex(interval.getEnd()) + 1)}
+     *
+     * @param interval interval
+     * @return text interval
+     * @throws IndexOutOfBoundsException if the start or end position is invalid, or if end is before start
+     * @see #getInterval(TextPosition, TextPosition)
+     * @see #getInterval(int, int, int, int)
+     */
+    public String getInterval(TextInterval interval)
+    {
+        return getInterval(interval.getStart(), interval.getEnd());
+    }
+
+    /**
+     * Get an interval of text between two positions as a {@link String}. Note that both the start and end positions
+     * are inclusive. This is equivalent to {@code getText().substring(getIndex(start), getIndex(end) + 1)}
+     *
+     * @param start start position (inclusive)
+     * @param end   end position (inclusive)
+     * @return text interval
+     * @throws IndexOutOfBoundsException if the start or end position is invalid, or if end is before start
+     * @see #getInterval(int, int, int, int)
+     */
+    public String getInterval(TextPosition start, TextPosition end)
+    {
+        return getInterval(start.getLine(), start.getColumn(), end.getLine(), end.getColumn());
+    }
+
+    /**
+     * Get an interval of the text between two line:column positions as a {@link String}. Note that both the start and
+     * end positions are inclusive. This is equivalent to
+     * {@code getText().substring(getIndex(startLine, startColumn), getIndex(endLine, endColumn) + 1)}.
+     *
+     * @param startLine   start line (inclusive)
+     * @param startColumn start column (inclusive)
+     * @param endLine     end line (inclusive)
+     * @param endColumn   end column (inclusive)
+     * @return text interval
+     * @throws IndexOutOfBoundsException if the start or end position is invalid, or if end is before start
+     */
+    public String getInterval(int startLine, int startColumn, int endLine, int endColumn)
+    {
+        if (startLine == endLine)
+        {
+            // single-line interval
+            checkLine(startLine);
+            if ((startColumn == 0) && (endColumn <= startColumn) && (endColumn == (lineLength(startLine) - 1)))
+            {
+                // entire line
+                return lineText(startLine);
+            }
+
+            checkColumnRange(startLine, startColumn, endColumn);
+            int lineStart = lineStart(startLine);
+            return this.text.substring(lineStart + startColumn, lineStart + endColumn + 1);
+        }
+
+        // multi-line interval
+        checkLineRange(startLine, endLine);
+        checkColumn(startLine, startColumn);
+        checkColumn(endLine, endColumn);
+        return this.text.substring(lineStart(startLine) + startColumn, lineStart(endLine) + endColumn + 1);
+    }
+
+    /**
      * Get the line number of the given text index.
      *
      * @param index text index
@@ -187,15 +264,23 @@ public class LineIndexedText
         return (i >= 0) ? i : -(i + 2);
     }
 
+    // Helpers that assume the line and column have been validated
+
     private int lineStart(int line)
     {
         return this.lineIndex[line];
     }
 
+    // NB: lineEnd is EXCLUSIVE
     private int lineEnd(int line)
     {
         int nextLine = line + 1;
         return (nextLine < getLineCount()) ? lineStart(nextLine) : this.text.length();
+    }
+
+    private int lineLength(int line)
+    {
+        return lineEnd(line) - lineStart(line);
     }
 
     private String lineText(int line)
@@ -213,7 +298,9 @@ public class LineIndexedText
         return result;
     }
 
-    void checkLineNumber(int line)
+    // Line/column validations
+
+    void checkLine(int line)
     {
         if ((line < 0) || (line >= this.lineIndex.length))
         {
@@ -230,6 +317,24 @@ public class LineIndexedText
         }
     }
 
+    private void checkColumn(int line, int col)
+    {
+        int length = lineLength(line);
+        if ((col < 0) || (col >= length))
+        {
+            throw new IndexOutOfBoundsException("Invalid column for line " + line + ": " + col + ", length: " + length);
+        }
+    }
+
+    private void checkColumnRange(int line, int startCol, int endCol)
+    {
+        int length = lineLength(line);
+        if ((startCol < 0) || (endCol < startCol) || (endCol >= length))
+        {
+            throw new IndexOutOfBoundsException("Invalid column range for line " + line + ": start " + startCol + ", end " + endCol + ", length " + length);
+        }
+    }
+
     private void checkIndex(int index)
     {
         if ((index < 0) || (index >= this.text.length()))
@@ -237,6 +342,8 @@ public class LineIndexedText
             throw new IndexOutOfBoundsException("index " + index + ", length " + this.text.length());
         }
     }
+
+    // Factory method
 
     /**
      * Index {@code text} by line.
