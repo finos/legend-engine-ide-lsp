@@ -17,13 +17,13 @@ package org.finos.legend.engine.ide.lsp.server;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
-import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
-import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
@@ -64,8 +64,8 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     private LegendLanguageServer(boolean async, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
-        this.textDocumentService = new LegendTextDocumentService();
-        this.workspaceService = new LegendWorkspaceService();
+        this.textDocumentService = new LegendTextDocumentService(this);
+        this.workspaceService = new LegendWorkspaceService(this);
         this.async = async;
         this.grammars = grammars;
         this.inlineDSLs = inlineDSLs;
@@ -82,13 +82,13 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.error(message);
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
-        return supplyPossiblyAsync(this::doInitialize);
+        return supplyPossiblyAsync_internal(this::doInitialize);
     }
 
     @Override
     public void initialized(InitializedParams params)
     {
-        checkServerReady();
+        checkReady();
     }
 
     @Override
@@ -101,7 +101,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.warn("Server already {}", getStateDescription(currentState));
             return CompletableFuture.completedFuture(null);
         }
-        return supplyPossiblyAsync(() ->
+        return supplyPossiblyAsync_internal(() ->
         {
             doShutdown();
             return null;
@@ -118,21 +118,21 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     @Override
     public TextDocumentService getTextDocumentService()
     {
-        checkServerReady();
+        checkNotShutDown();
         return this.textDocumentService;
     }
 
     @Override
     public WorkspaceService getWorkspaceService()
     {
-        checkServerReady();
+        checkNotShutDown();
         return this.workspaceService;
     }
 
     @Override
     public void connect(LanguageClient languageClient)
     {
-        checkServerReady();
+        checkNotShutDown();
         LOGGER.info("Connecting language client");
         if (!this.languageClient.compareAndSet(null, languageClient))
         {
@@ -185,29 +185,116 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return this.state.get() == SHUT_DOWN;
     }
 
+    void checkReady()
+    {
+        int currentState = this.state.get();
+        switch (currentState)
+        {
+            case INITIALIZED:
+            {
+                // Server is ready
+                return;
+            }
+            case UNINITIALIZED:
+            case INITIALIZING:
+            {
+                throw newResponseErrorException(ResponseErrorCode.ServerNotInitialized, "Server is not initialized");
+            }
+            case SHUTTING_DOWN:
+            {
+                throw newResponseErrorException(ResponseErrorCode.RequestFailed, "Server is shutting down");
+            }
+            case SHUT_DOWN:
+            {
+                throw newResponseErrorException(ResponseErrorCode.RequestFailed, "Server has shut down");
+            }
+            default:
+            {
+                String message = "Unexpected server state: " + getStateDescription(currentState);
+                LOGGER.warn(message);
+                throw newResponseErrorException(ResponseErrorCode.InternalError, message);
+            }
+        }
+    }
+
+    void checkNotShutDown()
+    {
+        int currentState = this.state.get();
+        switch (currentState)
+        {
+            case SHUTTING_DOWN:
+            {
+                throw newResponseErrorException(ResponseErrorCode.RequestFailed, "Server is shutting down");
+            }
+            case SHUT_DOWN:
+            {
+                throw newResponseErrorException(ResponseErrorCode.RequestFailed, "Server has shut down");
+            }
+            default:
+            {
+                // not a shut-down state
+            }
+        }
+    }
+
     <T> CompletableFuture<T> supplyPossiblyAsync(Supplier<T> supplier)
     {
-        return this.async ?
-                CompletableFuture.supplyAsync(supplier) :
-                CompletableFuture.completedFuture(supplier.get());
+        checkReady();
+        return supplyPossiblyAsync_internal(supplier);
     }
 
     LanguageClient getLanguageClient()
     {
-        checkServerReady();
+        checkNotShutDown();
         return this.languageClient.get();
     }
 
     LegendLSPGrammarLibrary getGrammarLibrary()
     {
-        checkServerReady();
+        checkNotShutDown();
         return this.grammars;
     }
 
     LegendLSPInlineDSLLibrary getInlineDSLLibrary()
     {
-        checkServerReady();
+        checkNotShutDown();
         return this.inlineDSLs;
+    }
+
+    void logToClient(String message)
+    {
+        logToClient(MessageType.Log, message);
+    }
+
+    void logInfoToClient(String message)
+    {
+        logToClient(MessageType.Info, message);
+    }
+
+    void logWarningToClient(String message)
+    {
+        logToClient(MessageType.Warning, message);
+    }
+
+    void logErrorToClient(String message)
+    {
+        logToClient(MessageType.Error, message);
+    }
+
+    void logToClient(MessageType messageType, String message)
+    {
+        LanguageClient client = this.languageClient.get();
+        if (client != null)
+        {
+            client.logMessage(new MessageParams(messageType, message));
+        }
+    }
+
+    private <T> CompletableFuture<T> supplyPossiblyAsync_internal(Supplier<T> supplier)
+    {
+        return this.async ?
+                CompletableFuture.supplyAsync(supplier) :
+                CompletableFuture.completedFuture(supplier.get());
     }
 
     private InitializeResult doInitialize()
@@ -220,6 +307,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
 
+        logToClient("Initializing server");
         InitializeResult result = new InitializeResult(getServerCapabilities());
         if (!this.state.compareAndSet(INITIALIZING, INITIALIZED))
         {
@@ -246,6 +334,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
         LOGGER.info("Server initialized");
+        logToClient("Server initialized");
         return result;
     }
 
@@ -292,9 +381,10 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             if (this.state.compareAndSet(currentState, SHUTTING_DOWN))
             {
                 LOGGER.info("Shutting down from state: {}", getStateDescription(currentState));
-                this.languageClient.set(null);
+                logInfoToClient("Server shutting down");
                 this.state.set(SHUT_DOWN);
                 LOGGER.info("Server shut down");
+                logInfoToClient("Server shut down");
                 return;
             }
         }
@@ -305,42 +395,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         else
         {
             LOGGER.warn("Server in unexpected shut down state: {}", getStateDescription(currentState));
-        }
-    }
-
-    private void checkServerReady()
-    {
-        int currentState = this.state.get();
-        switch (currentState)
-        {
-            case INITIALIZED:
-            {
-                // Server is ready
-                return;
-            }
-            case INITIALIZING:
-            {
-                throw newResponseErrorException(ResponseErrorCode.ServerNotInitialized, "Server is not initialized");
-            }
-            case UNINITIALIZED:
-            {
-                return; //FIXME: incorrect
-                //throw newResponseErrorException(ResponseErrorCode.ServerNotInitialized, "Server is not initialized");
-            }
-            case SHUTTING_DOWN:
-            {
-                throw newResponseErrorException(ResponseErrorCode.RequestFailed, "Server is shutting down");
-            }
-            case SHUT_DOWN:
-            {
-                throw newResponseErrorException(ResponseErrorCode.RequestFailed, "Server has shut down");
-            }
-            default:
-            {
-                String message = "Unexpected server state: " + getStateDescription(currentState);
-                LOGGER.warn(message);
-                throw newResponseErrorException(ResponseErrorCode.InternalError, message);
-            }
         }
     }
 
@@ -523,14 +577,4 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             return new LegendLanguageServer(this.async, this.grammars.build(), this.inlineDSLs.build());
         }
     }
-
-    public static void main(String[] args) throws Exception 
-    {
-        LegendLanguageServer server = LegendLanguageServer.builder().build();
-        //server.initialize(new InitializeParams()).get();
-        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
-        server.connect(launcher.getRemoteProxy());
-        launcher.startListening();
-    }
-
 }

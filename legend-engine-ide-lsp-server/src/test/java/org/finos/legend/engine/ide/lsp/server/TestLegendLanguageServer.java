@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.eclipse.lsp4j.DidChangeConfigurationParams;
+import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
@@ -45,10 +47,11 @@ public class TestLegendLanguageServer
         Assertions.assertFalse(server.isInitialized());
         Assertions.assertFalse(server.isShutDown());
 
-        /*assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", () -> server.initialized(new InitializedParams()));
-        assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", server::getWorkspaceService);
-        assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", server::getTextDocumentService);
-        assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", server::getLanguageClient);*/
+        assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", () -> server.initialized(new InitializedParams()));
+        Assertions.assertInstanceOf(LegendWorkspaceService.class, server.getWorkspaceService());
+        assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", () -> server.getWorkspaceService().didChangeConfiguration(new DidChangeConfigurationParams()));
+        Assertions.assertInstanceOf(LegendTextDocumentService.class, server.getTextDocumentService());
+        assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", () -> server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams()));
 
         // Initialize
         InitializeResult initializeResult = server.initialize(new InitializeParams()).get();

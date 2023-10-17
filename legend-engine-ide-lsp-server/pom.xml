@@ -29,6 +29,7 @@
     <name>Legend Engine IDE LSP Server</name>
 
     <dependencies>
+        <!-- LEGEND ENGINE LSP -->
         <dependency>
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-extension-api</artifactId>
@@ -37,6 +38,7 @@
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-extension</artifactId>
         </dependency>
+        <!-- LEGEND ENGINE LSP -->
 
         <dependency>
             <groupId>org.eclipse.lsp4j</groupId>
@@ -52,6 +54,12 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- TEST -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -62,10 +70,6 @@
             <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <scope>test</scope>
-        </dependency>
+        <!-- TEST -->
     </dependencies>
 </project>

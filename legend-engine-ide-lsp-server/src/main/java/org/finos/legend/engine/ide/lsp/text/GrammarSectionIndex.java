@@ -21,7 +21,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * An index of the grammar sections in a text document.
+ * <p>An index of the grammar sections in a text document.</p>
+ * <br>
+ * <p>A grammar section ({@link GrammarSection}) is a continuous interval of lines, possibly starting with a grammar
+ * declaration line of the form "{@code ###GrammarName}". A grammar declaration line indicates the start of a new
+ * section, so they occur only as the first line of a section. Sections after the first must begin with an explicit
+ * grammar declaration line. The first section may optionally begin with an explicit grammar declaration line. If an
+ * explicit one is not present, the section is deemed to have an implicit grammar declaration line equivalent to
+ * {@code ###Pure}.</p>
+ * <br>
+ * <p>Each section begins at the beginning of its first line and ends at the end of its final line, either with a line
+ * break or the end of the text. Sections contain only complete lines; no section will contain a partial line.</p>
  */
 public class GrammarSectionIndex
 {

@@ -48,8 +48,9 @@
 
         <!-- Dependency versions -->
         <junit.version>5.10.0</junit.version>
+        <logback.version>1.4.11</logback.version>
         <lsp4j.version>0.21.1</lsp4j.version>
-        <slf4j.version>1.7.36</slf4j.version>
+        <slf4j.version>2.0.9</slf4j.version>
 
         <!-- Plugin versions -->
         <jacoco.maven.plugin.version>0.8.10</jacoco.maven.plugin.version>
@@ -216,14 +217,12 @@
                                 <exclude>log4j</exclude>
                                 <exclude>org.slf4j</exclude>
                                 <exclude>commons-logging</exclude>
-                                <exclude>ch.qos.logback</exclude>
                                 <exclude>javax.mail</exclude>
                                 <exclude>org.antlr:antlr4</exclude>
                             </excludes>
                             <includes>
-                                <include>org.slf4j:slf4j-api:${slf4j.version}</include>
-                                <include>org.slf4j:slf4j-simple:${slf4j.version}:jar:test</include>
                                 <include>org.slf4j:jcl-over-slf4j:${slf4j.version}:jar:test</include>
+                                <include>org.slf4j:slf4j-api:${slf4j.version}</include>
                             </includes>
                         </bannedDependencies>
                     </rules>
@@ -296,6 +295,7 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- LEGEND ENGINE LSP -->
             <dependency>
                 <groupId>org.finos.legend.engine.ide.lsp</groupId>
                 <artifactId>legend-engine-ide-lsp-extension-api</artifactId>
@@ -310,6 +310,13 @@
                 <groupId>org.finos.legend.engine.ide.lsp</groupId>
                 <artifactId>legend-engine-ide-lsp-server</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <!-- LEGEND ENGINE LSP -->
+
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>${logback.version}</version>
             </dependency>
 
             <dependency>
@@ -334,11 +341,6 @@
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-simple</artifactId>
                 <version>${slf4j.version}</version>
             </dependency>
         </dependencies>
