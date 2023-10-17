@@ -17,6 +17,8 @@ package org.finos.legend.engine.ide.lsp.server;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
+import org.eclipse.lsp4j.jsonrpc.Launcher;
+import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ServerCapabilities;
@@ -576,5 +578,12 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         {
             return new LegendLanguageServer(this.async, this.grammars.build(), this.inlineDSLs.build());
         }
+    }
+    public static void main(String[] args) throws Exception
+    {
+        LegendLanguageServer server = LegendLanguageServer.builder().build();
+        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
+        server.connect(launcher.getRemoteProxy());
+        launcher.startListening();
     }
 }
