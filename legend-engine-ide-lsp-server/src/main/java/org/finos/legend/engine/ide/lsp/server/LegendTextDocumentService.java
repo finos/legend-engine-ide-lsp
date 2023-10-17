@@ -166,9 +166,9 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<SemanticTokens> semanticTokensRange(SemanticTokensRangeParams params)
     {
+        this.server.logToClient("called semanticTokensRange");
         MutableList<Integer> data = Lists.mutable.empty();
         data = Lists.mutable.of(1,1,5,0,0,2,2,5,0,0,0,7,6,0,0);
         return CompletableFuture.completedFuture(new SemanticTokens(data));
     }
-
 }

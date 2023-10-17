@@ -163,13 +163,16 @@ public class TestLegendLanguageServer
 
         CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0,0),new Position(6,0))));
         System.out.println(0);
-        try {
+        try
+        {
             Assertions.assertEquals(Lists.mutable.of(1,1,5,0,0,2,2,5,0,0,0,7,6,0,0), semanticTokens.get().getData());
-        } catch (InterruptedException e) {
-            System.out.println(1);
+        }
+        catch (InterruptedException e)
+        {
             throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            System.out.println(2);
+        }
+        catch (ExecutionException e)
+        {
             throw new RuntimeException(e);
         }
     }
