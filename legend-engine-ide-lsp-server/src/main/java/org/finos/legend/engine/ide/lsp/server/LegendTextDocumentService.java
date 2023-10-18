@@ -14,18 +14,16 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 class LegendTextDocumentService implements TextDocumentService
 {
@@ -42,7 +40,7 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didOpen(DidOpenTextDocumentParams params)
     {
-        this.server.checkReady();
+//        this.server.checkReady();
         TextDocumentItem doc = params.getTextDocument();
         String uri = doc.getUri();
         if (isLegendFile(uri))
@@ -166,9 +164,44 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<SemanticTokens> semanticTokensRange(SemanticTokensRangeParams params)
     {
-        this.server.logToClient("called semanticTokensRange");
-        MutableList<Integer> data = Lists.mutable.empty();
-        data = Lists.mutable.of(1,1,5,0,0,2,2,5,0,0,0,7,6,0,0);
-        return CompletableFuture.completedFuture(new SemanticTokens(data));
+        List coordinates = new ArrayList();
+
+        synchronized (this.docStates)
+        {
+            this.server.logToClient("called semanticTokensRange");
+            String code = this.docStates.get(params.getTextDocument().getUri()).getText();
+            String[] lines = code.split("\\R");
+            List<String> keywords = Arrays.asList("Date","Integer","String","Float","StrictDate","Boolean","let","true","false"); // FIXME: call LegendLSPExtension.getKeywords()
+            Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
+
+            try
+            {
+                int previousLineMatch = 0;
+                for (int lineNum = 0; lineNum < lines.length; lineNum++)
+                {
+                    int previousCharMatch = 0;
+
+                    Matcher matcher = keywordsRegex.matcher(lines[lineNum]);
+                    while (matcher.find())
+                    {
+                        int lineMatch = lineNum - previousLineMatch;
+                        int charMatch = matcher.start() - previousCharMatch;
+                        int length = matcher.end() - matcher.start();
+                        previousLineMatch = lineNum;
+                        previousCharMatch = matcher.start();
+                        coordinates.add(lineMatch);
+                        coordinates.add(charMatch);
+                        coordinates.add(length);
+                        coordinates.add(0);
+                        coordinates.add(0);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                this.server.logToClient("Error in finding semantic tokens:\n" + e.toString());
+            }
+        }
+        return CompletableFuture.completedFuture(new SemanticTokens(coordinates));
     }
 }

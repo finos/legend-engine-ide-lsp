@@ -35,6 +35,6 @@ public interface LegendLSPExtension
      */
     default Iterable<? extends String> getKeywords()
     {
-        return Set.of();
+        return Set.of("Date","Integer","String","Float","StrictDate","Boolean","let","true","false");
     }
 }

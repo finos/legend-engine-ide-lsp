@@ -14,15 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.eclipse.lsp4j.InitializeParams;
-import org.eclipse.lsp4j.InitializeResult;
-import org.eclipse.lsp4j.InitializedParams;
+import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
-import org.eclipse.lsp4j.ServerCapabilities;
-import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
@@ -38,6 +32,8 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -309,7 +305,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
 
-        logToClient("Initializing server");
+        logToClient("Initializing server, logToClient");
         InitializeResult result = new InitializeResult(getServerCapabilities());
         if (!this.state.compareAndSet(INITIALIZING, INITIALIZED))
         {
@@ -371,6 +367,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
+        capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Arrays.asList(SemanticTokenTypes.Keyword),new ArrayList()),false,true));
         return capabilities;
     }
 
@@ -583,7 +580,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     public static void main(String[] args) throws Exception
     {
         LegendLanguageServer server = LegendLanguageServer.builder().build();
-        server.logToClient("called LLS.main");
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
