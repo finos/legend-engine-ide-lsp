@@ -115,8 +115,7 @@ class LegendTextDocumentService implements TextDocumentService
     public void didClose(DidCloseTextDocumentParams params)
     {
         this.server.checkReady();
-        TextDocumentIdentifier doc = params.getTextDocument();
-        String uri = doc.getUri();
+        String uri = params.getTextDocument().getUri();
         if (isLegendFile(uri))
         {
             synchronized (this.docStates)
@@ -131,8 +130,7 @@ class LegendTextDocumentService implements TextDocumentService
     public void didSave(DidSaveTextDocumentParams params)
     {
         this.server.checkReady();
-        TextDocumentIdentifier doc = params.getTextDocument();
-        String uri = doc.getUri();
+        String uri = params.getTextDocument().getUri();
         if (isLegendFile(uri))
         {
             synchronized (this.docStates)
@@ -157,16 +155,16 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(DocumentSymbolParams params)
     {
-        this.server.checkReady();
-        return isLegendFile(params.getTextDocument().getUri()) ?
+        return isLegendFile(params.getTextDocument()) ?
                 this.server.supplyPossiblyAsync(() -> getDocumentSymbols(params)) :
                 CompletableFuture.completedFuture(Collections.emptyList());
     }
 
     private List<Either<SymbolInformation, DocumentSymbol>> getDocumentSymbols(DocumentSymbolParams params)
     {
-        TextDocumentIdentifier doc = params.getTextDocument();
-        String uri = doc.getUri();
+        this.server.checkReady();
+        String uri = params.getTextDocument().getUri();
+        GrammarSectionIndex sectionIndex;
         synchronized (this.docStates)
         {
             DocumentState state = this.docStates.get(uri);
@@ -176,41 +174,41 @@ class LegendTextDocumentService implements TextDocumentService
                 this.server.logWarningToClient("Cannot get symbols for " + uri + ": not open in language server");
                 return Collections.emptyList();
             }
-
-            GrammarSectionIndex sectionIndex = state.getSectionIndex();
-            if (sectionIndex == null)
-            {
-                LOGGER.warn("No text for {}: cannot get symbols", uri);
-                this.server.logWarningToClient("Cannot get symbols for " + uri + ": no text in language server");
-                return Collections.emptyList();
-            }
-
-            LegendLSPGrammarLibrary grammarLibrary = this.server.getGrammarLibrary();
-            List<Either<SymbolInformation, DocumentSymbol>> results = new ArrayList<>();
-            sectionIndex.getSections().forEach(section ->
-            {
-                String grammar = section.getGrammar();
-                LegendLSPGrammarExtension extension = grammarLibrary.getExtension(grammar);
-                if (extension == null)
-                {
-                    String message = "Cannot find extension for grammar: " + grammar;
-                    LOGGER.warn(message);
-                    this.server.logWarningToClient(message);
-                }
-                else
-                {
-                    LOGGER.debug("Getting symbols for section \"{}\" of {}", grammar, uri);
-                    extension.getDeclarations(section).forEach(declaration ->
-                    {
-                        Range range = toRange(declaration.getLocation());
-                        Range selectionRange = declaration.hasCoreLocation() ? toRange(declaration.getCoreLocation()) : range;
-                        DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
-                        results.add(Either.forRight(symbol));
-                    });
-                }
-            });
-            return results;
+            sectionIndex = state.getSectionIndex();
         }
+
+        if (sectionIndex == null)
+        {
+            LOGGER.warn("No text for {}: cannot get symbols", uri);
+            this.server.logWarningToClient("Cannot get symbols for " + uri + ": no text in language server");
+            return Collections.emptyList();
+        }
+
+        LegendLSPGrammarLibrary grammarLibrary = this.server.getGrammarLibrary();
+        List<Either<SymbolInformation, DocumentSymbol>> results = new ArrayList<>();
+        sectionIndex.getSections().forEach(section ->
+        {
+            String grammar = section.getGrammar();
+            LegendLSPGrammarExtension extension = grammarLibrary.getExtension(grammar);
+            if (extension == null)
+            {
+                String message = "Cannot find extension for grammar: " + grammar;
+                LOGGER.warn(message);
+                this.server.logWarningToClient(message);
+            }
+            else
+            {
+                LOGGER.debug("Getting symbols for section \"{}\" of {}", grammar, uri);
+                extension.getDeclarations(section).forEach(declaration ->
+                {
+                    Range range = toRange(declaration.getLocation());
+                    Range selectionRange = declaration.hasCoreLocation() ? toRange(declaration.getCoreLocation()) : range;
+                    DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
+                    results.add(Either.forRight(symbol));
+                });
+            }
+        });
+        return results;
     }
 
     private Range toRange(TextInterval interval)
@@ -221,6 +219,11 @@ class LegendTextDocumentService implements TextDocumentService
     private Position toPosition(TextPosition position)
     {
         return new Position(position.getLine(), position.getColumn());
+    }
+
+    private boolean isLegendFile(TextDocumentIdentifier documentId)
+    {
+        return isLegendFile(documentId.getUri());
     }
 
     private boolean isLegendFile(String uri)
