@@ -24,6 +24,12 @@ import java.util.Collections;
  */
 public interface LegendLSPGrammarExtension extends LegendLSPExtension
 {
+    /**
+     * Return the Legend declarations for the given section.
+     *
+     * @param section grammar section
+     * @return Legend declarations
+     */
     default Iterable<? extends LegendDeclaration> getDeclarations(GrammarSection section)
     {
         return Collections.emptyList();

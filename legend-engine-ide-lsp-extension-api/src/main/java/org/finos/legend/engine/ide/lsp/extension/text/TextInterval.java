@@ -87,6 +87,18 @@ public class TextInterval
     }
 
     /**
+     * Return whether this interval subsumes {@code other}. This is true if the start of this is no later than the start
+     * of {@code other} and the end of this is no earlier
+     *
+     * @param other other interval
+     * @return whether this interval subsumes other
+     */
+    public boolean subsumes(TextInterval other)
+    {
+        return !this.start.isAfter(other.start) && !this.end.isBefore(other.end);
+    }
+
+    /**
      * Return a string representation of the interval. If {@code compact} is true, then a compact representation will be
      * returned. Otherwise, the default representation will be returned.
      *
