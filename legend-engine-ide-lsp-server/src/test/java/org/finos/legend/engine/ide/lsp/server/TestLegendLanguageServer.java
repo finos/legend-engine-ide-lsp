@@ -163,7 +163,7 @@ public class TestLegendLanguageServer
     }
 
     @Test
-    public void testKeywordHighlighting()
+    public void testKeywordHighlighting() throws Exception
     {
         LegendLSPGrammarExtension baseExtension = () -> "baseExtension";
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(baseExtension).build();
