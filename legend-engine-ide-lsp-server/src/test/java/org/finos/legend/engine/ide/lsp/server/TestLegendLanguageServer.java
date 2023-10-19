@@ -181,7 +181,7 @@ public class TestLegendLanguageServer
                 "    employeeDetails : employeeDetails[1];\n" +
                 "}";
 
-        server.initialize(new InitializeParams());
+        server.initialize(new InitializeParams()).get();
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"",0,code)));
         CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0,0),new Position(6,0))));
 
