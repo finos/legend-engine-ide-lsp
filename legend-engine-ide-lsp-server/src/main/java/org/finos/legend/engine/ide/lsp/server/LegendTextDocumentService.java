@@ -20,7 +20,10 @@ import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
@@ -169,19 +172,22 @@ class LegendTextDocumentService implements TextDocumentService
         synchronized (this.docStates)
         {
             this.server.logToClient("called semanticTokensRange");
-            String code = this.docStates.get(params.getTextDocument().getUri()).getText();
-            String[] lines = code.split("\\R");
+            //LineIndexedText code = this.docStates.get(params.getTextDocument().getUri()).text;
+            LineIndexedText code = this.docStates.get(params.getTextDocument().getUri()).text;
+
             List<String> keywords = server.getGrammarLibrary().getExtension("baseExtension").getKeywords();
+            keywords.replaceAll(Pattern::quote);
+
             Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
 
             try
             {
                 int previousLineMatch = 0;
-                for (int lineNum = 0; lineNum < lines.length; lineNum++)
+                for (int lineNum = 0; lineNum < code.getLineCount(); lineNum++)
                 {
                     int previousCharMatch = 0;
 
-                    Matcher matcher = keywordsRegex.matcher(lines[lineNum]);
+                    Matcher matcher = keywordsRegex.matcher(code.getLine(lineNum));
                     while (matcher.find())
                     {
                         int lineMatch = lineNum - previousLineMatch;
