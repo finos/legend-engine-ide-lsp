@@ -64,7 +64,7 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didOpen(DidOpenTextDocumentParams params)
     {
-        //this.server.checkReady();
+        this.server.checkReady();
         TextDocumentItem doc = params.getTextDocument();
         String uri = doc.getUri();
         if (isLegendFile(uri))
