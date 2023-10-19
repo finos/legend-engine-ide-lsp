@@ -61,7 +61,7 @@ public class TestLegendLanguageServer
         Assertions.assertInstanceOf(LegendWorkspaceService.class, server.getWorkspaceService());
         assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", () -> server.getWorkspaceService().didChangeConfiguration(new DidChangeConfigurationParams()));
         Assertions.assertInstanceOf(LegendTextDocumentService.class, server.getTextDocumentService());
-        //assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", () -> server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams()));
+        assertThrowsResponseError(ResponseErrorCode.ServerNotInitialized, "Server is not initialized", () -> server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams()));
 
         // Initialize
         InitializeResult initializeResult = server.initialize(new InitializeParams()).get();
