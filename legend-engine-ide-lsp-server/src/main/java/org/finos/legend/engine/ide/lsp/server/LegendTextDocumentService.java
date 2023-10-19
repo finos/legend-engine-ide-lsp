@@ -308,6 +308,7 @@ class LegendTextDocumentService implements TextDocumentService
             }
             catch (Exception e)
             {
+                LOGGER.error("Error finding semantic tokens in {}", uri, e);
                 this.server.logToClient("Error in finding semantic tokens:\n" + e);
             }
         }
