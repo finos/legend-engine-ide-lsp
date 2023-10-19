@@ -34,8 +34,8 @@ public interface LegendLSPExtension
      *
      * @return collection of keywords
      */
-    default List<String> getKeywords()
+    default Set<String> getKeywords()
     {
-        return Arrays.asList("Date","Integer","String","Float","StrictDate","Boolean","let","true","false");
+        return Set.of("Date","Integer","String","Float","StrictDate","Boolean","let","true","false");
     }
 }
