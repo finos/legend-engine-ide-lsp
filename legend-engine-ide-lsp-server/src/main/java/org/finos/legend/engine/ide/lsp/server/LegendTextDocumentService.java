@@ -40,7 +40,7 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didOpen(DidOpenTextDocumentParams params)
     {
-//        this.server.checkReady();
+        //this.server.checkReady();
         TextDocumentItem doc = params.getTextDocument();
         String uri = doc.getUri();
         if (isLegendFile(uri))
@@ -164,14 +164,14 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<SemanticTokens> semanticTokensRange(SemanticTokensRangeParams params)
     {
-        List coordinates = new ArrayList();
+        List<Integer> coordinates = new ArrayList<>();
 
         synchronized (this.docStates)
         {
             this.server.logToClient("called semanticTokensRange");
             String code = this.docStates.get(params.getTextDocument().getUri()).getText();
             String[] lines = code.split("\\R");
-            List<String> keywords = Arrays.asList("Date","Integer","String","Float","StrictDate","Boolean","let","true","false"); // FIXME: call LegendLSPExtension.getKeywords()
+            List<String> keywords = server.getGrammarLibrary().getExtension("baseExtension").getKeywords();
             Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
 
             try
@@ -199,7 +199,7 @@ class LegendTextDocumentService implements TextDocumentService
             }
             catch (Exception e)
             {
-                this.server.logToClient("Error in finding semantic tokens:\n" + e.toString());
+                this.server.logToClient("Error in finding semantic tokens:\n" + e);
             }
         }
         return CompletableFuture.completedFuture(new SemanticTokens(coordinates));

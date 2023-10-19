@@ -151,7 +151,8 @@ public class TestLegendLanguageServer
     @Test
     public void testKeywordHighlighting()
     {
-        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
+        LegendLSPGrammarExtension baseExtension = () -> "baseExtension";
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(baseExtension).build();
 
         String uri = "file:///testKeywordHighlighting.pure";
         String code = "###Pure\n" +

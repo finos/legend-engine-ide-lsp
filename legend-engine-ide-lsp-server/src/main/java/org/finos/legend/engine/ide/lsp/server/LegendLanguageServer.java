@@ -33,7 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -367,7 +367,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
-        capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Arrays.asList(SemanticTokenTypes.Keyword),new ArrayList()),false,true));
+        capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Collections.singletonList(SemanticTokenTypes.Keyword),new ArrayList<>()),false,true));
         return capabilities;
     }
 
@@ -579,7 +579,8 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     public static void main(String[] args) throws Exception
     {
-        LegendLanguageServer server = LegendLanguageServer.builder().build();
+        LegendLSPGrammarExtension baseExtension = () -> "baseExtension";
+        LegendLanguageServer server = LegendLanguageServer.builder().withGrammar(baseExtension).build();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();

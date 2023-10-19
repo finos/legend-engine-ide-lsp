@@ -14,7 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import java.util.Set;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * An LSP extension for Legend Engine representing some kind of grammar or DSL.
@@ -33,8 +34,8 @@ public interface LegendLSPExtension
      *
      * @return collection of keywords
      */
-    default Iterable<? extends String> getKeywords()
+    default List<String> getKeywords()
     {
-        return Set.of("Date","Integer","String","Float","StrictDate","Boolean","let","true","false");
+        return Arrays.asList("Date","Integer","String","Float","StrictDate","Boolean","let","true","false");
     }
 }
