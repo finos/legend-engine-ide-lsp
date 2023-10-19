@@ -186,18 +186,7 @@ public class TestLegendLanguageServer
 
         List<Integer> expectedCoordinates = Arrays.asList(3, 15, 7, 0, 0, 1, 15, 4, 0, 0, 1, 15, 6, 0, 0, 1, 4, 5, 0, 0, 0, 8, 5, 0, 0, 1, 4, 6, 0, 0, 0, 9, 6, 0, 0, 1, 15, 6, 0, 0);
 
-        try
-        {
-            Assertions.assertEquals(expectedCoordinates, semanticTokens.get().getData());
-        }
-        catch (InterruptedException e)
-        {
-            Assertions.fail();
-        }
-        catch (ExecutionException e)
-        {
-            Assertions.fail();
-        }
+        Assertions.assertEquals(expectedCoordinates, semanticTokens.get().getData());
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)
