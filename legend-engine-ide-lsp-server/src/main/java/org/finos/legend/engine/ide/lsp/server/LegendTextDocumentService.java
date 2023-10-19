@@ -20,16 +20,28 @@ import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.SemanticTokens;
 import org.eclipse.lsp4j.SemanticTokensRangeParams;
+import org.eclipse.lsp4j.DocumentSymbol;
+import org.eclipse.lsp4j.DocumentSymbolParams;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SymbolInformation;
+import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
-import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +71,7 @@ class LegendTextDocumentService implements TextDocumentService
         {
             synchronized (this.docStates)
             {
-                LOGGER.debug("opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
+                LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
                 this.docStates.put(uri, new DocumentState(doc.getVersion(), doc.getText()));
             }
         }
@@ -75,19 +87,19 @@ class LegendTextDocumentService implements TextDocumentService
         {
             synchronized (this.docStates)
             {
-                LOGGER.debug("changed {} (version {})", uri, doc.getVersion());
+                LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
                 DocumentState state = this.docStates.get(uri);
                 if (state == null)
                 {
-                    LOGGER.warn("cannot process change for {}: no state", uri);
-                    this.server.logWarningToClient("cannot process change for " + uri + ": not open on language server");
+                    LOGGER.warn("Cannot process change for {}: no state", uri);
+                    this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
                     return;
                 }
-                state.version = doc.getVersion();
+                state.setVersion(doc.getVersion());
                 List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
                 if ((changes == null) || changes.isEmpty())
                 {
-                    LOGGER.debug("no changes to {}", uri);
+                    LOGGER.debug("No changes to {}", uri);
                 }
                 else
                 {
@@ -107,13 +119,12 @@ class LegendTextDocumentService implements TextDocumentService
     public void didClose(DidCloseTextDocumentParams params)
     {
         this.server.checkReady();
-        TextDocumentIdentifier doc = params.getTextDocument();
-        String uri = doc.getUri();
+        String uri = params.getTextDocument().getUri();
         if (isLegendFile(uri))
         {
             synchronized (this.docStates)
             {
-                LOGGER.debug("closed {}", uri);
+                LOGGER.debug("Closed {}", uri);
                 this.docStates.remove(uri);
             }
         }
@@ -123,18 +134,17 @@ class LegendTextDocumentService implements TextDocumentService
     public void didSave(DidSaveTextDocumentParams params)
     {
         this.server.checkReady();
-        TextDocumentIdentifier doc = params.getTextDocument();
-        String uri = doc.getUri();
+        String uri = params.getTextDocument().getUri();
         if (isLegendFile(uri))
         {
             synchronized (this.docStates)
             {
-                LOGGER.debug("saved {}", uri);
+                LOGGER.debug("Saved {}", uri);
                 DocumentState state = this.docStates.get(uri);
                 if (state == null)
                 {
-                    LOGGER.warn("cannot process save for {}: no state", uri);
-                    this.server.logWarningToClient("cannot process save for " + uri + ": not open on language server");
+                    LOGGER.warn("Cannot process save for {}: no state", uri);
+                    this.server.logWarningToClient("Cannot process save for " + uri + ": not open in language server");
                     return;
                 }
                 String text = params.getText();
@@ -146,6 +156,80 @@ class LegendTextDocumentService implements TextDocumentService
         }
     }
 
+    @Override
+    public CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(DocumentSymbolParams params)
+    {
+        return isLegendFile(params.getTextDocument()) ?
+                this.server.supplyPossiblyAsync(() -> getDocumentSymbols(params)) :
+                CompletableFuture.completedFuture(Collections.emptyList());
+    }
+
+    private List<Either<SymbolInformation, DocumentSymbol>> getDocumentSymbols(DocumentSymbolParams params)
+    {
+        this.server.checkReady();
+        String uri = params.getTextDocument().getUri();
+        GrammarSectionIndex sectionIndex;
+        synchronized (this.docStates)
+        {
+            DocumentState state = this.docStates.get(uri);
+            if (state == null)
+            {
+                LOGGER.warn("No state for {}: cannot get symbols", uri);
+                this.server.logWarningToClient("Cannot get symbols for " + uri + ": not open in language server");
+                return Collections.emptyList();
+            }
+            sectionIndex = state.getSectionIndex();
+        }
+
+        if (sectionIndex == null)
+        {
+            LOGGER.warn("No text for {}: cannot get symbols", uri);
+            this.server.logWarningToClient("Cannot get symbols for " + uri + ": no text in language server");
+            return Collections.emptyList();
+        }
+
+        LegendLSPGrammarLibrary grammarLibrary = this.server.getGrammarLibrary();
+        List<Either<SymbolInformation, DocumentSymbol>> results = new ArrayList<>();
+        sectionIndex.getSections().forEach(section ->
+        {
+            String grammar = section.getGrammar();
+            LegendLSPGrammarExtension extension = grammarLibrary.getExtension(grammar);
+            if (extension == null)
+            {
+                String message = "Cannot find extension for grammar: " + grammar;
+                LOGGER.warn(message);
+                this.server.logWarningToClient(message);
+            }
+            else
+            {
+                LOGGER.debug("Getting symbols for section \"{}\" of {}", grammar, uri);
+                extension.getDeclarations(section).forEach(declaration ->
+                {
+                    Range range = toRange(declaration.getLocation());
+                    Range selectionRange = declaration.hasCoreLocation() ? toRange(declaration.getCoreLocation()) : range;
+                    DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
+                    results.add(Either.forRight(symbol));
+                });
+            }
+        });
+        return results;
+    }
+
+    private Range toRange(TextInterval interval)
+    {
+        return new Range(toPosition(interval.getStart()), toPosition(interval.getEnd()));
+    }
+
+    private Position toPosition(TextPosition position)
+    {
+        return new Position(position.getLine(), position.getColumn());
+    }
+
+    private boolean isLegendFile(TextDocumentIdentifier documentId)
+    {
+        return isLegendFile(documentId.getUri());
+    }
+
     private boolean isLegendFile(String uri)
     {
         return (uri != null) && uri.endsWith(".pure");
@@ -154,7 +238,7 @@ class LegendTextDocumentService implements TextDocumentService
     private static class DocumentState
     {
         private int version;
-        private LineIndexedText text;
+        private GrammarSectionIndex sectionIndex;
 
         private DocumentState(int version, String text)
         {
@@ -162,14 +246,24 @@ class LegendTextDocumentService implements TextDocumentService
             setText(text);
         }
 
-        String getText()
+        void setVersion(int version)
         {
-            return this.text.getText();
+            this.version = version;
+        }
+
+        int getVersion()
+        {
+            return this.version;
         }
 
         void setText(String newText)
         {
-            this.text = LineIndexedText.index(newText);
+            this.sectionIndex = (newText == null) ? null : GrammarSectionIndex.parse(newText);
+        }
+
+        GrammarSectionIndex getSectionIndex()
+        {
+            return this.sectionIndex;
         }
     }
 

@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -66,14 +67,16 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final AtomicReference<LanguageClient> languageClient = new AtomicReference<>(null);
     private final AtomicInteger state = new AtomicInteger(UNINITIALIZED);
     private final boolean async;
+    private final Executor executor;
     private final LegendLSPGrammarLibrary grammars;
     private final LegendLSPInlineDSLLibrary inlineDSLs;
 
-    private LegendLanguageServer(boolean async, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
+    private LegendLanguageServer(boolean async, Executor executor, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
         this.textDocumentService = new LegendTextDocumentService(this);
         this.workspaceService = new LegendWorkspaceService(this);
         this.async = async;
+        this.executor = executor;
         this.grammars = grammars;
         this.inlineDSLs = inlineDSLs;
     }
@@ -299,9 +302,15 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     private <T> CompletableFuture<T> supplyPossiblyAsync_internal(Supplier<T> supplier)
     {
-        return this.async ?
-                CompletableFuture.supplyAsync(supplier) :
-                CompletableFuture.completedFuture(supplier.get());
+        if (!this.async)
+        {
+            return CompletableFuture.completedFuture(supplier.get());
+        }
+        if (this.executor == null)
+        {
+            return CompletableFuture.supplyAsync(supplier);
+        }
+        return CompletableFuture.supplyAsync(supplier, this.executor);
     }
 
     private InitializeResult doInitialize()
@@ -458,6 +467,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     public static class Builder
     {
         private boolean async = true;
+        private Executor executor;
         private final LegendLSPGrammarLibrary.Builder grammars = LegendLSPGrammarLibrary.builder();
         private final LegendLSPInlineDSLLibrary.Builder inlineDSLs = LegendLSPInlineDSLLibrary.builder();
 
@@ -472,7 +482,9 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
          */
         public Builder synchronous()
         {
-            return asynchronous(false);
+            this.async = false;
+            this.executor = null;
+            return this;
         }
 
         /**
@@ -482,18 +494,20 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
          */
         public Builder asynchronous()
         {
-            return asynchronous(true);
+            return asynchronous(null);
         }
 
         /**
-         * Set whether the server should perform operations asynchronously.
+         * Set the server to perform operations asynchronously. If {@code executor} is non-null, then it will be used
+         * for asynchronous execution; otherwise a default executor (possibly the common pool) will be used.
          *
-         * @param async whether operations should be asynchronous
+         * @param executor optional executor
          * @return this builder
          */
-        public Builder asynchronous(boolean async)
+        public Builder asynchronous(Executor executor)
         {
-            this.async = async;
+            this.async = true;
+            this.executor = executor;
             return this;
         }
 
@@ -582,7 +596,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
          */
         public LegendLanguageServer build()
         {
-            return new LegendLanguageServer(this.async, this.grammars.build(), this.inlineDSLs.build());
+            return new LegendLanguageServer(this.async, this.executor, this.grammars.build(), this.inlineDSLs.build());
         }
     }
 

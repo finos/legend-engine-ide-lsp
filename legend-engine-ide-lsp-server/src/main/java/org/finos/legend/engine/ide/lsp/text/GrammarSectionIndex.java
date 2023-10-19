@@ -149,7 +149,7 @@ public class GrammarSectionIndex
      */
     public GrammarSection getSectionAtLine(int line)
     {
-        this.text.checkLineNumber(line);
+        this.text.checkLine(line);
         for (GrammarSection section : this.sections)
         {
             int startLine = section.getStartLine();
