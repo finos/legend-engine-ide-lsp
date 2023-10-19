@@ -243,6 +243,4 @@ public class TestLegendLanguageServer
             }
         };
     }
-
-
 }
