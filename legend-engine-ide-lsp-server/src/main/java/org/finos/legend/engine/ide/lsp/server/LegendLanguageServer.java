@@ -323,7 +323,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
 
-        logToClient("Initializing server, logToClient");
         InitializeResult result = new InitializeResult(getServerCapabilities());
         if (!this.state.compareAndSet(INITIALIZING, INITIALIZED))
         {
