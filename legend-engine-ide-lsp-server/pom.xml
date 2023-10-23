@@ -59,14 +59,13 @@
             <version>4.32.1</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- TEST -->
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-protocol-pure</artifactId>
             <version>4.32.1</version>
-            <scope>test</scope>
         </dependency>
-
-        <!-- TEST -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
@@ -81,6 +80,12 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-language-pure-grammar</artifactId>
+            <version>4.32.1</version>
+            <scope>compile</scope>
         </dependency>
         <!-- TEST -->
     </dependencies>

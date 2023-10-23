@@ -23,21 +23,19 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-
-import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParser;
 
 public class TestLegendLanguageServer
 {
@@ -158,6 +156,8 @@ public class TestLegendLanguageServer
     @Test
     public void testParser()
     {
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
+        String uri = "file:///testParser.pure";
         String code = "###Pure\n" +
                 "Class vscodelsp::test::Employee\n" +
                 "{\n" +
@@ -165,17 +165,11 @@ public class TestLegendLanguageServer
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
                 "}";
+        server.initialize(new InitializeParams());
+        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"",0,code)));
 
-        String errorMessage = "";
-        try
-        {
-            PureGrammarParser parser = PureGrammarParser.newInstance();
-            parser.parseModel(code);
-        }
-        catch (Exception e)
-        {
-            errorMessage = e.getMessage();
-        }
+        String errorMessage = new LegendTextDocumentService(server).getParsingErrors(code);
+        
         Assertions.assertEquals(errorMessage, "no viable alternative at input 'foobar;'");
     }
 
