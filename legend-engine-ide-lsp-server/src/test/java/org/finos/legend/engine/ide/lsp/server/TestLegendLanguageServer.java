@@ -43,7 +43,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 public class TestLegendLanguageServer
 {
@@ -149,27 +148,16 @@ public class TestLegendLanguageServer
                 "    Float : Float[1];\n" +
                 "    String : String[1];\n" +
                 "    firmName : String[0..1];\n" +
-                "    employeeDetails : employeeDetails[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
                 "}";
 
         server.initialize(new InitializeParams()).get();
-        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"",0,code)));
-        CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0,0),new Position(6,0))));
+        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+        CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0, 0), new Position(6, 0))));
 
         List<Integer> expectedCoordinates = Arrays.asList(3, 15, 7, 0, 0, 1, 15, 4, 0, 0, 1, 15, 6, 0, 0, 1, 4, 5, 0, 0, 0, 8, 5, 0, 0, 1, 4, 6, 0, 0, 0, 9, 6, 0, 0, 1, 15, 6, 0, 0);
 
-        try
-        {
-            Assertions.assertEquals(expectedCoordinates, semanticTokens.get().getData());
-        }
-        catch (InterruptedException e)
-        {
-            Assertions.fail();
-        }
-        catch (ExecutionException e)
-        {
-            Assertions.fail();
-        }
+        Assertions.assertEquals(expectedCoordinates, semanticTokens.get().getData());
     }
 
     @Test

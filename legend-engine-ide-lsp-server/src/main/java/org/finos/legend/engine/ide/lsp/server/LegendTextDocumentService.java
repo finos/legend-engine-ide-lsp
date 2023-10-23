@@ -237,13 +237,12 @@ class LegendTextDocumentService implements TextDocumentService
             LegendLSPGrammarExtension extension = server.getGrammarLibrary().getExtension(section.getGrammar());
             if (extension == null)
             {
-                LOGGER.warn("No extension for this grammar {}.", section.getGrammar());
+                LOGGER.warn("Could not get semantic tokens for {}: no extension for grammar {}", params.getTextDocument().getUri(), section.getGrammar());
                 return new SemanticTokens();
             }
 
             List<String> keywords = new ArrayList<>();
-            server.getGrammarLibrary().getExtension("Pure").getKeywords().forEach(keywords::add);
-            keywords.replaceAll(Pattern::quote);
+            extension.getKeywords().forEach(kw -> keywords.add(Pattern.quote(kw)));
             Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
 
             try
@@ -270,7 +269,8 @@ class LegendTextDocumentService implements TextDocumentService
             }
             catch (Exception e)
             {
-                this.server.logToClient("Error in finding semantic tokens:\n" + e);
+                LOGGER.error("Error finding semantic tokens in {} section in {}", section.getGrammar(), params.getTextDocument().getUri(), e);
+                this.server.logErrorToClient("Error in finding semantic tokens in " + section.getGrammar() + " section in " + params.getTextDocument().getUri() + ":\n" + e);
             }
         }
         return new SemanticTokens(coordinates);
