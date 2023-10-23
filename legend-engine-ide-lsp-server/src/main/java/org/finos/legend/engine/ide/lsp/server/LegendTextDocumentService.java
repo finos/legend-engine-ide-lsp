@@ -235,7 +235,8 @@ class LegendTextDocumentService implements TextDocumentService
             String[] sectionLines = section.getText().split("\\R", -1);
 
             LegendLSPGrammarExtension extension = server.getGrammarLibrary().getExtension(section.getGrammar());
-            if(extension == null){
+            if (extension == null)
+            {
                 LOGGER.warn("No extension for this grammar {}.", section.getGrammar());
                 return new SemanticTokens();
             }
@@ -243,9 +244,6 @@ class LegendTextDocumentService implements TextDocumentService
             List<String> keywords = new ArrayList<>();
             server.getGrammarLibrary().getExtension("Pure").getKeywords().forEach(keywords::add);
             keywords.replaceAll(Pattern::quote);
-
-            //Iterable<? extends String> keywords = server.getGrammarLibrary().getExtension("pureExtension").getKeywords();
-
             Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
 
             try
@@ -254,7 +252,6 @@ class LegendTextDocumentService implements TextDocumentService
                 for (int lineNum = 0; lineNum < sectionLines.length; lineNum++)
                 {
                     int previousCharMatch = 0;
-
                     Matcher matcher = keywordsRegex.matcher(sectionLines[lineNum]);
                     while (matcher.find())
                     {

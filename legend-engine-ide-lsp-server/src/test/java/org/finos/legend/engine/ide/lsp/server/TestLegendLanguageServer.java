@@ -244,16 +244,19 @@ public class TestLegendLanguageServer
         };
     }
 
-    private LegendLSPGrammarExtension newExtension( String name, Iterable <String> keywords)
+    private LegendLSPGrammarExtension newExtension(String name, Iterable<String> keywords)
     {
-        return new LegendLSPGrammarExtension() {
+        return new LegendLSPGrammarExtension()
+        {
             @Override
-            public String getName() {
+            public String getName()
+            {
                 return name;
             }
 
             @Override
-            public Iterable<? extends String> getKeywords() {
+            public Iterable<? extends String> getKeywords()
+            {
                 return keywords;
             }
         };
