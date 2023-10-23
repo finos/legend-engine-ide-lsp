@@ -87,15 +87,36 @@ public class TextInterval
     }
 
     /**
-     * Return whether this interval subsumes {@code other}. This is true if the start of this is no later than the start
-     * of {@code other} and the end of this is no earlier
+     * Return whether this interval subsumes {@code other}. This is true if the start of {@code this} is no later than
+     * the start of {@code other} and the end of {@code this} is no earlier than the end of {@code other}.
      *
      * @param other other interval
      * @return whether this interval subsumes other
+     * @see #subsumes(TextInterval, boolean)
      */
     public boolean subsumes(TextInterval other)
     {
-        return !this.start.isAfter(other.start) && !this.end.isBefore(other.end);
+        return subsumes(other, false);
+    }
+
+    /**
+     * <p>Return whether this interval subsumes {@code other}.</p>
+     * <br>
+     * <p>If {@code strict} is true, then the start of {@code this} must be (strictly) before the start of {@code other}
+     * and the end of {@code this} must be (strictly) after the end of {@code other}.</p>
+     * <br>
+     * <p>If {@code strict} is false, then the start of {@code this} must not be after the start of {@code other} and
+     * the end of {@code this} must not be before the end of {@code other}</p>
+     *
+     * @param other  other interval
+     * @param strict whether the subsumption must be strict
+     * @return whether this interval subsumes other
+     */
+    public boolean subsumes(TextInterval other, boolean strict)
+    {
+        return strict ?
+                (this.start.isBefore(other.start) && this.end.isAfter(other.end)) :
+                (!this.start.isAfter(other.start) && !this.end.isBefore(other.end));
     }
 
     /**

@@ -63,4 +63,22 @@ public interface GrammarSection
      * @return full text
      */
     String getFullText();
+
+    /**
+     * Get a single line of the section.
+     *
+     * @param line line number
+     * @return section line
+     * @throws IndexOutOfBoundsException if there is no such line in the section
+     */
+    String getLine(int line);
+
+    /**
+     * Get the length of a line of the section.
+     *
+     * @param line line number
+     * @return line length
+     * @throws IndexOutOfBoundsException if there is no such line in the section
+     */
+    int getLineLength(int line);
 }
