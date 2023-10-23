@@ -29,6 +29,7 @@ import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
@@ -40,8 +41,6 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -596,6 +595,14 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         public LegendLanguageServer build()
         {
             return new LegendLanguageServer(this.async, this.executor, this.grammars.build(), this.inlineDSLs.build());
+        }
+
+        public static void main(String[] args) throws Exception
+        {
+            LegendLanguageServer server = LegendLanguageServer.builder().build();
+            Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
+            server.connect(launcher.getRemoteProxy());
+            launcher.startListening();
         }
     }
 
