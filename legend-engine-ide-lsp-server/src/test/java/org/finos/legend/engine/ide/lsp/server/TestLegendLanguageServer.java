@@ -161,7 +161,7 @@ public class TestLegendLanguageServer
         String code = "###Pure\n" +
                 "Class vscodelsp::test::Employee\n" +
                 "{\n" +
-                "    foobar\n" +
+                "    foobar;\n" +
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
                 "}";
@@ -176,7 +176,7 @@ public class TestLegendLanguageServer
         {
             errorMessage = e.getMessage();
         }
-        Assertions.assertEquals(errorMessage, "no viable alternative at input 'foobar'");
+        Assertions.assertEquals(errorMessage, "no viable alternative at input 'foobar;'");
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)
