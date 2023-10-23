@@ -217,7 +217,7 @@
                             <excludes>
                                 <exclude>log4j</exclude>
                                 <exclude>org.slf4j</exclude>
-                                <exclude>commons-logging</exclude>
+<!--                                <exclude>commons-logging</exclude>-->
                                 <exclude>javax.mail</exclude>
                                 <exclude>org.antlr:antlr4</exclude>
                             </excludes>

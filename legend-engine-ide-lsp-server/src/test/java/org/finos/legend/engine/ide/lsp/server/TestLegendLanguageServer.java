@@ -29,12 +29,15 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+
+import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParser;
 
 public class TestLegendLanguageServer
 {
@@ -150,6 +153,30 @@ public class TestLegendLanguageServer
                 IllegalArgumentException.class,
                 () -> LegendLanguageServer.builder().withInlineDSLs(ext1, ext2, () -> "ext1", ext3));
         Assertions.assertEquals("Multiple extensions named: \"ext1\"", e.getMessage());
+    }
+
+    @Test
+    public void testParser()
+    {
+        String code = "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    foobar;\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}";
+
+        String errorMessage = "";
+        try
+        {
+            PureGrammarParser parser = PureGrammarParser.newInstance();
+            parser.parseModel(code);
+        }
+        catch (Exception e)
+        {
+            errorMessage = e.getMessage();
+        }
+        Assertions.assertEquals(errorMessage, "no viable alternative at input 'foobar;'");
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)
