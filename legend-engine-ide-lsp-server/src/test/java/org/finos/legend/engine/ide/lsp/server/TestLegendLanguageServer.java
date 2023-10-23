@@ -28,6 +28,7 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.finos.legend.engine.ide.lsp.extension.DefaultExtensionProvider;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
 import org.junit.jupiter.api.Assertions;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.function.Executable;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+
 
 public class TestLegendLanguageServer
 {
@@ -154,10 +156,11 @@ public class TestLegendLanguageServer
     }
 
     @Test
-    public void testParser()
+    public void testPureParsingError()
     {
-        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
-        String uri = "file:///testParser.pure";
+        LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
+        String uri = "file:///testPureParsingError.pure";
         String code = "###Pure\n" +
                 "Class vscodelsp::test::Employee\n" +
                 "{\n" +
@@ -168,9 +171,8 @@ public class TestLegendLanguageServer
         server.initialize(new InitializeParams());
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"",0,code)));
 
-        String errorMessage = new LegendTextDocumentService(server).getParsingErrors(code);
-        
-        Assertions.assertEquals(errorMessage, "no viable alternative at input 'foobar;'");
+        String parsingErrorMessage = server.getGrammarLibrary().getExtension("Pure").getParsingError(code);
+        Assertions.assertEquals(parsingErrorMessage, "no viable alternative at input 'foobar;'");
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)
@@ -216,4 +218,5 @@ public class TestLegendLanguageServer
             }
         };
     }
+
 }

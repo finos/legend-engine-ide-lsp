@@ -37,4 +37,9 @@ public interface LegendLSPExtension
     {
         return Set.of();
     }
+
+    default String getParsingError(String code)
+    {
+        return "";
+    }
 }

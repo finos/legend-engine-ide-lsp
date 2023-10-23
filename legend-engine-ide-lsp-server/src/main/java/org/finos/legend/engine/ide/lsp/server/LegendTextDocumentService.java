@@ -35,7 +35,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
-import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParser;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -210,23 +210,6 @@ class LegendTextDocumentService implements TextDocumentService
             }
         });
         return results;
-    }
-
-
-    public String getParsingErrors(String code)
-    {
-        String parsingErrorMessage = null;
-        try
-        {
-            PureGrammarParser parser = PureGrammarParser.newInstance();
-            parser.parseModel(code);
-        }
-        catch (Exception e)
-        {
-            parsingErrorMessage = e.getMessage();
-        }
-
-        return parsingErrorMessage;
     }
 
     private Range toRange(TextInterval interval)

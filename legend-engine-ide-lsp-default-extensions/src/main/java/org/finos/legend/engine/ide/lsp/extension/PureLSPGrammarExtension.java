@@ -16,6 +16,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParser;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElementVisitor;
@@ -39,29 +40,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Extension for the Pure grammar.
  */
-class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<DomainParser>
+class PureLSPGrammarExtension implements LegendLSPGrammarExtension
 {
-    private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
+    private static final List<String> KEYWORDS = List.of("Class", "Profile", "Enum", "Association", "function", "native function",
+            "Boolean", "Integer", "Float", "Decimal", "Number", "String", "Date", "DateTime", "StrictDate", "StrictTime",
+            "import", "let");
 
-    private static final List<String> KEYWORDS = List.copyOf(PrimitiveUtilities.getPrimitiveTypeNames().toSet()
-            .with("Association")
-            .with("Class")
-            .with("Enum")
-            .with("function")
-            .with("import")
-            .with("let")
-            .with("native function")
-            .with("Profile")
-    );
-
-    PureLSPGrammarExtension()
+    @Override
+    public String getName()
     {
-        super(new DomainParser());
+        return "Pure";
     }
 
     @Override
@@ -301,5 +293,22 @@ class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<Do
                 .withClassifier(M3Paths.QualifiedProperty)
                 .withLocation(location)
                 .build();
+    }
+
+    @Override
+    public String getParsingError(String code) //GrammarSection section
+    {
+        String parsingErrorMessage = null;
+        try
+        {
+            PureGrammarParser parser = PureGrammarParser.newInstance();
+            parser.parseModel(code);
+        }
+        catch (Exception e)
+        {
+            parsingErrorMessage = e.getMessage();
+        }
+
+        return parsingErrorMessage;
     }
 }
