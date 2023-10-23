@@ -25,20 +25,13 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>legend-engine-ide-lsp-extension</artifactId>
-    <name>Legend Engine IDE LSP Extension</name>
+    <artifactId>legend-engine-ide-lsp-default-extensions</artifactId>
+    <name>Legend Engine IDE LSP Default Extensions</name>
 
     <dependencies>
-        <!-- LEGEND ENGINE LSP -->
         <dependency>
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-extension-api</artifactId>
-        </dependency>
-        <!-- LEGEND ENGINE LSP -->
-
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
         </dependency>
 
         <!-- TEST -->
