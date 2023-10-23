@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParser;
+
 import java.util.List;
 
 /**
@@ -35,5 +37,22 @@ class PureLSPGrammarExtension implements LegendLSPGrammarExtension
     public Iterable<? extends String> getKeywords()
     {
         return KEYWORDS;
+    }
+
+    @Override
+    public String getParsingError(String code) //GrammarSection section
+    {
+        String parsingErrorMessage = null;
+        try
+        {
+            PureGrammarParser parser = PureGrammarParser.newInstance();
+            parser.parseModel(code);
+        }
+        catch (Exception e)
+        {
+            parsingErrorMessage = e.getMessage();
+        }
+
+        return parsingErrorMessage;
     }
 }
