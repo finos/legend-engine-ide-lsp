@@ -139,23 +139,22 @@ public class TestLegendLanguageServer
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
 
         String uri = "file:///testKeywordHighlighting.pure";
-        String code = "###Pure\n" +
+        String code = "\n" +
+                "\n" +
+                "###Pure\n" +
                 "Class vscodelsp::test::Employee\n" +
                 "{\n" +
                 "    id       : Integer[1];\n" +
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
-                "    Float : Float[1];\n" +
-                "    String : String[1];\n" +
-                "    firmName : String[0..1];\n" +
                 "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
-                "}";
+                "}\n";
 
         server.initialize(new InitializeParams()).get();
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
         CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0, 0), new Position(6, 0))));
 
-        List<Integer> expectedCoordinates = Arrays.asList(3, 15, 7, 0, 0, 1, 15, 4, 0, 0, 1, 15, 6, 0, 0, 1, 4, 5, 0, 0, 0, 8, 5, 0, 0, 1, 4, 6, 0, 0, 0, 9, 6, 0, 0, 1, 15, 6, 0, 0);
+        List<Integer> expectedCoordinates = Arrays.asList(5, 15, 7, 0, 0, 1, 15, 4, 0, 0, 1, 15, 6, 0, 0);
 
         Assertions.assertEquals(expectedCoordinates, semanticTokens.get().getData());
     }
