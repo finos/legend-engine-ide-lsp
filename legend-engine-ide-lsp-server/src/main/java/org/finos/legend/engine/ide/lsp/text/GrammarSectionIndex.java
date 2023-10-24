@@ -294,5 +294,27 @@ public class GrammarSectionIndex
         {
             return this.fullText.getText();
         }
+
+        @Override
+        public String getLine(int line)
+        {
+            checkLineNumber(line);
+            return this.fullText.getLine(line);
+        }
+
+        @Override
+        public int getLineLength(int line)
+        {
+            checkLineNumber(line);
+            return this.fullText.getLineLength(line);
+        }
+
+        private void checkLineNumber(int line)
+        {
+            if ((line < this.startLine) || (line > this.endLine))
+            {
+                throw new IndexOutOfBoundsException("Line " + line + " is outside of section (lines " + this.startLine + "-" + this.endLine + ")");
+            }
+        }
     }
 }

@@ -14,24 +14,34 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
+import org.finos.legend.engine.language.pure.grammar.from.mapping.MappingParser;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.Mapping;
+
 import java.util.List;
 
 /**
  * Extension for the Mapping grammar.
  */
-class MappingLSPGrammarExtension implements LegendLSPGrammarExtension
+class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<MappingParser>
 {
     private static final List<String> KEYWORDS = List.of("Mapping", "EnumerationMapping", "include");
 
-    @Override
-    public String getName()
+    MappingLSPGrammarExtension()
     {
-        return "Mapping";
+        super(MappingParser.newInstance(PureGrammarParserExtensions.fromAvailableExtensions()));
     }
 
     @Override
     public Iterable<? extends String> getKeywords()
     {
         return KEYWORDS;
+    }
+
+    @Override
+    protected String getClassifier(PackageableElement element)
+    {
+        return (element instanceof Mapping) ? "meta::pure::mapping::Mapping" : null;
     }
 }

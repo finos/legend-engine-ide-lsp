@@ -64,14 +64,38 @@ public class TestTextInterval
         assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(0, 0, 1, 9));
     }
 
+    @Test
+    public void testSubsumes_strict()
+    {
+        assertSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 12, 5, 0), true);
+        assertSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(2, 0, 4, 95), true);
+
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 10, 5, 17), true);
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 10, 5, 18), true);
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 9, 5, 17), true);
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(1, 12, 6, 0), true);
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(6, 0, 7, 95), true);
+        assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(0, 0, 1, 9), true);
+    }
+
     private void assertSubsumes(TextInterval interval1, TextInterval interval2)
     {
-        Assertions.assertTrue(interval1.subsumes(interval2), () -> interval1.toCompactString() + " should subsume " + interval2.toCompactString());
+        assertSubsumes(interval1, interval2, false);
+    }
+
+    private void assertSubsumes(TextInterval interval1, TextInterval interval2, boolean strict)
+    {
+        Assertions.assertTrue(interval1.subsumes(interval2, strict), () -> interval1.toCompactString() + " should subsume " + interval2.toCompactString());
     }
 
     private void assertNotSubsumes(TextInterval interval1, TextInterval interval2)
     {
-        Assertions.assertFalse(interval1.subsumes(interval2), () -> interval1.toCompactString() + " should NOT subsume " + interval2.toCompactString());
+        assertNotSubsumes(interval1, interval2, false);
+    }
+
+    private void assertNotSubsumes(TextInterval interval1, TextInterval interval2, boolean strict)
+    {
+        Assertions.assertFalse(interval1.subsumes(interval2, strict), () -> interval1.toCompactString() + " should NOT subsume " + interval2.toCompactString());
     }
 
     @Test
