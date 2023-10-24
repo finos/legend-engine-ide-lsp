@@ -14,16 +14,33 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.junit.jupiter.api.Assertions;
+import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.junit.jupiter.api.Test;
 
-public class TestMappingLSPGrammarExtension
+public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 {
-    private final MappingLSPGrammarExtension extension = new MappingLSPGrammarExtension();
-
     @Test
     public void testGetName()
     {
-        Assertions.assertEquals("Mapping", this.extension.getName());
+        testGetName("Mapping");
+    }
+
+    @Test
+    public void testGetDeclarations()
+    {
+        testGetDeclarations("###Mapping\n" +
+                        "\r\n" +
+                        "\n" +
+                        "Mapping model::mapping::TestMapping\n" +
+                        "(\r\n" +
+                        "   )\n",
+                LegendDeclaration.builder().withIdentifier("model::mapping::TestMapping").withClassifier("meta::pure::mapping::Mapping").withLocation(3, 0, 5, 3).build()
+        );
+    }
+
+    @Override
+    protected LegendLSPGrammarExtension newExtension()
+    {
+        return new MappingLSPGrammarExtension();
     }
 }

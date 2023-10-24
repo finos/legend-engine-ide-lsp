@@ -51,18 +51,39 @@ public interface GrammarSection
     int getEndLine();
 
     /**
-     * Get the text of the section.
+     * Whether this section has an explicit grammar declaration line.
      *
-     * @return section text
+     * @return whether this section has an explicit grammar declaration line
      */
-    String getText();
+    boolean hasGrammarDeclaration();
 
     /**
-     * Get the full text that this is a section of.
+     * Get the text of the section, including the grammar declaration line (if present). This is equivalent to
+     * calling {@code getText(false)}.
      *
-     * @return full text
+     * @return section text
+     * @see #getText(boolean)
      */
-    String getFullText();
+    default String getText()
+    {
+        return getLines(getStartLine(), getEndLine());
+    }
+
+    /**
+     * Get the text of the section. If {@code dropGrammarDeclaration} is true, then the grammar declaration line will
+     * be dropped. Otherwise, it will be included (if present).
+     *
+     * @param dropGrammarDeclaration whether to drop the grammar declaration line
+     * @return section text, possibly without the grammar declaration line
+     */
+    default String getText(boolean dropGrammarDeclaration)
+    {
+        int start = getStartLine();
+        int end = getEndLine();
+        return (hasGrammarDeclaration() && dropGrammarDeclaration) ?
+                ((start == end) ? "" : getLines(start + 1, end)) :
+                getLines(start, end);
+    }
 
     /**
      * Get a single line of the section.
@@ -71,7 +92,20 @@ public interface GrammarSection
      * @return section line
      * @throws IndexOutOfBoundsException if there is no such line in the section
      */
-    String getLine(int line);
+    default String getLine(int line)
+    {
+        return getLines(line, line);
+    }
+
+    /**
+     * Get a multi-line interval of the section text. Note that both {@code start} and {@code end} are inclusive.
+     *
+     * @param start start line (inclusive)
+     * @param end   end line (inclusive)
+     * @return multi-line interval
+     * @throws IndexOutOfBoundsException if either start or end is invalid or if end is before start
+     */
+    String getLines(int start, int end);
 
     /**
      * Get the length of a line of the section.
@@ -80,5 +114,15 @@ public interface GrammarSection
      * @return line length
      * @throws IndexOutOfBoundsException if there is no such line in the section
      */
-    int getLineLength(int line);
+    default int getLineLength(int line)
+    {
+        return getLine(line).length();
+    }
+
+    /**
+     * Get the full text that this is a section of.
+     *
+     * @return full text
+     */
+    String getFullText();
 }
