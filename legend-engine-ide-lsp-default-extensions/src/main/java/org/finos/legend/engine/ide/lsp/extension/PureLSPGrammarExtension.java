@@ -248,24 +248,24 @@ class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<Do
 
     private LegendDeclaration getDeclaration(Property property)
     {
-        TextInterval location = toLocation(property.sourceInformation);
-        if (location == null)
+        if (invalidSourceInfo(property.sourceInformation))
         {
+            LOGGER.warn("Invalid source information for property {}", property.name);
             return null;
         }
 
         return LegendDeclaration.builder()
                 .withIdentifier(property.name)
                 .withClassifier(M3Paths.Property)
-                .withLocation(location)
+                .withLocation(toLocation(property.sourceInformation))
                 .build();
     }
 
     private LegendDeclaration getDeclaration(QualifiedProperty property)
     {
-        TextInterval location = toLocation(property.sourceInformation);
-        if (location == null)
+        if (invalidSourceInfo(property.sourceInformation))
         {
+            LOGGER.warn("Invalid source information for qualified property {}", property.name);
             return null;
         }
 
@@ -299,7 +299,7 @@ class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<Do
         return LegendDeclaration.builder()
                 .withIdentifier(builder.toString())
                 .withClassifier(M3Paths.QualifiedProperty)
-                .withLocation(location)
+                .withLocation(toLocation(property.sourceInformation))
                 .build();
     }
 }
