@@ -21,7 +21,7 @@ import java.util.List;
  */
 class RelationalLSPGrammarExtension implements LegendLSPGrammarExtension
 {
-    private static final List<String> KEYWORDS = List.of("Database", "Schema", "Table", "View", "include");
+    private static final List<String> KEYWORDS = List.of("Database", "Schema", "Table", "View", "include", "Join", "Filter");
 
     @Override
     public String getName()

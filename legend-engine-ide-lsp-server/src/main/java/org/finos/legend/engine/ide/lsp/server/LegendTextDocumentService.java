@@ -231,10 +231,12 @@ class LegendTextDocumentService implements TextDocumentService
             this.server.logToClient("called semanticTokensRange");
             DocumentState documentState = this.docStates.get(params.getTextDocument().getUri());
             GrammarSectionIndex code = documentState.getSectionIndex();
+
             GrammarSection section = code.getSection(0);
             String[] sectionLines = section.getText().split("\\R", -1);
 
             LegendLSPGrammarExtension extension = server.getGrammarLibrary().getExtension(section.getGrammar());
+
             if (extension == null)
             {
                 LOGGER.warn("Could not get semantic tokens for {}: no extension for grammar {}", params.getTextDocument().getUri(), section.getGrammar());
@@ -247,17 +249,17 @@ class LegendTextDocumentService implements TextDocumentService
 
             try
             {
-                int previousLineMatch = 0;
-                for (int lineNum = 0; lineNum < sectionLines.length; lineNum++)
+                int previousLineMatch = section.getStartLine();
+                for (int lineNum = 0; lineNum < (section.getEndLine() - section.getStartLine()); lineNum++)
                 {
                     int previousCharMatch = 0;
                     Matcher matcher = keywordsRegex.matcher(sectionLines[lineNum]);
                     while (matcher.find())
                     {
-                        int lineMatch = lineNum - previousLineMatch;
+                        int lineMatch = lineNum + previousLineMatch;
                         int charMatch = matcher.start() - previousCharMatch;
                         int length = matcher.end() - matcher.start();
-                        previousLineMatch = lineNum;
+                        previousLineMatch = - lineNum;
                         previousCharMatch = matcher.start();
                         coordinates.add(lineMatch);
                         coordinates.add(charMatch);
@@ -273,6 +275,7 @@ class LegendTextDocumentService implements TextDocumentService
                 this.server.logErrorToClient("Error in finding semantic tokens in " + section.getGrammar() + " section in " + params.getTextDocument().getUri() + ":\n" + e);
             }
         }
+        this.server.logToClient(coordinates.toString());
         return new SemanticTokens(coordinates);
     }
 
