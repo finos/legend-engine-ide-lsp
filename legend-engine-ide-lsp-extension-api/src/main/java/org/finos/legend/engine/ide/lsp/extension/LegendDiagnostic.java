@@ -14,24 +14,18 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
-import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
-
-import java.util.Collections;
-
-/**
- * An LSP extension representing a Legend Engine top level grammar.
- */
-public interface LegendLSPGrammarExtension extends LegendLSPExtension
+public class LegendDiagnostic
 {
-    /**
-     * Return the Legend declarations for the given section.
-     *
-     * @param section grammar section
-     * @return Legend declarations
-     */
-    default Iterable<? extends LegendDeclaration> getDeclarations(GrammarSection section)
+    String location; //FIXME: TextInterval
+    String message;
+    String severity;
+    String type;
+
+    public LegendDiagnostic(String location, String message, String severity, String type)
     {
-        return Collections.emptyList();
+        this.location = location;
+        this.message = message;
+        this.severity = severity;
+        this.type = type;
     }
 }

@@ -30,6 +30,7 @@ import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
+import org.finos.legend.engine.ide.lsp.extension.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
@@ -45,6 +46,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 class LegendTextDocumentService implements TextDocumentService
@@ -71,7 +73,7 @@ class LegendTextDocumentService implements TextDocumentService
             {
                 LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
                 this.docStates.put(uri, new DocumentState(doc.getVersion(), doc.getText()));
-                computeDiagnostics(uri, doc.getText());
+                getDiagnostics(uri, doc.getText());
             }
         }
     }
@@ -109,7 +111,7 @@ class LegendTextDocumentService implements TextDocumentService
                         this.server.logWarningToClient(message);
                     }
                     state.setText(changes.get(0).getText());
-                    computeDiagnostics(uri, changes.get(0).getText());
+                    getDiagnostics(uri, changes.get(0).getText());
                 }
             }
         }
@@ -266,17 +268,15 @@ class LegendTextDocumentService implements TextDocumentService
             return this.sectionIndex;
         }
     }
-    void computeDiagnostics(String uri, String newText)
+
+    Iterable<? extends LegendDiagnostic> getDiagnostics(String uri, String newText)
     {
         GrammarSectionIndex parsed = (newText == null) ? null : GrammarSectionIndex.parse(newText);
-        if (parsed != null)
+        if (parsed == null)
         {
-            GrammarSection section = this.docStates.get(uri).getSectionIndex().getSection(0);
-            Iterable<String> parsingErrors = this.server.getGrammarLibrary().getExtension(this.docStates.get(uri).getSectionIndex().getSection(0).getGrammar()).getParsingErrors(section);
-            if (parsingErrors != null)
-            {
-                this.server.logToClient(parsingErrors.iterator().next());
-            }
+            return Set.of();
         }
+        GrammarSection section = this.docStates.get(uri).getSectionIndex().getSection(0);
+        return this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
     }
 }

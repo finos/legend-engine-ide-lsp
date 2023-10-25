@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
+
 import java.util.Set;
 
 /**
@@ -38,4 +40,8 @@ public interface LegendLSPExtension
         return Set.of();
     }
 
+    default Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
+    {
+        return null;
+    }
 }

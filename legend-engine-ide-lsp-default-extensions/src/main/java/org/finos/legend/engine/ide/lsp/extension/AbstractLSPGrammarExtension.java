@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.Set;
 import java.util.function.Consumer;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
@@ -131,30 +132,24 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         return TextInterval.newInterval(sourceInfo.startLine, sourceInfo.startColumn - 1, sourceInfo.endLine, sourceInfo.endColumn - 1);
     }
 
-    @Override
-    public Exception getParsingErrors(GrammarSection section)
+    //@Override
+    public Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
     {
-
         try
         {
-            parse(toSectionSourceCode(section), e -> {}, new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions()));
+            parse(toSectionSourceCode(section), e ->
+            { }, new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions()));
             return null;
         }
-
         catch (Exception e)
         {
-            String parsingErrorMessage = e.getMessage() + " at L" + ((EngineException) e).getSourceInformation().startLine + ";C" + ((EngineException) e).getSourceInformation().startColumn;
-            return e;
-            //return Collections.singletonList(parsingErrorMessage);
-            // return a richer object: message + textInterval
+            String message = e.getMessage();
+            String location = "L" + ((EngineException) e).getSourceInformation().startLine + ";C" + ((EngineException) e).getSourceInformation().startColumn;
+            String severity = "error";
+            String type = "parser";
+
+            LegendDiagnostic diagnostic = new LegendDiagnostic(location, message, severity, type);
+            return Set.of(diagnostic);
         }
     }
-
-    class ParserException extends Exception
-    {
-        private String errorMessage = null;
-        private String coordinates = null;
-
-        private final LegendLanguageServer server;
-
-    }
+}

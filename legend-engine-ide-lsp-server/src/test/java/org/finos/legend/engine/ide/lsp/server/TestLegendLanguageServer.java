@@ -16,8 +16,6 @@ package org.finos.legend.engine.ide.lsp.server;
 
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.DocumentSymbol;
-import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
@@ -25,19 +23,14 @@ import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
-import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.DefaultExtensionProvider;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
-import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
-import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -180,8 +173,7 @@ public class TestLegendLanguageServer
         server.initialize(new InitializeParams());
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
-        LegendTextDocumentService a = new LegendTextDocumentService(server);
-        server.getTextDocumentService().computeDiagnostics(uri, code);
+        server.getTextDocumentService().getDiagnostics(uri, code);
 
         //Iterable<String> parsingErrorMessage = server.getGrammarLibrary().getExtension("Pure").getParsingErrors(code);
         //Assertions.assertEquals("no viable alternative at input 'foobar;' at L4;C20", parsingErrorMessage.iterator().next());
