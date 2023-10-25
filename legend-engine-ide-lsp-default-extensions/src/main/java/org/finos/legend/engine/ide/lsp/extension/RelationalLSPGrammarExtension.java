@@ -14,7 +14,6 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.language.pure.grammar.from.RelationalGrammarParserExtension;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
@@ -31,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -45,9 +43,7 @@ class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGrammarExten
 
     RelationalLSPGrammarExtension()
     {
-        super(Objects.requireNonNull(
-                Iterate.detect(new RelationalGrammarParserExtension().getExtraSectionParsers(), p -> RelationalGrammarParserExtension.NAME.equals(p.getSectionTypeName())),
-                "Cannot find parser"));
+        super(RelationalGrammarParserExtension.NAME, new RelationalGrammarParserExtension());
     }
 
     @Override

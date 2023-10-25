@@ -14,8 +14,10 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
+import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtension;
 import org.finos.legend.engine.language.pure.grammar.from.extension.SectionParser;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 
@@ -30,6 +32,11 @@ abstract class AbstractSectionParserLSPGrammarExtension extends AbstractLSPGramm
         this.parser = parser;
     }
 
+    protected AbstractSectionParserLSPGrammarExtension(String parserName, PureGrammarParserExtension extension)
+    {
+        this(findSectionParser(parserName, extension));
+    }
+
     @Override
     public String getName()
     {
@@ -40,5 +47,15 @@ abstract class AbstractSectionParserLSPGrammarExtension extends AbstractLSPGramm
     protected void parse(SectionSourceCode section, Consumer<PackageableElement> elementConsumer, PureGrammarParserContext parserContext)
     {
         this.parser.parse(section, elementConsumer, parserContext);
+    }
+
+    private static SectionParser findSectionParser(String name, PureGrammarParserExtension extension)
+    {
+        SectionParser parser = Iterate.detect(extension.getExtraSectionParsers(), p -> name.equals(p.getSectionTypeName()));
+        if (parser == null)
+        {
+            throw new RuntimeException("Cannot find parser: " + name);
+        }
+        return parser;
     }
 }
