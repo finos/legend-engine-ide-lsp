@@ -248,10 +248,10 @@ class LegendTextDocumentService implements TextDocumentService
             {
                 return new SemanticTokens();
             }
-            Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
 
             try
             {
+                Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
                 int previousLineMatch = section.getStartLine();
                 for (int lineNum = 0; lineNum < (section.getEndLine() - section.getStartLine()); lineNum++)
                 {
