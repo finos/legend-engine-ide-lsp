@@ -14,24 +14,33 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
+
 import java.util.List;
 
 /**
  * Extension for the Service grammar.
  */
-class ServiceLSPGrammarExtension implements LegendLSPGrammarExtension
+class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension
 {
     private static final List<String> KEYWORDS = List.of("Service", "import");
 
-    @Override
-    public String getName()
+    ServiceLSPGrammarExtension()
     {
-        return "Service";
+        super(ServiceParserExtension.NAME, new ServiceParserExtension());
     }
 
     @Override
     public Iterable<? extends String> getKeywords()
     {
         return KEYWORDS;
+    }
+
+    @Override
+    protected String getClassifier(PackageableElement element)
+    {
+        return (element instanceof Service) ? "meta::legend::service::metamodel::Service" : null;
     }
 }

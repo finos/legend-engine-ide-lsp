@@ -374,7 +374,7 @@
                 <exclusions>
                     <exclusion>
                         <groupId>org.apache.httpcomponents</groupId>
-                        <artifactId>httpclient</artifactId>
+                        <artifactId>*</artifactId>
                     </exclusion>
                     <exclusion>
                         <groupId>org.finos.legend.shared</groupId>
@@ -383,6 +383,17 @@
                     <exclusion>
                         <groupId>org.pac4j</groupId>
                         <artifactId>pac4j-core</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-language-pure-dsl-service</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.httpcomponents</groupId>
+                        <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
