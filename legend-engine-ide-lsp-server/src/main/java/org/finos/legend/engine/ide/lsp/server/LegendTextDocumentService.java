@@ -244,11 +244,11 @@ class LegendTextDocumentService implements TextDocumentService
 
             List<String> keywords = new ArrayList<>();
             extension.getKeywords().forEach(kw -> keywords.add(Pattern.quote(kw)));
-            Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
             if (keywords.isEmpty())
             {
                 return new SemanticTokens();
             }
+            Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
 
             try
             {
@@ -278,7 +278,6 @@ class LegendTextDocumentService implements TextDocumentService
                 this.server.logErrorToClient("Error in finding semantic tokens in " + section.getGrammar() + " section in " + params.getTextDocument().getUri() + ":\n" + e);
             }
         }
-        this.server.logToClient(coordinates.toString());
         return new SemanticTokens(coordinates);
     }
 
