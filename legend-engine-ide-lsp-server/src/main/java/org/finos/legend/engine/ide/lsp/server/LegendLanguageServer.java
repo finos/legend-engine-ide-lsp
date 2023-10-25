@@ -19,16 +19,22 @@ import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.SemanticTokenTypes;
+import org.eclipse.lsp4j.SemanticTokensLegend;
+import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
+import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
+import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.finos.legend.engine.ide.lsp.extension.DefaultExtensionProvider;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
@@ -36,6 +42,8 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -378,6 +386,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
+        capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Collections.singletonList(SemanticTokenTypes.Keyword), Collections.emptyList()), false, true));
         return capabilities;
     }
 
@@ -590,5 +599,16 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         {
             return new LegendLanguageServer(this.async, this.executor, this.grammars.build(), this.inlineDSLs.build());
         }
+
     }
+
+    public static void main(String[] args) throws Exception
+    {
+        List<LegendLSPGrammarExtension> defaultExtensions = DefaultExtensionProvider.getDefaultExtensions();
+        LegendLanguageServer server = LegendLanguageServer.builder().withGrammars(defaultExtensions).build();
+        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
+        server.connect(launcher.getRemoteProxy());
+        launcher.startListening();
+    }
+
 }

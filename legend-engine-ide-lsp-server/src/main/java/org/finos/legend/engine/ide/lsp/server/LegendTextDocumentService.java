@@ -22,6 +22,8 @@ import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SemanticTokens;
+import org.eclipse.lsp4j.SemanticTokensRangeParams;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -32,6 +34,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
+import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
@@ -44,6 +47,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 class LegendTextDocumentService implements TextDocumentService
 {
@@ -209,6 +214,71 @@ class LegendTextDocumentService implements TextDocumentService
             }
         });
         return results;
+    }
+
+    @Override
+    public CompletableFuture<SemanticTokens> semanticTokensRange(SemanticTokensRangeParams params)
+    {
+        return this.server.supplyPossiblyAsync(() -> getSemanticTokensRange(params));
+    }
+
+    private SemanticTokens getSemanticTokensRange(SemanticTokensRangeParams params)
+    {
+        List<Integer> coordinates = new ArrayList<>();
+
+        synchronized (this.docStates)
+        {
+            this.server.logToClient("called semanticTokensRange");
+            DocumentState documentState = this.docStates.get(params.getTextDocument().getUri());
+            GrammarSectionIndex code = documentState.getSectionIndex();
+
+            GrammarSection section = code.getSection(0);
+
+            LegendLSPGrammarExtension extension = server.getGrammarLibrary().getExtension(section.getGrammar());
+
+            if (extension == null)
+            {
+                LOGGER.warn("Could not get semantic tokens for {}: no extension for grammar {}", params.getTextDocument().getUri(), section.getGrammar());
+                return new SemanticTokens();
+            }
+
+            List<String> keywords = new ArrayList<>();
+            extension.getKeywords().forEach(kw -> keywords.add(Pattern.quote(kw)));
+            if (keywords.isEmpty())
+            {
+                return new SemanticTokens();
+            }
+
+            try
+            {
+                Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
+                int previousLineMatch = section.getStartLine();
+                for (int lineNum = 0; lineNum < (section.getEndLine() - section.getStartLine()); lineNum++)
+                {
+                    int previousCharMatch = 0;
+                    Matcher matcher = keywordsRegex.matcher(section.getLine(lineNum + section.getStartLine()));
+                    while (matcher.find())
+                    {
+                        int lineMatch = lineNum + previousLineMatch;
+                        int charMatch = matcher.start() - previousCharMatch;
+                        int length = matcher.end() - matcher.start();
+                        previousLineMatch = - lineNum;
+                        previousCharMatch = matcher.start();
+                        coordinates.add(lineMatch);
+                        coordinates.add(charMatch);
+                        coordinates.add(length);
+                        coordinates.add(0);
+                        coordinates.add(0);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                LOGGER.error("Error finding semantic tokens in {} section in {}", section.getGrammar(), params.getTextDocument().getUri(), e);
+                this.server.logErrorToClient("Error in finding semantic tokens in " + section.getGrammar() + " section in " + params.getTextDocument().getUri() + ":\n" + e);
+            }
+        }
+        return new SemanticTokens(coordinates);
     }
 
     private Range toRange(TextInterval interval)
