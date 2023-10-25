@@ -24,7 +24,7 @@ import java.util.List;
 /**
  * Extension for the Mapping grammar.
  */
-class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<MappingParser>
+class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
     private static final List<String> KEYWORDS = List.of("Mapping", "EnumerationMapping", "include");
 
