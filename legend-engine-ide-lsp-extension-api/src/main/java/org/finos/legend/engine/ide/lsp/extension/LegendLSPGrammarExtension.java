@@ -34,4 +34,9 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     {
         return Collections.emptyList();
     }
+
+    default Exception getParsingErrors(GrammarSection section)
+    {
+        return Collections.emptyList();
+    }
 }

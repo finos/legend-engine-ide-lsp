@@ -20,6 +20,7 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParser;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElementVisitor;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
@@ -36,26 +37,36 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.Mapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.PackageableRuntime;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.section.SectionIndex;
+import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Extension for the Pure grammar.
  */
-class PureLSPGrammarExtension implements LegendLSPGrammarExtension
+class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<DomainParser>
 {
-    private static final List<String> KEYWORDS = List.of("Class", "Profile", "Enum", "Association", "function", "native function",
-            "Boolean", "Integer", "Float", "Decimal", "Number", "String", "Date", "DateTime", "StrictDate", "StrictTime",
-            "import", "let");
+    private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
 
-    @Override
-    public String getName()
+    private static final List<String> KEYWORDS = List.copyOf(PrimitiveUtilities.getPrimitiveTypeNames().toSet()
+            .with("Association")
+            .with("Class")
+            .with("Enum")
+            .with("function")
+            .with("import")
+            .with("let")
+            .with("native function")
+            .with("Profile")
+    );
+
+    PureLSPGrammarExtension()
     {
-        return "Pure";
+        super(new DomainParser());
     }
 
     @Override
@@ -64,22 +75,6 @@ class PureLSPGrammarExtension implements LegendLSPGrammarExtension
         return KEYWORDS;
     }
 
-    @Override
-    public String getParsingError(String code) //GrammarSection section
-    {
-        String parsingErrorMessage = null;
-        try
-        {
-            PureGrammarParser parser = PureGrammarParser.newInstance();
-            parser.parseModel(code);
-        }
-        catch (Exception e)
-        {
-            parsingErrorMessage = e.getMessage();
-        }
-
-        return parsingErrorMessage;
-    }
 
     @Override
     protected String getClassifier(PackageableElement element)
@@ -314,20 +309,5 @@ class PureLSPGrammarExtension implements LegendLSPGrammarExtension
                 .build();
     }
 
-    @Override
-    public String getParsingError(String code) //GrammarSection section
-    {
-        String parsingErrorMessage = null;
-        try
-        {
-            PureGrammarParser parser = PureGrammarParser.newInstance();
-            parser.parseModel(code);
-        }
-        catch (Exception e)
-        {
-            parsingErrorMessage = e.getMessage();
-        }
 
-        return parsingErrorMessage;
-    }
 }

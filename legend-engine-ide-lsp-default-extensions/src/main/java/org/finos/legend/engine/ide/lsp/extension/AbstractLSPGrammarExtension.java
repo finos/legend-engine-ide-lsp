@@ -25,6 +25,7 @@ import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,6 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             LOGGER.warn("Cannot handle grammar {} in extension {}", section.getGrammar(), getName());
             return Collections.emptyList();
         }
-
 
         PureGrammarParserContext parserContext = new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions());
         MutableList<LegendDeclaration> declarations = Lists.mutable.empty();
@@ -112,4 +112,31 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         ParseTreeWalkerSourceInformation walkerSourceInfo = new ParseTreeWalkerSourceInformation.Builder(souceId, section.getStartLine(), 0).build();
         return new SectionSourceCode(section.getText(), section.getGrammar(), sectionSourceInfo, walkerSourceInfo);
     }
-}
+
+    @Override
+    public Exception getParsingErrors(GrammarSection section)
+    {
+
+        try
+        {
+            parse(toSectionSourceCode(section), e -> {}, new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions()));
+            return null;
+        }
+
+        catch (Exception e)
+        {
+            String parsingErrorMessage = e.getMessage() + " at L" + ((EngineException) e).getSourceInformation().startLine + ";C" + ((EngineException) e).getSourceInformation().startColumn;
+            return e;
+            //return Collections.singletonList(parsingErrorMessage);
+            // return a richer object: message + textInterval
+        }
+    }
+
+    class ParserException extends Exception
+    {
+        private String errorMessage = null;
+        private String coordinates = null;
+
+        private final LegendLanguageServer server;
+
+    }
