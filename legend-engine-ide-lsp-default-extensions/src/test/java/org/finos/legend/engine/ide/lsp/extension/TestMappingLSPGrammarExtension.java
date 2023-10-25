@@ -31,10 +31,10 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         testGetDeclarations("###Mapping\n" +
                         "\r\n" +
                         "\n" +
-                        "Mapping model::mapping::TestMapping\n" +
+                        "Mapping test::mapping::TestMapping\n" +
                         "(\r\n" +
                         "   )\n",
-                LegendDeclaration.builder().withIdentifier("model::mapping::TestMapping").withClassifier("meta::pure::mapping::Mapping").withLocation(3, 0, 5, 3).build()
+                LegendDeclaration.builder().withIdentifier("test::mapping::TestMapping").withClassifier("meta::pure::mapping::Mapping").withLocation(3, 0, 5, 3).build()
         );
     }
 

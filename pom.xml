@@ -229,7 +229,7 @@
                                 <exclude>org.antlr:antlr4</exclude>
                             </excludes>
                             <includes>
-                                <include>org.slf4j:jcl-over-slf4j:${slf4j.version}:jar:test</include>
+                                <include>org.slf4j:jcl-over-slf4j:${slf4j.version}:jar</include>
                                 <include>org.slf4j:slf4j-api:${slf4j.version}</include>
                             </includes>
                         </bannedDependencies>
@@ -343,6 +343,11 @@
                     </exclusion>
                 </exclusions>
             </dependency>
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-m2-store-relational-grammar</artifactId>
+                <version>${legend.pure.version}</version>
+            </dependency>
             <!-- LEGEND PURE -->
 
             <!-- LEGEND ENGINE -->
@@ -380,6 +385,26 @@
                         <artifactId>pac4j-core</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-xt-relationalStore-grammar</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.httpcomponents</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.pac4j.jax-rs</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-xt-relationalStore-protocol</artifactId>
+                <version>${legend.engine.version}</version>
             </dependency>
             <!-- LEGEND ENGINE -->
 
@@ -428,6 +453,11 @@
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>jcl-over-slf4j</artifactId>
                 <version>${slf4j.version}</version>
             </dependency>
         </dependencies>

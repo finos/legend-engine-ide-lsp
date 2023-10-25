@@ -15,7 +15,6 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElementVisitor;
@@ -44,7 +43,7 @@ import java.util.function.Consumer;
 /**
  * Extension for the Pure grammar.
  */
-class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<DomainParser>
+class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
 
@@ -173,13 +172,12 @@ class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<Do
                 String path = _enum.getPath();
                 _enum.values.forEach(value ->
                 {
-                    TextInterval location = toLocation(value.sourceInformation);
-                    if (location != null)
+                    if (isValidSourceInfo(value.sourceInformation))
                     {
                         consumer.accept(LegendDeclaration.builder()
                                 .withIdentifier(value.value)
                                 .withClassifier(path)
-                                .withLocation(location)
+                                .withLocation(toLocation(value.sourceInformation))
                                 .build());
                     }
                 });
@@ -248,7 +246,7 @@ class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<Do
 
     private LegendDeclaration getDeclaration(Property property)
     {
-        if (invalidSourceInfo(property.sourceInformation))
+        if (!isValidSourceInfo(property.sourceInformation))
         {
             LOGGER.warn("Invalid source information for property {}", property.name);
             return null;
@@ -263,7 +261,7 @@ class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension<Do
 
     private LegendDeclaration getDeclaration(QualifiedProperty property)
     {
-        if (invalidSourceInfo(property.sourceInformation))
+        if (!isValidSourceInfo(property.sourceInformation))
         {
             LOGGER.warn("Invalid source information for qualified property {}", property.name);
             return null;

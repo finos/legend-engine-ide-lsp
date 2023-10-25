@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>legend-engine-ide-lsp-text-tools</artifactId>
+    <name>Legend Engine IDE LSP Text Tools</name>
 
     <dependencies>
         <dependency>

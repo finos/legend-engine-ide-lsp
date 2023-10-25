@@ -21,11 +21,11 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.Package
 
 import java.util.function.Consumer;
 
-abstract class AbstractSectionParserLSPGrammarExtension<T extends SectionParser> extends AbstractLSPGrammarExtension
+abstract class AbstractSectionParserLSPGrammarExtension extends AbstractLSPGrammarExtension
 {
-    protected final T parser;
+    protected final SectionParser parser;
 
-    protected AbstractSectionParserLSPGrammarExtension(T parser)
+    protected AbstractSectionParserLSPGrammarExtension(SectionParser parser)
     {
         this.parser = parser;
     }
