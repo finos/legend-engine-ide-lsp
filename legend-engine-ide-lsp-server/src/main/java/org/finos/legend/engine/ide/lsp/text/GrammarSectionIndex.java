@@ -187,43 +187,44 @@ public class GrammarSectionIndex
         Matcher matcher = GRAMMAR_LINE_PATTERN.matcher(text.getText());
         if (!matcher.find())
         {
-            return new GrammarSectionIndex(text, newGrammarSection(text, PURE_GRAMMAR_NAME, 0, text.getLineCount() - 1));
+            return new GrammarSectionIndex(text, newGrammarSection(text, false, PURE_GRAMMAR_NAME, 0, text.getLineCount() - 1));
         }
 
         List<GrammarSection> sections = new ArrayList<>();
         if ((matcher.start() > 0) && !TextTools.isBlank(text.getText(), 0, matcher.start()))
         {
-            sections.add(newGrammarSection(text, PURE_GRAMMAR_NAME, 0, text.getLineNumber(matcher.start() - 1)));
+            sections.add(newGrammarSection(text, false, PURE_GRAMMAR_NAME, 0, text.getLineNumber(matcher.start() - 1)));
         }
 
         int index = matcher.start();
         String grammarName = matcher.group("parser");
         while (matcher.find())
         {
-            sections.add(newGrammarSection(text, grammarName, text.getLineNumber(index), text.getLineNumber(matcher.start() - 1)));
+            sections.add(newGrammarSection(text, true, grammarName, text.getLineNumber(index), text.getLineNumber(matcher.start() - 1)));
             index = matcher.start();
             grammarName = matcher.group("parser");
         }
-        sections.add(newGrammarSection(text, grammarName, text.getLineNumber(index), text.getLineCount() - 1));
+        sections.add(newGrammarSection(text, true, grammarName, text.getLineNumber(index), text.getLineCount() - 1));
         return new GrammarSectionIndex(text, List.copyOf(sections));
     }
 
-    private static GrammarSection newGrammarSection(LineIndexedText text, String grammar, int startLine, int endLine)
+    private static GrammarSection newGrammarSection(LineIndexedText text, boolean hasGrammarDeclaration, String grammar, int startLine, int endLine)
     {
-        return new SimpleGrammarSection(text, grammar, startLine, endLine);
+        return new SimpleGrammarSection(text, hasGrammarDeclaration, grammar, startLine, endLine);
     }
 
     private static class SimpleGrammarSection implements GrammarSection
     {
         private final LineIndexedText fullText;
+        private final boolean hasGrammarDeclaration;
         private final String grammar;
         private final int startLine;
         private final int endLine;
-        private String sectionText;
 
-        private SimpleGrammarSection(LineIndexedText fullText, String grammar, int startLine, int endLine)
+        private SimpleGrammarSection(LineIndexedText fullText, boolean hasGrammarDeclaration, String grammar, int startLine, int endLine)
         {
             this.fullText = Objects.requireNonNull(fullText);
+            this.hasGrammarDeclaration = hasGrammarDeclaration;
             this.grammar = Objects.requireNonNull(grammar);
             this.startLine = startLine;
             this.endLine = endLine;
@@ -245,6 +246,7 @@ public class GrammarSectionIndex
             GrammarSection that = (GrammarSection) other;
             return (this.startLine == that.getStartLine()) &&
                     (this.endLine == that.getEndLine()) &&
+                    (this.hasGrammarDeclaration == that.hasGrammarDeclaration()) &&
                     this.fullText.getText().equals(that.getFullText()) &&
                     this.grammar.equals(that.getGrammar());
         }
@@ -258,7 +260,7 @@ public class GrammarSectionIndex
         @Override
         public String toString()
         {
-            return getClass().getSimpleName() + "{grammar=" + this.grammar + " startLine=" + this.startLine + " endLine=" + this.endLine + "}";
+            return getClass().getSimpleName() + "{grammar=" + this.grammar + " startLine=" + this.startLine + " endLine=" + this.endLine + " hasGrammarDeclaration=" + this.hasGrammarDeclaration + "}";
         }
 
         @Override
@@ -280,26 +282,17 @@ public class GrammarSectionIndex
         }
 
         @Override
-        public String getText()
+        public boolean hasGrammarDeclaration()
         {
-            if (this.sectionText == null)
-            {
-                this.sectionText = this.fullText.getLines(this.startLine, this.endLine);
-            }
-            return this.sectionText;
+            return this.hasGrammarDeclaration;
         }
 
         @Override
-        public String getFullText()
+        public String getLines(int start, int end)
         {
-            return this.fullText.getText();
-        }
-
-        @Override
-        public String getLine(int line)
-        {
-            checkLineNumber(line);
-            return this.fullText.getLine(line);
+            checkLineNumber(start);
+            checkLineNumber(end);
+            return this.fullText.getLines(start, end);
         }
 
         @Override
@@ -307,6 +300,12 @@ public class GrammarSectionIndex
         {
             checkLineNumber(line);
             return this.fullText.getLineLength(line);
+        }
+
+        @Override
+        public String getFullText()
+        {
+            return this.fullText.getText();
         }
 
         private void checkLineNumber(int line)

@@ -14,9 +14,6 @@
 
 package org.finos.legend.engine.ide.lsp.text;
 
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
-import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
-
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -120,19 +117,6 @@ public class LineIndexedText
     }
 
     /**
-     * Get the text index of a {@link TextPosition}.
-     *
-     * @param position text position
-     * @return text index
-     * @throws IndexOutOfBoundsException if there is no such line or column
-     * @see #getIndex(int, int)
-     */
-    public int getIndex(TextPosition position)
-    {
-        return getIndex(position.getLine(), position.getColumn());
-    }
-
-    /**
      * Get the text index of a line and column.
      *
      * @param line   line number
@@ -182,36 +166,6 @@ public class LineIndexedText
         int startIndex = lineStart(start);
         int endIndex = lineEnd(end);
         return this.text.substring(startIndex, endIndex);
-    }
-
-    /**
-     * Get an interval of the text as a {@link String}. The is equivalent to
-     * {@code getText().substring(getIndex(interval.getStart()), getIndex(interval.getEnd()) + 1)}
-     *
-     * @param interval interval
-     * @return text interval
-     * @throws IndexOutOfBoundsException if the start or end position is invalid, or if end is before start
-     * @see #getInterval(TextPosition, TextPosition)
-     * @see #getInterval(int, int, int, int)
-     */
-    public String getInterval(TextInterval interval)
-    {
-        return getInterval(interval.getStart(), interval.getEnd());
-    }
-
-    /**
-     * Get an interval of text between two positions as a {@link String}. Note that both the start and end positions
-     * are inclusive. This is equivalent to {@code getText().substring(getIndex(start), getIndex(end) + 1)}
-     *
-     * @param start start position (inclusive)
-     * @param end   end position (inclusive)
-     * @return text interval
-     * @throws IndexOutOfBoundsException if the start or end position is invalid, or if end is before start
-     * @see #getInterval(int, int, int, int)
-     */
-    public String getInterval(TextPosition start, TextPosition end)
-    {
-        return getInterval(start.getLine(), start.getColumn(), end.getLine(), end.getColumn());
     }
 
     /**

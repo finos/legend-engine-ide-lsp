@@ -63,10 +63,9 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected LegendDeclaration getDeclaration(PackageableElement element)
     {
         String path = element.getPath();
-        TextInterval location = toLocation(element.sourceInformation);
-        if (location == null)
+        if (invalidSourceInfo(element.sourceInformation))
         {
-            LOGGER.warn("No source information for {}", path);
+            LOGGER.warn("Invalid source information for {}", path);
             return null;
         }
 
@@ -80,7 +79,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         LegendDeclaration.Builder builder = LegendDeclaration.builder()
                 .withIdentifier(path)
                 .withClassifier(classifier)
-                .withLocation(location);
+                .withLocation(toLocation(element.sourceInformation));
         forEachChild(element, child ->
         {
             if (child != null)
@@ -93,13 +92,6 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected abstract String getClassifier(PackageableElement element);
 
-    protected TextInterval toLocation(SourceInformation sourceInfo)
-    {
-        return (sourceInfo == null) ?
-                null :
-                TextInterval.newInterval(sourceInfo.startLine, sourceInfo.startColumn, sourceInfo.endLine, sourceInfo.endColumn);
-    }
-
     protected void forEachChild(PackageableElement element, Consumer<LegendDeclaration> consumer)
     {
         // Do nothing by default
@@ -107,10 +99,36 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private SectionSourceCode toSectionSourceCode(GrammarSection section)
     {
-        String souceId = "section_" + section.getGrammar() + ".pure";
-        SourceInformation sectionSourceInfo = new SourceInformation(souceId, section.getStartLine(), 0, section.getEndLine(), section.getLineLength(section.getEndLine()));
-        ParseTreeWalkerSourceInformation walkerSourceInfo = new ParseTreeWalkerSourceInformation.Builder(souceId, section.getStartLine(), 0).build();
-        return new SectionSourceCode(section.getText(), section.getGrammar(), sectionSourceInfo, walkerSourceInfo);
+        String sourceId = "section_" + section.getGrammar() + ".pure";
+        SourceInformation sectionSourceInfo = new SourceInformation(sourceId, section.getStartLine(), 0, section.getEndLine(), section.getLineLength(section.getEndLine()));
+        ParseTreeWalkerSourceInformation walkerSourceInfo = new ParseTreeWalkerSourceInformation.Builder(sourceId, section.getStartLine(), 0).build();
+        return new SectionSourceCode(section.getText(true), section.getGrammar(), sectionSourceInfo, walkerSourceInfo);
+    }
+
+    /**
+     * Check if a {@link SourceInformation} is invalid.
+     *
+     * @param sourceInfo source information
+     * @return whether source information is invalid
+     */
+    protected static boolean invalidSourceInfo(SourceInformation sourceInfo)
+    {
+        return (sourceInfo == null) ||
+                (sourceInfo.startLine < 0) ||
+                (sourceInfo.startColumn < 1) ||
+                (sourceInfo.endLine < sourceInfo.startLine) ||
+                (sourceInfo.endColumn < ((sourceInfo.endLine == sourceInfo.startLine) ? sourceInfo.startColumn : 0));
+    }
+
+    /**
+     * Transform a (valid) {@link SourceInformation} to a {@link TextInterval} location.
+     *
+     * @param sourceInfo source information
+     * @return location
+     */
+    protected static TextInterval toLocation(SourceInformation sourceInfo)
+    {
+        return TextInterval.newInterval(sourceInfo.startLine, sourceInfo.startColumn - 1, sourceInfo.endLine, sourceInfo.endColumn - 1);
     }
 
     @Override

@@ -30,6 +30,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>legend-engine-ide-lsp-text-tools</module>
         <module>legend-engine-ide-lsp-extension-api</module>
         <module>legend-engine-ide-lsp-extension</module>
         <module>legend-engine-ide-lsp-server</module>
@@ -303,6 +304,11 @@
     <dependencyManagement>
         <dependencies>
             <!-- LEGEND ENGINE LSP -->
+            <dependency>
+                <groupId>org.finos.legend.engine.ide.lsp</groupId>
+                <artifactId>legend-engine-ide-lsp-text-tools</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine.ide.lsp</groupId>
                 <artifactId>legend-engine-ide-lsp-extension-api</artifactId>
