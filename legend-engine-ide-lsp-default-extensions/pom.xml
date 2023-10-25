@@ -29,15 +29,54 @@
     <name>Legend Engine IDE LSP Default Extensions</name>
 
     <dependencies>
+        <!-- LEGEND ENGINE LSP -->
         <dependency>
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-extension-api</artifactId>
+        </dependency>
+        <!-- LEGEND ENGINE LSP -->
+
+        <!-- LEGEND PURE -->
+        <dependency>
+            <groupId>org.finos.legend.pure</groupId>
+            <artifactId>legend-pure-m3-core</artifactId>
+        </dependency>
+        <!-- LEGEND PURE -->
+
+        <!-- LEGEND ENGINE -->
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-protocol</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-protocol-pure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-language-pure-grammar</artifactId>
+        </dependency>
+        <!-- LEGEND ENGINE -->
+
+        <dependency>
+            <groupId>org.eclipse.collections</groupId>
+            <artifactId>eclipse-collections-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
 
         <!-- TEST -->
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine.ide.lsp</groupId>
+            <artifactId>legend-engine-ide-lsp-text-tools</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

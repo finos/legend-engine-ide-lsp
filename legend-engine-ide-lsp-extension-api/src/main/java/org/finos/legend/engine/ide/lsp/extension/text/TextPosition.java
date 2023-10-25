@@ -161,7 +161,7 @@ public class TextPosition implements Comparable<TextPosition>
      */
     public boolean isBefore(TextPosition other)
     {
-        return compareTo(other) < 0;
+        return (this.line < other.line) || ((this.line == other.line) && (this.column < other.column));
     }
 
     /**
@@ -184,7 +184,7 @@ public class TextPosition implements Comparable<TextPosition>
      */
     public boolean isAfter(TextPosition other)
     {
-        return compareTo(other) > 0;
+        return (this.line > other.line) || ((this.line == other.line) && (this.column > other.column));
     }
 
     /**

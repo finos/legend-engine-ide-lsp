@@ -30,6 +30,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>legend-engine-ide-lsp-text-tools</module>
         <module>legend-engine-ide-lsp-extension-api</module>
         <module>legend-engine-ide-lsp-extension</module>
         <module>legend-engine-ide-lsp-server</module>
@@ -47,7 +48,13 @@
         <maven.compiler.release>11</maven.compiler.release>
         <java.version.range>[17,18),[21,22)</java.version.range>
 
+        <!-- Legend dependency versions -->
+        <legend.engine.version>4.32.1</legend.engine.version>
+        <legend.pure.version>4.10.0</legend.pure.version>
+
         <!-- Dependency versions -->
+        <commons-lang3.version>3.11</commons-lang3.version>
+        <eclipse.collections.version>10.4.0</eclipse.collections.version>
         <junit.version>5.10.0</junit.version>
         <logback.version>1.4.11</logback.version>
         <lsp4j.version>0.21.1</lsp4j.version>
@@ -299,6 +306,11 @@
             <!-- LEGEND ENGINE LSP -->
             <dependency>
                 <groupId>org.finos.legend.engine.ide.lsp</groupId>
+                <artifactId>legend-engine-ide-lsp-text-tools</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine.ide.lsp</groupId>
                 <artifactId>legend-engine-ide-lsp-extension-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -319,10 +331,79 @@
             </dependency>
             <!-- LEGEND ENGINE LSP -->
 
+            <!-- LEGEND PURE -->
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-m3-core</artifactId>
+                <version>${legend.pure.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>junit</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <!-- LEGEND PURE -->
+
+            <!-- LEGEND ENGINE -->
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-protocol</artifactId>
+                <version>${legend.engine.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-protocol-pure</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>junit</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-language-pure-grammar</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.httpcomponents</groupId>
+                        <artifactId>httpclient</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.finos.legend.shared</groupId>
+                        <artifactId>legend-shared-pac4j-kerberos</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.pac4j</groupId>
+                        <artifactId>pac4j-core</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <!-- LEGEND ENGINE -->
+
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.collections</groupId>
+                <artifactId>eclipse-collections</artifactId>
+                <version>${eclipse.collections.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.collections</groupId>
+                <artifactId>eclipse-collections-api</artifactId>
+                <version>${eclipse.collections.version}</version>
             </dependency>
 
             <dependency>

@@ -17,21 +17,34 @@ package org.finos.legend.engine.ide.lsp.extension.declaration;
 import org.finos.legend.engine.ide.lsp.extension.text.LegendTextObject;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
- * Declaration of a Legend entity. This could be a class, enumeration, service, or any other type of model entity.
+ * Legend declaration. This could be a class, enumeration, service, or any other type of model entity. It could also be
+ * a child declaration, such as a property or enum value.
  */
 public class LegendDeclaration extends LegendTextObject
 {
     private final String identifier;
     private final String classifier;
+    private final List<LegendDeclaration> children;
 
-    private LegendDeclaration(String identifier, String classifier, TextInterval location, TextInterval coreLocation)
+    private LegendDeclaration(String identifier, String classifier, TextInterval location, TextInterval coreLocation, List<LegendDeclaration> children)
     {
         super(location, coreLocation);
         this.identifier = Objects.requireNonNull(identifier, "identifier is required");
         this.classifier = Objects.requireNonNull(classifier, "classifier is required");
+        this.children = children;
+        children.forEach(c ->
+        {
+            if (!getLocation().subsumes(c.getLocation(), true))
+            {
+                throw new IllegalArgumentException("Location of declaration (" + getLocation() + ") must strictly subsume the location of all children: " + c);
+            }
+        });
     }
 
     @Override
@@ -51,7 +64,8 @@ public class LegendDeclaration extends LegendTextObject
         return getLocation().equals(that.getLocation()) &&
                 Objects.equals(getCoreLocation(), that.getCoreLocation()) &&
                 this.identifier.equals(that.identifier) &&
-                this.classifier.equals(that.classifier);
+                this.classifier.equals(that.classifier) &&
+                this.children.equals(that.children);
     }
 
     @Override
@@ -61,20 +75,32 @@ public class LegendDeclaration extends LegendTextObject
         hashCode = 7 * hashCode + Objects.hashCode(getCoreLocation());
         hashCode = 7 * hashCode + this.identifier.hashCode();
         hashCode = 7 * hashCode + this.classifier.hashCode();
+        hashCode = 7 * hashCode + this.children.hashCode();
         return hashCode;
     }
 
     @Override
     public String toString()
     {
-        StringBuilder builder = new StringBuilder(getClass().getSimpleName())
-                .append("{id=").append(this.identifier).append(" classifier=").append(this.classifier)
+        return appendString(new StringBuilder(getClass().getSimpleName())).toString();
+    }
+
+    private StringBuilder appendString(StringBuilder builder)
+    {
+        builder.append("{id=").append(this.identifier).append(" classifier=").append(this.classifier)
                 .append(" location=").append(getLocation().toCompactString());
         if (hasCoreLocation())
         {
             builder.append(" coreLocation=").append(getCoreLocation().toCompactString());
         }
-        return builder.append("}").toString();
+        if (hasChildren())
+        {
+            builder.append(" children=[");
+            int len = builder.length();
+            this.children.forEach(c -> c.appendString((builder.length() == len) ? builder : builder.append(", ")));
+            builder.append("]");
+        }
+        return builder.append("}");
     }
 
     /**
@@ -98,6 +124,26 @@ public class LegendDeclaration extends LegendTextObject
     }
 
     /**
+     * Whether this declaration has child declarations.
+     *
+     * @return whether there are children
+     */
+    public boolean hasChildren()
+    {
+        return !this.children.isEmpty();
+    }
+
+    /**
+     * Get any children of this declaration. These are
+     *
+     * @return child declarations
+     */
+    public List<LegendDeclaration> getChildren()
+    {
+        return this.children;
+    }
+
+    /**
      * Create a new Legend declaration.
      *
      * @param identifier entity name
@@ -107,7 +153,7 @@ public class LegendDeclaration extends LegendTextObject
      */
     public static LegendDeclaration newDeclaration(String identifier, String classifier, TextInterval location)
     {
-        return newDeclaration(identifier, classifier, location, null);
+        return builder().withIdentifier(identifier).withClassifier(classifier).withLocation(location).build();
     }
 
     /**
@@ -122,6 +168,138 @@ public class LegendDeclaration extends LegendTextObject
      */
     public static LegendDeclaration newDeclaration(String identifier, String classifier, TextInterval location, TextInterval coreLocation)
     {
-        return new LegendDeclaration(identifier, classifier, location, coreLocation);
+        return builder().withIdentifier(identifier).withClassifier(classifier).withLocation(location).withCoreLocation(coreLocation).build();
+    }
+
+    /**
+     * Create a new {@link LegendDeclaration} builder.
+     *
+     * @return Legend declaration builder
+     */
+    public static Builder builder()
+    {
+        return new Builder();
+    }
+
+    /**
+     * Builder for {@link LegendDeclaration}.
+     */
+    public static class Builder
+    {
+        private TextInterval location;
+        private TextInterval coreLocation;
+        private String identifier;
+        private String classifier;
+        private final List<LegendDeclaration> children = new ArrayList<>();
+
+        /**
+         * Set the location and return this builder.
+         *
+         * @param startLine   start line
+         * @param startColumn start column
+         * @param endLine     end line
+         * @param endColumn   end column
+         * @return this builder
+         */
+        public Builder withLocation(int startLine, int startColumn, int endLine, int endColumn)
+        {
+            return withLocation(TextInterval.newInterval(startLine, startColumn, endLine, endColumn));
+        }
+
+        /**
+         * Set the location and return this builder.
+         *
+         * @param location declaration location
+         * @return this builder
+         */
+        public Builder withLocation(TextInterval location)
+        {
+            this.location = location;
+            return this;
+        }
+
+        /**
+         * Set the core location and return this builder.
+         *
+         * @param startLine   start line
+         * @param startColumn start column
+         * @param endLine     end line
+         * @param endColumn   end column
+         * @return this builder
+         */
+        public Builder withCoreLocation(int startLine, int startColumn, int endLine, int endColumn)
+        {
+            return withCoreLocation(TextInterval.newInterval(startLine, startColumn, endLine, endColumn));
+        }
+
+        /**
+         * Set the core location and return this builder.
+         *
+         * @param coreLocation core location
+         * @return this builder
+         */
+        public Builder withCoreLocation(TextInterval coreLocation)
+        {
+            this.coreLocation = coreLocation;
+            return this;
+        }
+
+        /**
+         * Set the identifier and return this builder.
+         *
+         * @param identifier identifier
+         * @return this builder
+         */
+        public Builder withIdentifier(String identifier)
+        {
+            this.identifier = identifier;
+            return this;
+        }
+
+        /**
+         * Set the classifier and return this builder.
+         *
+         * @param classifier classifier
+         * @return this builder
+         */
+        public Builder withClassifier(String classifier)
+        {
+            this.classifier = classifier;
+            return this;
+        }
+
+        /**
+         * Add a child declaration and return this builder.
+         *
+         * @param child child declaration
+         * @return this builder
+         */
+        public Builder withChild(LegendDeclaration child)
+        {
+            this.children.add(Objects.requireNonNull(child, "child may not be null"));
+            return this;
+        }
+
+        /**
+         * Add child declarations and return this builder.
+         *
+         * @param children child declarations
+         * @return this builder
+         */
+        public Builder withChildren(Iterable<? extends LegendDeclaration> children)
+        {
+            children.forEach(this::withChild);
+            return this;
+        }
+
+        /**
+         * Build the {@link LegendDeclaration}.
+         *
+         * @return Legend declaration
+         */
+        public LegendDeclaration build()
+        {
+            return new LegendDeclaration(this.identifier, this.classifier, this.location, this.coreLocation, this.children.isEmpty() ? Collections.emptyList() : List.copyOf(this.children));
+        }
     }
 }

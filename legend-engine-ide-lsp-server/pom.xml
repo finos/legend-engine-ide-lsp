@@ -32,6 +32,10 @@
         <!-- LEGEND ENGINE LSP -->
         <dependency>
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
+            <artifactId>legend-engine-ide-lsp-text-tools</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-extension-api</artifactId>
         </dependency>
         <dependency>

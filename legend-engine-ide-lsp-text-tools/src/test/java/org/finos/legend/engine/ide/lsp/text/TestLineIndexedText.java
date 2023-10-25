@@ -14,8 +14,6 @@
 
 package org.finos.legend.engine.ide.lsp.text;
 
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
-import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +42,7 @@ public class TestLineIndexedText
         Assertions.assertEquals(text, indexedText.getLine(0));
 
         Assertions.assertEquals(0, indexedText.getIndex(0, 0));
-        Assertions.assertEquals(5, indexedText.getIndex(TextPosition.newPosition(0, 5)));
+        Assertions.assertEquals(5, indexedText.getIndex(0, 5));
         Assertions.assertEquals(text.length() - 1, indexedText.getIndex(0, text.length() - 1));
 
         Assertions.assertEquals(0, indexedText.getLineNumber(0));
@@ -54,9 +52,9 @@ public class TestLineIndexedText
         Assertions.assertEquals(text, indexedText.getLines(0, 0));
 
         Assertions.assertEquals("A", indexedText.getInterval(0, 0, 0, 0));
-        Assertions.assertEquals("single", indexedText.getInterval(TextPosition.newPosition(0, 2), TextPosition.newPosition(0, 7)));
+        Assertions.assertEquals("single", indexedText.getInterval(0, 2, 0, 7));
         Assertions.assertEquals("text", indexedText.getInterval(0, 17, 0, 20));
-        Assertions.assertEquals("text.", indexedText.getInterval(TextInterval.newInterval(0, 17, 0, 21)));
+        Assertions.assertEquals("text.", indexedText.getInterval(0, 17, 0, 21));
         Assertions.assertEquals(text, indexedText.getInterval(0, 0, 0, text.length() - 1));
     }
 
@@ -86,7 +84,7 @@ public class TestLineIndexedText
 
         Assertions.assertEquals(0, indexedText.getIndex(0, 0));
         Assertions.assertEquals(line0.length() + 3, indexedText.getIndex(1, 3));
-        Assertions.assertEquals(line0.length() + line1.length() + line2.length() + line3.length() + 13, indexedText.getIndex(TextPosition.newPosition(4, 13)));
+        Assertions.assertEquals(line0.length() + line1.length() + line2.length() + line3.length() + 13, indexedText.getIndex(4, 13));
 
         Assertions.assertEquals(line0 + line1, indexedText.getLines(0, 1));
         Assertions.assertEquals(line1, indexedText.getLines(1, 1));
@@ -96,8 +94,8 @@ public class TestLineIndexedText
         Assertions.assertEquals(line2 + line3 + line4, indexedText.getLines(2, 4));
 
         Assertions.assertEquals(" of text\nwith different", indexedText.getInterval(0, 14, 1, 13));
-        Assertions.assertEquals(" of text\nwith different types\r\nof li", indexedText.getInterval(TextPosition.newPosition(0, 14), TextPosition.newPosition(2, 4)));
-        Assertions.assertEquals("\n", indexedText.getInterval(TextInterval.newInterval(3, 0, 3, 0)));
+        Assertions.assertEquals(" of text\nwith different types\r\nof li", indexedText.getInterval(0, 14, 2, 4));
+        Assertions.assertEquals("\n", indexedText.getInterval(3, 0, 3, 0));
         Assertions.assertEquals(text, indexedText.getInterval(0, 0, 4, line4.length() - 1));
     }
 
@@ -122,11 +120,11 @@ public class TestLineIndexedText
 
         Assertions.assertEquals(5, indexedText.getIndex(0, 5));
         Assertions.assertEquals(line0.length() + 3, indexedText.getIndex(1, 3));
-        Assertions.assertEquals(line0.length() + 8, indexedText.getIndex(TextPosition.newPosition(1, 8)));
+        Assertions.assertEquals(line0.length() + 8, indexedText.getIndex(1, 8));
 
         Assertions.assertEquals("with an empty\nla", indexedText.getInterval(0, 5, 1, 1));
-        Assertions.assertEquals("last line", indexedText.getInterval(TextPosition.newPosition(1, 0), TextPosition.newPosition(1, 8)));
-        Assertions.assertEquals("last line\n", indexedText.getInterval(TextInterval.newInterval(1, 0, 1, 9)));
+        Assertions.assertEquals("last line", indexedText.getInterval(1, 0, 1, 8));
+        Assertions.assertEquals("last line\n", indexedText.getInterval(1, 0, 1, 9));
         Assertions.assertEquals(text, indexedText.getInterval(0, 0, 1, line1.length() - 1));
     }
 
