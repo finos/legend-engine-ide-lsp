@@ -289,6 +289,7 @@ public class GrammarSectionIndex
             return this.sectionText;
         }
 
+        @Override
         public String getLineText(int line)
         {
             return this.fullText.getLines(this.startLine + line, this.startLine + line);
