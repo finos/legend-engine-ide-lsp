@@ -256,7 +256,7 @@ class LegendTextDocumentService implements TextDocumentService
                 for (int lineNum = 0; lineNum < (section.getEndLine() - section.getStartLine()); lineNum++)
                 {
                     int previousCharMatch = 0;
-                    Matcher matcher = keywordsRegex.matcher(section.getLine(lineNum));
+                    Matcher matcher = keywordsRegex.matcher(section.getLine(lineNum + section.getStartLine()));
                     while (matcher.find())
                     {
                         int lineMatch = lineNum + previousLineMatch;
