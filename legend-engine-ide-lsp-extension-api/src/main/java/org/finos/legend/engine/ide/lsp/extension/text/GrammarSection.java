@@ -125,4 +125,7 @@ public interface GrammarSection
      * @return full text
      */
     String getFullText();
+
+    String getLineText(int line);
+
 }

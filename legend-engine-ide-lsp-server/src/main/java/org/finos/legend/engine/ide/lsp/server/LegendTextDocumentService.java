@@ -233,7 +233,6 @@ class LegendTextDocumentService implements TextDocumentService
             GrammarSectionIndex code = documentState.getSectionIndex();
 
             GrammarSection section = code.getSection(0);
-            String[] sectionLines = section.getText().split("\\R", -1);
 
             LegendLSPGrammarExtension extension = server.getGrammarLibrary().getExtension(section.getGrammar());
 
@@ -246,6 +245,10 @@ class LegendTextDocumentService implements TextDocumentService
             List<String> keywords = new ArrayList<>();
             extension.getKeywords().forEach(kw -> keywords.add(Pattern.quote(kw)));
             Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
+            if (keywords.isEmpty())
+            {
+                return new SemanticTokens();
+            }
 
             try
             {
@@ -253,7 +256,7 @@ class LegendTextDocumentService implements TextDocumentService
                 for (int lineNum = 0; lineNum < (section.getEndLine() - section.getStartLine()); lineNum++)
                 {
                     int previousCharMatch = 0;
-                    Matcher matcher = keywordsRegex.matcher(sectionLines[lineNum]);
+                    Matcher matcher = keywordsRegex.matcher(section.getLineText(lineNum));
                     while (matcher.find())
                     {
                         int lineMatch = lineNum + previousLineMatch;

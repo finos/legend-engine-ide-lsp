@@ -160,6 +160,31 @@ public class TestLegendLanguageServer
     }
 
     @Test
+    public void testNoKeywordHighlighting() throws Exception
+    {
+        LegendLSPGrammarExtension noKeywordsExtension = newExtension("Pure", Set.of());
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(noKeywordsExtension).build();
+
+        String uri = "file:///testNoKeywordHighlighting.pure";
+        String code = "\n" +
+                "\n" +
+                "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n";
+
+        server.initialize(new InitializeParams()).get();
+        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+        CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0, 0), new Position(6, 0))));
+
+        Assertions.assertNull(semanticTokens.get().getData());
+    }
+
+    @Test
     public void testInlineDSLs()
     {
         LegendLSPInlineDSLExtension ext1 = () -> "ext1";
