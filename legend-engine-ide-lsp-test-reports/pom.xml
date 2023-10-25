@@ -73,6 +73,16 @@
     <dependencies>
         <dependency>
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
+            <artifactId>legend-engine-ide-lsp-text-tools</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-extension-api</artifactId>
             <exclusions>
                 <exclusion>

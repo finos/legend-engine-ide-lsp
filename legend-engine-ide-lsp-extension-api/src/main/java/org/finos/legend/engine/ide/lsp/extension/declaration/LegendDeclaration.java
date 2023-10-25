@@ -195,6 +195,20 @@ public class LegendDeclaration extends LegendTextObject
         /**
          * Set the location and return this builder.
          *
+         * @param startLine   start line
+         * @param startColumn start column
+         * @param endLine     end line
+         * @param endColumn   end column
+         * @return this builder
+         */
+        public Builder withLocation(int startLine, int startColumn, int endLine, int endColumn)
+        {
+            return withLocation(TextInterval.newInterval(startLine, startColumn, endLine, endColumn));
+        }
+
+        /**
+         * Set the location and return this builder.
+         *
          * @param location declaration location
          * @return this builder
          */
@@ -202,6 +216,20 @@ public class LegendDeclaration extends LegendTextObject
         {
             this.location = location;
             return this;
+        }
+
+        /**
+         * Set the core location and return this builder.
+         *
+         * @param startLine   start line
+         * @param startColumn start column
+         * @param endLine     end line
+         * @param endColumn   end column
+         * @return this builder
+         */
+        public Builder withCoreLocation(int startLine, int startColumn, int endLine, int endColumn)
+        {
+            return withCoreLocation(TextInterval.newInterval(startLine, startColumn, endLine, endColumn));
         }
 
         /**
