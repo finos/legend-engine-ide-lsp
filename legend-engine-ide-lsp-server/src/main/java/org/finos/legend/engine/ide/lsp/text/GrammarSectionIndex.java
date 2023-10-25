@@ -302,9 +302,11 @@ public class GrammarSectionIndex
             return this.fullText.getLineLength(line);
         }
 
-        public String getLineText(int line)
+        @Override
+        public int getLineLength(int line)
         {
-            return this.fullText.getLines(this.startLine + line, this.startLine + line);
+            checkLineNumber(line);
+            return this.fullText.getLineLength(line);
         }
 
         @Override
