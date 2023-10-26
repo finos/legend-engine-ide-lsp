@@ -14,17 +14,16 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 
 public class LegendDiagnostic
 {
-    TextInterval location;
-    String message;
-    DiagnosticSeverity severity;
-    Type type;
+    private final TextInterval location;
+    private final String message;
+    private final Severity severity;
+    private final Type type;
 
-    public LegendDiagnostic(TextInterval location, String message, DiagnosticSeverity severity, Type type)
+    public LegendDiagnostic(TextInterval location, String message, Severity severity, Type type)
     {
         this.location = location;
         this.message = message;
@@ -37,9 +36,9 @@ public class LegendDiagnostic
         return location;
     }
 
-    public DiagnosticSeverity getSeverity()
+    public String getSeverity()
     {
-        return severity;
+        return severity.toString();
     }
 
     public String getMessage()
@@ -52,7 +51,10 @@ public class LegendDiagnostic
         return type.toString();
     }
 
-    //enum Severity { Hint, Information, Warning, Error }
+    public enum Severity
+    {
+        Hint, Information, Warning, Error
+    }
 
     enum Type
     {

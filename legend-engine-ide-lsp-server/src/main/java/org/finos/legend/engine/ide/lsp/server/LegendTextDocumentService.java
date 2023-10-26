@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
@@ -51,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -370,21 +372,49 @@ class LegendTextDocumentService implements TextDocumentService
         GrammarSectionIndex parsed = (section.getText() == null) ? null : GrammarSectionIndex.parse(section.getText());
         if (parsed == null)
         {
-            return null;
+            return CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of())));
         }
 
         Iterable<? extends LegendDiagnostic> legendDiagnostics = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
         if (legendDiagnostics == null)
         {
-            return null;
+            return CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of())));
         }
 
-        LegendDiagnostic legendDiagnostic = legendDiagnostics.iterator().next();
-        Diagnostic diagnostic = new Diagnostic(this.toRange(legendDiagnostic.getLocation()), legendDiagnostic.getMessage(), legendDiagnostic.getSeverity(), legendDiagnostic.getType());
+        Iterator<? extends LegendDiagnostic> legendDiagnosticIterator = legendDiagnostics.iterator();
 
-        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of(diagnostic))));
+        LegendDiagnostic legendDiagnostic;
 
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        while (legendDiagnosticIterator.hasNext())
+        {
+            legendDiagnostic = legendDiagnosticIterator.next();
+            DiagnosticSeverity diagnosticSeverity = getDiagnosticSeverity(legendDiagnostic);
+            Diagnostic diagnostic = new Diagnostic(this.toRange(legendDiagnostic.getLocation()), legendDiagnostic.getMessage(), diagnosticSeverity, legendDiagnostic.getType());
+            diagnostics.add(diagnostic);
+        }
+
+        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics)));
         return documentDiagnosticReport;
+    }
+
+    private static DiagnosticSeverity getDiagnosticSeverity(LegendDiagnostic legendDiagnostic)
+    {
+        DiagnosticSeverity diagnosticSeverity = DiagnosticSeverity.Error;
+
+        if (legendDiagnostic.getSeverity().equals("Warning"))
+        {
+            diagnosticSeverity = DiagnosticSeverity.Warning;
+        }
+        else if (legendDiagnostic.getSeverity().equals("Information"))
+        {
+            diagnosticSeverity = DiagnosticSeverity.Information;
+        }
+        else if (legendDiagnostic.getSeverity().equals("Hint"))
+        {
+            diagnosticSeverity = DiagnosticSeverity.Hint;
+        }
+        return diagnosticSeverity;
     }
 }
 

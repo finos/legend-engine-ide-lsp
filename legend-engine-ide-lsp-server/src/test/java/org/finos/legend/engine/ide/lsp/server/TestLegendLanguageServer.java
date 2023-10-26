@@ -220,7 +220,7 @@ public class TestLegendLanguageServer
     }
 
     @Test
-    public void testPureParsingError()
+    public void testPureParsingError() throws ExecutionException, InterruptedException
     {
         LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
@@ -236,24 +236,10 @@ public class TestLegendLanguageServer
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        if (documentDiagnosticReport == null)
-        {
-            Assertions.fail();
-        }
 
-        Diagnostic diagnostic = null;
-        try
-        {
-            diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
-        }
-        catch (InterruptedException e)
-        {
-            Assertions.fail();
-        }
-        catch (ExecutionException e)
-        {
-            Assertions.fail();
-        }
+        Assertions.assertNotNull(documentDiagnosticReport);
+
+        Diagnostic diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
 
         Assertions.assertEquals("no viable alternative at input 'foobarFloat'",diagnostic.getMessage());
         Assertions.assertEquals("Parser",diagnostic.getSource());
@@ -304,7 +290,7 @@ public class TestLegendLanguageServer
     }
 
     @Test
-    public void testPureParsingNoError()
+    public void testPureParsingNoError() throws ExecutionException, InterruptedException
     {
         LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
@@ -320,11 +306,11 @@ public class TestLegendLanguageServer
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertNull(documentDiagnosticReport);
+        Assertions.assertEquals(0, documentDiagnosticReport.get().getLeft().getItems().size());
     }
 
     @Test
-    public void testPureParsingNoErrorEmptyCode()
+    public void testPureParsingNoErrorEmptyCode() throws ExecutionException, InterruptedException
     {
         LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
@@ -334,11 +320,11 @@ public class TestLegendLanguageServer
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertNull(documentDiagnosticReport);
+        Assertions.assertEquals(0, documentDiagnosticReport.get().getLeft().getItems().size());
     }
 
     @Test
-    public void testPureParsingNoErrorEmptyFile()
+    public void testPureParsingNoErrorEmptyFile() throws ExecutionException, InterruptedException
     {
         LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
@@ -348,7 +334,7 @@ public class TestLegendLanguageServer
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertNull(documentDiagnosticReport);
+        Assertions.assertEquals(0, documentDiagnosticReport.get().getLeft().getItems().size());
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)

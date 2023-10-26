@@ -42,6 +42,10 @@
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-extension</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine.ide.lsp</groupId>
+            <artifactId>legend-engine-ide-lsp-default-extensions</artifactId>
+        </dependency>
         <!-- LEGEND ENGINE LSP -->
 
         <dependency>
@@ -73,14 +77,6 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine.ide.lsp</groupId>
-            <artifactId>legend-engine-ide-lsp-default-extensions</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.finos.legend.engine.ide.lsp</groupId>
-            <artifactId>legend-engine-ide-lsp-default-extensions</artifactId>
         </dependency>
         <!-- TEST -->
     </dependencies>

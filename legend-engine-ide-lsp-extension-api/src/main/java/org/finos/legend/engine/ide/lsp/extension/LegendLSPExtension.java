@@ -42,6 +42,6 @@ public interface LegendLSPExtension
 
     default Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
     {
-        return null;
+        return Set.of();
     }
 }
