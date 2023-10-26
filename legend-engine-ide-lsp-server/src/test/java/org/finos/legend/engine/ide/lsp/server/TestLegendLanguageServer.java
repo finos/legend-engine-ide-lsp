@@ -306,7 +306,7 @@ public class TestLegendLanguageServer
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertEquals(0, documentDiagnosticReport.get().getLeft().getItems().size());
+        Assertions.assertTrue(documentDiagnosticReport.get().getLeft().getItems().isEmpty());
     }
 
     @Test
@@ -320,7 +320,7 @@ public class TestLegendLanguageServer
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertEquals(0, documentDiagnosticReport.get().getLeft().getItems().size());
+        Assertions.assertTrue(documentDiagnosticReport.get().getLeft().getItems().isEmpty());
     }
 
     @Test
@@ -334,7 +334,7 @@ public class TestLegendLanguageServer
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertEquals(0, documentDiagnosticReport.get().getLeft().getItems().size());
+        Assertions.assertTrue(documentDiagnosticReport.get().getLeft().getItems().isEmpty());
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)

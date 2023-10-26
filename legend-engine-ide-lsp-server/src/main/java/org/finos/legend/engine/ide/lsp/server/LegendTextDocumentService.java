@@ -123,26 +123,26 @@ class LegendTextDocumentService implements TextDocumentService
                     state.setText(changes.get(0).getText());
                     CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = diagnostic(new DocumentDiagnosticParams(doc));
 
-                    Diagnostic diagnostic;
-                    if (documentDiagnosticReport == null)
-                    {
-                        server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of()));
-                        return;
-                    }
-
                     try
                     {
-                        diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
+                        if (documentDiagnosticReport.get().getLeft().getItems().isEmpty())
+                        {
+                            Diagnostic diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
+                            server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of(diagnostic)));
+                        }
+                        else
+                        {
+                            server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of()));
+                        }
                     }
                     catch (InterruptedException e)
                     {
-                        return;
+                        server.logErrorToClient(e.toString());
                     }
                     catch (ExecutionException e)
                     {
-                        return;
+                        server.logErrorToClient(e.toString());
                     }
-                    server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of(diagnostic)));
                 }
             }
         }
