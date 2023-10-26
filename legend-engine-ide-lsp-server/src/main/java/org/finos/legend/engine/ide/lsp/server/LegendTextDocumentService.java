@@ -125,7 +125,7 @@ class LegendTextDocumentService implements TextDocumentService
 
                     try
                     {
-                        if (documentDiagnosticReport.get().getLeft().getItems().isEmpty())
+                        if (!documentDiagnosticReport.get().getLeft().getItems().isEmpty())
                         {
                             Diagnostic diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
                             server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of(diagnostic)));
