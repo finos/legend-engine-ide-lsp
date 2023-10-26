@@ -222,11 +222,20 @@
                         <dependencyConvergence />
                         <bannedDependencies>
                             <excludes>
-                                <exclude>log4j</exclude>
-                                <exclude>org.slf4j</exclude>
                                 <exclude>commons-logging</exclude>
+                                <exclude>io.prometheus</exclude>
+                                <exclude>io.swagger</exclude>
+                                <exclude>io.zipkin</exclude>
+                                <exclude>io.zipkin.*</exclude>
                                 <exclude>javax.mail</exclude>
+                                <exclude>javax.ws.rs</exclude>
+                                <exclude>junit</exclude>
+                                <exclude>log4j</exclude>
                                 <exclude>org.antlr:antlr4</exclude>
+                                <exclude>org.apache.tomcat</exclude>
+                                <exclude>org.bouncycastle</exclude>
+                                <exclude>org.hamcrest</exclude>
+                                <exclude>org.slf4j</exclude>
                             </excludes>
                             <includes>
                                 <include>org.slf4j:jcl-over-slf4j:${slf4j.version}:jar</include>
@@ -338,8 +347,12 @@
                 <version>${legend.pure.version}</version>
                 <exclusions>
                     <exclusion>
+                        <groupId>io.prometheus</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>junit</groupId>
-                        <artifactId>junit</artifactId>
+                        <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -373,6 +386,26 @@
                 <version>${legend.engine.version}</version>
                 <exclusions>
                     <exclusion>
+                        <groupId>io.prometheus</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>io.swagger</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>io.zipkin</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>io.zipkin.reporter2</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.ws.rs</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>org.apache.httpcomponents</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
@@ -382,7 +415,7 @@
                     </exclusion>
                     <exclusion>
                         <groupId>org.pac4j</groupId>
-                        <artifactId>pac4j-core</artifactId>
+                        <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -392,8 +425,28 @@
                 <version>${legend.engine.version}</version>
                 <exclusions>
                     <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>org.apache.httpcomponents</groupId>
                         <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.bouncycastle</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.finos.legend.engine</groupId>
+                        <artifactId>legend-engine-pure-code-compiled-core</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.finos.legend.pure</groupId>
+                        <artifactId>legend-pure-runtime-java-engine-compiled</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.finos.legend.pure</groupId>
+                        <artifactId>legend-pure-runtime-java-extension-store-relational</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -403,7 +456,27 @@
                 <version>${legend.engine.version}</version>
                 <exclusions>
                     <exclusion>
+                        <groupId>io.swagger</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.ws.rs</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>org.apache.httpcomponents</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.tomcat</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.bouncycastle</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
                     <exclusion>

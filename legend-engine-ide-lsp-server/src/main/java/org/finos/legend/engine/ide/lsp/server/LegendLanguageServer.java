@@ -34,7 +34,6 @@ import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.finos.legend.engine.ide.lsp.extension.DefaultExtensionProvider;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
@@ -43,7 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
-import java.util.List;
+import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -602,13 +601,21 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     }
 
-    public static void main(String[] args) throws Exception
+    /**
+     * Launch the server.
+     *
+     * @param args server arguments
+     */
+    public static void main(String[] args)
     {
-        List<LegendLSPGrammarExtension> defaultExtensions = DefaultExtensionProvider.getDefaultExtensions();
-        LegendLanguageServer server = LegendLanguageServer.builder().withGrammars(defaultExtensions).build();
+        LOGGER.info("Launching server");
+        LegendLanguageServer server = LegendLanguageServer.builder()
+                .withGrammars(ServiceLoader.load(LegendLSPGrammarExtension.class))
+                .withInlineDSLs(ServiceLoader.load(LegendLSPInlineDSLExtension.class))
+                .build();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
+        LOGGER.debug("Server launched");
     }
-
 }

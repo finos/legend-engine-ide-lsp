@@ -14,27 +14,23 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.factory.Sets;
+import org.eclipse.collections.api.list.MutableList;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.ServiceLoader;
 
-public class TestDefaultExtensionProvider
+public class TestDefaultExtensions
 {
     @Test
     public void testGetDefaultExtensions()
     {
-        List<LegendLSPGrammarExtension> extensions = DefaultExtensionProvider.getDefaultExtensions();
+        MutableList<LegendLSPGrammarExtension> extensions = Lists.mutable.withAll(ServiceLoader.load(LegendLSPGrammarExtension.class));
         Assertions.assertEquals(
-                Set.of("Pure", "Mapping", "Service", "Runtime", "Relational"),
-                extensions.stream().map(LegendLSPExtension::getName).collect(Collectors.toSet())
+                Sets.mutable.with("Pure", "Mapping", "Service", "Runtime", "Relational"),
+                extensions.collect(LegendLSPExtension::getName, Sets.mutable.empty())
         );
-
-        // verify that the list is unmodifiable
-        Assertions.assertThrows(UnsupportedOperationException.class, () -> extensions.add(() -> "new grammar"));
-        Assertions.assertThrows(UnsupportedOperationException.class, () -> extensions.remove(0));
-        Assertions.assertThrows(UnsupportedOperationException.class, extensions::clear);
     }
 }
