@@ -35,6 +35,8 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLSPGrammarExtension.class);
 
+    private final PureGrammarParserContext context = new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions());
+
     @Override
     public Iterable<? extends LegendDeclaration> getDeclarations(GrammarSection section)
     {
@@ -44,8 +46,6 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             return Collections.emptyList();
         }
 
-
-        PureGrammarParserContext parserContext = new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions());
         MutableList<LegendDeclaration> declarations = Lists.mutable.empty();
         parse(toSectionSourceCode(section), element ->
         {
@@ -54,7 +54,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             {
                 declarations.add(declaration);
             }
-        }, parserContext);
+        }, this.context);
         return declarations;
     }
 
