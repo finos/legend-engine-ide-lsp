@@ -16,6 +16,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
@@ -146,8 +147,8 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             String message = e.getMessage();
             SourceInformation sourceInformation = ((EngineException) e).getSourceInformation();
             TextInterval textInterval = TextInterval.newInterval(sourceInformation.startLine, sourceInformation.startColumn, sourceInformation.endLine, sourceInformation.endColumn);
-            LegendDiagnostic.Severity severity = LegendDiagnostic.Severity.error;
-            LegendDiagnostic.Type type = LegendDiagnostic.Type.parser;
+            DiagnosticSeverity severity = DiagnosticSeverity.Error;
+            LegendDiagnostic.Type type = LegendDiagnostic.Type.Parser;
 
             LegendDiagnostic diagnostic = new LegendDiagnostic(textInterval, message, severity, type);
             return Set.of(diagnostic);

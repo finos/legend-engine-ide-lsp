@@ -282,13 +282,10 @@ class LegendTextDocumentService implements TextDocumentService
         {
             return null;
         }
-        Iterable<? extends LegendDiagnostic> LegendDiagnostics = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
-        //FIXME: fill DocumentDiagnosticReport with LegendDiagnostics components
-
-        Diagnostic diagnostic = new Diagnostic(new Range(), "message", DiagnosticSeverity.Error, "source");
+        LegendDiagnostic legendDiagnostic = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section).iterator().next();
+        Diagnostic diagnostic = new Diagnostic(this.toRange(legendDiagnostic.getLocation()), legendDiagnostic.getMessage(), legendDiagnostic.getSeverity(), legendDiagnostic.getType());
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of(diagnostic))));
-
         return documentDiagnosticReport;
     }
 }

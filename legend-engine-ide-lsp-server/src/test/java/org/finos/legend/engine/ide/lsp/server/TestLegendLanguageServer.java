@@ -171,6 +171,10 @@ public class TestLegendLanguageServer
         server.initialize(new InitializeParams());
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
+
+        //GrammarSection section = server.getTextDocumentService().docStates.get(uri).getSectionIndex().getSection(0);
+        //LegendDiagnostic legendDiagnostic = server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section).iterator().next();
+
         //server.getTextDocumentService().getDiagnostics(uri, code);
 
         //Iterable<String> parsingErrorMessage = server.getGrammarLibrary().getExtension("Pure").getParsingErrors(code);
