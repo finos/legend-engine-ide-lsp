@@ -38,6 +38,8 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLSPGrammarExtension.class);
 
+    private final PureGrammarParserContext context = new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions());
+
     @Override
     public Iterable<? extends LegendDeclaration> getDeclarations(GrammarSection section)
     {
@@ -46,8 +48,6 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             LOGGER.warn("Cannot handle grammar {} in extension {}", section.getGrammar(), getName());
             return Collections.emptyList();
         }
-
-        PureGrammarParserContext parserContext = new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions());
         MutableList<LegendDeclaration> declarations = Lists.mutable.empty();
         parse(toSectionSourceCode(section), element ->
         {
@@ -56,7 +56,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             {
                 declarations.add(declaration);
             }
-        }, parserContext);
+        }, this.context);
         return declarations;
     }
 
@@ -65,7 +65,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected LegendDeclaration getDeclaration(PackageableElement element)
     {
         String path = element.getPath();
-        if (invalidSourceInfo(element.sourceInformation))
+        if (!isValidSourceInfo(element.sourceInformation))
         {
             LOGGER.warn("Invalid source information for {}", path);
             return null;
@@ -82,13 +82,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 .withIdentifier(path)
                 .withClassifier(classifier)
                 .withLocation(toLocation(element.sourceInformation));
-        forEachChild(element, child ->
-        {
-            if (child != null)
-            {
-                builder.withChild(child);
-            }
-        });
+        forEachChild(element, c -> addChildIfNonNull(builder, c));
         return builder.build();
     }
 
@@ -107,19 +101,27 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         return new SectionSourceCode(section.getText(true), section.getGrammar(), sectionSourceInfo, walkerSourceInfo);
     }
 
+    protected static void addChildIfNonNull(LegendDeclaration.Builder builder, LegendDeclaration declaration)
+    {
+        if (declaration != null)
+        {
+            builder.withChild(declaration);
+        }
+    }
+
     /**
-     * Check if a {@link SourceInformation} is invalid.
+     * Check if a {@link SourceInformation} is valid.
      *
      * @param sourceInfo source information
-     * @return whether source information is invalid
+     * @return whether source information is valid
      */
-    protected static boolean invalidSourceInfo(SourceInformation sourceInfo)
+    protected static boolean isValidSourceInfo(SourceInformation sourceInfo)
     {
-        return (sourceInfo == null) ||
-                (sourceInfo.startLine < 0) ||
-                (sourceInfo.startColumn < 1) ||
-                (sourceInfo.endLine < sourceInfo.startLine) ||
-                (sourceInfo.endColumn < ((sourceInfo.endLine == sourceInfo.startLine) ? sourceInfo.startColumn : 0));
+        return (sourceInfo != null) &&
+                (sourceInfo.startLine >= 0) &&
+                (sourceInfo.startColumn > 0) &&
+                (sourceInfo.startLine <= sourceInfo.endLine) &&
+                ((sourceInfo.startLine == sourceInfo.endLine) ? (sourceInfo.startColumn <= sourceInfo.endColumn) : (sourceInfo.endColumn > 0));
     }
 
     /**

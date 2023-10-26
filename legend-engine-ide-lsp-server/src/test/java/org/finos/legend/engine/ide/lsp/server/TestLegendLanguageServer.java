@@ -28,6 +28,8 @@ import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SemanticTokens;
+import org.eclipse.lsp4j.SemanticTokensRangeParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
@@ -42,6 +44,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -133,6 +137,58 @@ public class TestLegendLanguageServer
                 IllegalArgumentException.class,
                 () -> LegendLanguageServer.builder().withGrammars(ext1, ext2, () -> "ext1", ext3));
         Assertions.assertEquals("Multiple extensions named: \"ext1\"", e.getMessage());
+    }
+
+    @Test
+    public void testKeywordHighlighting() throws Exception
+    {
+        LegendLSPGrammarExtension pureExtension = newExtension("Pure", Set.of("Date", "Integer", "String", "Float", "StrictDate", "Boolean", "let", "true", "false"));
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
+
+        String uri = "file:///testKeywordHighlighting.pure";
+        String code = "\n" +
+                "\n" +
+                "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n";
+
+        server.initialize(new InitializeParams()).get();
+        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+        CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0, 0), new Position(6, 0))));
+
+        List<Integer> expectedCoordinates = Arrays.asList(5, 15, 7, 0, 0, 1, 15, 4, 0, 0, 1, 15, 6, 0, 0);
+
+        Assertions.assertEquals(expectedCoordinates, semanticTokens.get().getData());
+    }
+
+    @Test
+    public void testNoKeywordHighlighting() throws Exception
+    {
+        LegendLSPGrammarExtension noKeywordsExtension = newExtension("Pure", Set.of());
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(noKeywordsExtension).build();
+
+        String uri = "file:///testNoKeywordHighlighting.pure";
+        String code = "\n" +
+                "\n" +
+                "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n";
+
+        server.initialize(new InitializeParams()).get();
+        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+        CompletableFuture<SemanticTokens> semanticTokens = server.getTextDocumentService().semanticTokensRange(new SemanticTokensRangeParams(new TextDocumentIdentifier(uri), new Range(new Position(0, 0), new Position(6, 0))));
+
+        Assertions.assertNull(semanticTokens.get().getData());
     }
 
     @Test
@@ -338,5 +394,21 @@ public class TestLegendLanguageServer
             }
         };
     }
+    private LegendLSPGrammarExtension newExtension(String name, Iterable<String> keywords)
+    {
+        return new LegendLSPGrammarExtension()
+        {
+            @Override
+            public String getName()
+            {
+                return name;
+            }
 
+            @Override
+            public Iterable<? extends String> getKeywords()
+            {
+                return keywords;
+            }
+        };
+    }
 }

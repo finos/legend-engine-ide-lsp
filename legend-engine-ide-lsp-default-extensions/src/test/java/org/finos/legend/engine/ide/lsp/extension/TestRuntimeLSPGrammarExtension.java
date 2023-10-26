@@ -14,16 +14,34 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.junit.jupiter.api.Assertions;
+import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.junit.jupiter.api.Test;
 
-public class TestRuntimeLSPGrammarExtension
+public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 {
-    private final RuntimeLSPGrammarExtension extension = new RuntimeLSPGrammarExtension();
-
     @Test
     public void testGetName()
     {
-        Assertions.assertEquals("Runtime", this.extension.getName());
+        testGetName("Runtime");
+    }
+
+    @Test
+    public void testGetDeclarations()
+    {
+        testGetDeclarations("###Runtime\n" +
+                        "\n" +
+                        "Runtime test::runtime::TestRuntime\n" +
+                        "{\r\n" +
+                        "    mappings: [];\r\n" +
+                        "    connections: [];\n" +
+                        " }\n",
+                LegendDeclaration.builder().withIdentifier("test::runtime::TestRuntime").withClassifier("meta::pure::runtime::PackageableRuntime").withLocation(2, 0, 6, 1).build()
+        );
+    }
+
+    @Override
+    protected LegendLSPGrammarExtension newExtension()
+    {
+        return new RuntimeLSPGrammarExtension();
     }
 }

@@ -40,9 +40,9 @@ public class LegendDeclaration extends LegendTextObject
         this.children = children;
         children.forEach(c ->
         {
-            if (!getLocation().subsumes(c.getLocation(), true))
+            if (!getLocation().subsumes(c.getLocation(), false))
             {
-                throw new IllegalArgumentException("Location of declaration (" + getLocation() + ") must strictly subsume the location of all children: " + c);
+                throw new IllegalArgumentException("Location of declaration (" + getLocation() + ") must subsume the location of all children: " + c);
             }
         });
     }
