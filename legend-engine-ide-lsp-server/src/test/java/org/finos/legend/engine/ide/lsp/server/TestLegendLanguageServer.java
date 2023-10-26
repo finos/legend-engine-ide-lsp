@@ -394,6 +394,7 @@ public class TestLegendLanguageServer
             }
         };
     }
+
     private LegendLSPGrammarExtension newExtension(String name, Iterable<String> keywords)
     {
         return new LegendLSPGrammarExtension()
