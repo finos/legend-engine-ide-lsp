@@ -258,7 +258,6 @@ class LegendTextDocumentService implements TextDocumentService
 
         synchronized (this.docStates)
         {
-            this.server.logToClient("called semanticTokensRange");
             DocumentState documentState = this.docStates.get(params.getTextDocument().getUri());
             GrammarSectionIndex code = documentState.getSectionIndex();
 
