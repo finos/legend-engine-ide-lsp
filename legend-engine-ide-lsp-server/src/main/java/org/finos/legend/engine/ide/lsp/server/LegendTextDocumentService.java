@@ -281,7 +281,14 @@ class LegendTextDocumentService implements TextDocumentService
         {
             return null;
         }
-        LegendDiagnostic legendDiagnostic = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section).iterator().next();
+
+        Iterable<? extends LegendDiagnostic> legendDiagnostics = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
+        if(legendDiagnostics == null)
+        {
+            return null;
+        }
+
+        LegendDiagnostic legendDiagnostic = legendDiagnostics.iterator().next();
         Diagnostic diagnostic = new Diagnostic(this.toRange(legendDiagnostic.getLocation()), legendDiagnostic.getMessage(), legendDiagnostic.getSeverity(), legendDiagnostic.getType());
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of(diagnostic))));
