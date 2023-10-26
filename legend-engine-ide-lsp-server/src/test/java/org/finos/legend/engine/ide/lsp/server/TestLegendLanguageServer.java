@@ -14,15 +14,22 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
+import org.eclipse.lsp4j.DocumentDiagnosticParams;
+import org.eclipse.lsp4j.DocumentDiagnosticReport;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
+import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
@@ -37,6 +44,7 @@ import org.junit.jupiter.api.function.Executable;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 
 public class TestLegendLanguageServer
@@ -171,15 +179,26 @@ public class TestLegendLanguageServer
         server.initialize(new InitializeParams());
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
+        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
+        Diagnostic diagnostic = null;
 
-        //GrammarSection section = server.getTextDocumentService().docStates.get(uri).getSectionIndex().getSection(0);
-        //LegendDiagnostic legendDiagnostic = server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section).iterator().next();
+        try
+        {
+            diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
+        }
+        catch (InterruptedException e)
+        {
+            throw new RuntimeException(e);
+        }
+        catch (ExecutionException e)
+        {
+            throw new RuntimeException(e);
+        }
 
-        //server.getTextDocumentService().getDiagnostics(uri, code);
-
-        //Iterable<String> parsingErrorMessage = server.getGrammarLibrary().getExtension("Pure").getParsingErrors(code);
-        //Assertions.assertEquals("no viable alternative at input 'foobar;' at L4;C20", parsingErrorMessage.iterator().next());
-        Assertions.assertEquals("no viable alternative at input 'foobar;' at L4;C20","no viable alternative at input 'foobar;' at L4;C20");
+        Assertions.assertEquals("no viable alternative at input 'foobarFloat'",diagnostic.getMessage());
+        Assertions.assertEquals("Parser",diagnostic.getSource());
+        Assertions.assertEquals(new Range(new Position(3, 21), new Position(3, 25)),diagnostic.getRange());
+        Assertions.assertEquals(DiagnosticSeverity.Error,diagnostic.getSeverity());
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)

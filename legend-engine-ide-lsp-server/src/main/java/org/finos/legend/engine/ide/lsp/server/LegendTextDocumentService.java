@@ -15,7 +15,6 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
@@ -275,7 +274,7 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<DocumentDiagnosticReport> diagnostic(DocumentDiagnosticParams params)
     {
-        String uri = params.getIdentifier();
+        String uri = params.getTextDocument().getUri();
         GrammarSection section = this.docStates.get(uri).getSectionIndex().getSection(0);
         GrammarSectionIndex parsed = (section.getText() == null) ? null : GrammarSectionIndex.parse(section.getText());
         if (parsed == null)
