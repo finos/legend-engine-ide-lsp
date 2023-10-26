@@ -171,7 +171,7 @@ public class TestLegendLanguageServer
         server.initialize(new InitializeParams());
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
-        server.getTextDocumentService().getDiagnostics(uri, code);
+        //server.getTextDocumentService().getDiagnostics(uri, code);
 
         //Iterable<String> parsingErrorMessage = server.getGrammarLibrary().getExtension("Pure").getParsingErrors(code);
         //Assertions.assertEquals("no viable alternative at input 'foobar;' at L4;C20", parsingErrorMessage.iterator().next());

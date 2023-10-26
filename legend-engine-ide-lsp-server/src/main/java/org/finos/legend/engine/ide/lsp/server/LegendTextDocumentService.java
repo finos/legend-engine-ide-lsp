@@ -18,6 +18,8 @@ import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.DocumentDiagnosticParams;
+import org.eclipse.lsp4j.DocumentDiagnosticReport;
 import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Position;
@@ -46,7 +48,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 class LegendTextDocumentService implements TextDocumentService
@@ -73,7 +74,6 @@ class LegendTextDocumentService implements TextDocumentService
             {
                 LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
                 this.docStates.put(uri, new DocumentState(doc.getVersion(), doc.getText()));
-                getDiagnostics(uri, doc.getText());
             }
         }
     }
@@ -111,7 +111,7 @@ class LegendTextDocumentService implements TextDocumentService
                         this.server.logWarningToClient(message);
                     }
                     state.setText(changes.get(0).getText());
-                    getDiagnostics(uri, changes.get(0).getText());
+                    diagnostic(new DocumentDiagnosticParams(doc));
                 }
             }
         }
@@ -269,14 +269,19 @@ class LegendTextDocumentService implements TextDocumentService
         }
     }
 
-    Iterable<? extends LegendDiagnostic> getDiagnostics(String uri, String newText)
+    @Override
+    public CompletableFuture<DocumentDiagnosticReport> diagnostic(DocumentDiagnosticParams params)
     {
-        GrammarSectionIndex parsed = (newText == null) ? null : GrammarSectionIndex.parse(newText);
+        String uri = params.getIdentifier();
+        GrammarSection section = this.docStates.get(uri).getSectionIndex().getSection(0);
+        GrammarSectionIndex parsed = (section.getText() == null) ? null : GrammarSectionIndex.parse(section.getText());
         if (parsed == null)
         {
-            return Set.of();
+            return null;
         }
-        GrammarSection section = this.docStates.get(uri).getSectionIndex().getSection(0);
-        return this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
+        Iterable<? extends LegendDiagnostic> LegendDiagnostics = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
+        //FIXME: transform LegendDiagnostics into LSPDiagnostics
+
+        return new CompletableFuture<>();
     }
 }
