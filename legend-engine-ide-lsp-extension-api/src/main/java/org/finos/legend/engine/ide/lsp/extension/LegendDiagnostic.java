@@ -14,18 +14,24 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+
 public class LegendDiagnostic
 {
-    String location; //FIXME: TextInterval
+    TextInterval location;
     String message;
-    String severity;
-    String type;
+    Severity severity;
+    Type type;
 
-    public LegendDiagnostic(String location, String message, String severity, String type)
+    public LegendDiagnostic(TextInterval location, String message, Severity severity, Type type)
     {
         this.location = location;
         this.message = message;
         this.severity = severity;
         this.type = type;
     }
+
+    enum Severity { info, warning, error }
+
+    enum Type { parser, compiler }
 }
