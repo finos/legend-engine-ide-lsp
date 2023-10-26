@@ -23,11 +23,11 @@ import java.util.List;
 /**
  * Extension for the Service grammar.
  */
-class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension
+public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension
 {
     private static final List<String> KEYWORDS = List.of("Service", "import");
 
-    ServiceLSPGrammarExtension()
+    public ServiceLSPGrammarExtension()
     {
         super(ServiceParserExtension.NAME, new ServiceParserExtension());
     }
