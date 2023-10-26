@@ -206,6 +206,48 @@ public class TestLegendLanguageServer
     }
 
     @Test
+    public void testPureParsingErrorNotLocalised()
+    {
+        LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
+        String uri = "file:///testPureParsingError.pure";
+        String code = "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "             foobar: Float[ab];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}";
+        server.initialize(new InitializeParams());
+        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
+
+        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
+        if (documentDiagnosticReport == null)
+        {
+            Assertions.fail();
+        }
+
+        Diagnostic diagnostic = null;
+        try
+        {
+            diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
+        }
+        catch (InterruptedException e)
+        {
+            Assertions.fail();
+        }
+        catch (ExecutionException e)
+        {
+            Assertions.fail();
+        }
+
+        Assertions.assertEquals("Cannot invoke \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$ToMultiplicityContext.getText()\" because the return value of \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$MultiplicityArgumentContext.toMultiplicity()\" is null",diagnostic.getMessage());
+        Assertions.assertEquals("Parser",diagnostic.getSource());
+        Assertions.assertEquals(new Range(new Position(0, 0), new Position(0, 0)),diagnostic.getRange());
+        Assertions.assertEquals(DiagnosticSeverity.Error,diagnostic.getSeverity());
+    }
+
+    @Test
     public void testPureParsingNoError()
     {
         LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
