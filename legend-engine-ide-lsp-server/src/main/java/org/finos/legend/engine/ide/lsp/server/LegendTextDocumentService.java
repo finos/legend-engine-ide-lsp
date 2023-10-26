@@ -394,8 +394,7 @@ class LegendTextDocumentService implements TextDocumentService
             diagnostics.add(diagnostic);
         }
 
-        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics)));
-        return documentDiagnosticReport;
+        return this.server.supplyPossiblyAsync(() -> new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics)));
     }
 
     private static DiagnosticSeverity getDiagnosticSeverity(LegendDiagnostic legendDiagnostic)
