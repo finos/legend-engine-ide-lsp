@@ -201,7 +201,7 @@ public class TestLegendLanguageServer
 
         Assertions.assertEquals("no viable alternative at input 'foobarFloat'",diagnostic.getMessage());
         Assertions.assertEquals("Parser",diagnostic.getSource());
-        Assertions.assertEquals(new Range(new Position(3, 21), new Position(3, 25)),diagnostic.getRange());
+        Assertions.assertEquals(new Range(new Position(3, 20), new Position(3, 25)),diagnostic.getRange());
         Assertions.assertEquals(DiagnosticSeverity.Error,diagnostic.getSeverity());
     }
 

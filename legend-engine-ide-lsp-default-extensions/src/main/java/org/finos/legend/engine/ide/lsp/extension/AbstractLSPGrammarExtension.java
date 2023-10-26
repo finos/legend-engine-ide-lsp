@@ -146,7 +146,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         {
             String message = e.getMessage();
             SourceInformation sourceInformation = ((EngineException) e).getSourceInformation();
-            TextInterval textInterval = TextInterval.newInterval(sourceInformation.startLine, sourceInformation.startColumn, sourceInformation.endLine, sourceInformation.endColumn);
+            TextInterval textInterval = TextInterval.newInterval(sourceInformation.startLine, sourceInformation.startColumn - 1, sourceInformation.endLine, sourceInformation.endColumn);
             DiagnosticSeverity severity = DiagnosticSeverity.Error;
             LegendDiagnostic.Type type = LegendDiagnostic.Type.Parser;
 

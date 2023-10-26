@@ -24,6 +24,7 @@ import org.eclipse.lsp4j.DocumentDiagnosticReport;
 import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.RelatedFullDocumentDiagnosticReport;
 import org.eclipse.lsp4j.SymbolInformation;
@@ -51,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 class LegendTextDocumentService implements TextDocumentService
 {
@@ -113,7 +115,28 @@ class LegendTextDocumentService implements TextDocumentService
                         this.server.logWarningToClient(message);
                     }
                     state.setText(changes.get(0).getText());
-                    diagnostic(new DocumentDiagnosticParams(doc));
+                    CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = diagnostic(new DocumentDiagnosticParams(doc));
+
+                    Diagnostic diagnostic;
+                    if (documentDiagnosticReport == null)
+                    {
+                        server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of()));
+                        return;
+                    }
+
+                    try
+                    {
+                        diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
+                    }
+                    catch (InterruptedException e)
+                    {
+                        return;
+                    }
+                    catch (ExecutionException e)
+                    {
+                        return;
+                    }
+                    server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of(diagnostic)));
                 }
             }
         }
@@ -292,6 +315,8 @@ class LegendTextDocumentService implements TextDocumentService
         Diagnostic diagnostic = new Diagnostic(this.toRange(legendDiagnostic.getLocation()), legendDiagnostic.getMessage(), legendDiagnostic.getSeverity(), legendDiagnostic.getType());
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of(diagnostic))));
+
         return documentDiagnosticReport;
     }
 }
+
