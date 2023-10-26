@@ -283,7 +283,7 @@ class LegendTextDocumentService implements TextDocumentService
         }
 
         Iterable<? extends LegendDiagnostic> legendDiagnostics = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
-        if(legendDiagnostics == null)
+        if (legendDiagnostics == null)
         {
             return null;
         }

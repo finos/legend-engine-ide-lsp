@@ -180,7 +180,7 @@ public class TestLegendLanguageServer
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
 
         CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        if(documentDiagnosticReport == null)
+        if (documentDiagnosticReport == null)
         {
             Assertions.fail();
         }
