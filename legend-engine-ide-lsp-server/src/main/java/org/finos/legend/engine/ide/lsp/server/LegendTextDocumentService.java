@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
@@ -24,6 +26,7 @@ import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.RelatedFullDocumentDiagnosticReport;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
@@ -280,8 +283,12 @@ class LegendTextDocumentService implements TextDocumentService
             return null;
         }
         Iterable<? extends LegendDiagnostic> LegendDiagnostics = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
-        //FIXME: transform LegendDiagnostics into LSPDiagnostics
+        //FIXME: fill DocumentDiagnosticReport with LegendDiagnostics components
 
-        return new CompletableFuture<>();
+        Diagnostic diagnostic = new Diagnostic(new Range(), "message", DiagnosticSeverity.Error, "source");
+
+        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of(diagnostic))));
+
+        return documentDiagnosticReport;
     }
 }
