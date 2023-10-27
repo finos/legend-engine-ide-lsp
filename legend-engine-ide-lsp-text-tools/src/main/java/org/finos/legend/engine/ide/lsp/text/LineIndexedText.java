@@ -24,7 +24,6 @@ public class LineIndexedText
 {
     private final String text;
     private final int[] lineIndex;
-    private String[] lines;
 
     private LineIndexedText(String text)
     {
@@ -142,7 +141,7 @@ public class LineIndexedText
     public String getLine(int line)
     {
         checkLine(line);
-        return lineText(line);
+        return this.text.substring(lineStart(line), lineEnd(line));
     }
 
     /**
@@ -157,15 +156,8 @@ public class LineIndexedText
      */
     public String getLines(int start, int end)
     {
-        checkLineRange(start, end);
-        if (start == end)
-        {
-            // special case for a single line
-            return lineText(start);
-        }
-        int startIndex = lineStart(start);
-        int endIndex = lineEnd(end);
-        return this.text.substring(startIndex, endIndex);
+        checkLineInterval(start, end);
+        return this.text.substring(lineStart(start), lineEnd(end));
     }
 
     /**
@@ -182,25 +174,7 @@ public class LineIndexedText
      */
     public String getInterval(int startLine, int startColumn, int endLine, int endColumn)
     {
-        if (startLine == endLine)
-        {
-            // single-line interval
-            checkLine(startLine);
-            if ((startColumn == 0) && (endColumn <= startColumn) && (endColumn == (lineLength(startLine) - 1)))
-            {
-                // entire line
-                return lineText(startLine);
-            }
-
-            checkColumnRange(startLine, startColumn, endColumn);
-            int lineStart = lineStart(startLine);
-            return this.text.substring(lineStart + startColumn, lineStart + endColumn + 1);
-        }
-
-        // multi-line interval
-        checkLineRange(startLine, endLine);
-        checkColumn(startLine, startColumn);
-        checkColumn(endLine, endColumn);
+        checkInterval(startLine, startColumn, endLine, endColumn);
         return this.text.substring(lineStart(startLine) + startColumn, lineStart(endLine) + endColumn + 1);
     }
 
@@ -216,6 +190,99 @@ public class LineIndexedText
         checkIndex(index);
         int i = Arrays.binarySearch(this.lineIndex, index);
         return (i >= 0) ? i : -(i + 2);
+    }
+
+    /**
+     * Return whether {@code line} is a valid line number.
+     *
+     * @param line line number
+     * @return whether line is a valid line number
+     */
+    public boolean isValidLine(int line)
+    {
+        return (0 <= line) && (line < getLineCount());
+    }
+
+    /**
+     * Return whether {@code column} is a valid column index for {@code line} (which must itself be valid).
+     *
+     * @param line   line
+     * @param column column
+     * @return whether line:column is valid
+     */
+    public boolean isValidColumn(int line, int column)
+    {
+        return isValidLine(line) && (0 <= column) && (column < lineLength(line));
+    }
+
+    /**
+     * Return whether the given line interval is valid. This is true if both {@code startLine} and {@code endLine} are
+     * valid lines and {@code startLine} is not after {@code endLine}.
+     *
+     * @param startLine start line
+     * @param endLine   end line
+     * @return whether the line interval is valid
+     */
+    public boolean isValidInterval(int startLine, int endLine)
+    {
+        return (0 <= startLine) && (startLine <= endLine) && (endLine < getLineCount());
+    }
+
+    /**
+     * <p>Return whether the given column interval is valid for the given line. This is true if all the following
+     * hold:</p>
+     * <ul>
+     *     <li>{@code isValidColumn(line, startColumn)}</li>
+     *     <li>{@code isValidColumn(line, endColumn)}</li>
+     *     <li>{@code startColumn <= endColumn}</li>
+     * </ul>
+     *
+     * @param line        line
+     * @param startColumn start column
+     * @param endColumn   end column
+     * @return whether the interval is valid
+     * @see #isValidColumn
+     */
+    public boolean isValidInterval(int line, int startColumn, int endColumn)
+    {
+        return isValidLine(line) &&
+                (0 <= startColumn) &&
+                (startColumn <= endColumn) &&
+                (endColumn < lineLength(line));
+    }
+
+    /**
+     * <p>Return whether the given interval is valid. This is true if all of the following hold:</p>
+     * <ul>
+     *     <li>{@code isValidColumn(startLine, startColumn)}</li>
+     *     <li>{@code isValidColumn(endLine, endColumn)}</li>
+     *     <li>{@code startLine <= endLine}</li>
+     *     <li>if {@code startLine == endLine}, then {@code startColumn <= endColumn}</li>
+     * </ul>
+     *
+     * @param startLine   start line
+     * @param startColumn start column
+     * @param endLine     end line
+     * @param endColumn   end column
+     * @return whether the interval is valid
+     * @see #isValidColumn
+     */
+    public boolean isValidInterval(int startLine, int startColumn, int endLine, int endColumn)
+    {
+        return (startLine == endLine) ?
+                isValidInterval(startLine, startColumn, endColumn) :
+                (startLine < endLine) && isValidColumn(startLine, startColumn) && isValidColumn(endLine, endColumn);
+    }
+
+    /**
+     * Return whether the given text index is valid.
+     *
+     * @param index text index
+     * @return whether index is valid
+     */
+    public boolean isValidIndex(int index)
+    {
+        return (0 <= index) && (index < this.text.length());
     }
 
     // Helpers that assume the line and column have been validated
@@ -237,61 +304,43 @@ public class LineIndexedText
         return lineEnd(line) - lineStart(line);
     }
 
-    private String lineText(int line)
-    {
-        if (this.lines == null)
-        {
-            this.lines = new String[getLineCount()];
-        }
-
-        String result = this.lines[line];
-        if (result == null)
-        {
-            this.lines[line] = result = this.text.substring(lineStart(line), lineEnd(line));
-        }
-        return result;
-    }
-
     // Line/column validations
 
-    void checkLine(int line)
+    private void checkLine(int line)
     {
-        if ((line < 0) || (line >= this.lineIndex.length))
+        if (!isValidLine(line))
         {
             throw new IndexOutOfBoundsException("Invalid line number: " + line + "; line count: " + this.lineIndex.length);
         }
     }
 
-    private void checkLineRange(int start, int end)
+    private void checkLineInterval(int start, int end)
     {
-        int count = getLineCount();
-        if ((start < 0) || (end < start) || (end >= count))
+        if (!isValidInterval(start, end))
         {
-            throw new IndexOutOfBoundsException("Invalid line range: start " + start + ", end " + end + ", line count " + count);
+            throw new IndexOutOfBoundsException("Invalid line interval: start " + start + ", end " + end + ", line count " + getLineCount());
         }
     }
 
     private void checkColumn(int line, int col)
     {
-        int length = lineLength(line);
-        if ((col < 0) || (col >= length))
+        if (!isValidColumn(line, col))
         {
-            throw new IndexOutOfBoundsException("Invalid column for line " + line + ": " + col + ", length: " + length);
+            throw new IndexOutOfBoundsException("Invalid column for line " + line + ": " + col + ", length: " + lineLength(line));
         }
     }
 
-    private void checkColumnRange(int line, int startCol, int endCol)
+    private void checkInterval(int startLine, int startColumn, int endLine, int endColumn)
     {
-        int length = lineLength(line);
-        if ((startCol < 0) || (endCol < startCol) || (endCol >= length))
+        if (!isValidInterval(startLine, startColumn, endLine, endColumn))
         {
-            throw new IndexOutOfBoundsException("Invalid column range for line " + line + ": start " + startCol + ", end " + endCol + ", length " + length);
+            throw new IndexOutOfBoundsException("Invalid interval " + startLine + ":" + startColumn + "-" + endLine + ":" + endColumn);
         }
     }
 
     private void checkIndex(int index)
     {
-        if ((index < 0) || (index >= this.text.length()))
+        if (!isValidIndex(index))
         {
             throw new IndexOutOfBoundsException("index " + index + ", length " + this.text.length());
         }

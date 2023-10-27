@@ -26,6 +26,7 @@ public class TestLineIndexedText
         LineIndexedText indexedText = LineIndexedText.index(text);
         Assertions.assertSame(text, indexedText.getText());
         Assertions.assertEquals(1, indexedText.getLineCount());
+        assertValidLineColumnInterval(indexedText);
     }
 
     @Test
@@ -56,6 +57,8 @@ public class TestLineIndexedText
         Assertions.assertEquals("text", indexedText.getInterval(0, 17, 0, 20));
         Assertions.assertEquals("text.", indexedText.getInterval(0, 17, 0, 21));
         Assertions.assertEquals(text, indexedText.getInterval(0, 0, 0, text.length() - 1));
+
+        assertValidLineColumnInterval(indexedText);
     }
 
     @Test
@@ -66,6 +69,7 @@ public class TestLineIndexedText
         String line2 = "of line breaks\n";
         String line3 = "\n";
         String line4 = "with blank line in the middle";
+        String[] lines = {line0, line1, line2, line3, line4};
         String text = line0 + line1 + line2 + line3 + line4;
         int line1Start = line0.length();
         int line2Start = line1Start + line1.length();
@@ -97,6 +101,8 @@ public class TestLineIndexedText
         Assertions.assertEquals(" of text\nwith different types\r\nof li", indexedText.getInterval(0, 14, 2, 4));
         Assertions.assertEquals("\n", indexedText.getInterval(3, 0, 3, 0));
         Assertions.assertEquals(text, indexedText.getInterval(0, 0, 4, line4.length() - 1));
+
+        assertValidLineColumnInterval(indexedText);
     }
 
     @Test
@@ -126,6 +132,8 @@ public class TestLineIndexedText
         Assertions.assertEquals("last line", indexedText.getInterval(1, 0, 1, 8));
         Assertions.assertEquals("last line\n", indexedText.getInterval(1, 0, 1, 9));
         Assertions.assertEquals(text, indexedText.getInterval(0, 0, 1, line1.length() - 1));
+
+        assertValidLineColumnInterval(indexedText);
     }
 
     private void assertLine(LineIndexedText indexedText, int lineNum, int lineStart, String lineText)
@@ -140,5 +148,83 @@ public class TestLineIndexedText
             Assertions.assertEquals(lineNum, indexedText.getLineNumber(index), () -> "index " + index);
             Assertions.assertEquals(index, indexedText.getIndex(lineNum, col), () -> "line " + lineNum + " col " + col);
         }
+    }
+
+    private void assertValidLineColumnInterval(LineIndexedText indexedText)
+    {
+        // valid line
+        Assertions.assertFalse(indexedText.isValidLine(-1));
+        Assertions.assertFalse(indexedText.isValidLine(indexedText.getLineCount()));
+        for (int line = 0; line < indexedText.getLineCount(); line++)
+        {
+            Assertions.assertTrue(indexedText.isValidLine(line), Integer.toString(line));
+        }
+
+        // valid column
+        for (int line = 0; line < indexedText.getLineCount(); line++)
+        {
+            int length = indexedText.getLineLength(line);
+            Assertions.assertFalse(indexedText.isValidColumn(line, -1));
+            Assertions.assertFalse(indexedText.isValidColumn(line, length));
+            for (int col = 0; col < length; col++)
+            {
+                Assertions.assertTrue(indexedText.isValidColumn(line, col), line + ":" + col);
+            }
+        }
+
+        // valid line interval
+        for (int startLine = 0; startLine < indexedText.getLineCount(); startLine++)
+        {
+            Assertions.assertFalse(indexedText.isValidInterval(-1, startLine));
+            Assertions.assertFalse(indexedText.isValidInterval(startLine, indexedText.getLineCount()));
+            for (int endLine = 0; endLine < indexedText.getLineCount(); endLine++)
+            {
+                Assertions.assertEquals(startLine <= endLine, indexedText.isValidInterval(startLine, endLine), startLine + "-" + endLine);
+            }
+        }
+
+        // valid column interval
+        for (int line = 0; line < indexedText.getLineCount(); line++)
+        {
+            int length = indexedText.getLineLength(line);
+            Assertions.assertFalse(indexedText.isValidInterval(line, -1, 0));
+            Assertions.assertFalse(indexedText.isValidInterval(line, Math.max(1, length - 1), 0));
+            Assertions.assertFalse(indexedText.isValidInterval(line, 0, length));
+            for (int startCol = 0; startCol < length; startCol++)
+            {
+                for (int endCol = 0; startCol < length; startCol++)
+                {
+                    Assertions.assertEquals(startCol <= endCol, indexedText.isValidInterval(line, startCol, endCol), line + ":" + startCol + "-" + endCol);
+                }
+            }
+        }
+
+        // valid interval
+        Assertions.assertFalse(indexedText.isValidInterval(-1, 0, 0, 0));
+        Assertions.assertFalse(indexedText.isValidInterval(0, 0, indexedText.getLineCount(), 0));
+        for (int startLine = 0; startLine < indexedText.getLineCount(); startLine++)
+        {
+            int startLineLength = indexedText.getLineLength(startLine);
+            for (int endLine = 0; endLine < indexedText.getLineCount(); endLine++)
+            {
+                int endLineLength = indexedText.getLineLength(endLine);
+                for (int startCol = 0; startCol < startLineLength; startCol++)
+                {
+                    for (int endCol = 0; endCol < endLineLength; endCol++)
+                    {
+                        boolean valid = (startLine < endLine) || ((startLine == endLine) && (startCol <= endCol));
+                        Assertions.assertEquals(valid, indexedText.isValidInterval(startLine, startCol, endLine, endCol));
+                    }
+                }
+            }
+        }
+
+        // valid index
+        Assertions.assertFalse(indexedText.isValidIndex(-1));
+        for (int i = 0; i < indexedText.getText().length(); i++)
+        {
+            Assertions.assertTrue(indexedText.isValidIndex(i), Integer.toString(i));
+        }
+        Assertions.assertFalse(indexedText.isValidIndex(indexedText.getText().length()));
     }
 }
