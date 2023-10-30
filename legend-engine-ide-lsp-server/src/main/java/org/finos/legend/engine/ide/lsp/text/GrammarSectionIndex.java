@@ -149,7 +149,10 @@ public class GrammarSectionIndex
      */
     public GrammarSection getSectionAtLine(int line)
     {
-        this.text.checkLine(line);
+        if (!this.text.isValidLine(line))
+        {
+            throw new IndexOutOfBoundsException("Invalid line number: " + line + "; line count: " + this.text.getLineCount());
+        }
         for (GrammarSection section : this.sections)
         {
             int startLine = section.getStartLine();
