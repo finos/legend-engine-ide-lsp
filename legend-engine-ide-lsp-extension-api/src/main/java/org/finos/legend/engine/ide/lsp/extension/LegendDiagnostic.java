@@ -16,6 +16,8 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 
+import java.util.Objects;
+
 public class LegendDiagnostic
 {
     private final TextInterval location;
@@ -25,30 +27,30 @@ public class LegendDiagnostic
 
     public LegendDiagnostic(TextInterval location, String message, Severity severity, Type type)
     {
-        this.location = location;
-        this.message = message;
-        this.severity = severity;
-        this.type = type;
+        this.location = Objects.requireNonNull(location, "location is required");
+        this.message = Objects.requireNonNull(message, "message is required");
+        this.severity = Objects.requireNonNull(severity, "severity is required");
+        this.type = Objects.requireNonNull(type, "type is required");
     }
 
     public TextInterval getLocation()
     {
-        return location;
+        return this.location;
     }
 
-    public String getSeverity()
+    public Severity getSeverity()
     {
-        return severity.toString();
+        return this.severity;
     }
 
     public String getMessage()
     {
-        return message;
+        return this.message;
     }
 
-    public String getType()
+    public Type getType()
     {
-        return type.toString();
+        return this.type;
     }
 
 
@@ -95,7 +97,7 @@ public class LegendDiagnostic
         Hint, Information, Warning, Error
     }
 
-    enum Type
+    public enum Type
     {
         Parser, Compiler
     }

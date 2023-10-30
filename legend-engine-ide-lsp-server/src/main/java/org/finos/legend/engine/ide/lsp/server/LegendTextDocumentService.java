@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -393,23 +392,14 @@ class LegendTextDocumentService implements TextDocumentService
         }
 
         Iterable<? extends LegendDiagnostic> legendDiagnostics = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
-        if (legendDiagnostics == null)
-        {
-            return CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of())));
-        }
-
-        Iterator<? extends LegendDiagnostic> legendDiagnosticIterator = legendDiagnostics.iterator();
-
-        LegendDiagnostic legendDiagnostic;
 
         List<Diagnostic> diagnostics = new ArrayList<>();
-        while (legendDiagnosticIterator.hasNext())
+        legendDiagnostics.forEach(legendDiagnostic ->
         {
-            legendDiagnostic = legendDiagnosticIterator.next();
             DiagnosticSeverity diagnosticSeverity = getDiagnosticSeverity(legendDiagnostic);
-            Diagnostic diagnostic = new Diagnostic(this.toRange(legendDiagnostic.getLocation()), legendDiagnostic.getMessage(), diagnosticSeverity, legendDiagnostic.getType());
+            Diagnostic diagnostic = new Diagnostic(this.toRange(legendDiagnostic.getLocation()), legendDiagnostic.getMessage(), diagnosticSeverity, legendDiagnostic.getType().toString());
             diagnostics.add(diagnostic);
-        }
+        });
 
         return this.server.supplyPossiblyAsync(() -> new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics)));
     }
@@ -418,15 +408,15 @@ class LegendTextDocumentService implements TextDocumentService
     {
         DiagnosticSeverity diagnosticSeverity = DiagnosticSeverity.Error;
 
-        if (legendDiagnostic.getSeverity().equals("Warning"))
+        if (legendDiagnostic.getSeverity().toString().equals("Warning"))
         {
             diagnosticSeverity = DiagnosticSeverity.Warning;
         }
-        else if (legendDiagnostic.getSeverity().equals("Information"))
+        else if (legendDiagnostic.getSeverity().toString().equals("Information"))
         {
             diagnosticSeverity = DiagnosticSeverity.Information;
         }
-        else if (legendDiagnostic.getSeverity().equals("Hint"))
+        else if (legendDiagnostic.getSeverity().toString().equals("Hint"))
         {
             diagnosticSeverity = DiagnosticSeverity.Hint;
         }
