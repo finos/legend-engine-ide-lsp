@@ -55,7 +55,7 @@ class LegendTextDocumentService implements TextDocumentService
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendTextDocumentService.class);
 
     private final LegendLanguageServer server;
-    private final Map<String, DocumentState> docStates = new HashMap<>();
+    private final Map<String, DocumentState> docStates = Collections.synchronizedMap(new HashMap<>());
 
     LegendTextDocumentService(LegendLanguageServer server)
     {
@@ -73,7 +73,20 @@ class LegendTextDocumentService implements TextDocumentService
             synchronized (this.docStates)
             {
                 LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
-                this.docStates.put(uri, new DocumentState(doc.getVersion(), doc.getText()));
+                DocumentState state = new DocumentState(uri, doc.getVersion(), doc.getText());
+                DocumentState previous = this.docStates.put(uri, state);
+                if (previous != null)
+                {
+                    if (previous.getVersion() > state.getVersion())
+                    {
+                        LOGGER.warn("Previous document state for {} has more recent version ({} > {}): leaving in place", uri, previous.getVersion(), state.getVersion());
+                        this.docStates.put(uri, previous);
+                    }
+                    else
+                    {
+                        LOGGER.warn("Overwriting previous document state for {} at version {} with version {}", uri, previous.getVersion(), doc.getVersion());
+                    }
+                }
             }
         }
     }
@@ -86,32 +99,30 @@ class LegendTextDocumentService implements TextDocumentService
         String uri = doc.getUri();
         if (isLegendFile(uri))
         {
-            synchronized (this.docStates)
+            LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
+            DocumentState state = this.docStates.get(uri);
+            if (state == null)
             {
-                LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
-                DocumentState state = this.docStates.get(uri);
-                if (state == null)
+                LOGGER.warn("Cannot process change for {}: no state", uri);
+                this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
+                return;
+            }
+
+            List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
+            if ((changes == null) || changes.isEmpty())
+            {
+                LOGGER.debug("No changes to {}", uri);
+                state.update(doc.getVersion());
+            }
+            else
+            {
+                if (changes.size() > 1)
                 {
-                    LOGGER.warn("Cannot process change for {}: no state", uri);
-                    this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
-                    return;
+                    String message = "Expected at most one change, got " + changes.size() + "; processing only the first";
+                    LOGGER.warn(message);
+                    this.server.logWarningToClient(message);
                 }
-                state.setVersion(doc.getVersion());
-                List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
-                if ((changes == null) || changes.isEmpty())
-                {
-                    LOGGER.debug("No changes to {}", uri);
-                }
-                else
-                {
-                    if (changes.size() > 1)
-                    {
-                        String message = "Expected at most one change, got " + changes.size() + "; processing only the first";
-                        LOGGER.warn(message);
-                        this.server.logWarningToClient(message);
-                    }
-                    state.setText(changes.get(0).getText());
-                }
+                state.update(doc.getVersion(), changes.get(0).getText());
             }
         }
     }
@@ -123,11 +134,8 @@ class LegendTextDocumentService implements TextDocumentService
         String uri = params.getTextDocument().getUri();
         if (isLegendFile(uri))
         {
-            synchronized (this.docStates)
-            {
-                LOGGER.debug("Closed {}", uri);
-                this.docStates.remove(uri);
-            }
+            LOGGER.debug("Closed {}", uri);
+            this.docStates.remove(uri);
         }
     }
 
@@ -138,21 +146,18 @@ class LegendTextDocumentService implements TextDocumentService
         String uri = params.getTextDocument().getUri();
         if (isLegendFile(uri))
         {
-            synchronized (this.docStates)
+            LOGGER.debug("Saved {}", uri);
+            DocumentState state = this.docStates.get(uri);
+            if (state == null)
             {
-                LOGGER.debug("Saved {}", uri);
-                DocumentState state = this.docStates.get(uri);
-                if (state == null)
-                {
-                    LOGGER.warn("Cannot process save for {}: no state", uri);
-                    this.server.logWarningToClient("Cannot process save for " + uri + ": not open in language server");
-                    return;
-                }
-                String text = params.getText();
-                if (text != null)
-                {
-                    state.setText(text);
-                }
+                LOGGER.warn("Cannot process save for {}: no state", uri);
+                this.server.logWarningToClient("Cannot process save for " + uri + ": not open in language server");
+                return;
+            }
+            String text = params.getText();
+            if (text != null)
+            {
+                state.update(text);
             }
         }
     }
@@ -169,19 +174,15 @@ class LegendTextDocumentService implements TextDocumentService
     {
         this.server.checkReady();
         String uri = params.getTextDocument().getUri();
-        GrammarSectionIndex sectionIndex;
-        synchronized (this.docStates)
+        DocumentState state = this.docStates.get(uri);
+        if (state == null)
         {
-            DocumentState state = this.docStates.get(uri);
-            if (state == null)
-            {
-                LOGGER.warn("No state for {}: cannot get symbols", uri);
-                this.server.logWarningToClient("Cannot get symbols for " + uri + ": not open in language server");
-                return Collections.emptyList();
-            }
-            sectionIndex = state.getSectionIndex();
+            LOGGER.warn("No state for {}: cannot get symbols", uri);
+            this.server.logWarningToClient("Cannot get symbols for " + uri + ": not open in language server");
+            return Collections.emptyList();
         }
 
+        GrammarSectionIndex sectionIndex = state.getSectionIndex();
         if (sectionIndex == null)
         {
             LOGGER.warn("No text for {}: cannot get symbols", uri);
@@ -227,17 +228,20 @@ class LegendTextDocumentService implements TextDocumentService
     private SemanticTokens getSemanticTokensRange(SemanticTokensRangeParams params)
     {
         String uri = params.getTextDocument().getUri();
-        GrammarSectionIndex sectionIndex;
-        synchronized (this.docStates)
+        DocumentState state = this.docStates.get(uri);
+        if (state == null)
         {
-            DocumentState state = this.docStates.get(uri);
-            if (state == null)
-            {
-                LOGGER.warn("No state for {}: cannot get symbols", uri);
-                this.server.logWarningToClient("Cannot get symbols for " + uri + ": not open in language server");
-                return new SemanticTokens(Collections.emptyList());
-            }
-            sectionIndex = state.getSectionIndex();
+            LOGGER.warn("No state for {}: cannot get symbols", uri);
+            this.server.logWarningToClient("Cannot get symbols for " + uri + ": not open in language server");
+            return new SemanticTokens(Collections.emptyList());
+        }
+
+        GrammarSectionIndex sectionIndex = state.getSectionIndex();
+        if (sectionIndex == null)
+        {
+            LOGGER.warn("No text for {}: cannot get semantic tokens", uri);
+            this.server.logWarningToClient("Cannot get semantic tokens for " + uri + ": no text in language server");
+            return new SemanticTokens(Collections.emptyList());
         }
 
         List<Integer> data = new ArrayList<>();
@@ -319,33 +323,60 @@ class LegendTextDocumentService implements TextDocumentService
 
     private static class DocumentState
     {
+        private final String uri;
         private int version;
         private GrammarSectionIndex sectionIndex;
 
-        private DocumentState(int version, String text)
+        private DocumentState(String uri, int version, String text)
         {
+            this.uri = uri;
             this.version = version;
-            setText(text);
+            this.sectionIndex = parseText(text);
         }
 
-        void setVersion(int version)
+        synchronized void update(int version)
         {
+            if (version < this.version)
+            {
+                LOGGER.warn("Trying to update {} from version {} to {}", this.uri, this.version, version);
+                return;
+            }
             this.version = version;
         }
 
-        int getVersion()
+        synchronized void update(String text)
+        {
+            this.sectionIndex = parseText(text);
+        }
+
+        synchronized void update(int version, String text)
+        {
+            if (version < this.version)
+            {
+                LOGGER.warn("Trying to update {} from version {} to {}: update rejected", this.uri, this.version, version);
+                return;
+            }
+            if (version == this.version)
+            {
+                LOGGER.warn("Trying to update {} from version {} to {}", this.uri, this.version, version);
+            }
+            this.version = version;
+            this.sectionIndex = parseText(text);
+        }
+
+        synchronized int getVersion()
         {
             return this.version;
         }
 
-        void setText(String newText)
-        {
-            this.sectionIndex = (newText == null) ? null : GrammarSectionIndex.parse(newText);
-        }
-
-        GrammarSectionIndex getSectionIndex()
+        synchronized GrammarSectionIndex getSectionIndex()
         {
             return this.sectionIndex;
+        }
+
+        private GrammarSectionIndex parseText(String text)
+        {
+            return (text == null) ? null : GrammarSectionIndex.parse(text);
         }
     }
 }
