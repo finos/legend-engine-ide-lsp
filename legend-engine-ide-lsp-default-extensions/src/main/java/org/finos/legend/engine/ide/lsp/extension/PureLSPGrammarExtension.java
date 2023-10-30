@@ -63,7 +63,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return KEYWORDS;
     }
 
-
     @Override
     protected String getClassifier(PackageableElement element)
     {

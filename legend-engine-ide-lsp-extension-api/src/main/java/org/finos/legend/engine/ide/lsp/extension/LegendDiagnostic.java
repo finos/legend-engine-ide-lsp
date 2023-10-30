@@ -51,6 +51,45 @@ public class LegendDiagnostic
         return type.toString();
     }
 
+
+    @Override
+    public boolean equals(Object other)
+    {
+        if (this == other)
+        {
+            return true;
+        }
+
+        if (!(other instanceof LegendDiagnostic))
+        {
+            return false;
+        }
+        LegendDiagnostic that = (LegendDiagnostic) other;
+        return (this.getLocation().equals(that.getLocation())) &&
+                (this.getMessage().equals(that.getMessage())) &&
+                (this.getType().equals(that.getType())) &&
+                (this.getSeverity().equals(that.getSeverity()));
+    }
+
+    @Override
+    public int hashCode()
+    {
+        int hashCode = this.getLocation().hashCode();
+        hashCode = hashCode + 17 * this.getMessage().hashCode();
+        hashCode = hashCode + 17 * this.getType().hashCode();
+        hashCode = hashCode + 17 * this.getSeverity().hashCode();
+        return hashCode;
+    }
+
+    @Override
+    public String toString()
+    {
+        return "location = " + this.getLocation().toString() +
+                    ", message = " + this.getMessage() +
+                    ", type = " + this.getType() +
+                    ", severity = " + this.getSeverity();
+    }
+
     public enum Severity
     {
         Hint, Information, Warning, Error

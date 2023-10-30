@@ -44,6 +44,14 @@ abstract class AbstractLSPGrammarExtensionTest
         Assertions.assertEquals(expected, actual);
     }
 
+    protected void testDiagnostics(String code, LegendDiagnostic... expectedDiagnostics)
+    {
+        Comparator<LegendDiagnostic> cmp = Comparator.comparing(d -> d.getLocation().getStart());
+        MutableList<LegendDiagnostic> expected = Lists.mutable.with(expectedDiagnostics).sortThis(cmp);
+        MutableList<LegendDiagnostic> actual = Lists.mutable.<LegendDiagnostic>withAll(this.extension.getDiagnostics(newGrammarSection(code))).sortThis(cmp);
+        Assertions.assertEquals(expected, actual);
+    }
+
     protected abstract LegendLSPGrammarExtension newExtension();
 
     protected static GrammarSection newGrammarSection(String text)

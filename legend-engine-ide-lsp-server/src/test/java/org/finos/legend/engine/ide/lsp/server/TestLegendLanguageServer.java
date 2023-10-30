@@ -36,7 +36,6 @@ import org.junit.jupiter.api.function.Executable;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-
 public class TestLegendLanguageServer
 {
     @Test

@@ -90,12 +90,8 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
                 "}";
-        LegendDiagnostic diagnostic = this.extension.getDiagnostics(newGrammarSection(code)).iterator().next();
-
-        Assertions.assertEquals("no viable alternative at input 'foobarFloat'",diagnostic.getMessage());
-        Assertions.assertEquals("Parser",diagnostic.getType());
-        Assertions.assertEquals(TextInterval.newInterval(3, 20, 3, 25),diagnostic.getLocation());
-        Assertions.assertEquals("Error",diagnostic.getSeverity());
+        LegendDiagnostic expectedDiagnostics = new LegendDiagnostic(TextInterval.newInterval(3,20,3,25), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
+        this.testDiagnostics(code, expectedDiagnostics);
     }
 
     @Test
@@ -108,12 +104,9 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
                 "}";
-        LegendDiagnostic diagnostic = this.extension.getDiagnostics(newGrammarSection(code)).iterator().next();
 
-        Assertions.assertEquals("Cannot invoke \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$ToMultiplicityContext.getText()\" because the return value of \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$MultiplicityArgumentContext.toMultiplicity()\" is null",diagnostic.getMessage());
-        Assertions.assertEquals("Parser",diagnostic.getType());
-        Assertions.assertEquals(TextInterval.newInterval(0, 0, 0, 0),diagnostic.getLocation());
-        Assertions.assertEquals("Error",diagnostic.getSeverity());
+        LegendDiagnostic expectedDiagnostics = new LegendDiagnostic(TextInterval.newInterval(0,0,0,0), "Cannot invoke \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$ToMultiplicityContext.getText()\" because the return value of \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$MultiplicityArgumentContext.toMultiplicity()\" is null", LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
+        this.testDiagnostics(code, expectedDiagnostics);
     }
 
     @Test
