@@ -17,9 +17,6 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElementVisitor;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.data.DataElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Association;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Class;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Enumeration;
@@ -29,9 +26,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Profile;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Property;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.QualifiedProperty;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.Mapping;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.PackageableRuntime;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.section.SectionIndex;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
 import org.slf4j.Logger;
@@ -44,7 +38,7 @@ import java.util.function.Consumer;
 /**
  * Extension for the Pure grammar.
  */
-class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
+public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
 
@@ -59,7 +53,7 @@ class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
             .with("Profile")
     );
 
-    PureLSPGrammarExtension()
+    public PureLSPGrammarExtension()
     {
         super(new DomainParser());
     }
@@ -74,176 +68,65 @@ class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
     @Override
     protected String getClassifier(PackageableElement element)
     {
-        return element.accept(new PackageableElementVisitor<>()
+        if (element instanceof Class)
         {
-            @Override
-            public String visit(PackageableElement element)
-            {
-                return null;
-            }
-
-            @Override
-            public String visit(Profile profile)
-            {
-                return M3Paths.Profile;
-            }
-
-            @Override
-            public String visit(Enumeration _enum)
-            {
-                return M3Paths.Enumeration;
-            }
-
-            @Override
-            public String visit(Class _class)
-            {
-                return M3Paths.Class;
-            }
-
-            @Override
-            public String visit(Association association)
-            {
-                return M3Paths.Association;
-            }
-
-            @Override
-            public String visit(Function function)
-            {
-                return M3Paths.Function;
-            }
-
-            @Override
-            public String visit(Measure measure)
-            {
-                return M3Paths.Measure;
-            }
-
-            @Override
-            public String visit(SectionIndex sectionIndex)
-            {
-                return null;
-            }
-
-            @Override
-            public String visit(Mapping mapping)
-            {
-                return null;
-            }
-
-            @Override
-            public String visit(PackageableRuntime packageableRuntime)
-            {
-                return null;
-            }
-
-            @Override
-            public String visit(PackageableConnection packageableConnection)
-            {
-                return null;
-            }
-
-            @Override
-            public String visit(DataElement dataElement)
-            {
-                return null;
-            }
-        });
+            return M3Paths.Class;
+        }
+        if (element instanceof Enumeration)
+        {
+            return M3Paths.Enumeration;
+        }
+        if (element instanceof Association)
+        {
+            return M3Paths.Association;
+        }
+        if (element instanceof Profile)
+        {
+            return M3Paths.Profile;
+        }
+        if (element instanceof Function)
+        {
+            return M3Paths.Function;
+        }
+        if (element instanceof Measure)
+        {
+            return M3Paths.Measure;
+        }
+        LOGGER.warn("Unhandled element type: {}", element.getClass());
+        return null;
     }
 
     @Override
     protected void forEachChild(PackageableElement element, Consumer<LegendDeclaration> consumer)
     {
-        super.forEachChild(element, consumer);
-        element.accept(new PackageableElementVisitor<Void>()
+        if (element instanceof Class)
         {
-            @Override
-            public Void visit(PackageableElement element)
+            Class _class = (Class) element;
+            _class.properties.forEach(p -> consumer.accept(getDeclaration(p)));
+            _class.qualifiedProperties.forEach(qp -> consumer.accept(getDeclaration(qp)));
+        }
+        else if (element instanceof Enumeration)
+        {
+            Enumeration _enum = (Enumeration) element;
+            String path = _enum.getPath();
+            _enum.values.forEach(value ->
             {
-                return null;
-            }
-
-            @Override
-            public Void visit(Profile profile)
-            {
-                return null;
-            }
-
-            @Override
-            public Void visit(Enumeration _enum)
-            {
-                String path = _enum.getPath();
-                _enum.values.forEach(value ->
+                if (isValidSourceInfo(value.sourceInformation))
                 {
-                    if (isValidSourceInfo(value.sourceInformation))
-                    {
-                        consumer.accept(LegendDeclaration.builder()
-                                .withIdentifier(value.value)
-                                .withClassifier(path)
-                                .withLocation(toLocation(value.sourceInformation))
-                                .build());
-                    }
-                });
-                return null;
-            }
-
-            @Override
-            public Void visit(Class _class)
-            {
-                _class.properties.forEach(p -> consumer.accept(getDeclaration(p)));
-                _class.qualifiedProperties.forEach(qp -> consumer.accept(getDeclaration(qp)));
-                return null;
-            }
-
-            @Override
-            public Void visit(Association association)
-            {
-                association.properties.forEach(p -> consumer.accept(getDeclaration(p)));
-                association.qualifiedProperties.forEach(qp -> consumer.accept(getDeclaration(qp)));
-                return null;
-            }
-
-            @Override
-            public Void visit(Function function)
-            {
-                return null;
-            }
-
-            @Override
-            public Void visit(Measure measure)
-            {
-                return null;
-            }
-
-            @Override
-            public Void visit(SectionIndex sectionIndex)
-            {
-                return null;
-            }
-
-            @Override
-            public Void visit(Mapping mapping)
-            {
-                return null;
-            }
-
-            @Override
-            public Void visit(PackageableRuntime packageableRuntime)
-            {
-                return null;
-            }
-
-            @Override
-            public Void visit(PackageableConnection packageableConnection)
-            {
-                return null;
-            }
-
-            @Override
-            public Void visit(DataElement dataElement)
-            {
-                return null;
-            }
-        });
+                    consumer.accept(LegendDeclaration.builder()
+                            .withIdentifier(value.value)
+                            .withClassifier(path)
+                            .withLocation(toLocation(value.sourceInformation))
+                            .build());
+                }
+            });
+        }
+        else if (element instanceof Association)
+        {
+            Association association = (Association) element;
+            association.properties.forEach(p -> consumer.accept(getDeclaration(p)));
+            association.qualifiedProperties.forEach(qp -> consumer.accept(getDeclaration(qp)));
+        }
     }
 
     private LegendDeclaration getDeclaration(Property property)

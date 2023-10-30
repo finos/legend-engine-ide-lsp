@@ -35,13 +35,13 @@ import java.util.function.Consumer;
 /**
  * Extension for the Relational grammar.
  */
-class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension
+public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalLSPGrammarExtension.class);
 
     private static final List<String> KEYWORDS = List.of("Database", "Schema", "Table", "View", "include", "Join", "Filter");
 
-    RelationalLSPGrammarExtension()
+    public RelationalLSPGrammarExtension()
     {
         super(RelationalGrammarParserExtension.NAME, new RelationalGrammarParserExtension());
     }

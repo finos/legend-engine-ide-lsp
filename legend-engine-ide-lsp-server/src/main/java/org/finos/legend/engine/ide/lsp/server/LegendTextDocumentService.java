@@ -251,65 +251,82 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<SemanticTokens> semanticTokensRange(SemanticTokensRangeParams params)
     {
-        return this.server.supplyPossiblyAsync(() -> getSemanticTokensRange(params));
+        return isLegendFile(params.getTextDocument()) ?
+                this.server.supplyPossiblyAsync(() -> getSemanticTokensRange(params)) :
+                CompletableFuture.completedFuture(new SemanticTokens(Collections.emptyList()));
     }
 
     private SemanticTokens getSemanticTokensRange(SemanticTokensRangeParams params)
     {
-        List<Integer> coordinates = new ArrayList<>();
-
+        String uri = params.getTextDocument().getUri();
+        GrammarSectionIndex sectionIndex;
         synchronized (this.docStates)
         {
-            DocumentState documentState = this.docStates.get(params.getTextDocument().getUri());
-            GrammarSectionIndex code = documentState.getSectionIndex();
-
-            GrammarSection section = code.getSection(0);
-
-            LegendLSPGrammarExtension extension = server.getGrammarLibrary().getExtension(section.getGrammar());
-
-            if (extension == null)
+            DocumentState state = this.docStates.get(uri);
+            if (state == null)
             {
-                LOGGER.warn("Could not get semantic tokens for {}: no extension for grammar {}", params.getTextDocument().getUri(), section.getGrammar());
-                return new SemanticTokens();
+                LOGGER.warn("No state for {}: cannot get symbols", uri);
+                this.server.logWarningToClient("Cannot get symbols for " + uri + ": not open in language server");
+                return new SemanticTokens(Collections.emptyList());
             }
+            sectionIndex = state.getSectionIndex();
+        }
 
-            List<String> keywords = new ArrayList<>();
-            extension.getKeywords().forEach(kw -> keywords.add(Pattern.quote(kw)));
-            if (keywords.isEmpty())
+        List<Integer> data = new ArrayList<>();
+        Range range = params.getRange();
+        int rangeStartLine = range.getStart().getLine();
+        int rangeEndLine = range.getEnd().getLine();
+        int previousTokenLine = 0;
+        for (GrammarSection section : sectionIndex.getSections())
+        {
+            if (section.getStartLine() > rangeEndLine)
             {
-                return new SemanticTokens();
+                // past the end of the range
+                break;
             }
-
-            try
+            if (section.getEndLine() >= rangeStartLine)
             {
-                Pattern keywordsRegex = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
-                int previousLineMatch = section.getStartLine();
-                for (int lineNum = 0; lineNum < (section.getEndLine() - section.getStartLine()); lineNum++)
+                LegendLSPGrammarExtension extension = this.server.getGrammarLibrary().getExtension(section.getGrammar());
+                if (extension == null)
                 {
-                    int previousCharMatch = 0;
-                    Matcher matcher = keywordsRegex.matcher(section.getLine(lineNum + section.getStartLine()));
-                    while (matcher.find())
+                    LOGGER.warn("Could not get semantic tokens for section of {}: no extension for grammar {}", uri, section.getGrammar());
+                }
+                else
+                {
+                    List<String> keywords = new ArrayList<>();
+                    extension.getKeywords().forEach(kw -> keywords.add(Pattern.quote(kw)));
+                    if (!keywords.isEmpty())
                     {
-                        int lineMatch = lineNum + previousLineMatch;
-                        int charMatch = matcher.start() - previousCharMatch;
-                        int length = matcher.end() - matcher.start();
-                        previousLineMatch = - lineNum;
-                        previousCharMatch = matcher.start();
-                        coordinates.add(lineMatch);
-                        coordinates.add(charMatch);
-                        coordinates.add(length);
-                        coordinates.add(0);
-                        coordinates.add(0);
+                        Pattern pattern = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
+                        int startLine = Math.max(section.getStartLine(), rangeStartLine);
+                        int endLine = Math.min(section.getEndLine(), rangeEndLine);
+                        for (int n = startLine; n <= endLine; n++)
+                        {
+                            int previousTokenStart = 0;
+                            String line = section.getLine(n);
+                            int startIndex = (n == rangeStartLine) ? range.getStart().getCharacter() : 0;
+                            int endIndex = (n == rangeEndLine) ? (range.getEnd().getCharacter() + 1) : line.length();
+                            Matcher matcher = pattern.matcher(line).region(startIndex, endIndex);
+                            while (matcher.find())
+                            {
+                                int tokenStart = matcher.start();
+                                int deltaLine = n - previousTokenLine;
+                                int deltaStart = tokenStart - previousTokenStart;
+                                int length = matcher.end() - tokenStart;
+                                data.add(deltaLine);
+                                data.add(deltaStart);
+                                data.add(length);
+                                data.add(0);
+                                data.add(0);
+                                previousTokenLine = n;
+                                previousTokenStart = tokenStart;
+                            }
+                        }
                     }
                 }
             }
-            catch (Exception e)
-            {
-                LOGGER.error("Error finding semantic tokens in {} section in {}", section.getGrammar(), params.getTextDocument().getUri(), e);
-                this.server.logErrorToClient("Error in finding semantic tokens in " + section.getGrammar() + " section in " + params.getTextDocument().getUri() + ":\n" + e);
-            }
         }
-        return new SemanticTokens(coordinates);
+        return new SemanticTokens(data);
     }
 
     private Range toRange(TextInterval interval)
@@ -416,4 +433,3 @@ class LegendTextDocumentService implements TextDocumentService
         return diagnosticSeverity;
     }
 }
-

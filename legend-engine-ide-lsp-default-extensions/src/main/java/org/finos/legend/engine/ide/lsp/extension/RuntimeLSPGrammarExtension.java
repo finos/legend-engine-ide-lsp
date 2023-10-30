@@ -24,11 +24,11 @@ import java.util.List;
 /**
  * Extension for the Runtime grammar.
  */
-class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
+public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
     private static final List<String> KEYWORDS = List.of("Runtime", "import");
 
-    RuntimeLSPGrammarExtension()
+    public RuntimeLSPGrammarExtension()
     {
         super(RuntimeParser.newInstance(PureGrammarParserExtensions.fromAvailableExtensions()));
     }
