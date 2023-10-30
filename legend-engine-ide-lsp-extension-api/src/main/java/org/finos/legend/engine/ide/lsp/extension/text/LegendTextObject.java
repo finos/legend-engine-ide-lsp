@@ -34,7 +34,7 @@ public abstract class LegendTextObject
      * be a sub-interval of the full location.
      *
      * @param location     object location (required)
-     * @param coreLocation "core" location (optional
+     * @param coreLocation "core" location (optional)
      */
     protected LegendTextObject(TextInterval location, TextInterval coreLocation)
     {
