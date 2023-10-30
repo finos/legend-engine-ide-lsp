@@ -14,12 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
-import org.eclipse.lsp4j.DocumentDiagnosticParams;
-import org.eclipse.lsp4j.DocumentDiagnosticReport;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
@@ -31,7 +27,6 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.finos.legend.engine.ide.lsp.extension.DefaultExtensionProvider;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
 import org.junit.jupiter.api.Assertions;
@@ -40,7 +35,6 @@ import org.junit.jupiter.api.function.Executable;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 
 public class TestLegendLanguageServer
@@ -157,124 +151,6 @@ public class TestLegendLanguageServer
                 IllegalArgumentException.class,
                 () -> LegendLanguageServer.builder().withInlineDSLs(ext1, ext2, () -> "ext1", ext3));
         Assertions.assertEquals("Multiple extensions named: \"ext1\"", e.getMessage());
-    }
-
-    @Test
-    public void testPureParsingError() throws ExecutionException, InterruptedException
-    {
-        LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
-        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
-        String uri = "file:///testPureParsingError.pure";
-        String code = "###Pure\n" +
-                "Class vscodelsp::test::Employee\n" +
-                "{\n" +
-                "             foobar Float[1];\n" +
-                "    hireDate : Date[1];\n" +
-                "    hireType : String[1];\n" +
-                "}";
-        server.initialize(new InitializeParams());
-        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
-
-        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-
-        Assertions.assertNotNull(documentDiagnosticReport);
-
-        Diagnostic diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
-
-        Assertions.assertEquals("no viable alternative at input 'foobarFloat'",diagnostic.getMessage());
-        Assertions.assertEquals("Parser",diagnostic.getSource());
-        Assertions.assertEquals(new Range(new Position(3, 20), new Position(3, 25)),diagnostic.getRange());
-        Assertions.assertEquals(DiagnosticSeverity.Error,diagnostic.getSeverity());
-    }
-
-    @Test
-    public void testPureParsingErrorNotLocalised()
-    {
-        LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
-        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
-        String uri = "file:///testPureParsingError.pure";
-        String code = "###Pure\n" +
-                "Class vscodelsp::test::Employee\n" +
-                "{\n" +
-                "             foobar: Float[ab];\n" +
-                "    hireDate : Date[1];\n" +
-                "    hireType : String[1];\n" +
-                "}";
-        server.initialize(new InitializeParams());
-        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
-
-        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        if (documentDiagnosticReport == null)
-        {
-            Assertions.fail();
-        }
-
-        Diagnostic diagnostic = null;
-        try
-        {
-            diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
-        }
-        catch (InterruptedException e)
-        {
-            Assertions.fail();
-        }
-        catch (ExecutionException e)
-        {
-            Assertions.fail();
-        }
-
-        Assertions.assertEquals("Cannot invoke \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$ToMultiplicityContext.getText()\" because the return value of \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$MultiplicityArgumentContext.toMultiplicity()\" is null",diagnostic.getMessage());
-        Assertions.assertEquals("Parser",diagnostic.getSource());
-        Assertions.assertEquals(new Range(new Position(0, 0), new Position(0, 0)),diagnostic.getRange());
-        Assertions.assertEquals(DiagnosticSeverity.Error,diagnostic.getSeverity());
-    }
-
-    @Test
-    public void testPureParsingNoError() throws ExecutionException, InterruptedException
-    {
-        LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
-        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
-        String uri = "file:///testPureParsingNoError.pure";
-        String code = "###Pure\n" +
-                "Class vscodelsp::test::Employee\n" +
-                "{\n" +
-                "    foobar: Float[1];\n" +
-                "    hireDate : Date[1];\n" +
-                "    hireType : String[1];\n" +
-                "}";
-        server.initialize(new InitializeParams());
-        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
-
-        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertTrue(documentDiagnosticReport.get().getLeft().getItems().isEmpty());
-    }
-
-    @Test
-    public void testPureParsingNoErrorEmptyCode() throws ExecutionException, InterruptedException
-    {
-        LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
-        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
-        String uri = "file:///testPureParsingNoErrorEmptyCode.pure";
-        String code = "###Pure";
-        server.initialize(new InitializeParams());
-        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
-
-        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertTrue(documentDiagnosticReport.get().getLeft().getItems().isEmpty());
-    }
-
-    @Test
-    public void testPureParsingNoErrorEmptyFile() throws ExecutionException, InterruptedException
-    {
-        LegendLSPGrammarExtension pureExtension = DefaultExtensionProvider.getDefaultExtensions().get(0);
-        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammar(pureExtension).build();
-        String uri = "file:///testPureParsingNoErrorEmptyFile.pure";
-        String code = "";
-        server.initialize(new InitializeParams());
-        server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri,"", 0, code)));
-
-        CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = server.getTextDocumentService().diagnostic(new DocumentDiagnosticParams(new TextDocumentIdentifier(uri)));
-        Assertions.assertTrue(documentDiagnosticReport.get().getLeft().getItems().isEmpty());
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)

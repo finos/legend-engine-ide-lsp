@@ -15,7 +15,9 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.pure.m3.navigation.M3Paths;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
@@ -76,6 +78,73 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         .withChild(LegendDeclaration.builder().withIdentifier("twoToOne").withClassifier(M3Paths.Property).withLocation(28, 3, 28, 40).build())
                         .build()
         );
+    }
+
+    @Test
+    public void testPureParsingError()
+    {
+        String code = "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "             foobar Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}";
+        LegendDiagnostic diagnostic = this.extension.getDiagnostics(newGrammarSection(code)).iterator().next();
+
+        Assertions.assertEquals("no viable alternative at input 'foobarFloat'",diagnostic.getMessage());
+        Assertions.assertEquals("Parser",diagnostic.getType());
+        Assertions.assertEquals(TextInterval.newInterval(3, 20, 3, 25),diagnostic.getLocation());
+        Assertions.assertEquals("Error",diagnostic.getSeverity());
+    }
+
+    @Test
+    public void testPureParsingErrorNotLocalised()
+    {
+        String code = "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "             foobar: Float[ab];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}";
+        LegendDiagnostic diagnostic = this.extension.getDiagnostics(newGrammarSection(code)).iterator().next();
+
+        Assertions.assertEquals("Cannot invoke \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$ToMultiplicityContext.getText()\" because the return value of \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$MultiplicityArgumentContext.toMultiplicity()\" is null",diagnostic.getMessage());
+        Assertions.assertEquals("Parser",diagnostic.getType());
+        Assertions.assertEquals(TextInterval.newInterval(0, 0, 0, 0),diagnostic.getLocation());
+        Assertions.assertEquals("Error",diagnostic.getSeverity());
+    }
+
+    @Test
+    public void testPureParsingNoError()
+    {
+        String code = "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    foobar: Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}";
+
+        Iterable<? extends LegendDiagnostic> diagnostics = this.extension.getDiagnostics(newGrammarSection(code));
+        Assertions.assertFalse(diagnostics.iterator().hasNext());
+    }
+
+    @Test
+    public void testPureParsingNoErrorEmptyCode()
+    {
+        String code = "###Pure";
+        Iterable<? extends LegendDiagnostic> diagnostics = this.extension.getDiagnostics(newGrammarSection(code));
+        Assertions.assertFalse(diagnostics.iterator().hasNext());
+    }
+
+    @Test
+    public void testPureParsingNoErrorEmptyFile()
+    {
+        String code = "";
+        Iterable<? extends LegendDiagnostic> diagnostics = this.extension.getDiagnostics(newGrammarSection(code));
+        Assertions.assertFalse(diagnostics.iterator().hasNext());
     }
 
     @Override

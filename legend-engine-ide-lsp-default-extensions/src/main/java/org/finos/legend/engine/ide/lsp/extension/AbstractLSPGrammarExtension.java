@@ -141,7 +141,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         {
             parse(toSectionSourceCode(section), e ->
             { }, new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions()));
-            return null;
+            return Set.of();
         }
         catch (Exception e)
         {
