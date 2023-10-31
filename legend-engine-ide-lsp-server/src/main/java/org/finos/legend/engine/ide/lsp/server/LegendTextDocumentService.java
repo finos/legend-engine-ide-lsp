@@ -116,7 +116,7 @@ class LegendTextDocumentService implements TextDocumentService
                     this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
                     return;
                 }
-                state.setVersion(doc.getVersion());
+
                 List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
                 if ((changes == null) || changes.isEmpty())
                 {
@@ -130,7 +130,7 @@ class LegendTextDocumentService implements TextDocumentService
                         LOGGER.warn(message);
                         this.server.logWarningToClient(message);
                     }
-                    state.setText(changes.get(0).getText());
+                    state.update(doc.getVersion(), changes.get(0).getText());
                     DocumentDiagnosticReport documentDiagnosticReport = getDiagnosticReport(new DocumentDiagnosticParams(doc));
                     try
                     {
@@ -148,30 +148,7 @@ class LegendTextDocumentService implements TextDocumentService
                     {
                         throw new RuntimeException(e);
                     }
-            LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
-            DocumentState state = this.docStates.get(uri);
-            if (state == null)
-            {
-                LOGGER.warn("Cannot process change for {}: no state", uri);
-                this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
-                return;
-            }
-
-            List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
-            if ((changes == null) || changes.isEmpty())
-            {
-                LOGGER.debug("No changes to {}", uri);
-                state.update(doc.getVersion());
-            }
-            else
-            {
-                if (changes.size() > 1)
-                {
-                    String message = "Expected at most one change, got " + changes.size() + "; processing only the first";
-                    LOGGER.warn(message);
-                    this.server.logWarningToClient(message);
                 }
-                state.update(doc.getVersion(), changes.get(0).getText());
             }
         }
     }
