@@ -17,7 +17,6 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.pure.m3.navigation.M3Paths;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
@@ -120,16 +119,14 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "    hireType : String[1];\n" +
                 "}";
 
-        Iterable<? extends LegendDiagnostic> diagnostics = this.extension.getDiagnostics(newGrammarSection(code));
-        Assertions.assertFalse(diagnostics.iterator().hasNext());
+        testDiagnostics(code);
     }
 
     @Test
     public void testPureParsingNoErrorEmptyCode()
     {
         String code = "###Pure";
-        Iterable<? extends LegendDiagnostic> diagnostics = this.extension.getDiagnostics(newGrammarSection(code));
-        Assertions.assertFalse(diagnostics.iterator().hasNext());
+        testDiagnostics(code);
     }
 
     @Test
