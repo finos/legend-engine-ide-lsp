@@ -223,12 +223,9 @@
                         <bannedDependencies>
                             <excludes>
                                 <exclude>commons-logging</exclude>
-                                <exclude>io.prometheus</exclude>
                                 <exclude>io.swagger</exclude>
                                 <exclude>io.zipkin</exclude>
-                                <exclude>io.zipkin.*</exclude>
                                 <exclude>javax.mail</exclude>
-                                <exclude>javax.ws.rs</exclude>
                                 <exclude>junit</exclude>
                                 <exclude>log4j</exclude>
                                 <exclude>org.antlr:antlr4</exclude>
@@ -347,10 +344,6 @@
                 <version>${legend.pure.version}</version>
                 <exclusions>
                     <exclusion>
-                        <groupId>io.prometheus</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
                         <groupId>junit</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
@@ -386,19 +379,11 @@
                 <version>${legend.engine.version}</version>
                 <exclusions>
                     <exclusion>
-                        <groupId>io.prometheus</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
                         <groupId>io.swagger</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
                     <exclusion>
                         <groupId>io.zipkin</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>io.zipkin.reporter2</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
                     <exclusion>
@@ -417,8 +402,57 @@
                         <groupId>org.pac4j</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-annotations</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-lang3</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-databind</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-core</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.pac4j</groupId>
+                        <artifactId>dropwizard-pac4j</artifactId>
+                    </exclusion>
                 </exclusions>
             </dependency>
+
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-shared-core</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-annotations</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.finos.legend.shared</groupId>
+                        <artifactId>legend-shared-pac4j-kerberos</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.pac4j</groupId>
+                        <artifactId>pac4j-core</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-language-pure-dsl-service</artifactId>

@@ -14,14 +14,20 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.DocumentDiagnosticParams;
+import org.eclipse.lsp4j.DocumentDiagnosticReport;
 import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.RelatedFullDocumentDiagnosticReport;
 import org.eclipse.lsp4j.SemanticTokens;
 import org.eclipse.lsp4j.SemanticTokensRangeParams;
 import org.eclipse.lsp4j.SymbolInformation;
@@ -32,6 +38,7 @@ import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
+import org.finos.legend.engine.ide.lsp.extension.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
@@ -99,30 +106,49 @@ class LegendTextDocumentService implements TextDocumentService
         String uri = doc.getUri();
         if (isLegendFile(uri))
         {
-            LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
-            DocumentState state = this.docStates.get(uri);
-            if (state == null)
+            synchronized (this.docStates)
             {
-                LOGGER.warn("Cannot process change for {}: no state", uri);
-                this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
-                return;
-            }
-
-            List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
-            if ((changes == null) || changes.isEmpty())
-            {
-                LOGGER.debug("No changes to {}", uri);
-                state.update(doc.getVersion());
-            }
-            else
-            {
-                if (changes.size() > 1)
+                LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
+                DocumentState state = this.docStates.get(uri);
+                if (state == null)
                 {
-                    String message = "Expected at most one change, got " + changes.size() + "; processing only the first";
-                    LOGGER.warn(message);
-                    this.server.logWarningToClient(message);
+                    LOGGER.warn("Cannot process change for {}: no state", uri);
+                    this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
+                    return;
                 }
-                state.update(doc.getVersion(), changes.get(0).getText());
+
+                List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
+                if ((changes == null) || changes.isEmpty())
+                {
+                    LOGGER.debug("No changes to {}", uri);
+                }
+                else
+                {
+                    if (changes.size() > 1)
+                    {
+                        String message = "Expected at most one change, got " + changes.size() + "; processing only the first";
+                        LOGGER.warn(message);
+                        this.server.logWarningToClient(message);
+                    }
+                    state.update(doc.getVersion(), changes.get(0).getText());
+                    DocumentDiagnosticReport documentDiagnosticReport = getDiagnosticReport(new DocumentDiagnosticParams(doc));
+                    try
+                    {
+                        if (!documentDiagnosticReport.getLeft().getItems().isEmpty())
+                        {
+                            Diagnostic diagnostic = documentDiagnosticReport.getLeft().getItems().get(0);
+                            server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of(diagnostic)));
+                        }
+                        else
+                        {
+                            server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of()));
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        throw new RuntimeException(e);
+                    }
+                }
             }
         }
     }
@@ -377,6 +403,80 @@ class LegendTextDocumentService implements TextDocumentService
         private GrammarSectionIndex parseText(String text)
         {
             return (text == null) ? null : GrammarSectionIndex.parse(text);
+        }
+    }
+
+    @Override
+    public CompletableFuture<DocumentDiagnosticReport> diagnostic(DocumentDiagnosticParams params)
+    {
+        return this.server.supplyPossiblyAsync(() -> getDiagnosticReport(params));
+    }
+
+    private DocumentDiagnosticReport getDiagnosticReport(DocumentDiagnosticParams params)
+    {
+        String uri = params.getTextDocument().getUri();
+        GrammarSectionIndex sectionIndex;
+        synchronized (this.docStates)
+        {
+            DocumentState state = this.docStates.get(uri);
+            if (state == null)
+            {
+                LOGGER.warn("Unknown docStates, returning empty diagnostic report.");
+                return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(Collections.emptyList()));
+            }
+            sectionIndex = state.getSectionIndex();
+        }
+        if (sectionIndex == null)
+        {
+            LOGGER.warn("No code section, returning empty diagnostic report.");
+            return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(Collections.emptyList()));
+        }
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        for (GrammarSection section : sectionIndex.getSections())
+        {
+            LegendLSPGrammarExtension extension = this.server.getGrammarLibrary().getExtension(section.getGrammar());
+            if (extension == null)
+            {
+                LOGGER.warn("No grammar extension detected, returning empty diagnostic report.");
+            }
+            else
+            {
+                extension.getDiagnostics(section).forEach(d -> diagnostics.add(toDiagnostic(d)));
+            }
+        }
+        return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics));
+    }
+
+    private Diagnostic toDiagnostic(LegendDiagnostic diagnostic)
+    {
+        return new Diagnostic(toRange(diagnostic.getLocation()), diagnostic.getMessage(), getDiagnosticSeverity(diagnostic), diagnostic.getType().toString());
+    }
+
+    private static DiagnosticSeverity getDiagnosticSeverity(LegendDiagnostic legendDiagnostic)
+    {
+        switch (legendDiagnostic.getSeverity())
+        {
+            case Warning:
+            {
+                return DiagnosticSeverity.Warning;
+            }
+            case Information:
+            {
+                return DiagnosticSeverity.Information;
+            }
+            case Hint:
+            {
+                return DiagnosticSeverity.Hint;
+            }
+            case Error:
+            {
+                return DiagnosticSeverity.Error;
+            }
+            default:
+            {
+                LOGGER.warn("Unknown diagnostic severity {}, defaulting to Error.", legendDiagnostic.getSeverity());
+                return DiagnosticSeverity.Error;
+            }
         }
     }
 }

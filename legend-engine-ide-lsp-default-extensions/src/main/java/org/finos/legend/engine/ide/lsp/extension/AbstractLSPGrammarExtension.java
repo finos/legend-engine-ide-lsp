@@ -25,10 +25,12 @@ import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.Set;
 import java.util.function.Consumer;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
@@ -45,7 +47,6 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             LOGGER.warn("Cannot handle grammar {} in extension {}", section.getGrammar(), getName());
             return Collections.emptyList();
         }
-
         MutableList<LegendDeclaration> declarations = Lists.mutable.empty();
         parse(toSectionSourceCode(section), element ->
         {
@@ -131,5 +132,36 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected static TextInterval toLocation(SourceInformation sourceInfo)
     {
         return TextInterval.newInterval(sourceInfo.startLine, sourceInfo.startColumn - 1, sourceInfo.endLine, sourceInfo.endColumn - 1);
+    }
+
+    @Override
+    public Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
+    {
+        try
+        {
+            parse(toSectionSourceCode(section), e ->
+            { }, new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions()));
+            return Set.of();
+        }
+        catch (EngineException e)
+        {
+            SourceInformation sourceInformation = e.getSourceInformation();
+            if (isValidSourceInfo(sourceInformation))
+            {
+                TextInterval textInterval = TextInterval.newInterval(sourceInformation.startLine, sourceInformation.startColumn - 1, sourceInformation.endLine, sourceInformation.endColumn);
+                LegendDiagnostic diagnostic = new LegendDiagnostic(textInterval, e.getMessage(), LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
+                return Set.of(diagnostic);
+            }
+            else
+            {
+                LOGGER.warn("Invalid parser information, no diagnostic returned.", e);
+                return Set.of();
+            }
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Unexpected exception, no diagnostic returned.", e);
+            return Set.of();
+        }
     }
 }

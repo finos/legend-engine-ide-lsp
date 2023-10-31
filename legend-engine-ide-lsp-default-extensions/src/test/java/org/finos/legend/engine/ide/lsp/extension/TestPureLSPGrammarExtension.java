@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Test;
 
@@ -76,6 +77,47 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         .withChild(LegendDeclaration.builder().withIdentifier("twoToOne").withClassifier(M3Paths.Property).withLocation(28, 3, 28, 40).build())
                         .build()
         );
+    }
+
+    @Test
+    public void testPureParsingError()
+    {
+        String code = "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "             foobar Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}";
+        LegendDiagnostic expectedDiagnostics = new LegendDiagnostic(TextInterval.newInterval(3, 20, 3, 25), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
+        this.testDiagnostics(code, expectedDiagnostics);
+    }
+
+    @Test
+    public void testPureParsingNoError()
+    {
+        String code = "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    foobar: Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}";
+
+        testDiagnostics(code);
+    }
+
+    @Test
+    public void testPureParsingNoErrorEmptyCode()
+    {
+        String code = "###Pure";
+        testDiagnostics(code);
+    }
+
+    @Test
+    public void testPureParsingNoErrorEmptyFile()
+    {
+        testDiagnostics("");
     }
 
     @Override

@@ -18,6 +18,7 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 
 import java.util.Collections;
+import java.util.Set;
 
 /**
  * An LSP extension representing a Legend Engine top level grammar.
@@ -33,5 +34,10 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Iterable<? extends LegendDeclaration> getDeclarations(GrammarSection section)
     {
         return Collections.emptyList();
+    }
+
+    default Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
+    {
+        return Set.of();
     }
 }
