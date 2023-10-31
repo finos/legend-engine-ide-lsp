@@ -134,7 +134,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         return TextInterval.newInterval(sourceInfo.startLine, sourceInfo.startColumn - 1, sourceInfo.endLine, sourceInfo.endColumn - 1);
     }
 
-    //@Override
+    @Override
     public Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
     {
         try
@@ -143,24 +143,25 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             { }, new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions()));
             return Set.of();
         }
+        catch (EngineException e)
+        {
+            SourceInformation sourceInformation = e.getSourceInformation();
+            if (isValidSourceInfo(sourceInformation))
+            {
+                TextInterval textInterval = TextInterval.newInterval(sourceInformation.startLine, sourceInformation.startColumn - 1, sourceInformation.endLine, sourceInformation.endColumn);
+                LegendDiagnostic diagnostic = new LegendDiagnostic(textInterval, e.getMessage(), LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
+                return Set.of(diagnostic);
+            }
+            else
+            {
+                LOGGER.warn("Invalid parser information, no diagnostic returned.", e);
+                return Set.of();
+            }
+        }
         catch (Exception e)
         {
-            String message = e.getMessage();
-            TextInterval textInterval;
-            try
-            {
-                SourceInformation sourceInformation = ((EngineException) e).getSourceInformation();
-                textInterval = TextInterval.newInterval(sourceInformation.startLine, sourceInformation.startColumn - 1, sourceInformation.endLine, sourceInformation.endColumn);
-            }
-            catch (Exception ex)
-            {
-                textInterval = TextInterval.newInterval(0,0,0,0);
-            }
-            LegendDiagnostic.Severity severity = LegendDiagnostic.Severity.Error;
-            LegendDiagnostic.Type type = LegendDiagnostic.Type.Parser;
-
-            LegendDiagnostic diagnostic = new LegendDiagnostic(textInterval, message, severity, type);
-            return Set.of(diagnostic);
+            LOGGER.error("Unexpected exception, no diagnostic returned.", e);
+            return Set.of();
         }
     }
 }

@@ -45,7 +45,6 @@ import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +54,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -120,13 +118,12 @@ class LegendTextDocumentService implements TextDocumentService
                         this.server.logWarningToClient(message);
                     }
                     state.setText(changes.get(0).getText());
-                    CompletableFuture<DocumentDiagnosticReport> documentDiagnosticReport = diagnostic(new DocumentDiagnosticParams(doc));
-
+                    DocumentDiagnosticReport documentDiagnosticReport = getDiagnosticReport(new DocumentDiagnosticParams(doc));
                     try
                     {
-                        if (!documentDiagnosticReport.get().getLeft().getItems().isEmpty())
+                        if (!documentDiagnosticReport.getLeft().getItems().isEmpty())
                         {
-                            Diagnostic diagnostic = documentDiagnosticReport.get().getLeft().getItems().get(0);
+                            Diagnostic diagnostic = documentDiagnosticReport.getLeft().getItems().get(0);
                             server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of(diagnostic)));
                         }
                         else
@@ -134,13 +131,9 @@ class LegendTextDocumentService implements TextDocumentService
                             server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of()));
                         }
                     }
-                    catch (InterruptedException e)
+                    catch (Exception e)
                     {
-                        server.logErrorToClient(e.toString());
-                    }
-                    catch (ExecutionException e)
-                    {
-                        server.logErrorToClient(e.toString());
+                        throw new RuntimeException(e);
                     }
                 }
             }
@@ -448,7 +441,7 @@ class LegendTextDocumentService implements TextDocumentService
             }
             default:
             {
-                LOGGER.warn("Unknown diagnostic severity, defaulting to Error.");
+                LOGGER.warn("Unknown diagnostic severity {}, defaulting to Error.", legendDiagnostic.getSeverity());
                 return DiagnosticSeverity.Error;
             }
         }

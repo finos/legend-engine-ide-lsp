@@ -94,21 +94,6 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Test
-    public void testPureParsingErrorNotLocalised()
-    {
-        String code = "###Pure\n" +
-                "Class vscodelsp::test::Employee\n" +
-                "{\n" +
-                "             foobar: Float[ab];\n" +
-                "    hireDate : Date[1];\n" +
-                "    hireType : String[1];\n" +
-                "}";
-
-        LegendDiagnostic expectedDiagnostics = new LegendDiagnostic(TextInterval.newInterval(0,0,0,0), "Cannot invoke \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$ToMultiplicityContext.getText()\" because the return value of \"org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar$MultiplicityArgumentContext.toMultiplicity()\" is null", LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
-        this.testDiagnostics(code, expectedDiagnostics);
-    }
-
-    @Test
     public void testPureParsingNoError()
     {
         String code = "###Pure\n" +
