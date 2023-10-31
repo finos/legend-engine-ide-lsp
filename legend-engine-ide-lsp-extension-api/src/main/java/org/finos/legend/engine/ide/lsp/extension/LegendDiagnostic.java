@@ -67,29 +67,29 @@ public class LegendDiagnostic
             return false;
         }
         LegendDiagnostic that = (LegendDiagnostic) other;
-        return (this.getLocation().equals(that.getLocation())) &&
-                (this.getMessage().equals(that.getMessage())) &&
-                (this.getType().equals(that.getType())) &&
-                (this.getSeverity().equals(that.getSeverity()));
+        return (this.type == that.type) &&
+                (this.severity == that.severity) &&
+                this.location.equals(that.location) &&
+                this.message.equals(that.message);
     }
 
     @Override
     public int hashCode()
     {
-        int hashCode = this.getLocation().hashCode();
-        hashCode = hashCode + 17 * this.getMessage().hashCode();
-        hashCode = hashCode + 17 * this.getType().hashCode();
-        hashCode = hashCode + 17 * this.getSeverity().hashCode();
+        int hashCode = this.location.hashCode();
+        hashCode = 17 * hashCode + this.message.hashCode();
+        hashCode = 17 * hashCode + this.type.hashCode();
+        hashCode = 17 * hashCode + this.severity.hashCode();
         return hashCode;
     }
 
     @Override
     public String toString()
     {
-        return "location = " + this.getLocation().toString() +
-                    ", message = " + this.getMessage() +
-                    ", type = " + this.getType() +
-                    ", severity = " + this.getSeverity();
+        return getClass().getSimpleName() + "{location = " + this.location.toCompactString() +
+                ", type = " + this.type +
+                ", severity = " + this.severity +
+                ", message=\"" + this.message + "\"}";
     }
 
     public enum Severity

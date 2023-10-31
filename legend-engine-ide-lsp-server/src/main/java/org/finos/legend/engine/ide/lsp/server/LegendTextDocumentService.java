@@ -383,43 +383,74 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<DocumentDiagnosticReport> diagnostic(DocumentDiagnosticParams params)
     {
+        return this.server.supplyPossiblyAsync(() -> getDiagnosticReport(params));
+    }
+
+    private DocumentDiagnosticReport getDiagnosticReport(DocumentDiagnosticParams params)
+    {
         String uri = params.getTextDocument().getUri();
-        GrammarSection section = this.docStates.get(uri).getSectionIndex().getSection(0);
-        GrammarSectionIndex parsed = (section.getText() == null) ? null : GrammarSectionIndex.parse(section.getText());
-        if (parsed == null)
+        GrammarSectionIndex sectionIndex;
+        synchronized (this.docStates)
         {
-            return CompletableFuture.completedFuture(new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(List.of())));
+            DocumentState state = this.docStates.get(uri);
+            if (state == null)
+            {
+                LOGGER.warn("Unknown docStates, returning empty diagnostic report.");
+                return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(Collections.emptyList()));
+            }
+            sectionIndex = state.getSectionIndex();
         }
-
-        Iterable<? extends LegendDiagnostic> legendDiagnostics = this.server.getGrammarLibrary().getExtension(section.getGrammar()).getDiagnostics(section);
-
-        List<Diagnostic> diagnostics = new ArrayList<>();
-        legendDiagnostics.forEach(legendDiagnostic ->
+        if (sectionIndex == null)
         {
-            DiagnosticSeverity diagnosticSeverity = getDiagnosticSeverity(legendDiagnostic);
-            Diagnostic diagnostic = new Diagnostic(this.toRange(legendDiagnostic.getLocation()), legendDiagnostic.getMessage(), diagnosticSeverity, legendDiagnostic.getType().toString());
-            diagnostics.add(diagnostic);
-        });
+            LOGGER.warn("No code section, returning empty diagnostic report.");
+            return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(Collections.emptyList()));
+        }
+        List<Diagnostic> diagnostics = new ArrayList<>();
+        for (GrammarSection section : sectionIndex.getSections())
+        {
+            LegendLSPGrammarExtension extension = this.server.getGrammarLibrary().getExtension(section.getGrammar());
+            if (extension == null)
+            {
+                LOGGER.warn("No grammar extension detected, returning empty diagnostic report.");
+            }
+            else
+            {
+                extension.getDiagnostics(section).forEach(d -> diagnostics.add(toDiagnostic(d)));
+            }
+        }
+        return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics));
+    }
 
-        return this.server.supplyPossiblyAsync(() -> new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics)));
+    private Diagnostic toDiagnostic(LegendDiagnostic diagnostic)
+    {
+        return new Diagnostic(toRange(diagnostic.getLocation()), diagnostic.getMessage(), getDiagnosticSeverity(diagnostic), diagnostic.getType().toString());
     }
 
     private static DiagnosticSeverity getDiagnosticSeverity(LegendDiagnostic legendDiagnostic)
     {
-        DiagnosticSeverity diagnosticSeverity = DiagnosticSeverity.Error;
-
-        if (legendDiagnostic.getSeverity().toString().equals("Warning"))
+        switch (legendDiagnostic.getSeverity())
         {
-            diagnosticSeverity = DiagnosticSeverity.Warning;
+            case Warning:
+            {
+                return DiagnosticSeverity.Warning;
+            }
+            case Information:
+            {
+                return DiagnosticSeverity.Information;
+            }
+            case Hint:
+            {
+                return DiagnosticSeverity.Hint;
+            }
+            case Error:
+            {
+                return DiagnosticSeverity.Error;
+            }
+            default:
+            {
+                LOGGER.warn("Unknown diagnostic severity, defaulting to Error.");
+                return DiagnosticSeverity.Error;
+            }
         }
-        else if (legendDiagnostic.getSeverity().toString().equals("Information"))
-        {
-            diagnosticSeverity = DiagnosticSeverity.Information;
-        }
-        else if (legendDiagnostic.getSeverity().toString().equals("Hint"))
-        {
-            diagnosticSeverity = DiagnosticSeverity.Hint;
-        }
-        return diagnosticSeverity;
     }
 }

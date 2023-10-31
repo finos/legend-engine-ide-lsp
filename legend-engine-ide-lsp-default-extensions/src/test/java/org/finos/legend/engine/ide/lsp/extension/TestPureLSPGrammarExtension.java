@@ -90,7 +90,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
                 "}";
-        LegendDiagnostic expectedDiagnostics = new LegendDiagnostic(TextInterval.newInterval(3,20,3,25), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
+        LegendDiagnostic expectedDiagnostics = new LegendDiagnostic(TextInterval.newInterval(3, 20, 3, 25), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
         this.testDiagnostics(code, expectedDiagnostics);
     }
 
@@ -135,9 +135,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     @Test
     public void testPureParsingNoErrorEmptyFile()
     {
-        String code = "";
-        Iterable<? extends LegendDiagnostic> diagnostics = this.extension.getDiagnostics(newGrammarSection(code));
-        Assertions.assertFalse(diagnostics.iterator().hasNext());
+        testDiagnostics("");
     }
 
     @Override
