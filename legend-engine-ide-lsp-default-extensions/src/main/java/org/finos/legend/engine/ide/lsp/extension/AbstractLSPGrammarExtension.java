@@ -17,6 +17,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceInformation;
@@ -149,7 +150,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             if (isValidSourceInfo(sourceInformation))
             {
                 TextInterval textInterval = TextInterval.newInterval(sourceInformation.startLine, sourceInformation.startColumn - 1, sourceInformation.endLine, sourceInformation.endColumn);
-                LegendDiagnostic diagnostic = new LegendDiagnostic(textInterval, e.getMessage(), LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
+                LegendDiagnostic diagnostic = LegendDiagnostic.newDiagnostic(textInterval, e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
                 return Set.of(diagnostic);
             }
             else

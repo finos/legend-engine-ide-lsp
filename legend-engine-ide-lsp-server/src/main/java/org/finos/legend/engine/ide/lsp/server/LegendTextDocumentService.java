@@ -33,26 +33,24 @@ import org.eclipse.lsp4j.SemanticTokensRangeParams;
 import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
-import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.TextDocumentService;
-import org.finos.legend.engine.ide.lsp.extension.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.ide.lsp.server.DocumentStates.DocumentState;
 import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,7 +60,7 @@ class LegendTextDocumentService implements TextDocumentService
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendTextDocumentService.class);
 
     private final LegendLanguageServer server;
-    private final Map<String, DocumentState> docStates = Collections.synchronizedMap(new HashMap<>());
+    private final DocumentStates docStates = new DocumentStates();
 
     LegendTextDocumentService(LegendLanguageServer server)
     {
@@ -75,26 +73,11 @@ class LegendTextDocumentService implements TextDocumentService
         this.server.checkReady();
         TextDocumentItem doc = params.getTextDocument();
         String uri = doc.getUri();
-        if (isLegendFile(uri))
+        LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
+        DocumentState state = this.docStates.newState(uri, doc.getVersion(), doc.getText());
+        if (state.getVersion() != doc.getVersion())
         {
-            synchronized (this.docStates)
-            {
-                LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
-                DocumentState state = new DocumentState(uri, doc.getVersion(), doc.getText());
-                DocumentState previous = this.docStates.put(uri, state);
-                if (previous != null)
-                {
-                    if (previous.getVersion() > state.getVersion())
-                    {
-                        LOGGER.warn("Previous document state for {} has more recent version ({} > {}): leaving in place", uri, previous.getVersion(), state.getVersion());
-                        this.docStates.put(uri, previous);
-                    }
-                    else
-                    {
-                        LOGGER.warn("Overwriting previous document state for {} at version {} with version {}", uri, previous.getVersion(), doc.getVersion());
-                    }
-                }
-            }
+            this.server.logWarningToClient("Tried to open " + uri + " version " + doc.getVersion() + ", but found other version: " + state.getVersion());
         }
     }
 
@@ -104,51 +87,39 @@ class LegendTextDocumentService implements TextDocumentService
         this.server.checkReady();
         VersionedTextDocumentIdentifier doc = params.getTextDocument();
         String uri = doc.getUri();
-        if (isLegendFile(uri))
+        LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
+        DocumentState state = this.docStates.getState(uri);
+        if (state == null)
         {
-            synchronized (this.docStates)
-            {
-                LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
-                DocumentState state = this.docStates.get(uri);
-                if (state == null)
-                {
-                    LOGGER.warn("Cannot process change for {}: no state", uri);
-                    this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
-                    return;
-                }
+            LOGGER.warn("Cannot process change for {}: no state", uri);
+            this.server.logWarningToClient("Cannot process change for " + uri + ": not open in language server");
+            return;
+        }
 
-                List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
-                if ((changes == null) || changes.isEmpty())
-                {
-                    LOGGER.debug("No changes to {}", uri);
-                }
-                else
-                {
-                    if (changes.size() > 1)
-                    {
-                        String message = "Expected at most one change, got " + changes.size() + "; processing only the first";
-                        LOGGER.warn(message);
-                        this.server.logWarningToClient(message);
-                    }
-                    state.update(doc.getVersion(), changes.get(0).getText());
-                    DocumentDiagnosticReport documentDiagnosticReport = getDiagnosticReport(new DocumentDiagnosticParams(doc));
-                    try
-                    {
-                        if (!documentDiagnosticReport.getLeft().getItems().isEmpty())
-                        {
-                            Diagnostic diagnostic = documentDiagnosticReport.getLeft().getItems().get(0);
-                            server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of(diagnostic)));
-                        }
-                        else
-                        {
-                            server.getLanguageClient().publishDiagnostics(new PublishDiagnosticsParams(uri, List.of()));
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        throw new RuntimeException(e);
-                    }
-                }
+        List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
+        if ((changes == null) || changes.isEmpty())
+        {
+            LOGGER.debug("No changes to {}", uri);
+            state.update(doc.getVersion());
+            return;
+        }
+
+        if (changes.size() > 1)
+        {
+            String message = "Expected at most one change to " + uri + ", got " + changes.size() + "; processing only the first";
+            LOGGER.warn(message);
+            this.server.logWarningToClient(message);
+        }
+        if (state.update(doc.getVersion(), changes.get(0).getText()))
+        {
+            try
+            {
+                publishDiagnosticsToClient(state);
+            }
+            catch (Exception e)
+            {
+                LOGGER.error("Error publishing diagnostics for {} to client", uri, e);
+                this.server.logErrorToClient("Error publishing diagnostics for " + uri + " to client: see server log for more details");
             }
         }
     }
@@ -158,11 +129,8 @@ class LegendTextDocumentService implements TextDocumentService
     {
         this.server.checkReady();
         String uri = params.getTextDocument().getUri();
-        if (isLegendFile(uri))
-        {
-            LOGGER.debug("Closed {}", uri);
-            this.docStates.remove(uri);
-        }
+        LOGGER.debug("Closed {}", uri);
+        this.docStates.removeState(uri);
     }
 
     @Override
@@ -170,37 +138,33 @@ class LegendTextDocumentService implements TextDocumentService
     {
         this.server.checkReady();
         String uri = params.getTextDocument().getUri();
-        if (isLegendFile(uri))
+        LOGGER.debug("Saved {}", uri);
+        DocumentState state = this.docStates.getState(uri);
+        if (state == null)
         {
-            LOGGER.debug("Saved {}", uri);
-            DocumentState state = this.docStates.get(uri);
-            if (state == null)
-            {
-                LOGGER.warn("Cannot process save for {}: no state", uri);
-                this.server.logWarningToClient("Cannot process save for " + uri + ": not open in language server");
-                return;
-            }
-            String text = params.getText();
-            if (text != null)
-            {
-                state.update(text);
-            }
+            LOGGER.warn("Cannot process save for {}: no state", uri);
+            this.server.logWarningToClient("Cannot process save for " + uri + ": not open in language server");
+            return;
+        }
+
+        String text = params.getText();
+        if (text != null)
+        {
+            state.update(text);
         }
     }
 
     @Override
     public CompletableFuture<List<Either<SymbolInformation, DocumentSymbol>>> documentSymbol(DocumentSymbolParams params)
     {
-        return isLegendFile(params.getTextDocument()) ?
-                this.server.supplyPossiblyAsync(() -> getDocumentSymbols(params)) :
-                CompletableFuture.completedFuture(Collections.emptyList());
+        return this.server.supplyPossiblyAsync(() -> getDocumentSymbols(params));
     }
 
     private List<Either<SymbolInformation, DocumentSymbol>> getDocumentSymbols(DocumentSymbolParams params)
     {
         this.server.checkReady();
         String uri = params.getTextDocument().getUri();
-        DocumentState state = this.docStates.get(uri);
+        DocumentState state = this.docStates.getState(uri);
         if (state == null)
         {
             LOGGER.warn("No state for {}: cannot get symbols", uri);
@@ -216,29 +180,25 @@ class LegendTextDocumentService implements TextDocumentService
             return Collections.emptyList();
         }
 
-        LegendLSPGrammarLibrary grammarLibrary = this.server.getGrammarLibrary();
         List<Either<SymbolInformation, DocumentSymbol>> results = new ArrayList<>();
-        sectionIndex.getSections().forEach(section ->
+        sectionIndex.forEachSection(section ->
         {
             String grammar = section.getGrammar();
-            LegendLSPGrammarExtension extension = grammarLibrary.getExtension(grammar);
+            LegendLSPGrammarExtension extension = this.server.getGrammarExtension(grammar);
             if (extension == null)
             {
-                String message = "Cannot find extension for grammar: " + grammar;
-                LOGGER.warn(message);
-                this.server.logWarningToClient(message);
+                LOGGER.warn("Could not get symbols for section of {}: no extension for grammar {}", uri, grammar);
+                return;
             }
-            else
+
+            LOGGER.debug("Getting symbols for section \"{}\" of {}", grammar, uri);
+            extension.getDeclarations(section).forEach(declaration ->
             {
-                LOGGER.debug("Getting symbols for section \"{}\" of {}", grammar, uri);
-                extension.getDeclarations(section).forEach(declaration ->
-                {
-                    Range range = toRange(declaration.getLocation());
-                    Range selectionRange = declaration.hasCoreLocation() ? toRange(declaration.getCoreLocation()) : range;
-                    DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
-                    results.add(Either.forRight(symbol));
-                });
-            }
+                Range range = toRange(declaration.getLocation());
+                Range selectionRange = declaration.hasCoreLocation() ? toRange(declaration.getCoreLocation()) : range;
+                DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
+                results.add(Either.forRight(symbol));
+            });
         });
         return results;
     }
@@ -246,15 +206,13 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<SemanticTokens> semanticTokensRange(SemanticTokensRangeParams params)
     {
-        return isLegendFile(params.getTextDocument()) ?
-                this.server.supplyPossiblyAsync(() -> getSemanticTokensRange(params)) :
-                CompletableFuture.completedFuture(new SemanticTokens(Collections.emptyList()));
+        return this.server.supplyPossiblyAsync(() -> getSemanticTokensRange(params));
     }
 
     private SemanticTokens getSemanticTokensRange(SemanticTokensRangeParams params)
     {
         String uri = params.getTextDocument().getUri();
-        DocumentState state = this.docStates.get(uri);
+        DocumentState state = this.docStates.getState(uri);
         if (state == null)
         {
             LOGGER.warn("No state for {}: cannot get symbols", uri);
@@ -284,7 +242,7 @@ class LegendTextDocumentService implements TextDocumentService
             }
             if (section.getEndLine() >= rangeStartLine)
             {
-                LegendLSPGrammarExtension extension = this.server.getGrammarLibrary().getExtension(section.getGrammar());
+                LegendLSPGrammarExtension extension = this.server.getGrammarExtension(section.getGrammar());
                 if (extension == null)
                 {
                     LOGGER.warn("Could not get semantic tokens for section of {}: no extension for grammar {}", uri, section.getGrammar());
@@ -327,85 +285,6 @@ class LegendTextDocumentService implements TextDocumentService
         return new SemanticTokens(data);
     }
 
-    private Range toRange(TextInterval interval)
-    {
-        return new Range(toPosition(interval.getStart()), toPosition(interval.getEnd()));
-    }
-
-    private Position toPosition(TextPosition position)
-    {
-        return new Position(position.getLine(), position.getColumn());
-    }
-
-    private boolean isLegendFile(TextDocumentIdentifier documentId)
-    {
-        return isLegendFile(documentId.getUri());
-    }
-
-    private boolean isLegendFile(String uri)
-    {
-        return (uri != null) && uri.endsWith(".pure");
-    }
-
-    private static class DocumentState
-    {
-        private final String uri;
-        private int version;
-        private GrammarSectionIndex sectionIndex;
-
-        private DocumentState(String uri, int version, String text)
-        {
-            this.uri = uri;
-            this.version = version;
-            this.sectionIndex = parseText(text);
-        }
-
-        synchronized void update(int version)
-        {
-            if (version < this.version)
-            {
-                LOGGER.warn("Trying to update {} from version {} to {}", this.uri, this.version, version);
-                return;
-            }
-            this.version = version;
-        }
-
-        synchronized void update(String text)
-        {
-            this.sectionIndex = parseText(text);
-        }
-
-        synchronized void update(int version, String text)
-        {
-            if (version < this.version)
-            {
-                LOGGER.warn("Trying to update {} from version {} to {}: update rejected", this.uri, this.version, version);
-                return;
-            }
-            if (version == this.version)
-            {
-                LOGGER.warn("Trying to update {} from version {} to {}", this.uri, this.version, version);
-            }
-            this.version = version;
-            this.sectionIndex = parseText(text);
-        }
-
-        synchronized int getVersion()
-        {
-            return this.version;
-        }
-
-        synchronized GrammarSectionIndex getSectionIndex()
-        {
-            return this.sectionIndex;
-        }
-
-        private GrammarSectionIndex parseText(String text)
-        {
-            return (text == null) ? null : GrammarSectionIndex.parse(text);
-        }
-    }
-
     @Override
     public CompletableFuture<DocumentDiagnosticReport> diagnostic(DocumentDiagnosticParams params)
     {
@@ -414,47 +293,67 @@ class LegendTextDocumentService implements TextDocumentService
 
     private DocumentDiagnosticReport getDiagnosticReport(DocumentDiagnosticParams params)
     {
-        String uri = params.getTextDocument().getUri();
-        GrammarSectionIndex sectionIndex;
-        synchronized (this.docStates)
+        this.server.checkReady();
+        List<Diagnostic> diagnostics = getDiagnostics(params);
+        return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics));
+    }
+
+    private void publishDiagnosticsToClient(DocumentState state)
+    {
+        LanguageClient client = this.server.getLanguageClient();
+        if (client != null)
         {
-            DocumentState state = this.docStates.get(uri);
-            if (state == null)
-            {
-                LOGGER.warn("Unknown docStates, returning empty diagnostic report.");
-                return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(Collections.emptyList()));
-            }
-            sectionIndex = state.getSectionIndex();
+            List<Diagnostic> diagnostics = getDiagnostics(state);
+            client.publishDiagnostics(new PublishDiagnosticsParams(state.getUri(), diagnostics));
         }
+    }
+
+    private List<Diagnostic> getDiagnostics(DocumentDiagnosticParams params)
+    {
+        String uri = params.getTextDocument().getUri();
+        DocumentState state = this.docStates.getState(uri);
+        if (state == null)
+        {
+            LOGGER.warn("No state for {}: cannot get diagnostics", uri);
+            this.server.logWarningToClient("Cannot get diagnostics for " + uri + ": not open in language server");
+            return Collections.emptyList();
+        }
+
+        return getDiagnostics(state);
+    }
+
+    private List<Diagnostic> getDiagnostics(DocumentState state)
+    {
+        GrammarSectionIndex sectionIndex = state.getSectionIndex();
         if (sectionIndex == null)
         {
-            LOGGER.warn("No code section, returning empty diagnostic report.");
-            return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(Collections.emptyList()));
+            LOGGER.warn("No text for {}: cannot get diagnostics", state.getUri());
+            this.server.logWarningToClient("Cannot get diagnostics for " + state.getUri() + ": no text in language server");
+            return Collections.emptyList();
         }
+
         List<Diagnostic> diagnostics = new ArrayList<>();
-        for (GrammarSection section : sectionIndex.getSections())
+        sectionIndex.forEachSection(section ->
         {
-            LegendLSPGrammarExtension extension = this.server.getGrammarLibrary().getExtension(section.getGrammar());
+            LegendLSPGrammarExtension extension = this.server.getGrammarExtension(section.getGrammar());
             if (extension == null)
             {
-                LOGGER.warn("No grammar extension detected, returning empty diagnostic report.");
+                LOGGER.warn("Could not get diagnostics for section of {}: no extension for grammar {}", state.getUri(), section.getGrammar());
+                return;
             }
-            else
-            {
-                extension.getDiagnostics(section).forEach(d -> diagnostics.add(toDiagnostic(d)));
-            }
-        }
-        return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics));
+            extension.getDiagnostics(section).forEach(d -> diagnostics.add(toDiagnostic(d)));
+        });
+        return diagnostics;
     }
 
     private Diagnostic toDiagnostic(LegendDiagnostic diagnostic)
     {
-        return new Diagnostic(toRange(diagnostic.getLocation()), diagnostic.getMessage(), getDiagnosticSeverity(diagnostic), diagnostic.getType().toString());
+        return new Diagnostic(toRange(diagnostic.getLocation()), diagnostic.getMessage(), toDiagnosticSeverity(diagnostic.getKind()), diagnostic.getType().toString());
     }
 
-    private static DiagnosticSeverity getDiagnosticSeverity(LegendDiagnostic legendDiagnostic)
+    private DiagnosticSeverity toDiagnosticSeverity(LegendDiagnostic.Kind kind)
     {
-        switch (legendDiagnostic.getSeverity())
+        switch (kind)
         {
             case Warning:
             {
@@ -474,9 +373,19 @@ class LegendTextDocumentService implements TextDocumentService
             }
             default:
             {
-                LOGGER.warn("Unknown diagnostic severity {}, defaulting to Error.", legendDiagnostic.getSeverity());
+                LOGGER.warn("Unknown diagnostic severity {}, defaulting to Error.", kind);
                 return DiagnosticSeverity.Error;
             }
         }
+    }
+
+    private Range toRange(TextInterval interval)
+    {
+        return new Range(toPosition(interval.getStart()), toPosition(interval.getEnd()));
+    }
+
+    private Position toPosition(TextPosition position)
+    {
+        return new Position(position.getLine(), position.getColumn());
     }
 }

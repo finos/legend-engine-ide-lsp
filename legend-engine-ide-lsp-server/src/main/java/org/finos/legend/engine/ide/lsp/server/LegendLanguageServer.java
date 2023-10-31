@@ -265,6 +265,12 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return this.grammars;
     }
 
+    LegendLSPGrammarExtension getGrammarExtension(String grammar)
+    {
+        checkNotShutDown();
+        return this.grammars.getExtension(grammar);
+    }
+
     LegendLSPInlineDSLLibrary getInlineDSLLibrary()
     {
         checkNotShutDown();

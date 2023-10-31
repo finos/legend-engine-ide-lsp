@@ -15,10 +15,10 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 
 import java.util.Collections;
-import java.util.Set;
 
 /**
  * An LSP extension representing a Legend Engine top level grammar.
@@ -36,8 +36,14 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
         return Collections.emptyList();
     }
 
+    /**
+     * Return the Legend diagnostics for the given section.
+     *
+     * @param section grammar section
+     * @return Legend diagnostics
+     */
     default Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
     {
-        return Set.of();
+        return Collections.emptyList();
     }
 }

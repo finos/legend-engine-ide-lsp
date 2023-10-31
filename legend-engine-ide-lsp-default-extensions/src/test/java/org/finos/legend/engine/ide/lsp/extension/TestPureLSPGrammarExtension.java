@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Test;
@@ -89,7 +90,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
                 "}";
-        LegendDiagnostic expectedDiagnostics = new LegendDiagnostic(TextInterval.newInterval(3, 20, 3, 25), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Severity.Error, LegendDiagnostic.Type.Parser);
+        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 20, 3, 25), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
         this.testDiagnostics(code, expectedDiagnostics);
     }
 
