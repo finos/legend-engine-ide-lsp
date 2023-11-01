@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -100,6 +101,16 @@ public class GrammarSectionIndex
     public List<GrammarSection> getSections()
     {
         return this.sections;
+    }
+
+    /**
+     * Applies the given consumer to each section in order. Equivalent to {@code getSections.forEach(consumer)}.
+     *
+     * @param consumer section consumer
+     */
+    public void forEachSection(Consumer<? super GrammarSection> consumer)
+    {
+        this.sections.forEach(consumer);
     }
 
     /**

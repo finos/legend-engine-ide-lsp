@@ -24,7 +24,7 @@ import java.util.Objects;
  * additionally have a "core" location, which is a sub-interval that indicates the most interesting part. For example,
  * if the object is a function definition, the core location could be the location of the function name.</p>
  */
-public abstract class LegendTextObject
+public abstract class LegendTextObject implements Locatable
 {
     private final TextInterval location;
     private final TextInterval coreLocation;
@@ -61,6 +61,7 @@ public abstract class LegendTextObject
      *
      * @return location
      */
+    @Override
     public TextInterval getLocation()
     {
         return this.location;
