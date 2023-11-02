@@ -16,7 +16,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
-import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 
 import java.util.Collections;
 
@@ -28,10 +28,10 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     /**
      * Return the Legend declarations for the given section.
      *
-     * @param section grammar section
+     * @param section grammar section state
      * @return Legend declarations
      */
-    default Iterable<? extends LegendDeclaration> getDeclarations(GrammarSection section)
+    default Iterable<? extends LegendDeclaration> getDeclarations(SectionState section)
     {
         return Collections.emptyList();
     }
@@ -39,10 +39,10 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     /**
      * Return the Legend diagnostics for the given section.
      *
-     * @param section grammar section
+     * @param section grammar section state
      * @return Legend diagnostics
      */
-    default Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
+    default Iterable<? extends LegendDiagnostic> getDiagnostics(SectionState section)
     {
         return Collections.emptyList();
     }

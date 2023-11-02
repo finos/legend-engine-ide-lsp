@@ -18,6 +18,7 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceInformation;
@@ -30,34 +31,65 @@ import org.finos.legend.engine.shared.core.operational.errorManagement.EngineExc
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.Set;
 import java.util.function.Consumer;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLSPGrammarExtension.class);
 
-    private final PureGrammarParserContext context = new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions());
-
     @Override
-    public Iterable<? extends LegendDeclaration> getDeclarations(GrammarSection section)
+    public Iterable<? extends LegendDeclaration> getDeclarations(SectionState sectionState)
     {
-        if (!getName().equals(section.getGrammar()))
-        {
-            LOGGER.warn("Cannot handle grammar {} in extension {}", section.getGrammar(), getName());
-            return Collections.emptyList();
-        }
         MutableList<LegendDeclaration> declarations = Lists.mutable.empty();
-        parse(toSectionSourceCode(section), element ->
+        parse(toSectionSourceCode(sectionState), element ->
         {
             LegendDeclaration declaration = getDeclaration(element);
             if (declaration != null)
             {
                 declarations.add(declaration);
             }
-        }, this.context);
+        });
         return declarations;
+    }
+
+    @Override
+    public Iterable<? extends LegendDiagnostic> getDiagnostics(SectionState sectionState)
+    {
+        MutableList<LegendDiagnostic> diagnostics = Lists.mutable.empty();
+        collectParserDiagnostics(sectionState, diagnostics::add);
+        return diagnostics;
+    }
+
+    private void collectParserDiagnostics(SectionState sectionState, Consumer<? super LegendDiagnostic> consumer)
+    {
+        try
+        {
+            parse(toSectionSourceCode(sectionState), e ->
+            {
+                // do nothing
+            });
+        }
+        catch (EngineException e)
+        {
+            SourceInformation sourceInfo = e.getSourceInformation();
+            if (isValidSourceInfo(sourceInfo))
+            {
+                consumer.accept(LegendDiagnostic.newDiagnostic(toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser));
+            }
+            else
+            {
+                LOGGER.warn("Invalid source information in parser exception in section {} of {}: cannot create diagnostic", sectionState.getSectionNumber(), sectionState.getDocumentState().getDocumentId(), e);
+            }
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Unexpected exception when parsing section {} of {}: cannot create diagnostic", sectionState.getSectionNumber(), sectionState.getDocumentState().getDocumentId(), e);
+        }
+    }
+
+    protected void parse(SectionSourceCode section, Consumer<PackageableElement> elementConsumer)
+    {
+        parse(section, elementConsumer, new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions()));
     }
 
     protected abstract void parse(SectionSourceCode section, Consumer<PackageableElement> elementConsumer, PureGrammarParserContext pureGrammarParserContext);
@@ -93,9 +125,10 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         // Do nothing by default
     }
 
-    private SectionSourceCode toSectionSourceCode(GrammarSection section)
+    private SectionSourceCode toSectionSourceCode(SectionState sectionState)
     {
-        String sourceId = "section_" + section.getGrammar() + ".pure";
+        String sourceId = sectionState.getDocumentState().getDocumentId();
+        GrammarSection section = sectionState.getSection();
         SourceInformation sectionSourceInfo = new SourceInformation(sourceId, section.getStartLine(), 0, section.getEndLine(), section.getLineLength(section.getEndLine()));
         ParseTreeWalkerSourceInformation walkerSourceInfo = new ParseTreeWalkerSourceInformation.Builder(sourceId, section.getStartLine(), 0).build();
         return new SectionSourceCode(section.getText(true), section.getGrammar(), sectionSourceInfo, walkerSourceInfo);
@@ -133,36 +166,5 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected static TextInterval toLocation(SourceInformation sourceInfo)
     {
         return TextInterval.newInterval(sourceInfo.startLine, sourceInfo.startColumn - 1, sourceInfo.endLine, sourceInfo.endColumn - 1);
-    }
-
-    @Override
-    public Iterable<? extends LegendDiagnostic> getDiagnostics(GrammarSection section)
-    {
-        try
-        {
-            parse(toSectionSourceCode(section), e ->
-            { }, new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions()));
-            return Set.of();
-        }
-        catch (EngineException e)
-        {
-            SourceInformation sourceInformation = e.getSourceInformation();
-            if (isValidSourceInfo(sourceInformation))
-            {
-                TextInterval textInterval = TextInterval.newInterval(sourceInformation.startLine, sourceInformation.startColumn - 1, sourceInformation.endLine, sourceInformation.endColumn);
-                LegendDiagnostic diagnostic = LegendDiagnostic.newDiagnostic(textInterval, e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
-                return Set.of(diagnostic);
-            }
-            else
-            {
-                LOGGER.warn("Invalid parser information, no diagnostic returned.", e);
-                return Set.of();
-            }
-        }
-        catch (Exception e)
-        {
-            LOGGER.error("Unexpected exception, no diagnostic returned.", e);
-            return Set.of();
-        }
     }
 }
