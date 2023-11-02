@@ -53,7 +53,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                 "   }\n" +
                 ")";
-        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 20, 3, 25), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
+        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 35, 5, 48), "Unexpected token 'EmployeeTable'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
         this.testDiagnostics(code, expectedDiagnostics);
     }
 

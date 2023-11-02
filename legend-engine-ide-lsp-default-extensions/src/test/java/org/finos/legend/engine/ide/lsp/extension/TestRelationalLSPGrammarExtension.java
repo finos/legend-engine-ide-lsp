@@ -82,7 +82,7 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 "   Join JoinEmployeeToemployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
                 ")";
 
-        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 35, 5, 48), "Unexpected token 'EmployeeTable'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
+        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(4, 3, 4, 8), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
         this.testDiagnostics(code, expectedDiagnostics);
     }
 
