@@ -60,7 +60,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     @Test
     public void testMappingParsingNoError()
     {
-        String code = "###Mapping\n"+
+        String code = "###Mapping\n" +
                 "Mapping vscodelsp::test::EmployeeMapping\n" +
                 "(\n" +
                 "   Employee[emp] : Relational\n" +
