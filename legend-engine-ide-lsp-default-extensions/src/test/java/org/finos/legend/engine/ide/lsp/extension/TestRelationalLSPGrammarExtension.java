@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.junit.jupiter.api.Test;
 
@@ -63,6 +65,55 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                                 .build())
                         .build()
         );
+    }
+
+
+    @Test
+    public void testRelationalParsingError()
+    {
+        String code = "###Relational\n" +
+                "Database vscodelsp::test::EmployeeDatabase\n" +
+                "(\n" +
+                "   Table EmployeeTable(id INT PRIMARY KEY, hireDate DATE, hireType VARCHAR(10), fteFactor DOUBLE \n" +
+                "   Table EmployeeDetailsTable(id INT PRIMARY KEY, birthDate DATE, yearsOfExperience DOUBLE)\n" +
+                "   Table FirmTable(firmName VARCHAR(100) PRIMARY KEY, employeeId INT PRIMARY KEY)\n" +
+                "\n" +
+                "   Join JoinEmployeeToFirm(EmployeeTable.id = FirmTable.employeeId)\n" +
+                "   Join JoinEmployeeToemployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
+                ")";
+
+        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(4, 3, 4, 8), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
+        this.testDiagnostics(code, expectedDiagnostics);
+    }
+
+    @Test
+    public void testRelationalParsingNoError()
+    {
+        String code = "###Relational\n" +
+                "Database vscodelsp::test::EmployeeDatabase\n" +
+                "(\n" +
+                "   Table EmployeeTable(id INT PRIMARY KEY, hireDate DATE, hireType VARCHAR(10), fteFactor DOUBLE)\n" +
+                "   Table EmployeeDetailsTable(id INT PRIMARY KEY, birthDate DATE, yearsOfExperience DOUBLE)\n" +
+                "   Table FirmTable(firmName VARCHAR(100) PRIMARY KEY, employeeId INT PRIMARY KEY)\n" +
+                "\n" +
+                "   Join JoinEmployeeToFirm(EmployeeTable.id = FirmTable.employeeId)\n" +
+                "   Join JoinEmployeeToemployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
+                ")";
+
+        testDiagnostics(code);
+    }
+
+    @Test
+    public void testRelationalParsingNoErrorEmptyCode()
+    {
+        String code = "###Relational";
+        testDiagnostics(code);
+    }
+
+    @Test
+    public void testRelationalParsingNoErrorEmptyFile()
+    {
+        testDiagnostics("");
     }
 
     @Override

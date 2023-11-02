@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.junit.jupiter.api.Test;
 
 public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
@@ -36,6 +38,52 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "   )\n",
                 LegendDeclaration.builder().withIdentifier("test::mapping::TestMapping").withClassifier("meta::pure::mapping::Mapping").withLocation(3, 0, 5, 3).build()
         );
+    }
+
+
+    @Test
+    public void testMappingParsingError()
+    {
+        String code = "###Mapping\n" +
+            "Mapping vscodelsp::test::EmployeeMapping\n" +
+                "(\n" +
+                "   Employee[emp] : Relational\n" +
+                "   {\n" +
+                "      hireDate   [EmployeeDatabase]EmployeeTable.hireDate,\n" +
+                "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
+                "   }\n" +
+                ")";
+        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 35, 5, 48), "Unexpected token 'EmployeeTable'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
+        this.testDiagnostics(code, expectedDiagnostics);
+    }
+
+    @Test
+    public void testMappingParsingNoError()
+    {
+        String code = "###Mapping\n" +
+                "Mapping vscodelsp::test::EmployeeMapping\n" +
+                "(\n" +
+                "   Employee[emp] : Relational\n" +
+                "   {\n" +
+                "      hireDate : [EmployeeDatabase]EmployeeTable.hireDate,\n" +
+                "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
+                "   }\n" +
+                ")";
+
+        testDiagnostics(code);
+    }
+
+    @Test
+    public void testMappingParsingNoErrorEmptyCode()
+    {
+        String code = "###Mapping";
+        testDiagnostics(code);
+    }
+
+    @Test
+    public void testMappingParsingNoErrorEmptyFile()
+    {
+        testDiagnostics("");
     }
 
     @Override

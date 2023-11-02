@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.junit.jupiter.api.Test;
 
 public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
@@ -37,6 +39,48 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         " }\n",
                 LegendDeclaration.builder().withIdentifier("test::runtime::TestRuntime").withClassifier("meta::pure::runtime::PackageableRuntime").withLocation(2, 0, 6, 1).build()
         );
+    }
+
+
+    @Test
+    public void testRuntimeParsingError()
+    {
+        String code = "###Runtime\n" +
+                "\n" +
+                "Runtime test::runtime::TestRuntime\n" +
+                "{\r\n" +
+                "    mappings: [;\r\n" +
+                "    connections: [];\n" +
+                " }\n";
+        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(4, 15, 4, 16), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
+        this.testDiagnostics(code, expectedDiagnostics);
+    }
+
+    @Test
+    public void testRuntimeParsingNoError()
+    {
+        String code = "###Runtime\n" +
+                "\n" +
+                "Runtime test::runtime::TestRuntime\n" +
+                "{\r\n" +
+                "    mappings: [];\r\n" +
+                "    connections: [];\n" +
+                " }\n";
+
+        testDiagnostics(code);
+    }
+
+    @Test
+    public void testRuntimeParsingNoErrorEmptyCode()
+    {
+        String code = "###Runtime";
+        testDiagnostics(code);
+    }
+
+    @Test
+    public void testRuntimeParsingNoErrorEmptyFile()
+    {
+        testDiagnostics("");
     }
 
     @Override
