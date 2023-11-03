@@ -14,6 +14,11 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.eclipse.lsp4j.CompletionItem;
+import org.eclipse.lsp4j.CompletionItemKind;
+import org.eclipse.lsp4j.CompletionItemLabelDetails;
+import org.eclipse.lsp4j.CompletionList;
+import org.eclipse.lsp4j.CompletionParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -50,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
@@ -283,6 +289,79 @@ class LegendTextDocumentService implements TextDocumentService
             }
         }
         return new SemanticTokens(data);
+    }
+
+    private Boolean matchTrigger(String codeLine, List<String> triggers)
+    {
+        Iterator<String> iteratorTriggers = triggers.iterator();
+        while (iteratorTriggers.hasNext())
+        {
+            String triggerWord = iteratorTriggers.next();
+            if ((codeLine.length() - triggerWord.length()) > 0 &&
+                    codeLine.substring(codeLine.length() - triggerWord.length(), codeLine.length()).equals(triggerWord))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams completionParams)
+    {
+        String uri = completionParams.getTextDocument().getUri();
+        int line = completionParams.getPosition().getLine();
+        int character = completionParams.getPosition().getCharacter();
+        String trigger = this.docStates.getState(uri).getSectionIndex().getSection(0).getLine(line).substring(0, character);
+
+        List<String> types = List.of("Integer ", "Date ", "StrictDate ", "String ", "Float ", "Boolean ");
+        List<String> multiplicities = List.of("[0..1];", "[0..*];", "[1];", "[*];");
+
+        List<CompletionItem> completions = new ArrayList<>();
+
+        if (matchTrigger(trigger, types))
+        {
+            Iterator<String> iterator = multiplicities.iterator();
+            while (iterator.hasNext())
+            {
+                String completionString = iterator.next();
+                CompletionItem completionItem = new CompletionItem(completionString);
+                completionItem.setKind(CompletionItemKind.TypeParameter);
+                completionItem.setInsertText(completionString);
+
+                CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
+                detail.setDescription("Attribute multiplicity");
+                completionItem.setLabelDetails(detail);
+
+                completions.add(completionItem);
+            }
+        }
+
+        if (matchTrigger(trigger, List.of(": ")))
+        {
+            Iterator<String> iterator = types.iterator();
+            while (iterator.hasNext())
+            {
+                String completionString = iterator.next();
+                CompletionItem completionItem = new CompletionItem(completionString);
+                completionItem.setKind(CompletionItemKind.TypeParameter);
+                completionItem.setInsertText(completionString);
+
+                CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
+                detail.setDescription("Attribute type");
+                completionItem.setLabelDetails(detail);
+
+                completions.add(completionItem);
+            }
+        }
+
+        return CompletableFuture.completedFuture(completions).thenApply(Either::forLeft);
+    }
+
+    @Override
+    public CompletableFuture<CompletionItem> resolveCompletionItem(CompletionItem completionItem)
+    {
+        return CompletableFuture.completedFuture(completionItem);
     }
 
     @Override
