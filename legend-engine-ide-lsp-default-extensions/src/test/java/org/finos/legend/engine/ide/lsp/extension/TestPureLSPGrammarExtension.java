@@ -31,7 +31,8 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     @Test
     public void testGetDeclarations()
     {
-        testGetDeclarations("###Pure\n" +
+        testGetDeclarations(
+                "###Pure\n" +
                         "\r\n" +
                         "Class test::model::TestClass1\n" +
                         "{\r\n" +
@@ -81,44 +82,32 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Test
-    public void testPureParsingError()
+    public void testDiagnostics_parserError()
     {
-        String code = "###Pure\n" +
-                "Class vscodelsp::test::Employee\n" +
-                "{\n" +
-                "             foobar Float[1];\n" +
-                "    hireDate : Date[1];\n" +
-                "    hireType : String[1];\n" +
-                "}";
-        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 20, 3, 25), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
-        this.testDiagnostics(code, expectedDiagnostics);
+        testDiagnostics(
+                "###Pure\n" +
+                        "Class vscodelsp::test::Employee\n" +
+                        "{\n" +
+                        "             foobar Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : String[1];\n" +
+                        "}",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 20, 3, 24), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+        );
     }
 
     @Test
-    public void testPureParsingNoError()
+    public void testDiagnostics_noError()
     {
-        String code = "###Pure\n" +
-                "Class vscodelsp::test::Employee\n" +
-                "{\n" +
-                "    foobar: Float[1];\n" +
-                "    hireDate : Date[1];\n" +
-                "    hireType : String[1];\n" +
-                "}";
-
-        testDiagnostics(code);
-    }
-
-    @Test
-    public void testPureParsingNoErrorEmptyCode()
-    {
-        String code = "###Pure";
-        testDiagnostics(code);
-    }
-
-    @Test
-    public void testPureParsingNoErrorEmptyFile()
-    {
-        testDiagnostics("");
+        testDiagnostics(
+                "###Pure\n" +
+                        "Class vscodelsp::test::Employee\n" +
+                        "{\n" +
+                        "    foobar: Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : String[1];\n" +
+                        "}"
+        );
     }
 
     @Override

@@ -104,7 +104,7 @@ public class GrammarSectionIndex
     }
 
     /**
-     * Applies the given consumer to each section in order. Equivalent to {@code getSections.forEach(consumer)}.
+     * Apply the given consumer to each section in order. Equivalent to {@code getSections.forEach(consumer)}.
      *
      * @param consumer section consumer
      */

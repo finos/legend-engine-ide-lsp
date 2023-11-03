@@ -30,7 +30,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     @Test
     public void testGetDeclarations()
     {
-        testGetDeclarations("###Service\n" +
+        testGetDeclarations(
+                "###Service\n" +
                         "\r\n" +
                         "\n" +
                         "Service test::services::TestService\n" +
@@ -57,66 +58,54 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     @Test
     public void testServiceParsingError()
     {
-        String code = "###Service\n" +
-                "\r\n" +
-                "\n" +
-                "Service test::services::TestService\n" +
-                "{\r\n" +
-                "    pattern 'test';\n" +
-                "    documentation : 'service for testing';\r\n" +
-                "    execution : Single\n" +
-                "    {\n" +
-                "        query : src:test::model::TestClass[1] | $src.name;\n" +
-                "        mapping : test::mappings::TestMapping;\n" +
-                "        runtime : test::runtimes::TestRuntime;\r\n" +
-                "    }\n" +
-                "    test : Single" +
-                "    {\n" +
-                "        data : '';\n" +
-                "        asserts : [];\n" +
-                "    }\r\n" +
-                "}\n";
-        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 12, 5, 18), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
-        this.testDiagnostics(code, expectedDiagnostics);
+        testDiagnostics(
+                "###Service\n" +
+                        "\r\n" +
+                        "\n" +
+                        "Service test::services::TestService\n" +
+                        "{\r\n" +
+                        "    pattern 'test';\n" +
+                        "    documentation : 'service for testing';\r\n" +
+                        "    execution : Single\n" +
+                        "    {\n" +
+                        "        query : src:test::model::TestClass[1] | $src.name;\n" +
+                        "        mapping : test::mappings::TestMapping;\n" +
+                        "        runtime : test::runtimes::TestRuntime;\r\n" +
+                        "    }\n" +
+                        "    test : Single" +
+                        "    {\n" +
+                        "        data : '';\n" +
+                        "        asserts : [];\n" +
+                        "    }\r\n" +
+                        "}\n",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 12, 5, 17), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+        );
     }
 
     @Test
     public void testServiceParsingNoError()
     {
-        String code = "###Service\n" +
-                "\r\n" +
-                "\n" +
-                "Service test::services::TestService\n" +
-                "{\r\n" +
-                "    pattern : 'test';\n" +
-                "    documentation : 'service for testing';\r\n" +
-                "    execution : Single\n" +
-                "    {\n" +
-                "        query : src:test::model::TestClass[1] | $src.name;\n" +
-                "        mapping : test::mappings::TestMapping;\n" +
-                "        runtime : test::runtimes::TestRuntime;\r\n" +
-                "    }\n" +
-                "    test : Single" +
-                "    {\n" +
-                "        data : '';\n" +
-                "        asserts : [];\n" +
-                "    }\r\n" +
-                "}\n";
-
-        testDiagnostics(code);
-    }
-
-    @Test
-    public void testServiceParsingNoErrorEmptyCode()
-    {
-        String code = "###Service";
-        testDiagnostics(code);
-    }
-
-    @Test
-    public void testServiceParsingNoErrorEmptyFile()
-    {
-        testDiagnostics("");
+        testDiagnostics(
+                "###Service\n" +
+                        "\r\n" +
+                        "\n" +
+                        "Service test::services::TestService\n" +
+                        "{\r\n" +
+                        "    pattern : 'test';\n" +
+                        "    documentation : 'service for testing';\r\n" +
+                        "    execution : Single\n" +
+                        "    {\n" +
+                        "        query : src:test::model::TestClass[1] | $src.name;\n" +
+                        "        mapping : test::mappings::TestMapping;\n" +
+                        "        runtime : test::runtimes::TestRuntime;\r\n" +
+                        "    }\n" +
+                        "    test : Single" +
+                        "    {\n" +
+                        "        data : '';\n" +
+                        "        asserts : [];\n" +
+                        "    }\r\n" +
+                        "}\n"
+        );
     }
 
     @Override
