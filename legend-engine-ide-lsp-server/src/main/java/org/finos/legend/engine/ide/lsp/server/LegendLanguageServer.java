@@ -356,7 +356,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
                 }
                 default:
                 {
-                    message = "Server entered unexpected state during initialization: {}" + getStateDescription(currentState);
+                    message = "Server entered unexpected state during initialization: " + getStateDescription(currentState);
                 }
             }
             LOGGER.warn(message);
