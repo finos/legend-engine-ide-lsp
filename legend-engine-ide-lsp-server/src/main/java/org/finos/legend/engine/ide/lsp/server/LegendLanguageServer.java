@@ -72,6 +72,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final Executor executor;
     private final LegendLSPGrammarLibrary grammars;
     private final LegendLSPInlineDSLLibrary inlineDSLs;
+    private final LegendServerGlobalState globalState = new LegendServerGlobalState();
 
     private LegendLanguageServer(boolean async, Executor executor, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
@@ -253,6 +254,12 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         checkReady();
         return supplyPossiblyAsync_internal(supplier);
+    }
+
+    LegendServerGlobalState getGlobalState()
+    {
+        checkReady();
+        return this.globalState;
     }
 
     LanguageClient getLanguageClient()

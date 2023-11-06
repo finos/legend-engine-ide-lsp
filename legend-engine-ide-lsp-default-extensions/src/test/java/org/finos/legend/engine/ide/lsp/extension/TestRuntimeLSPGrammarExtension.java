@@ -30,7 +30,8 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     @Test
     public void testGetDeclarations()
     {
-        testGetDeclarations("###Runtime\n" +
+        testGetDeclarations(
+                "###Runtime\n" +
                         "\n" +
                         "Runtime test::runtime::TestRuntime\n" +
                         "{\r\n" +
@@ -41,46 +42,33 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         );
     }
 
-
     @Test
-    public void testRuntimeParsingError()
+    public void testDiagnostics_parserError()
     {
-        String code = "###Runtime\n" +
-                "\n" +
-                "Runtime test::runtime::TestRuntime\n" +
-                "{\r\n" +
-                "    mappings: [;\r\n" +
-                "    connections: [];\n" +
-                " }\n";
-        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(4, 15, 4, 16), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
-        this.testDiagnostics(code, expectedDiagnostics);
+        testDiagnostics(
+                "###Runtime\n" +
+                        "\n" +
+                        "Runtime test::runtime::TestRuntime\n" +
+                        "{\r\n" +
+                        "    mappings: [;\r\n" +
+                        "    connections: [];\n" +
+                        " }\n",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(4, 15, 4, 15), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+        );
     }
 
     @Test
-    public void testRuntimeParsingNoError()
+    public void testDiagnostics_noError()
     {
-        String code = "###Runtime\n" +
+        testDiagnostics(
+                "###Runtime\n" +
                 "\n" +
                 "Runtime test::runtime::TestRuntime\n" +
                 "{\r\n" +
                 "    mappings: [];\r\n" +
                 "    connections: [];\n" +
-                " }\n";
-
-        testDiagnostics(code);
-    }
-
-    @Test
-    public void testRuntimeParsingNoErrorEmptyCode()
-    {
-        String code = "###Runtime";
-        testDiagnostics(code);
-    }
-
-    @Test
-    public void testRuntimeParsingNoErrorEmptyFile()
-    {
-        testDiagnostics("");
+                " }\n"
+        );
     }
 
     @Override
