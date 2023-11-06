@@ -65,6 +65,35 @@ class LegendServerGlobalState implements GlobalState
         }
     }
 
+    void deleteDocState(String uri)
+    {
+        synchronized (this)
+        {
+            this.docs.remove(uri);
+        }
+    }
+
+    void renameDoc(String oldUri, String newUri)
+    {
+        synchronized (this)
+        {
+            if (this.docs.containsKey(newUri))
+            {
+                throw new IllegalStateException("Cannot rename " + oldUri + " to " + newUri + ": file already exists");
+            }
+
+            LegendServerDocumentState oldState = this.docs.remove(oldUri);
+            if (oldState != null)
+            {
+                LegendServerDocumentState newState = new LegendServerDocumentState(this, newUri);
+                newState.version = oldState.version;
+                newState.sectionIndex = oldState.sectionIndex;
+                newState.sectionStates = oldState.sectionStates;
+                this.docs.put(newUri, newState);
+            }
+        }
+    }
+
     static class LegendServerDocumentState implements DocumentState
     {
         private final LegendServerGlobalState globalState;
@@ -131,6 +160,14 @@ class LegendServerGlobalState implements GlobalState
             }
         }
 
+        boolean isOpen()
+        {
+            synchronized (this.globalState)
+            {
+                return this.version != null;
+            }
+        }
+
         void open(int version, String text)
         {
             synchronized (this.globalState)
@@ -141,6 +178,15 @@ class LegendServerGlobalState implements GlobalState
                 }
                 this.version = version;
                 setText(text);
+            }
+        }
+
+        void close()
+        {
+            synchronized (this.globalState)
+            {
+                this.version = null;
+                clearText();
             }
         }
 
@@ -169,17 +215,6 @@ class LegendServerGlobalState implements GlobalState
             }
         }
 
-        void close()
-        {
-            synchronized (this.globalState)
-            {
-                this.version = null;
-                // TODO do we need to clear these?
-                this.sectionIndex = null;
-                this.sectionStates = null;
-            }
-        }
-
         void save(String text)
         {
             if (text != null)
@@ -188,6 +223,15 @@ class LegendServerGlobalState implements GlobalState
                 {
                     setText(text);
                 }
+            }
+        }
+
+        void clearText()
+        {
+            synchronized (this.globalState)
+            {
+                this.sectionIndex = null;
+                this.sectionStates = null;
             }
         }
 

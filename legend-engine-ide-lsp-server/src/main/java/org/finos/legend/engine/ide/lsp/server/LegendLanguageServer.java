@@ -14,6 +14,11 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.eclipse.lsp4j.FileOperationFilter;
+import org.eclipse.lsp4j.FileOperationOptions;
+import org.eclipse.lsp4j.FileOperationPattern;
+import org.eclipse.lsp4j.FileOperationPatternKind;
+import org.eclipse.lsp4j.FileOperationsServerCapabilities;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
@@ -24,6 +29,9 @@ import org.eclipse.lsp4j.SemanticTokensLegend;
 import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
+import org.eclipse.lsp4j.WorkspaceFolder;
+import org.eclipse.lsp4j.WorkspaceFoldersOptions;
+import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
@@ -42,11 +50,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -72,6 +88,8 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final LegendLSPInlineDSLLibrary inlineDSLs;
     private final LegendServerGlobalState globalState = new LegendServerGlobalState();
 
+    private final Set<String> rootFolders = new HashSet<>();
+
     private LegendLanguageServer(boolean async, Executor executor, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
         this.textDocumentService = new LegendTextDocumentService(this);
@@ -93,7 +111,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.error(message);
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
-        return supplyPossiblyAsync_internal(this::doInitialize);
+        return supplyPossiblyAsync_internal(() -> doInitialize(initializeParams));
     }
 
     @Override
@@ -129,20 +147,19 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     @Override
     public TextDocumentService getTextDocumentService()
     {
-        checkNotShutDown();
         return this.textDocumentService;
     }
 
     @Override
     public WorkspaceService getWorkspaceService()
     {
-        checkNotShutDown();
         return this.workspaceService;
     }
 
     @Override
     public void connect(LanguageClient languageClient)
     {
+        Objects.requireNonNull(languageClient, "language client may not be null");
         checkNotShutDown();
         LOGGER.info("Connecting language client");
         if (!this.languageClient.compareAndSet(null, languageClient))
@@ -157,6 +174,15 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
                 LOGGER.error(message);
                 throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
             }
+        }
+
+        if (this.async)
+        {
+            runAsync(() -> trySetWorkspaceFoldersFromClient(5L, TimeUnit.SECONDS));
+        }
+        else
+        {
+            trySetWorkspaceFoldersFromClient(1L, TimeUnit.SECONDS);
         }
     }
 
@@ -254,6 +280,12 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return supplyPossiblyAsync_internal(supplier);
     }
 
+    CompletableFuture<?> runPossiblyAsync(Runnable runnable)
+    {
+        checkReady();
+        return runPossiblyAsync_internal(runnable);
+    }
+
     LegendServerGlobalState getGlobalState()
     {
         checkReady();
@@ -282,6 +314,88 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         checkNotShutDown();
         return this.inlineDSLs;
+    }
+
+    private boolean trySetWorkspaceFoldersFromClient(long timeout, TimeUnit unit)
+    {
+        LanguageClient client = this.languageClient.get();
+        if (client == null)
+        {
+            return false;
+        }
+
+        List<WorkspaceFolder> folders;
+        try
+        {
+            folders = client.workspaceFolders().get(timeout, unit);
+        }
+        catch (ExecutionException e)
+        {
+            LOGGER.error("Error getting workspace folders from the client", e.getCause());
+            return false;
+        }
+        catch (InterruptedException e)
+        {
+            LOGGER.warn("Interrupted while waiting for workspace folders from the client", e);
+            return false;
+        }
+        catch (TimeoutException e)
+        {
+            LOGGER.warn("Timed out waiting for workspace folders from the client", e);
+            return false;
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Error getting workspace folders from the client", e);
+            return false;
+        }
+        setWorkspaceFolders(folders);
+        return true;
+    }
+
+    void setWorkspaceFolders(Iterable<? extends WorkspaceFolder> folders)
+    {
+        synchronized (this.rootFolders)
+        {
+            this.rootFolders.clear();
+            folders.forEach(ws -> this.rootFolders.add(ws.getUri()));
+        }
+    }
+
+    void updateWorkspaceFolders(Iterable<? extends WorkspaceFolder> foldersToAdd, Iterable<? extends WorkspaceFolder> foldersToRemove)
+    {
+        if ((foldersToAdd != null) || (foldersToRemove != null))
+        {
+            synchronized (this.rootFolders)
+            {
+                if (foldersToAdd != null)
+                {
+                    foldersToAdd.forEach(ws -> this.rootFolders.add(ws.getUri()));
+                }
+                if (foldersToRemove != null)
+                {
+                    foldersToRemove.forEach(ws -> this.rootFolders.remove(ws.getUri()));
+                }
+            }
+        }
+    }
+
+    boolean forEachRootFolder(Consumer<? super String> consumer)
+    {
+        synchronized (this.rootFolders)
+        {
+            if (this.rootFolders.isEmpty())
+            {
+                boolean setFromClient = trySetWorkspaceFoldersFromClient(500, TimeUnit.MILLISECONDS);
+                if (!setFromClient)
+                {
+                    LOGGER.warn("Could not get workspace folders from client");
+                    return false;
+                }
+            }
+            this.rootFolders.forEach(consumer);
+            return true;
+        }
     }
 
     void logToClient(String message)
@@ -315,18 +429,37 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     private <T> CompletableFuture<T> supplyPossiblyAsync_internal(Supplier<T> supplier)
     {
-        if (!this.async)
-        {
-            return CompletableFuture.completedFuture(supplier.get());
-        }
-        if (this.executor == null)
-        {
-            return CompletableFuture.supplyAsync(supplier);
-        }
-        return CompletableFuture.supplyAsync(supplier, this.executor);
+        return this.async ?
+                supplyAsync(supplier) :
+                CompletableFuture.completedFuture(supplier.get());
     }
 
-    private InitializeResult doInitialize()
+    private CompletableFuture<?> runPossiblyAsync_internal(Runnable runnable)
+    {
+        if (this.async)
+        {
+            return runAsync(runnable);
+        }
+
+        runnable.run();
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier)
+    {
+        return (this.executor == null) ?
+                CompletableFuture.supplyAsync(supplier) :
+                CompletableFuture.supplyAsync(supplier, this.executor);
+    }
+
+    private CompletableFuture<?> runAsync(Runnable runnable)
+    {
+        return (this.executor == null) ?
+                CompletableFuture.runAsync(runnable) :
+                CompletableFuture.runAsync(runnable, this.executor);
+    }
+
+    private InitializeResult doInitialize(InitializeParams initializeParams)
     {
         LOGGER.info("Initializing server");
         if (!this.state.compareAndSet(UNINITIALIZED, INITIALIZING))
@@ -337,6 +470,11 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
 
         logToClient("Initializing server");
+        List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
+        if (workspaceFolders != null)
+        {
+            setWorkspaceFolders(workspaceFolders);
+        }
         InitializeResult result = new InitializeResult(getServerCapabilities());
         if (!this.state.compareAndSet(INITIALIZING, INITIALIZED))
         {
@@ -399,7 +537,54 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Collections.singletonList(SemanticTokenTypes.Keyword), Collections.emptyList()), false, true));
+        capabilities.setWorkspace(getWorkspaceServerCapabilities());
         return capabilities;
+    }
+
+    private WorkspaceServerCapabilities getWorkspaceServerCapabilities()
+    {
+        WorkspaceServerCapabilities capabilities = new WorkspaceServerCapabilities();
+        capabilities.setWorkspaceFolders(getWorkspaceFolderOptions());
+        capabilities.setFileOperations(getFileOperationsServerCapabilities());
+        return capabilities;
+    }
+
+    private WorkspaceFoldersOptions getWorkspaceFolderOptions()
+    {
+        WorkspaceFoldersOptions folderOptions = new WorkspaceFoldersOptions();
+        folderOptions.setSupported(true);
+        folderOptions.setChangeNotifications(true);
+        return folderOptions;
+    }
+
+    private FileOperationsServerCapabilities getFileOperationsServerCapabilities()
+    {
+        FileOperationOptions fileOperationOptions = new FileOperationOptions(Collections.singletonList(newFileOperationFilter("**/*.pure")));
+        FileOperationsServerCapabilities fileOpsServerCapabilities = new FileOperationsServerCapabilities();
+        fileOpsServerCapabilities.setDidCreate(fileOperationOptions);
+        fileOpsServerCapabilities.setDidDelete(fileOperationOptions);
+        fileOpsServerCapabilities.setDidRename(fileOperationOptions);
+        return fileOpsServerCapabilities;
+    }
+
+    private FileOperationFilter newFileOperationFilter(String glob)
+    {
+        return newFileOperationFilter(glob, FileOperationPatternKind.File, "file");
+    }
+
+    private FileOperationFilter newFileOperationFilter(String glob, String kind, String scheme)
+    {
+        FileOperationPattern pattern = new FileOperationPattern(Objects.requireNonNull(glob, "glob is required"));
+        if (kind != null)
+        {
+            pattern.setMatches(kind);
+        }
+        FileOperationFilter filter = new FileOperationFilter(pattern);
+        if (scheme != null)
+        {
+            filter.setScheme(scheme);
+        }
+        return filter;
     }
 
     private void doShutdown()
