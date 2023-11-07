@@ -19,7 +19,7 @@ import java.util.function.Consumer;
 /**
  * Global state, allowing access to the state for all documents.
  */
-public interface GlobalState
+public interface GlobalState extends State
 {
     /**
      * Get the state for the document with the given id. Returns null if it cannot find such a state, including if there
