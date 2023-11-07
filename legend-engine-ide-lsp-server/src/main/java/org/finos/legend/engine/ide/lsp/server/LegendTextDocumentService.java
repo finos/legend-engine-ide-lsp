@@ -237,12 +237,13 @@ class LegendTextDocumentService implements TextDocumentService
             Range range = params.getRange();
             int rangeStartLine = range.getStart().getLine();
             int rangeEndLine = range.getEnd().getLine();
+            boolean isRangeEndLineInclusive = range.getEnd().getCharacter() != 0;
             int previousTokenLine = 0;
             for (int i = 0; i < docState.getSectionCount(); i++)
             {
                 SectionState sectionState = docState.getSectionState(i);
                 GrammarSection section = sectionState.getSection();
-                if (section.getStartLine() > rangeEndLine)
+                if (isRangeEndLineInclusive ? (section.getStartLine() > rangeEndLine) : (section.getStartLine() >= rangeEndLine))
                 {
                     // past the end of the range
                     break;
@@ -262,13 +263,13 @@ class LegendTextDocumentService implements TextDocumentService
                         {
                             Pattern pattern = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
                             int startLine = Math.max(section.getStartLine(), rangeStartLine);
-                            int endLine = Math.min(section.getEndLine(), rangeEndLine);
+                            int endLine = Math.min(section.getEndLine(), isRangeEndLineInclusive ? rangeEndLine : (rangeEndLine - 1));
                             for (int n = startLine; n <= endLine; n++)
                             {
                                 int previousTokenStart = 0;
                                 String line = section.getLine(n);
                                 int startIndex = (n == rangeStartLine) ? range.getStart().getCharacter() : 0;
-                                int endIndex = (n == rangeEndLine) ? (range.getEnd().getCharacter() + 1) : line.length();
+                                int endIndex = (n == rangeEndLine) ? Math.min(range.getEnd().getCharacter(), line.length()) : line.length();
                                 Matcher matcher = pattern.matcher(line).region(startIndex, endIndex);
                                 while (matcher.find())
                                 {
