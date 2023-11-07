@@ -273,7 +273,7 @@ class LegendTextDocumentService implements TextDocumentService
                                 int previousTokenStart = 0;
                                 String line = section.getLine(n);
                                 int startIndex = (n == rangeStartLine) ? range.getStart().getCharacter() : 0;
-                                int endIndex = (n == rangeEndLine) ? (range.getEnd().getCharacter() + 1) : line.length();
+                                int endIndex = (n == rangeEndLine) ? Math.min(range.getEnd().getCharacter(), line.length()) : line.length();
                                 Matcher matcher = pattern.matcher(line).region(startIndex, endIndex);
                                 while (matcher.find())
                                 {
@@ -322,7 +322,7 @@ class LegendTextDocumentService implements TextDocumentService
         String uri = completionParams.getTextDocument().getUri();
         int line = completionParams.getPosition().getLine();
         int character = completionParams.getPosition().getCharacter();
-        String trigger = this.docStates.getState(uri).getSectionIndex().getSection(0).getLine(line).substring(0, character);
+        String trigger = this.server.getGlobalState().getOrCreateDocState(uri).getSectionState(0).getSection().getLine(line).substring(0, character);
 
         List<String> types = List.of("Integer ", "Date ", "StrictDate ", "String ", "Float ", "Boolean ");
         List<String> multiplicities = List.of("[0..1];", "[0..*];", "[1];", "[*];");
