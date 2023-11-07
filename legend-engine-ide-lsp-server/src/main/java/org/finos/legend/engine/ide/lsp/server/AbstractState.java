@@ -19,6 +19,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.State;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 abstract class AbstractState implements State
 {
@@ -42,6 +43,16 @@ abstract class AbstractState implements State
         synchronized (this.lock)
         {
             return (T) this.properties.get(key);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T getProperty(String key, Supplier<? extends T> supplier)
+    {
+        synchronized (this.lock)
+        {
+            return (T) this.properties.computeIfAbsent(key, k -> supplier.get());
         }
     }
 
