@@ -23,6 +23,7 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.state.State;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.junit.jupiter.api.Assertions;
@@ -77,85 +78,13 @@ abstract class AbstractLSPGrammarExtensionTest
 
     protected static SectionState newSectionState(String docId, String text)
     {
-        MutableMap<String, DocumentState> docStates = Maps.mutable.empty();
-        GlobalState globalState = new GlobalState()
-        {
-            @Override
-            public DocumentState getDocumentState(String id)
-            {
-                return docStates.get(id);
-            }
+        TestGlobalState globalState = new TestGlobalState();
+        TestDocumentState docState = new TestDocumentState(globalState, docId, text);
+        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(text));
 
-            @Override
-            public void forEachDocumentState(Consumer<? super DocumentState> consumer)
-            {
-                docStates.forEachValue(consumer::accept);
-            }
-        };
+        globalState.docStates.put(docId, docState);
+        docState.sectionStates.add(sectionState);
 
-        MutableList<SectionState> sectionStates = Lists.mutable.empty();
-        DocumentState docState = new DocumentState()
-        {
-            @Override
-            public GlobalState getGlobalState()
-            {
-                return globalState;
-            }
-
-            @Override
-            public String getDocumentId()
-            {
-                return docId;
-            }
-
-            @Override
-            public String getText()
-            {
-                return text;
-            }
-
-            @Override
-            public int getSectionCount()
-            {
-                return 1;
-            }
-
-            @Override
-            public SectionState getSectionState(int n)
-            {
-                return sectionStates.get(n);
-            }
-
-            @Override
-            public void forEachSectionState(Consumer<? super SectionState> consumer)
-            {
-                sectionStates.forEach(consumer);
-            }
-        };
-        docStates.put(docId, docState);
-
-        GrammarSection section = newGrammarSection(text);
-        SectionState sectionState = new SectionState()
-        {
-            @Override
-            public DocumentState getDocumentState()
-            {
-                return docState;
-            }
-
-            @Override
-            public int getSectionNumber()
-            {
-                return 0;
-            }
-
-            @Override
-            public GrammarSection getSection()
-            {
-                return section;
-            }
-        };
-        sectionStates.add(sectionState);
         return sectionState;
     }
 
@@ -242,5 +171,136 @@ abstract class AbstractLSPGrammarExtensionTest
                 }
             }
         };
+    }
+
+    private abstract static class AbstractState implements State
+    {
+        private final MutableMap<String, Object> properties = Maps.mutable.empty();
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T getProperty(String key)
+        {
+            return (T) this.properties.get(key);
+        }
+
+        @Override
+        public void setProperty(String key, Object value)
+        {
+            if (value == null)
+            {
+                this.properties.remove(key);
+            }
+            else
+            {
+                this.properties.put(key, value);
+            }
+        }
+
+        @Override
+        public void clearProperties()
+        {
+            this.properties.clear();
+        }
+    }
+
+    private static class TestGlobalState extends AbstractState implements GlobalState
+    {
+        private final MutableMap<String, DocumentState> docStates = Maps.mutable.empty();
+
+        @Override
+        public DocumentState getDocumentState(String id)
+        {
+            return this.docStates.get(id);
+        }
+
+        @Override
+        public void forEachDocumentState(Consumer<? super DocumentState> consumer)
+        {
+            this.docStates.forEachValue(consumer::accept);
+        }
+    }
+
+    private static class TestDocumentState extends AbstractState implements DocumentState
+    {
+        private final MutableList<SectionState> sectionStates = Lists.mutable.empty();
+        private final GlobalState globalState;
+        private final String id;
+        private final String text;
+
+        private TestDocumentState(GlobalState globalState, String id, String text)
+        {
+            this.globalState = globalState;
+            this.id = id;
+            this.text = text;
+        }
+
+        @Override
+        public GlobalState getGlobalState()
+        {
+            return this.globalState;
+        }
+
+        @Override
+        public String getDocumentId()
+        {
+            return this.id;
+        }
+
+        @Override
+        public String getText()
+        {
+            return this.text;
+        }
+
+        @Override
+        public int getSectionCount()
+        {
+            return this.sectionStates.size();
+        }
+
+        @Override
+        public SectionState getSectionState(int n)
+        {
+            return this.sectionStates.get(n);
+        }
+
+        @Override
+        public void forEachSectionState(Consumer<? super SectionState> consumer)
+        {
+            this.sectionStates.forEach(consumer);
+        }
+    }
+
+    private static class TestSectionState extends AbstractState implements SectionState
+    {
+        private final DocumentState docState;
+        private final int n;
+        private final GrammarSection section;
+
+        private TestSectionState(DocumentState docState, int n, GrammarSection section)
+        {
+            this.docState = docState;
+            this.n = n;
+            this.section = section;
+        }
+
+        @Override
+        public DocumentState getDocumentState()
+        {
+            return this.docState;
+        }
+
+        @Override
+        public int getSectionNumber()
+        {
+            return this.n;
+        }
+
+        @Override
+        public GrammarSection getSection()
+        {
+            return this.section;
+        }
     }
 }

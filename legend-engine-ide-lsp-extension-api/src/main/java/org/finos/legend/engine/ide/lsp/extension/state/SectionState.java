@@ -19,7 +19,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 /**
  * The state of a section of a document.
  */
-public interface SectionState
+public interface SectionState extends State
 {
     /**
      * Get the state of the document that contains this section.

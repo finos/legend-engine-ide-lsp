@@ -19,7 +19,7 @@ import java.util.function.Consumer;
 /**
  * The state of a particular document.
  */
-public interface DocumentState
+public interface DocumentState extends State
 {
     /**
      * Get the global state that this is a part of.
