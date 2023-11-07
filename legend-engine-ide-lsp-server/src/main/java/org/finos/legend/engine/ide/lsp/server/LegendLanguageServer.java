@@ -344,6 +344,19 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.warn("Timed out waiting for workspace folders from the client", e);
             return false;
         }
+        catch (UnsupportedOperationException e)
+        {
+            String message = e.getMessage();
+            if (message != null)
+            {
+                LOGGER.warn("Client does not support getting workspace folders: {}", message);
+            }
+            else
+            {
+                LOGGER.warn("Client does not support getting workspace folders");
+            }
+            return false;
+        }
         catch (Exception e)
         {
             LOGGER.error("Error getting workspace folders from the client", e);
