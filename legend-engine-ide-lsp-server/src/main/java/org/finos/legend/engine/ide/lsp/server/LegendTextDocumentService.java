@@ -237,6 +237,7 @@ class LegendTextDocumentService implements TextDocumentService
             Range range = params.getRange();
             int rangeStartLine = range.getStart().getLine();
             int rangeEndLine = range.getEnd().getLine();
+            // If the character position of the range end is 0, then the line is exclusive; otherwise, it is inclusive
             boolean isRangeEndLineInclusive = range.getEnd().getCharacter() != 0;
             int previousTokenLine = 0;
             for (int i = 0; i < docState.getSectionCount(); i++)
