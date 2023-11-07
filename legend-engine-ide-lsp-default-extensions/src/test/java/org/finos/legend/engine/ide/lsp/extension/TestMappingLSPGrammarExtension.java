@@ -30,7 +30,8 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     @Test
     public void testGetDeclarations()
     {
-        testGetDeclarations("###Mapping\n" +
+        testGetDeclarations(
+                "###Mapping\n" +
                         "\r\n" +
                         "\n" +
                         "Mapping test::mapping::TestMapping\n" +
@@ -42,48 +43,36 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
 
     @Test
-    public void testMappingParsingError()
+    public void testDiagnostics_parserError()
     {
-        String code = "###Mapping\n" +
-            "Mapping vscodelsp::test::EmployeeMapping\n" +
-                "(\n" +
-                "   Employee[emp] : Relational\n" +
-                "   {\n" +
-                "      hireDate   [EmployeeDatabase]EmployeeTable.hireDate,\n" +
-                "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
-                "   }\n" +
-                ")";
-        LegendDiagnostic expectedDiagnostics = LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 35, 5, 48), "Unexpected token 'EmployeeTable'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser);
-        this.testDiagnostics(code, expectedDiagnostics);
+        testDiagnostics(
+                "###Mapping\n" +
+                        "Mapping vscodelsp::test::EmployeeMapping\n" +
+                        "(\n" +
+                        "   Employee[emp] : Relational\n" +
+                        "   {\n" +
+                        "      hireDate   [EmployeeDatabase]EmployeeTable.hireDate,\n" +
+                        "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
+                        "   }\n" +
+                        ")",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 35, 5, 47), "Unexpected token 'EmployeeTable'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+        );
     }
 
     @Test
-    public void testMappingParsingNoError()
+    public void testDiagnostics_noError()
     {
-        String code = "###Mapping\n" +
-                "Mapping vscodelsp::test::EmployeeMapping\n" +
-                "(\n" +
-                "   Employee[emp] : Relational\n" +
-                "   {\n" +
-                "      hireDate : [EmployeeDatabase]EmployeeTable.hireDate,\n" +
-                "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
-                "   }\n" +
-                ")";
-
-        testDiagnostics(code);
-    }
-
-    @Test
-    public void testMappingParsingNoErrorEmptyCode()
-    {
-        String code = "###Mapping";
-        testDiagnostics(code);
-    }
-
-    @Test
-    public void testMappingParsingNoErrorEmptyFile()
-    {
-        testDiagnostics("");
+        testDiagnostics(
+                "###Mapping\n" +
+                        "Mapping vscodelsp::test::EmployeeMapping\n" +
+                        "(\n" +
+                        "   Employee[emp] : Relational\n" +
+                        "   {\n" +
+                        "      hireDate : [EmployeeDatabase]EmployeeTable.hireDate,\n" +
+                        "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
+                        "   }\n" +
+                        ")"
+        );
     }
 
     @Override
