@@ -55,7 +55,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
@@ -293,12 +292,10 @@ class LegendTextDocumentService implements TextDocumentService
 
     private Boolean matchTrigger(String codeLine, List<String> triggers)
     {
-        Iterator<String> iteratorTriggers = triggers.iterator();
-        while (iteratorTriggers.hasNext())
+        for (String triggerWord: triggers)
         {
-            String triggerWord = iteratorTriggers.next();
             if ((codeLine.length() - triggerWord.length()) > 0 &&
-                    codeLine.substring(codeLine.length() - triggerWord.length(), codeLine.length()).equals(triggerWord))
+                    codeLine.substring(codeLine.length() - triggerWord.length()).equals(triggerWord))
             {
                 return true;
             }
@@ -308,6 +305,11 @@ class LegendTextDocumentService implements TextDocumentService
 
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams completionParams)
+    {
+        return this.server.supplyPossiblyAsync(() -> LegendCompletion(completionParams)).thenApply(Either::forLeft);
+    }
+
+    private List<CompletionItem> LegendCompletion(CompletionParams completionParams)
     {
         String uri = completionParams.getTextDocument().getUri();
         int line = completionParams.getPosition().getLine();
@@ -321,10 +323,8 @@ class LegendTextDocumentService implements TextDocumentService
 
         if (matchTrigger(trigger, types))
         {
-            Iterator<String> iterator = multiplicities.iterator();
-            while (iterator.hasNext())
+            for (String completionString : multiplicities)
             {
-                String completionString = iterator.next();
                 CompletionItem completionItem = new CompletionItem(completionString);
                 completionItem.setKind(CompletionItemKind.TypeParameter);
                 completionItem.setInsertText(completionString);
@@ -339,10 +339,8 @@ class LegendTextDocumentService implements TextDocumentService
 
         if (matchTrigger(trigger, List.of(": ")))
         {
-            Iterator<String> iterator = types.iterator();
-            while (iterator.hasNext())
+            for (String completionString : types)
             {
-                String completionString = iterator.next();
                 CompletionItem completionItem = new CompletionItem(completionString);
                 completionItem.setKind(CompletionItemKind.TypeParameter);
                 completionItem.setInsertText(completionString);
@@ -354,8 +352,7 @@ class LegendTextDocumentService implements TextDocumentService
                 completions.add(completionItem);
             }
         }
-
-        return CompletableFuture.completedFuture(completions).thenApply(Either::forLeft);
+        return completions;
     }
 
     @Override
