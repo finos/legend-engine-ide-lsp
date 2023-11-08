@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
 import org.eclipse.lsp4j.FileOperationOptions;
 import org.eclipse.lsp4j.FileOperationPattern;
@@ -551,6 +552,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Collections.singletonList(SemanticTokenTypes.Keyword), Collections.emptyList()), false, true));
         capabilities.setWorkspace(getWorkspaceServerCapabilities());
+        capabilities.setCompletionProvider(new CompletionOptions(true, List.of()));
         return capabilities;
     }
 

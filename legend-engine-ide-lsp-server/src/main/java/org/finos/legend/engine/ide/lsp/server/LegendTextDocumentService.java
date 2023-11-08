@@ -327,7 +327,7 @@ class LegendTextDocumentService implements TextDocumentService
         String trigger = this.server.getGlobalState().getOrCreateDocState(uri).getSectionState(0).getSection().getLine(line).substring(0, character);
 
         List<String> types = List.of("Integer ", "Date ", "StrictDate ", "String ", "Float ", "Boolean ");
-        List<String> multiplicities = List.of("[0..1];", "[0..*];", "[1];", "[*];");
+        List<String> multiplicities = List.of("[0..1];\n", "[0..*];\n", "[1];\n", "[*];\n");
 
         List<CompletionItem> completions = new ArrayList<>();
 
