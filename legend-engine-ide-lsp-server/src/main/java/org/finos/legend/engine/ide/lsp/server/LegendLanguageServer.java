@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.lsp4j.FileOperationFilter;
 import org.eclipse.lsp4j.FileOperationOptions;
 import org.eclipse.lsp4j.FileOperationPattern;
@@ -49,11 +50,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.ServiceLoader;
+import java.io.File;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -64,6 +61,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.Collection;
+import java.util.List;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Collections;
+import java.util.ServiceLoader;
+
 
 /**
  * {@link LanguageServer} implementation for Legend.
@@ -89,6 +93,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final LegendServerGlobalState globalState = new LegendServerGlobalState();
 
     private final Set<String> rootFolders = new HashSet<>();
+    private final Set<String> workspaceFiles = new HashSet<>();
 
     private LegendLanguageServer(boolean async, Executor executor, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
@@ -178,11 +183,16 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
         if (this.async)
         {
-            runAsync(() -> trySetWorkspaceFoldersFromClient(5L, TimeUnit.SECONDS));
+            runAsync(() ->
+            {
+                trySetWorkspaceFoldersFromClient(5L, TimeUnit.SECONDS);
+                setWorkspaceFiles();
+            });
         }
         else
         {
             trySetWorkspaceFoldersFromClient(1L, TimeUnit.SECONDS);
+            setWorkspaceFiles();
         }
     }
 
@@ -316,6 +326,33 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return this.inlineDSLs;
     }
 
+    private void setWorkspaceFiles()
+    {
+        if (!this.rootFolders.isEmpty() && this.rootFolders.size() == 1)
+        {
+            String baseURI = this.rootFolders.iterator().next();
+            File folder = new File(baseURI);
+            if (folder.exists() && folder.isDirectory())
+            {
+                Collection<File> files = FileUtils.listFiles(folder, new String[]{"pure"}, true);
+                setWorkspaceFiles(files);
+            }
+            else
+            {
+                LOGGER.warn("Cannot get list of workspace files as rootFolderURI is not a directory");
+            }
+
+        }
+        else if (this.rootFolders.isEmpty())
+        {
+            LOGGER.warn("Cannot get list of workspace files as client has multiple worksapces");
+        }
+        else
+        {
+            LOGGER.warn("Cannot get list of workspace files as client has no worksapce");
+        }
+    }
+
     private boolean trySetWorkspaceFoldersFromClient(long timeout, TimeUnit unit)
     {
         LanguageClient client = this.languageClient.get();
@@ -364,6 +401,15 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
         setWorkspaceFolders(folders);
         return true;
+    }
+
+    void setWorkspaceFiles(Collection<File> files)
+    {
+        synchronized (this.workspaceFiles)
+        {
+            this.workspaceFiles.clear();
+            files.forEach(f -> this.workspaceFiles.add(f.getPath()));
+        }
     }
 
     void setWorkspaceFolders(Iterable<? extends WorkspaceFolder> folders)
@@ -488,6 +534,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         {
             setWorkspaceFolders(workspaceFolders);
         }
+        setWorkspaceFiles();
         InitializeResult result = new InitializeResult(getServerCapabilities());
         if (!this.state.compareAndSet(INITIALIZING, INITIALIZED))
         {
