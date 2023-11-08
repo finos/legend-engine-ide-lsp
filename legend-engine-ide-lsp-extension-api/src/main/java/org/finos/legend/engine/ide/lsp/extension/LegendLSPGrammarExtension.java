@@ -26,6 +26,15 @@ import java.util.Collections;
 public interface LegendLSPGrammarExtension extends LegendLSPExtension
 {
     /**
+     * Initialize the section state.
+     *
+     * @param section grammar section state
+     */
+    default void initialize(SectionState section)
+    {
+    }
+
+    /**
      * Return the Legend declarations for the given section.
      *
      * @param section grammar section state
