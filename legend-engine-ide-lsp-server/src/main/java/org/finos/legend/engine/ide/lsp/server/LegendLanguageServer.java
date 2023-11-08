@@ -49,6 +49,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -64,6 +65,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * {@link LanguageServer} implementation for Legend.
@@ -86,7 +88,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final Executor executor;
     private final LegendLSPGrammarLibrary grammars;
     private final LegendLSPInlineDSLLibrary inlineDSLs;
-    private final LegendServerGlobalState globalState = new LegendServerGlobalState();
+    private final LegendServerGlobalState globalState = new LegendServerGlobalState(this);
 
     private final Set<String> rootFolders = new HashSet<>();
 
@@ -103,7 +105,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams initializeParams)
     {
-        LOGGER.info("Initialize server requested");
+        LOGGER.info("Initialize server requested: {}", initializeParams);
         int currentState = this.state.get();
         if (currentState >= INITIALIZING)
         {
@@ -368,10 +370,46 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     void setWorkspaceFolders(Iterable<? extends WorkspaceFolder> folders)
     {
+        List<String> addedFolders;
+        List<String> removedFolders;
         synchronized (this.rootFolders)
         {
+            Set<String> newRootFolders = new HashSet<>();
+            folders.forEach(ws -> newRootFolders.add(ws.getUri()));
+
+            addedFolders = newRootFolders.stream().filter(f -> !this.rootFolders.contains(f)).collect(Collectors.toList());
+            removedFolders = this.rootFolders.stream().filter(f -> !newRootFolders.contains(f)).collect(Collectors.toList());
+
             this.rootFolders.clear();
-            folders.forEach(ws -> this.rootFolders.add(ws.getUri()));
+            this.rootFolders.addAll(newRootFolders);
+        }
+
+        updateStateWithFolderChanges(addedFolders, removedFolders);
+    }
+
+    void addRootFolderFromFile(String fileUri)
+    {
+        // TODO find a more principled way to find the root
+        String srcMainPure = "/src/main/pure/";
+        int index = fileUri.indexOf(srcMainPure);
+        if (index != -1)
+        {
+            String folderUri = fileUri.substring(0, index + srcMainPure.length());
+            addRootFolder(folderUri);
+        }
+    }
+
+    void addRootFolder(String folderUri)
+    {
+        boolean added;
+        synchronized (this.rootFolders)
+        {
+            added = this.rootFolders.add(folderUri);
+        }
+        if (added)
+        {
+            LOGGER.info("Added root folder: {}", folderUri);
+            runPossiblyAsync_internal(() -> this.globalState.addFolder(folderUri));
         }
     }
 
@@ -379,18 +417,56 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         if ((foldersToAdd != null) || (foldersToRemove != null))
         {
+            List<String> addedFolders = new ArrayList<>();
+            List<String> removedFolders = new ArrayList<>();
             synchronized (this.rootFolders)
             {
                 if (foldersToAdd != null)
                 {
-                    foldersToAdd.forEach(ws -> this.rootFolders.add(ws.getUri()));
+                    foldersToAdd.forEach(ws ->
+                    {
+                        if (this.rootFolders.add(ws.getUri()))
+                        {
+                            addedFolders.add(ws.getUri());
+                        }
+                    });
                 }
                 if (foldersToRemove != null)
                 {
-                    foldersToRemove.forEach(ws -> this.rootFolders.remove(ws.getUri()));
+                    foldersToRemove.forEach(ws ->
+                    {
+                        if (this.rootFolders.remove(ws.getUri()))
+                        {
+                            removedFolders.add(ws.getUri());
+                        }
+                    });
                 }
             }
+            updateStateWithFolderChanges(addedFolders, removedFolders);
         }
+    }
+
+    private void updateStateWithFolderChanges(List<String> addedFolders, List<String> removedFolders)
+    {
+        if ((addedFolders != null) && !addedFolders.isEmpty())
+        {
+            LOGGER.info("Added root folders: {}", addedFolders);
+        }
+        if ((removedFolders != null) && !removedFolders.isEmpty())
+        {
+            LOGGER.info("Removed root folders: {}", removedFolders);
+        }
+        runPossiblyAsync_internal(() ->
+        {
+           if (addedFolders != null)
+           {
+               addedFolders.forEach(this.globalState::addFolder);
+           }
+           if (removedFolders != null)
+           {
+               removedFolders.forEach(this.globalState::removeFolder);
+           }
+        });
     }
 
     boolean forEachRootFolder(Consumer<? super String> consumer)
