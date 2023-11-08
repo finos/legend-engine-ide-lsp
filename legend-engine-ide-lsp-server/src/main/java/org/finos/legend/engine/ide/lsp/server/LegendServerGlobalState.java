@@ -33,16 +33,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-class LegendServerGlobalState implements GlobalState
+class LegendServerGlobalState extends AbstractState implements GlobalState
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendServerGlobalState.class);
 
     private final Map<String, LegendServerDocumentState> docs = new HashMap<>();
 
+    LegendServerGlobalState()
+    {
+        super();
+    }
+
     @Override
     public LegendServerDocumentState getDocumentState(String id)
     {
-        synchronized (this)
+        synchronized (this.lock)
         {
             return this.docs.get(id);
         }
@@ -51,7 +56,7 @@ class LegendServerGlobalState implements GlobalState
     @Override
     public void forEachDocumentState(Consumer<? super DocumentState> consumer)
     {
-        synchronized (this)
+        synchronized (this.lock)
         {
             this.docs.values().forEach(consumer);
         }
@@ -59,13 +64,42 @@ class LegendServerGlobalState implements GlobalState
 
     LegendServerDocumentState getOrCreateDocState(String uri)
     {
-        synchronized (this)
+        synchronized (this.lock)
         {
             return this.docs.computeIfAbsent(uri, k -> new LegendServerDocumentState(this, uri));
         }
     }
 
-    static class LegendServerDocumentState implements DocumentState
+    void deleteDocState(String uri)
+    {
+        synchronized (this.lock)
+        {
+            this.docs.remove(uri);
+        }
+    }
+
+    void renameDoc(String oldUri, String newUri)
+    {
+        synchronized (this.lock)
+        {
+            if (this.docs.containsKey(newUri))
+            {
+                throw new IllegalStateException("Cannot rename " + oldUri + " to " + newUri + ": file already exists");
+            }
+
+            LegendServerDocumentState oldState = this.docs.remove(oldUri);
+            if (oldState != null)
+            {
+                LegendServerDocumentState newState = new LegendServerDocumentState(this, newUri);
+                newState.version = oldState.version;
+                newState.sectionIndex = oldState.sectionIndex;
+                newState.sectionStates = oldState.sectionStates;
+                this.docs.put(newUri, newState);
+            }
+        }
+    }
+
+    static class LegendServerDocumentState extends AbstractState implements DocumentState
     {
         private final LegendServerGlobalState globalState;
         private final String uri;
@@ -75,6 +109,7 @@ class LegendServerGlobalState implements GlobalState
 
         private LegendServerDocumentState(LegendServerGlobalState globalState, String uri)
         {
+            super(globalState);
             this.globalState = globalState;
             this.uri = uri;
         }
@@ -94,7 +129,7 @@ class LegendServerGlobalState implements GlobalState
         @Override
         public String getText()
         {
-            synchronized (this.globalState)
+            synchronized (this.lock)
             {
                 initializeText();
                 return (this.sectionIndex == null) ? null : this.sectionIndex.getText();
@@ -104,7 +139,7 @@ class LegendServerGlobalState implements GlobalState
         @Override
         public int getSectionCount()
         {
-            synchronized (this.globalState)
+            synchronized (this.lock)
             {
                 initializeText();
                 return this.sectionStates.size();
@@ -114,7 +149,7 @@ class LegendServerGlobalState implements GlobalState
         @Override
         public SectionState getSectionState(int n)
         {
-            synchronized (this.globalState)
+            synchronized (this.lock)
             {
                 initializeText();
                 return this.sectionStates.get(n);
@@ -124,16 +159,24 @@ class LegendServerGlobalState implements GlobalState
         @Override
         public void forEachSectionState(Consumer<? super SectionState> consumer)
         {
-            synchronized (this.globalState)
+            synchronized (this.lock)
             {
                 initializeText();
                 this.sectionStates.forEach(consumer);
             }
         }
 
+        boolean isOpen()
+        {
+            synchronized (this.lock)
+            {
+                return this.version != null;
+            }
+        }
+
         void open(int version, String text)
         {
-            synchronized (this.globalState)
+            synchronized (this.lock)
             {
                 if (this.version != null)
                 {
@@ -144,9 +187,18 @@ class LegendServerGlobalState implements GlobalState
             }
         }
 
+        void close()
+        {
+            synchronized (this.lock)
+            {
+                this.version = null;
+                clearText();
+            }
+        }
+
         void change(int newVersion)
         {
-            synchronized (this.globalState)
+            synchronized (this.lock)
             {
                 if ((this.version != null) && (newVersion < this.version))
                 {
@@ -158,7 +210,7 @@ class LegendServerGlobalState implements GlobalState
 
         void change(int newVersion, String newText)
         {
-            synchronized (this.globalState)
+            synchronized (this.lock)
             {
                 if ((this.version != null) && (newVersion <= this.version))
                 {
@@ -169,25 +221,23 @@ class LegendServerGlobalState implements GlobalState
             }
         }
 
-        void close()
-        {
-            synchronized (this.globalState)
-            {
-                this.version = null;
-                // TODO do we need to clear these?
-                this.sectionIndex = null;
-                this.sectionStates = null;
-            }
-        }
-
         void save(String text)
         {
             if (text != null)
             {
-                synchronized (this.globalState)
+                synchronized (this.lock)
                 {
                     setText(text);
                 }
+            }
+        }
+
+        void clearText()
+        {
+            synchronized (this.lock)
+            {
+                this.sectionIndex = null;
+                this.sectionStates = null;
             }
         }
 
@@ -232,7 +282,7 @@ class LegendServerGlobalState implements GlobalState
         }
     }
 
-    private static class LegendServerSectionState implements SectionState
+    private static class LegendServerSectionState extends AbstractState implements SectionState
     {
         private final LegendServerDocumentState docState;
         private final int n;
@@ -240,6 +290,7 @@ class LegendServerGlobalState implements GlobalState
 
         private LegendServerSectionState(LegendServerDocumentState docState, int n, GrammarSection grammarSection)
         {
+            super(docState.lock);
             this.docState = docState;
             this.n = n;
             this.grammarSection = grammarSection;

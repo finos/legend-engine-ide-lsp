@@ -75,8 +75,10 @@ public class TestLegendLanguageServer
 
         assertThrowsResponseError(ResponseErrorCode.RequestFailed, "Server has shut down", () -> server.initialize(new InitializeParams()));
         assertThrowsResponseError(ResponseErrorCode.RequestFailed, "Server has shut down", () -> server.initialized(new InitializedParams()));
-        assertThrowsResponseError(ResponseErrorCode.RequestFailed, "Server has shut down", server::getWorkspaceService);
-        assertThrowsResponseError(ResponseErrorCode.RequestFailed, "Server has shut down", server::getTextDocumentService);
+        Assertions.assertInstanceOf(LegendWorkspaceService.class, server.getWorkspaceService());
+        assertThrowsResponseError(ResponseErrorCode.RequestFailed, "Server has shut down", () -> server.getWorkspaceService().didChangeConfiguration(new DidChangeConfigurationParams()));
+        Assertions.assertInstanceOf(LegendTextDocumentService.class, server.getTextDocumentService());
+        assertThrowsResponseError(ResponseErrorCode.RequestFailed, "Server has shut down", () -> server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams()));
         assertThrowsResponseError(ResponseErrorCode.RequestFailed, "Server has shut down", server::getLanguageClient);
 
         Assertions.assertNull(server.shutdown().get());

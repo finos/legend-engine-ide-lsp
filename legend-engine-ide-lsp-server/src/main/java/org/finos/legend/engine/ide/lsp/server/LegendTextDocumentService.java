@@ -242,12 +242,14 @@ class LegendTextDocumentService implements TextDocumentService
             Range range = params.getRange();
             int rangeStartLine = range.getStart().getLine();
             int rangeEndLine = range.getEnd().getLine();
+            // If the character position of the range end is 0, then the line is exclusive; otherwise, it is inclusive
+            boolean isRangeEndLineInclusive = range.getEnd().getCharacter() != 0;
             int previousTokenLine = 0;
             for (int i = 0; i < docState.getSectionCount(); i++)
             {
                 SectionState sectionState = docState.getSectionState(i);
                 GrammarSection section = sectionState.getSection();
-                if (section.getStartLine() > rangeEndLine)
+                if (isRangeEndLineInclusive ? (section.getStartLine() > rangeEndLine) : (section.getStartLine() >= rangeEndLine))
                 {
                     // past the end of the range
                     break;
@@ -267,7 +269,7 @@ class LegendTextDocumentService implements TextDocumentService
                         {
                             Pattern pattern = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
                             int startLine = Math.max(section.getStartLine(), rangeStartLine);
-                            int endLine = Math.min(section.getEndLine(), rangeEndLine);
+                            int endLine = Math.min(section.getEndLine(), isRangeEndLineInclusive ? rangeEndLine : (rangeEndLine - 1));
                             for (int n = startLine; n <= endLine; n++)
                             {
                                 int previousTokenStart = 0;
