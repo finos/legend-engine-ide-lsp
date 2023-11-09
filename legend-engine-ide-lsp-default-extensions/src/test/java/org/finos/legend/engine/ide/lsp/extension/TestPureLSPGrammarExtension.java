@@ -97,6 +97,21 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Test
+    public void testDiagnostics_compilerError()
+    {
+        testDiagnostics(
+                "###Pure\n" +
+                        "Class vscodelsp::test::Employee extends vscodelsp::test::Person\n" +
+                        "{\n" +
+                        "             foobar : Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : String[1];\n" +
+                        "}",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(1, 0, 6, 0), "Can't find type 'vscodelsp::test::Person'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)
+        );
+    }
+
+    @Test
     public void testDiagnostics_noError()
     {
         testDiagnostics(
