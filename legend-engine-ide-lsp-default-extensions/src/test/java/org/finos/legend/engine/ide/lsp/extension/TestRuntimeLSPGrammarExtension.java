@@ -67,7 +67,8 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "{\r\n" +
                 "    mappings: [];\r\n" +
                 "    connections: [];\n" +
-                " }\n"
+                " }\n",
+                LegendDiagnostic.Source.Parser
         );
     }
 

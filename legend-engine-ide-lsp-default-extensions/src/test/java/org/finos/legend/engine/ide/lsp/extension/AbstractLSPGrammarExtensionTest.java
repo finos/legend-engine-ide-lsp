@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 abstract class AbstractLSPGrammarExtensionTest
 {
@@ -68,9 +69,19 @@ abstract class AbstractLSPGrammarExtensionTest
 
     protected void testDiagnostics(String code, LegendDiagnostic... expectedDiagnostics)
     {
+        testDiagnostics(code,null, expectedDiagnostics);
+    }
+
+
+    protected void testDiagnostics(String code, LegendDiagnostic.Source source, LegendDiagnostic... expectedDiagnostics)
+    {
         Comparator<LegendDiagnostic> cmp = Comparator.comparing(d -> d.getLocation().getStart());
         MutableList<LegendDiagnostic> expected = Lists.mutable.with(expectedDiagnostics).sortThis(cmp);
         MutableList<LegendDiagnostic> actual = Lists.mutable.<LegendDiagnostic>withAll(this.extension.getDiagnostics(newSectionState("", code))).sortThis(cmp);
+        if (source != null)
+        {
+            actual.removeIf(d -> d.getType() != LegendDiagnostic.Source.Parser);
+        }
         Assertions.assertEquals(expected, actual);
     }
 

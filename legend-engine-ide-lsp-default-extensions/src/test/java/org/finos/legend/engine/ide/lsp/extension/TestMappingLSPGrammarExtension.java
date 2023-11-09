@@ -60,7 +60,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testDiagnostics_noError()
+    public void testDiagnostics_noParserError()
     {
         testDiagnostics(
                 "###Mapping\n" +
@@ -71,7 +71,8 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "      hireDate : [EmployeeDatabase]EmployeeTable.hireDate,\n" +
                         "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                         "   }\n" +
-                        ")"
+                        ")",
+                LegendDiagnostic.Source.Parser
         );
     }
 

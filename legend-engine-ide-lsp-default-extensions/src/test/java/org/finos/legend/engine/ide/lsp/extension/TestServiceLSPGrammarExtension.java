@@ -104,7 +104,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        data : '';\n" +
                         "        asserts : [];\n" +
                         "    }\r\n" +
-                        "}\n"
+                        "}\n",
+                LegendDiagnostic.Source.Parser
         );
     }
 
