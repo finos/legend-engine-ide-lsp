@@ -16,6 +16,8 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.junit.jupiter.api.Test;
 
@@ -56,7 +58,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
 
     @Test
-    public void testServiceParsingError()
+    public void testDiagnostics_parserError()
     {
         testDiagnostics(
                 "###Service\n" +
@@ -78,12 +80,12 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        asserts : [];\n" +
                         "    }\r\n" +
                         "}\n",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 12, 5, 17), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 12, 5, 17), "Unexpected token", Kind.Error, Source.Parser)
         );
     }
 
     @Test
-    public void testServiceParsingNoError()
+    public void testDiagnostics_compilerError()
     {
         testDiagnostics(
                 "###Service\n" +
@@ -104,7 +106,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        data : '';\n" +
                         "        asserts : [];\n" +
                         "    }\r\n" +
-                        "}\n"
+                        "}\n",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(10, 18, 10, 44), "Can't find mapping 'test::mappings::TestMapping'", Kind.Error, Source.Compiler)
         );
     }
 
