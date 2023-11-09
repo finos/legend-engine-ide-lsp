@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -23,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,16 +34,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 class LegendServerGlobalState extends AbstractState implements GlobalState
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendServerGlobalState.class);
 
     private final Map<String, LegendServerDocumentState> docs = new HashMap<>();
+    private final LegendLanguageServer server;
 
-    LegendServerGlobalState()
+    LegendServerGlobalState(LegendLanguageServer server)
     {
         super();
+        this.server = server;
     }
 
     @Override
@@ -93,9 +98,43 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
                 LegendServerDocumentState newState = new LegendServerDocumentState(this, newUri);
                 newState.version = oldState.version;
                 newState.sectionIndex = oldState.sectionIndex;
-                newState.sectionStates = oldState.sectionStates;
+                newState.sectionStates = newState.createSectionStates(newState.sectionIndex);
                 this.docs.put(newUri, newState);
             }
+        }
+    }
+
+    void addFolder(String folderUri)
+    {
+        try
+        {
+            Path folderPath = Paths.get(URI.create(folderUri));
+            synchronized (this.lock)
+            {
+                try (Stream<Path> stream = Files.find(folderPath, Integer.MAX_VALUE,
+                        (path, attr) -> attr.isRegularFile() && path.getFileName().toString().endsWith(".pure"),
+                        FileVisitOption.FOLLOW_LINKS))
+                {
+                    stream.forEach(path ->
+                    {
+                        String uri = path.toUri().toString();
+                        LegendServerDocumentState docState = getOrCreateDocState(uri);
+                        docState.initialize();
+                    });
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Error initializing document states for folder {}", folderUri, e);
+        }
+    }
+
+    void removeFolder(String folderUri)
+    {
+        synchronized (this.lock)
+        {
+            this.docs.keySet().removeIf(uri -> uri.startsWith(folderUri));
         }
     }
 
@@ -131,7 +170,6 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         {
             synchronized (this.lock)
             {
-                initializeText();
                 return (this.sectionIndex == null) ? null : this.sectionIndex.getText();
             }
         }
@@ -141,7 +179,6 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         {
             synchronized (this.lock)
             {
-                initializeText();
                 return this.sectionStates.size();
             }
         }
@@ -151,7 +188,6 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         {
             synchronized (this.lock)
             {
-                initializeText();
                 return this.sectionStates.get(n);
             }
         }
@@ -161,8 +197,15 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         {
             synchronized (this.lock)
             {
-                initializeText();
                 this.sectionStates.forEach(consumer);
+            }
+        }
+
+        boolean isInitialized()
+        {
+            synchronized (this.lock)
+            {
+                return this.sectionStates != null;
             }
         }
 
@@ -180,7 +223,7 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             {
                 if (this.version != null)
                 {
-                    LOGGER.warn("{} already opened at version {}: overwriting", this.uri, this.version);
+                    LOGGER.warn("{} already opened at version {}: overwriting with version {}", this.uri, this.version, version);
                 }
                 this.version = version;
                 setText(text);
@@ -192,7 +235,6 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             synchronized (this.lock)
             {
                 this.version = null;
-                clearText();
             }
         }
 
@@ -232,31 +274,35 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             }
         }
 
-        void clearText()
+        void initialize()
         {
             synchronized (this.lock)
             {
-                this.sectionIndex = null;
-                this.sectionStates = null;
+                if (!isInitialized())
+                {
+                    loadText();
+                }
             }
         }
 
-        private void initializeText()
+        void loadText()
         {
-            if (this.sectionStates == null)
+            synchronized (this.lock)
             {
+                String text;
                 try
                 {
                     Path path = Paths.get(URI.create(this.uri));
-                    String text = Files.readString(path);
-                    setText(text);
+                    text = Files.readString(path);
                 }
                 catch (Exception e)
                 {
-                    LOGGER.warn("Error initializing state for {}", this.uri, e);
-                    this.sectionIndex = null;
-                    this.sectionStates = Collections.emptyList();
+                    LOGGER.warn("Error loading text for {}", this.uri, e);
+                    return;
                 }
+
+                this.version = null;
+                setText(text);
             }
         }
 
@@ -268,17 +314,41 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
                 return;
             }
 
-            if (newText == null)
+            this.sectionIndex = (newText == null) ? null : GrammarSectionIndex.parse(newText);
+            this.sectionStates = createSectionStates(this.sectionIndex);
+        }
+
+        private List<LegendServerSectionState> createSectionStates(GrammarSectionIndex index)
+        {
+            if (index == null)
             {
-                this.sectionIndex = null;
-                this.sectionStates = Collections.emptyList();
+                return Collections.emptyList();
             }
-            else
+
+            List<LegendServerSectionState> states = new ArrayList<>(index.getSectionCount());
+            index.forEachSection(section ->
             {
-                this.sectionIndex = GrammarSectionIndex.parse(newText);
-                this.sectionStates = new ArrayList<>(this.sectionIndex.getSectionCount());
-                this.sectionIndex.forEachSection(section -> this.sectionStates.add(new LegendServerSectionState(this, this.sectionStates.size(), section)));
-            }
+                int n = states.size();
+                LegendServerSectionState sectionState = new LegendServerSectionState(this, n, section);
+                LegendLSPGrammarExtension extension = this.globalState.server.getGrammarExtension(section.getGrammar());
+                if (extension == null)
+                {
+                    LOGGER.warn("Could not initialize section {} of {}: no extension for grammar {}", n, this.uri, section.getGrammar());
+                }
+                else
+                {
+                    try
+                    {
+                        extension.initialize(sectionState);
+                    }
+                    catch (Exception e)
+                    {
+                        LOGGER.error("Error initializing section {} of {}", n, this.uri, e);
+                    }
+                }
+                states.add(sectionState);
+            });
+            return states;
         }
     }
 

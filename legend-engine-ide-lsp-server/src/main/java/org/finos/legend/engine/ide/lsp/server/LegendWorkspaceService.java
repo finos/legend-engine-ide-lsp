@@ -139,16 +139,23 @@ class LegendWorkspaceService implements WorkspaceService
     {
         LOGGER.debug("Changed {}", uri);
         LegendServerGlobalState.LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
-        if (!docState.isOpen())
+        if (docState.isOpen())
         {
-            docState.clearText();
+            LOGGER.warn("Open file has changed: {}", uri);
         }
+        else
+        {
+            docState.loadText();
+        }
+        this.server.addRootFolderFromFile(uri);
     }
 
     private void fileCreated(LegendServerGlobalState globalState, String uri)
     {
         LOGGER.debug("Created {}", uri);
-        globalState.getOrCreateDocState(uri);
+        LegendServerGlobalState.LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
+        docState.initialize();
+        this.server.addRootFolderFromFile(uri);
     }
 
     private void fileDeleted(LegendServerGlobalState globalState, String uri)
@@ -161,5 +168,6 @@ class LegendWorkspaceService implements WorkspaceService
     {
         LOGGER.debug("Renamed {} to {}", oldUri, newUri);
         globalState.renameDoc(oldUri, newUri);
+        this.server.addRootFolderFromFile(newUri);
     }
 }

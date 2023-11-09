@@ -41,6 +41,12 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     private static final String PARSE_RESULT = "parse";
 
     @Override
+    public void initialize(SectionState section)
+    {
+        getParseResult(section);
+    }
+
+    @Override
     public Iterable<? extends LegendDeclaration> getDeclarations(SectionState sectionState)
     {
         MutableList<LegendDeclaration> declarations = Lists.mutable.empty();
