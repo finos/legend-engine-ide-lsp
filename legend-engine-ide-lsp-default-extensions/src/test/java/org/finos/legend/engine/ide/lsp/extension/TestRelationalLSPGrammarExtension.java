@@ -16,6 +16,8 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.junit.jupiter.api.Test;
@@ -82,7 +84,26 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                         "   Join JoinEmployeeToFirm(EmployeeTable.id = FirmTable.employeeId)\n" +
                         "   Join JoinEmployeeToemployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
                         ")",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(4, 3, 4, 7), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(4, 3, 4, 7), "Unexpected token", Kind.Error, Source.Parser)
+        );
+    }
+
+    @Test
+    public void testDiagnostics_compileError()
+    {
+        testDiagnostics(
+                "###Relational\n" +
+                        "Database vscodelsp::test::EmployeeDatabase\n" +
+                        "(\n" +
+                        "   Table EmployeeTable(id INT PRIMARY KEY, hireDate DATE, hireType VARCHAR(10), fteFactor DOUBLE)\n" +
+                        "   Table EmployeeDetailsTable(id INT PRIMARY KEY, birthDate DATE, yearsOfExperience DOUBLE)\n" +
+                        "   Table FirmTable(firmName VARCHAR(100) PRIMARY KEY, employeeId INT PRIMARY KEY)\n" +
+                        "\n" +
+                        "   Join JoinEmployeeToFirm(EmployeeTable.id = FirmTable.employeeId)\n" +
+                        "   Join JoinEmployeeToEmployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
+                        "   Join JoinEmployeeToNowhere(EmployeeTable.id = UnknownTable.id)\n" +
+                        ")",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(9, 49, 9, 60), "Can't find table 'UnknownTable' in schema 'default' and database 'EmployeeDatabase'", Kind.Error, Source.Compiler)
         );
     }
 

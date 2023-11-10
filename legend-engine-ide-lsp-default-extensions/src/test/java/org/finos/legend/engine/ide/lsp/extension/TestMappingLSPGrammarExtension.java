@@ -16,6 +16,8 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.junit.jupiter.api.Test;
 
@@ -55,12 +57,12 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                         "   }\n" +
                         ")",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 35, 5, 47), "Unexpected token 'EmployeeTable'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 35, 5, 47), "Unexpected token 'EmployeeTable'", Kind.Error, Source.Parser)
         );
     }
 
     @Test
-    public void testDiagnostics_noError()
+    public void testDiagnostics_compilerError()
     {
         testDiagnostics(
                 "###Mapping\n" +
@@ -71,7 +73,8 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "      hireDate : [EmployeeDatabase]EmployeeTable.hireDate,\n" +
                         "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                         "   }\n" +
-                        ")"
+                        ")",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler)
         );
     }
 

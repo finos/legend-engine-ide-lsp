@@ -16,6 +16,8 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Test;
@@ -92,7 +94,22 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         "    hireDate : Date[1];\n" +
                         "    hireType : String[1];\n" +
                         "}",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 20, 3, 24), "no viable alternative at input 'foobarFloat'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 20, 3, 24), "no viable alternative at input 'foobarFloat'", Kind.Error, Source.Parser)
+        );
+    }
+
+    @Test
+    public void testDiagnostics_compilerError()
+    {
+        testDiagnostics(
+                "###Pure\n" +
+                        "Class vscodelsp::test::Employee\n" +
+                        "{\n" +
+                        "    foobar: Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : vscodelsp::test::HireType[1];\n" +
+                        "}",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 15, 5, 39), "Can't find type 'vscodelsp::test::HireType'", Kind.Error, Source.Compiler)
         );
     }
 

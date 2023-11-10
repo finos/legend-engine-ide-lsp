@@ -55,9 +55,12 @@
         <!-- Dependency versions -->
         <commons-lang3.version>3.11</commons-lang3.version>
         <eclipse.collections.version>10.4.0</eclipse.collections.version>
+        <jackson.version>2.10.5</jackson.version>
+        <jackson.databind.version>2.10.5.1</jackson.databind.version>
         <junit.version>5.10.0</junit.version>
         <logback.version>1.4.11</logback.version>
         <lsp4j.version>0.21.1</lsp4j.version>
+        <pac4j.version>3.8.3</pac4j.version>
         <slf4j.version>2.0.9</slf4j.version>
 
         <!-- Plugin versions -->
@@ -382,6 +385,21 @@
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-language-pure-compiler</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.bouncycastle</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-language-pure-grammar</artifactId>
                 <version>${legend.engine.version}</version>
                 <exclusions>
@@ -409,14 +427,6 @@
                         <groupId>org.apache.httpcomponents</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
-                    <exclusion>
-                        <groupId>org.finos.legend.shared</groupId>
-                        <artifactId>legend-shared-pac4j-kerberos</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.pac4j</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
                 </exclusions>
             </dependency>
             <dependency>
@@ -438,14 +448,6 @@
                     </exclusion>
                     <exclusion>
                         <groupId>javax.ws.rs</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.finos.legend.shared</groupId>
-                        <artifactId>legend-shared-pac4j-kerberos</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.pac4j</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
@@ -537,6 +539,23 @@
             </dependency>
 
             <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>4.5.13</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpcore</artifactId>
+                <version>4.4.13</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.eclipse.collections</groupId>
                 <artifactId>eclipse-collections</artifactId>
                 <version>${eclipse.collections.version}</version>
@@ -559,11 +578,38 @@
             </dependency>
 
             <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.databind.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
                 <version>${junit.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.pac4j</groupId>
+                <artifactId>pac4j-core</artifactId>
+                <version>${pac4j.version}</version>
             </dependency>
 
             <dependency>
