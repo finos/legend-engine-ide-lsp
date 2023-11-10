@@ -58,7 +58,7 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testDiagnostics_noError()
+    public void testDiagnostics_compilerWarning()
     {
         testDiagnostics(
                 "###Runtime\n" +
@@ -67,7 +67,8 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "{\r\n" +
                 "    mappings: [];\r\n" +
                 "    connections: [];\n" +
-                " }\n"
+                " }\n",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(2, 0, 6, 1), "Runtime must cover at least one mapping", LegendDiagnostic.Kind.Warning, LegendDiagnostic.Source.Compiler)
         );
     }
 
