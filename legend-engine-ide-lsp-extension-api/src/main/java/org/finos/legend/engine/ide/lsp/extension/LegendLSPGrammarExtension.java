@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -54,5 +55,10 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Iterable<? extends LegendDiagnostic> getDiagnostics(SectionState section)
     {
         return Collections.emptyList();
+    }
+
+    default LegendCompletion getCompletions(String completionTrigger)
+    {
+        return new LegendCompletion("");
     }
 }

@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
@@ -183,4 +184,10 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 .withLocation(toLocation(property.sourceInformation))
                 .build();
     }
+
+    public LegendCompletion getCompletions(String completionTrigger)
+    {
+        return (new LegendCompletion(completionTrigger));
+    }
+
 }

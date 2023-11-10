@@ -15,7 +15,6 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import org.eclipse.lsp4j.CompletionItem;
-import org.eclipse.lsp4j.CompletionItemKind;
 import org.eclipse.lsp4j.CompletionItemLabelDetails;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.CompletionParams;
@@ -44,6 +43,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -300,19 +300,6 @@ class LegendTextDocumentService implements TextDocumentService
         }
     }
 
-    private Boolean matchTrigger(String codeLine, List<String> triggers)
-    {
-        for (String triggerWord: triggers)
-        {
-            if ((codeLine.length() - triggerWord.length()) > 0 &&
-                    codeLine.substring(codeLine.length() - triggerWord.length()).equals(triggerWord))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams completionParams)
     {
@@ -324,44 +311,28 @@ class LegendTextDocumentService implements TextDocumentService
         String uri = completionParams.getTextDocument().getUri();
         int line = completionParams.getPosition().getLine();
         int character = completionParams.getPosition().getCharacter();
-        String trigger = this.server.getGlobalState().getOrCreateDocState(uri).getSectionState(0).getSection().getLine(line).substring(0, character);
+        String completionTrigger = this.server.getGlobalState().getOrCreateDocState(uri).getSectionState(0).getSection().getLine(line).substring(0, character);
 
-        List<String> types = List.of("Integer ", "Date ", "StrictDate ", "String ", "Float ", "Boolean ");
-        List<String> multiplicities = List.of("[0..1];\n", "[0..*];\n", "[1];\n", "[*];\n");
+        String grammar = this.server.getGlobalState().getDocumentState(uri).getSectionState(0).getSection().getGrammar();
+        LegendCompletion legendCompletions = this.server.getGrammarExtension(grammar).getCompletions(completionTrigger);
 
+        return getCompletionItems(legendCompletions);
+    }
+
+    private List<CompletionItem> getCompletionItems(LegendCompletion legendCompletions)
+    {
         List<CompletionItem> completions = new ArrayList<>();
 
-        if (matchTrigger(trigger, types))
+        for (String suggestion : legendCompletions.getSuggestions())
         {
-            for (String completionString : multiplicities)
-            {
-                CompletionItem completionItem = new CompletionItem(completionString);
-                completionItem.setKind(CompletionItemKind.TypeParameter);
-                completionItem.setInsertText(completionString);
-
-                CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
-                detail.setDescription("Attribute multiplicity");
-                completionItem.setLabelDetails(detail);
-
-                completions.add(completionItem);
-            }
+            CompletionItem completionItem = new CompletionItem(suggestion);
+            completionItem.setInsertText(suggestion);
+            CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
+            detail.setDescription(legendCompletions.getType());
+            completionItem.setLabelDetails(detail);
+            completions.add(completionItem);
         }
 
-        if (matchTrigger(trigger, List.of(": ")))
-        {
-            for (String completionString : types)
-            {
-                CompletionItem completionItem = new CompletionItem(completionString);
-                completionItem.setKind(CompletionItemKind.TypeParameter);
-                completionItem.setInsertText(completionString);
-
-                CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
-                detail.setDescription("Attribute type");
-                completionItem.setLabelDetails(detail);
-
-                completions.add(completionItem);
-            }
-        }
         return completions;
     }
 
