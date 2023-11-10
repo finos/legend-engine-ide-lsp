@@ -78,4 +78,19 @@ public interface State
      * Clear all property values.
      */
     void clearProperties();
+
+    default void logInfo(String message)
+    {
+        // No-op by default
+    }
+
+    default void logWarning(String message)
+    {
+        // No-op by default
+    }
+
+    default void logError(String message)
+    {
+        // No-op by default
+    }
 }

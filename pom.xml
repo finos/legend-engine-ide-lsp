@@ -53,11 +53,15 @@
         <legend.pure.version>4.10.0</legend.pure.version>
 
         <!-- Dependency versions -->
+        <commons-codec.version>1.15</commons-codec.version>
+        <commons-io.version>2.7</commons-io.version>
         <commons-lang3.version>3.11</commons-lang3.version>
         <eclipse.collections.version>10.4.0</eclipse.collections.version>
+        <gson.version>2.10.1</gson.version>
         <jackson.version>2.10.5</jackson.version>
         <jackson.databind.version>2.10.5.1</jackson.databind.version>
         <junit.version>5.10.0</junit.version>
+        <guava.version>31.1-jre</guava.version>
         <logback.version>1.4.11</logback.version>
         <lsp4j.version>0.21.1</lsp4j.version>
         <pac4j.version>3.8.3</pac4j.version>
@@ -226,7 +230,6 @@
                         <bannedDependencies>
                             <excludes>
                                 <exclude>commons-logging</exclude>
-                                <exclude>io.prometheus</exclude>
                                 <exclude>io.swagger</exclude>
                                 <exclude>io.zipkin</exclude>
                                 <exclude>io.zipkin.*</exclude>
@@ -235,9 +238,7 @@
                                 <exclude>junit</exclude>
                                 <exclude>log4j</exclude>
                                 <exclude>org.antlr:antlr4</exclude>
-                                <exclude>org.apache.tomcat</exclude>
                                 <exclude>org.bouncycastle</exclude>
-                                <exclude>org.hamcrest</exclude>
                                 <exclude>org.slf4j</exclude>
                             </excludes>
                             <includes>
@@ -350,10 +351,6 @@
                 <version>${legend.pure.version}</version>
                 <exclusions>
                     <exclusion>
-                        <groupId>io.prometheus</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
                         <groupId>junit</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
@@ -379,7 +376,7 @@
                 <exclusions>
                     <exclusion>
                         <groupId>junit</groupId>
-                        <artifactId>junit</artifactId>
+                        <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -404,10 +401,6 @@
                 <version>${legend.engine.version}</version>
                 <exclusions>
                     <exclusion>
-                        <groupId>io.prometheus</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
                         <groupId>io.swagger</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
@@ -423,11 +416,12 @@
                         <groupId>javax.ws.rs</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
-                    <exclusion>
-                        <groupId>org.apache.httpcomponents</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-language-pure-modelManager</artifactId>
+                <version>${legend.engine.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
@@ -436,10 +430,6 @@
                 <exclusions>
                     <exclusion>
                         <groupId>commons-logging</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>io.prometheus</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
                     <exclusion>
@@ -452,7 +442,6 @@
                     </exclusion>
                 </exclusions>
             </dependency>
-
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-language-pure-dsl-service</artifactId>
@@ -460,10 +449,6 @@
                 <exclusions>
                     <exclusion>
                         <groupId>junit</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.apache.httpcomponents</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
                     <exclusion>
@@ -502,14 +487,6 @@
                         <artifactId>*</artifactId>
                     </exclusion>
                     <exclusion>
-                        <groupId>org.apache.httpcomponents</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.apache.tomcat</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                    <exclusion>
                         <groupId>org.bouncycastle</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
@@ -524,12 +501,91 @@
                 <artifactId>legend-engine-xt-relationalStore-protocol</artifactId>
                 <version>${legend.engine.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-testable</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>io.swagger</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.ws.rs</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.bouncycastle</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-test-runner-mapping</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-test-runner-service</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>io.swagger</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.ws.rs</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-configuration</artifactId>
+                <version>${legend.engine.version}</version>
+            </dependency>
             <!-- LEGEND ENGINE -->
 
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>${gson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.zaxxer</groupId>
+                <artifactId>HikariCP</artifactId>
+                <version>4.0.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>${commons-codec.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
             </dependency>
 
             <dependency>

@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension.state;
 
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 
 /**
@@ -43,4 +44,29 @@ public interface SectionState extends State
      * @return section
      */
     GrammarSection getSection();
+
+    /**
+     * Get the extension associated with the section.
+     *
+     * @return extension
+     */
+    LegendLSPGrammarExtension getExtension();
+
+    @Override
+    default void logInfo(String message)
+    {
+        getDocumentState().logInfo(message);
+    }
+
+    @Override
+    default void logWarning(String message)
+    {
+        getDocumentState().logWarning(message);
+    }
+
+    @Override
+    default void logError(String message)
+    {
+        getDocumentState().logError(message);
+    }
 }

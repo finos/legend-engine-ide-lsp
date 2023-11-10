@@ -19,6 +19,8 @@ import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -30,23 +32,44 @@ import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceI
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
+import org.finos.legend.engine.language.pure.modelManager.ModelManager;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.AssertFail;
+import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.AssertPass;
+import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.EqualToJsonAssertFail;
+import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestError;
+import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestExecuted;
+import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestResult;
 import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
+import org.finos.legend.engine.testable.TestableRunner;
+import org.finos.legend.engine.testable.extension.TestableRunnerExtension;
+import org.finos.legend.engine.testable.extension.TestableRunnerExtensionLoader;
+import org.finos.legend.engine.testable.model.RunTestsResult;
+import org.finos.legend.engine.testable.model.RunTestsTestableInput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Collections;
+import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLSPGrammarExtension.class);
 
+    private static final String RUN_TESTS_COMMAND_ID = "legend.testable.runTests";
+    private static final String RUN_TESTS_COMMAND_TITLE = "Run tests";
+
     private static final String PARSE_RESULT = "parse";
     private static final String COMPILE_RESULT = "compile";
+
+    private final Map<String, ? extends TestableRunnerExtension> testableRunners = TestableRunnerExtensionLoader.getClassifierPathToTestableRunnerMap();
 
     @Override
     public void initialize(SectionState section)
@@ -118,13 +141,139 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
+    @Override
+    public Iterable<? extends LegendCommand> getCommands(SectionState section)
+    {
+        ParseResult result = getParseResult(section);
+        if (result.hasException() || result.getElements().isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        MutableList<LegendCommand> commands = Lists.mutable.empty();
+        result.getElements().forEach(element ->
+        {
+            SourceInformation sourceInfo = element.sourceInformation;
+            if (isValidSourceInfo(sourceInfo))
+            {
+                String path = element.getPath();
+                TextInterval location = toLocation(sourceInfo);
+                collectCommands(section, element, (id, title) -> commands.add(LegendCommand.newCommand(path, id, title, location)));
+            }
+        });
+        return commands;
+    }
+
+    protected void collectCommands(SectionState sectionState, PackageableElement element, BiConsumer<String, String> consumer)
+    {
+        String classifier = getClassifier(element);
+        if (this.testableRunners.containsKey(classifier))
+        {
+            consumer.accept(RUN_TESTS_COMMAND_ID, RUN_TESTS_COMMAND_TITLE);
+        }
+    }
+
+    @Override
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId)
+    {
+        if (RUN_TESTS_COMMAND_ID.equals(commandId))
+        {
+            CompileResult compileResult = getCompileResult(section);
+            if (compileResult.hasException())
+            {
+                Exception e = compileResult.getException();
+                String message = e.getMessage();
+                StringWriter writer = new StringWriter();
+                try (PrintWriter pw = new PrintWriter(writer))
+                {
+                    e.printStackTrace(pw);
+                }
+                return Collections.singletonList(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, (message == null) ? "Error" : message, writer.toString()));
+            }
+
+            try
+            {
+                TestableRunner runner = new TestableRunner(new ModelManager(DeploymentMode.PROD));
+                RunTestsTestableInput runTestsTestableInput = new RunTestsTestableInput();
+                runTestsTestableInput.testable = entityPath;
+                runTestsTestableInput.unitTestIds = Lists.fixedSize.empty();
+                RunTestsResult testsResult = runner.doTests(Collections.singletonList(runTestsTestableInput), compileResult.getPureModel(), compileResult.getPureModelContextData());
+                MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+                testsResult.results.forEach(res ->
+                {
+                    if (res instanceof TestError)
+                    {
+                        TestError testError = (TestError) res;
+                        StringBuilder builder = appendTestId(testError).append(": ERROR\n").append(testError.error);
+                        results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, builder.toString()));
+                    }
+                    else if (res instanceof TestExecuted)
+                    {
+                        TestExecuted testExecuted = (TestExecuted) res;
+                        String messagePrefix = appendTestId(testExecuted).toString();
+                        testExecuted.assertStatuses.forEach(assertStatus ->
+                        {
+                            if (assertStatus instanceof AssertPass)
+                            {
+                                results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.SUCCESS, messagePrefix + "." + assertStatus.id + ": PASS"));
+                            }
+                            else if (assertStatus instanceof AssertFail)
+                            {
+                                StringBuilder builder = new StringBuilder(messagePrefix).append('.').append(assertStatus.id).append(": FAILURE\n").append(((AssertFail) assertStatus).message);
+                                if (assertStatus instanceof EqualToJsonAssertFail)
+                                {
+                                    EqualToJsonAssertFail fail = (EqualToJsonAssertFail) assertStatus;
+                                    builder.append("\nexpected: ").append(fail.expected);
+                                    builder.append("\nactual:   ").append(fail.actual);
+                                }
+                                results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.FAILURE, builder.toString()));
+                            }
+                            else
+                            {
+                                String message = appendTestId(res).append(": WARNING\nUnknown assert status: ").append(assertStatus.getClass().getName()).toString();
+                                LOGGER.warn(message);
+                                results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.WARNING, message));
+                            }
+                        });
+                    }
+                    else
+                    {
+                        String message = "Unknown test result type: " + res.getClass().getName();
+                        LOGGER.warn(message);
+                        results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.WARNING, message));
+                    }
+                });
+                return results;
+            }
+            catch (Exception e)
+            {
+                String message = e.getMessage();
+                StringWriter writer = new StringWriter();
+                try (PrintWriter pw = new PrintWriter(writer))
+                {
+                    e.printStackTrace(pw);
+                }
+                return Collections.singletonList(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, (message == null) ? "Error" : message, writer.toString()));
+            }
+        }
+
+        LOGGER.warn("Unknown command id for {}: {}", entityPath, commandId);
+        return Collections.emptyList();
+    }
+
+    private StringBuilder appendTestId(TestResult testResult)
+    {
+        StringBuilder builder = new StringBuilder(testResult.testable);
+        if (testResult.testSuiteId != null)
+        {
+            builder.append('.').append(testResult.testSuiteId);
+        }
+        return builder.append('.').append(testResult.atomicTestId);
+    }
+
     protected ParseResult getParseResult(SectionState sectionState)
     {
-        return sectionState.getProperty(PARSE_RESULT, () ->
-        {
-            sectionState.getDocumentState().getGlobalState().removeProperty(COMPILE_RESULT);
-            return tryParse(sectionState);
-        });
+        return sectionState.getProperty(PARSE_RESULT, () -> tryParse(sectionState));
     }
 
     protected ParseResult tryParse(SectionState sectionState)
@@ -172,6 +321,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected CompileResult tryCompile(GlobalState globalState, DocumentState documentState, SectionState sectionState)
     {
+        globalState.logInfo("Starting compilation");
         try
         {
             PureModelContextData.Builder builder = PureModelContextData.newBuilder();
@@ -183,14 +333,22 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                     builder.addElements(parseResult.getElements());
                 }
             }));
-            PureModel pureModel = Compiler.compile(builder.build(), DeploymentMode.PROD, Collections.emptyList());
-            return new CompileResult(pureModel);
+            PureModelContextData pureModelContextData = builder.build();
+            PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, Collections.emptyList());
+            globalState.logInfo("Compilation completed successfully");
+            return new CompileResult(pureModel, pureModelContextData);
         }
         catch (EngineException e)
         {
             SourceInformation sourceInfo = e.getSourceInformation();
-            if (!isValidSourceInfo(sourceInfo))
+            if (isValidSourceInfo(sourceInfo))
             {
+                globalState.logInfo("Compilation completed with error " + "(" + sourceInfo.sourceId + " " + toLocation(sourceInfo).toCompactString() + "): " + e.getMessage());
+            }
+            else
+            {
+                globalState.logInfo("Compilation completed with error: " + e.getMessage());
+                globalState.logWarning("Invalid source information for compilation error");
                 LOGGER.warn("Invalid source information in exception during compilation requested for section {} of {}: {}", sectionState.getSectionNumber(), documentState.getDocumentId(), (sourceInfo == null) ? null : sourceInfo.getMessage(), e);
             }
             return new CompileResult(e);
@@ -198,6 +356,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         catch (Exception e)
         {
             LOGGER.error("Unexpected exception during compilation requested for section {} of {}", sectionState.getSectionNumber(), documentState.getDocumentId(), e);
+            globalState.logWarning("Unexpected error during compilation");
             return new CompileResult(e);
         }
     }
@@ -343,9 +502,12 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected static class CompileResult extends Result<PureModel>
     {
-        private CompileResult(PureModel pureModel)
+        private PureModelContextData pureModelContextData;
+
+        private CompileResult(PureModel pureModel, PureModelContextData pureModelContextData)
         {
             super(pureModel, null);
+            this.pureModelContextData = pureModelContextData;
         }
 
         private CompileResult(Exception e)
@@ -353,14 +515,14 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             super(null, e);
         }
 
-        public boolean successful()
-        {
-            return hasResult();
-        }
-
         public PureModel getPureModel()
         {
             return getResult();
+        }
+
+        public PureModelContextData getPureModelContextData()
+        {
+            return this.pureModelContextData;
         }
     }
 }
