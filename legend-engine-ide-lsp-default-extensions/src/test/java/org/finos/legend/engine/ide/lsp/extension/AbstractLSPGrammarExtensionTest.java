@@ -76,11 +76,11 @@ abstract class AbstractLSPGrammarExtensionTest
 
     protected abstract LegendLSPGrammarExtension newExtension();
 
-    protected static SectionState newSectionState(String docId, String text)
+    protected SectionState newSectionState(String docId, String text)
     {
         TestGlobalState globalState = new TestGlobalState();
         TestDocumentState docState = new TestDocumentState(globalState, docId, text);
-        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(text));
+        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(text), this.extension);
 
         globalState.docStates.put(docId, docState);
         docState.sectionStates.add(sectionState);
@@ -277,12 +277,14 @@ abstract class AbstractLSPGrammarExtensionTest
         private final DocumentState docState;
         private final int n;
         private final GrammarSection section;
+        private final LegendLSPGrammarExtension extension;
 
-        private TestSectionState(DocumentState docState, int n, GrammarSection section)
+        private TestSectionState(DocumentState docState, int n, GrammarSection section, LegendLSPGrammarExtension extension)
         {
             this.docState = docState;
             this.n = n;
             this.section = section;
+            this.extension = extension;
         }
 
         @Override
@@ -301,6 +303,12 @@ abstract class AbstractLSPGrammarExtensionTest
         public GrammarSection getSection()
         {
             return this.section;
+        }
+
+        @Override
+        public LegendLSPGrammarExtension getExtension()
+        {
+            return this.extension;
         }
     }
 }

@@ -24,6 +24,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,6 +67,24 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         {
             this.docs.values().forEach(consumer);
         }
+    }
+
+    @Override
+    public void logInfo(String message)
+    {
+        this.server.logInfoToClient(message);
+    }
+
+    @Override
+    public void logWarning(String message)
+    {
+        this.server.logWarningToClient(message);
+    }
+
+    @Override
+    public void logError(String message)
+    {
+        this.server.logErrorToClient(message);
     }
 
     LegendServerDocumentState getOrCreateDocState(String uri)
@@ -117,8 +137,16 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
                 {
                     stream.forEach(path ->
                     {
-                        String uri = path.toUri().toString();
-                        LegendServerDocumentState docState = getOrCreateDocState(uri);
+                        StringBuilder builder = new StringBuilder(folderUri);
+                        folderPath.relativize(path).forEach(p ->
+                        {
+                            if (builder.charAt(builder.length() - 1) != '/')
+                            {
+                                builder.append('/');
+                            }
+                            builder.append(URLEncoder.encode(p.toString(), StandardCharsets.UTF_8));
+                        });
+                        LegendServerDocumentState docState = getOrCreateDocState(builder.toString());
                         docState.initialize();
                     });
                 }
@@ -280,6 +308,9 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             {
                 if (!isInitialized())
                 {
+                    String message = "Initializing file: " + this.uri;
+                    this.globalState.server.logInfoToClient(message);
+                    LOGGER.debug(message);
                     loadText();
                 }
             }
@@ -298,6 +329,7 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
                 catch (Exception e)
                 {
                     LOGGER.warn("Error loading text for {}", this.uri, e);
+                    this.globalState.server.logWarningToClient("Error loading text for " + this.uri + ((e.getMessage() == null) ? "" : (": " + e.getMessage())));
                     return;
                 }
 
@@ -314,6 +346,9 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
                 return;
             }
 
+            logInfo("Clearing global and " + this.uri + " properties");
+            clearProperties();
+            this.globalState.clearProperties();
             this.sectionIndex = (newText == null) ? null : GrammarSectionIndex.parse(newText);
             this.sectionStates = createSectionStates(this.sectionIndex);
         }
@@ -329,8 +364,8 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             index.forEachSection(section ->
             {
                 int n = states.size();
-                LegendServerSectionState sectionState = new LegendServerSectionState(this, n, section);
                 LegendLSPGrammarExtension extension = this.globalState.server.getGrammarExtension(section.getGrammar());
+                LegendServerSectionState sectionState = new LegendServerSectionState(this, n, section, extension);
                 if (extension == null)
                 {
                     LOGGER.warn("Could not initialize section {} of {}: no extension for grammar {}", n, this.uri, section.getGrammar());
@@ -357,13 +392,15 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         private final LegendServerDocumentState docState;
         private final int n;
         private final GrammarSection grammarSection;
+        private final LegendLSPGrammarExtension extension;
 
-        private LegendServerSectionState(LegendServerDocumentState docState, int n, GrammarSection grammarSection)
+        private LegendServerSectionState(LegendServerDocumentState docState, int n, GrammarSection grammarSection, LegendLSPGrammarExtension extension)
         {
             super(docState.lock);
             this.docState = docState;
             this.n = n;
             this.grammarSection = grammarSection;
+            this.extension = extension;
         }
 
         @Override
@@ -382,6 +419,12 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         public GrammarSection getSection()
         {
             return this.grammarSection;
+        }
+
+        @Override
+        public LegendLSPGrammarExtension getExtension()
+        {
+            return this.extension;
         }
     }
 }

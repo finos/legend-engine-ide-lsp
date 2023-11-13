@@ -65,4 +65,22 @@ public interface DocumentState extends State
      * @param consumer section state consumer
      */
     void forEachSectionState(Consumer<? super SectionState> consumer);
+
+    @Override
+    default void logInfo(String message)
+    {
+        getGlobalState().logInfo(message);
+    }
+
+    @Override
+    default void logWarning(String message)
+    {
+        getGlobalState().logWarning(message);
+    }
+
+    @Override
+    default void logError(String message)
+    {
+        getGlobalState().logError(message);
+    }
 }

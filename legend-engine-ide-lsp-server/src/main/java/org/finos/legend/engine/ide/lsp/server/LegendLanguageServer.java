@@ -14,6 +14,10 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import org.eclipse.lsp4j.CodeLensOptions;
+import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
 import org.eclipse.lsp4j.FileOperationOptions;
 import org.eclipse.lsp4j.FileOperationPattern;
@@ -24,16 +28,22 @@ import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.SemanticTokenTypes;
 import org.eclipse.lsp4j.SemanticTokensLegend;
 import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
+import org.eclipse.lsp4j.WorkDoneProgressBegin;
+import org.eclipse.lsp4j.WorkDoneProgressEnd;
+import org.eclipse.lsp4j.WorkDoneProgressNotification;
+import org.eclipse.lsp4j.WorkDoneProgressReport;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.launch.LSPLauncher;
@@ -57,13 +67,9 @@ import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -73,6 +79,8 @@ import java.util.stream.Collectors;
 public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageServer.class);
+
+    static final String LEGEND_COMMAND_ID = "legend.command";
 
     private static final int UNINITIALIZED = 0;
     private static final int INITIALIZING = 1;
@@ -89,6 +97,8 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final LegendLSPGrammarLibrary grammars;
     private final LegendLSPInlineDSLLibrary inlineDSLs;
     private final LegendServerGlobalState globalState = new LegendServerGlobalState(this);
+    private final AtomicInteger progressId = new AtomicInteger();
+    private final Gson gson = new Gson();
 
     private final Set<String> rootFolders = new HashSet<>();
 
@@ -105,7 +115,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams initializeParams)
     {
-        LOGGER.info("Initialize server requested: {}", initializeParams);
+        LOGGER.debug("Initialize server requested: {}", initializeParams);
         int currentState = this.state.get();
         if (currentState >= INITIALIZING)
         {
@@ -161,10 +171,13 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     @Override
     public void connect(LanguageClient languageClient)
     {
-        Objects.requireNonNull(languageClient, "language client may not be null");
         checkNotShutDown();
         LOGGER.info("Connecting language client");
-        if (!this.languageClient.compareAndSet(null, languageClient))
+        if (this.languageClient.compareAndSet(null, languageClient))
+        {
+            logInfoToClient("Language client connected to server");
+        }
+        else
         {
             if (languageClient == this.languageClient.get())
             {
@@ -174,17 +187,12 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             {
                 String message = "Already connected to a language client";
                 LOGGER.error(message);
+                if (languageClient != null)
+                {
+                    languageClient.logMessage(new MessageParams(MessageType.Warning, "Cannot connect client to server: server already connected to a different client"));
+                }
                 throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
             }
-        }
-
-        if (this.async)
-        {
-            runAsync(() -> trySetWorkspaceFoldersFromClient(5L, TimeUnit.SECONDS));
-        }
-        else
-        {
-            trySetWorkspaceFoldersFromClient(1L, TimeUnit.SECONDS);
         }
     }
 
@@ -318,56 +326,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return this.inlineDSLs;
     }
 
-    private boolean trySetWorkspaceFoldersFromClient(long timeout, TimeUnit unit)
-    {
-        LanguageClient client = this.languageClient.get();
-        if (client == null)
-        {
-            return false;
-        }
-
-        List<WorkspaceFolder> folders;
-        try
-        {
-            folders = client.workspaceFolders().get(timeout, unit);
-        }
-        catch (ExecutionException e)
-        {
-            LOGGER.error("Error getting workspace folders from the client", e.getCause());
-            return false;
-        }
-        catch (InterruptedException e)
-        {
-            LOGGER.warn("Interrupted while waiting for workspace folders from the client", e);
-            return false;
-        }
-        catch (TimeoutException e)
-        {
-            LOGGER.warn("Timed out waiting for workspace folders from the client", e);
-            return false;
-        }
-        catch (UnsupportedOperationException e)
-        {
-            String message = e.getMessage();
-            if (message != null)
-            {
-                LOGGER.warn("Client does not support getting workspace folders: {}", message);
-            }
-            else
-            {
-                LOGGER.warn("Client does not support getting workspace folders");
-            }
-            return false;
-        }
-        catch (Exception e)
-        {
-            LOGGER.error("Error getting workspace folders from the client", e);
-            return false;
-        }
-        setWorkspaceFolders(folders);
-        return true;
-    }
-
     void setWorkspaceFolders(Iterable<? extends WorkspaceFolder> folders)
     {
         List<String> addedFolders;
@@ -376,6 +334,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         {
             Set<String> newRootFolders = new HashSet<>();
             folders.forEach(ws -> newRootFolders.add(ws.getUri()));
+            logInfoToClient("Setting workspace folders: " + newRootFolders);
 
             addedFolders = newRootFolders.stream().filter(f -> !this.rootFolders.contains(f)).collect(Collectors.toList());
             removedFolders = this.rootFolders.stream().filter(f -> !newRootFolders.contains(f)).collect(Collectors.toList());
@@ -408,7 +367,9 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
         if (added)
         {
-            LOGGER.info("Added root folder: {}", folderUri);
+            String message = "Added root folder: " + folderUri;
+            LOGGER.info(message);
+            logInfoToClient(message);
             runPossiblyAsync_internal(() -> this.globalState.addFolder(folderUri));
         }
     }
@@ -450,11 +411,15 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         if ((addedFolders != null) && !addedFolders.isEmpty())
         {
-            LOGGER.info("Added root folders: {}", addedFolders);
+            String message = "Added root folders: " + addedFolders;
+            LOGGER.info(message);
+            logInfoToClient(message);
         }
         if ((removedFolders != null) && !removedFolders.isEmpty())
         {
-            LOGGER.info("Removed root folders: {}", removedFolders);
+            String message = "Removed root folders: " + removedFolders;
+            LOGGER.info(message);
+            logInfoToClient(message);
         }
         runPossiblyAsync_internal(() ->
         {
@@ -467,24 +432,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
                removedFolders.forEach(this.globalState::removeFolder);
            }
         });
-    }
-
-    boolean forEachRootFolder(Consumer<? super String> consumer)
-    {
-        synchronized (this.rootFolders)
-        {
-            if (this.rootFolders.isEmpty())
-            {
-                boolean setFromClient = trySetWorkspaceFoldersFromClient(500, TimeUnit.MILLISECONDS);
-                if (!setFromClient)
-                {
-                    LOGGER.warn("Could not get workspace folders from client");
-                    return false;
-                }
-            }
-            this.rootFolders.forEach(consumer);
-            return true;
-        }
     }
 
     void logToClient(String message)
@@ -514,6 +461,120 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         {
             client.logMessage(new MessageParams(messageType, message));
         }
+    }
+
+    void showInfoToClient(String message)
+    {
+        showToClient(MessageType.Info, message);
+    }
+
+    void showWarningToClient(String message)
+    {
+        showToClient(MessageType.Warning, message);
+    }
+
+    void showErrorToClient(String message)
+    {
+        showToClient(MessageType.Error, message);
+    }
+
+    void showToClient(MessageType messageType, String message)
+    {
+        LanguageClient client = this.languageClient.get();
+        if (client != null)
+        {
+            client.showMessage(new MessageParams(messageType, message));
+        }
+    }
+
+    Either<String, Integer> newProgressToken()
+    {
+        return Either.forRight(this.progressId.getAndIncrement());
+    }
+
+    Either<String, Integer> possiblyNewProgressToken(Either<String, Integer> token)
+    {
+        return (token == null) ? newProgressToken() : token;
+    }
+
+    void notifyBegin(Either<String, Integer> token)
+    {
+        notifyBegin(token, null);
+    }
+
+    void notifyBegin(Either<String, Integer> token, String message)
+    {
+        notifyBegin(token, message, null);
+    }
+
+    void notifyBegin(Either<String, Integer> token, String message, String title)
+    {
+        WorkDoneProgressBegin begin = new WorkDoneProgressBegin();
+        if (message != null)
+        {
+            begin.setMessage(message);
+        }
+        if (title != null)
+        {
+            begin.setTitle(title);
+        }
+        notifyProgress(token, begin);
+    }
+
+    void notifyProgress(Either<String, Integer> token, String message)
+    {
+        WorkDoneProgressReport report = new WorkDoneProgressReport();
+        if (message != null)
+        {
+            report.setMessage(message);
+        }
+        notifyProgress(token, report);
+    }
+
+    void notifyEnd(Either<String, Integer> token)
+    {
+        notifyEnd(token, null);
+    }
+
+    void notifyEnd(Either<String, Integer> token, String message)
+    {
+        WorkDoneProgressEnd end = new WorkDoneProgressEnd();
+        if (message != null)
+        {
+            end.setMessage(message);
+        }
+        notifyProgress(token, end);
+    }
+
+    private void notifyProgress(Either<String, Integer> token, WorkDoneProgressNotification progress)
+    {
+        LanguageClient client = this.languageClient.get();
+        if (client != null)
+        {
+            client.notifyProgress(new ProgressParams(token, Either.forLeft(progress)));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    <T> T extractValueAs(Object value, Class<T> cls)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        if (cls.isInstance(value))
+        {
+            return (T) value;
+        }
+        if (value instanceof JsonElement)
+        {
+            return this.gson.fromJson((JsonElement) value, cls);
+        }
+        if (value instanceof String)
+        {
+            return this.gson.fromJson((String) value, cls);
+        }
+        return null;
     }
 
     private <T> CompletableFuture<T> supplyPossiblyAsync_internal(Supplier<T> supplier)
@@ -551,14 +612,16 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private InitializeResult doInitialize(InitializeParams initializeParams)
     {
         LOGGER.info("Initializing server");
+        LOGGER.debug("Initialize params: {}", initializeParams);
         if (!this.state.compareAndSet(UNINITIALIZED, INITIALIZING))
         {
             String message = getCannotInitializeMessage(this.state.get());
             LOGGER.warn(message);
+            logWarningToClient(message);
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
 
-        logToClient("Initializing server");
+        logInfoToClient("Initializing server");
         List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
         if (workspaceFolders != null)
         {
@@ -587,10 +650,11 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
                 }
             }
             LOGGER.warn(message);
+            logWarningToClient(message);
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
         LOGGER.info("Server initialized");
-        logToClient("Server initialized");
+        logInfoToClient("Server initialized");
         return result;
     }
 
@@ -627,6 +691,8 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Collections.singletonList(SemanticTokenTypes.Keyword), Collections.emptyList()), false, true));
         capabilities.setWorkspace(getWorkspaceServerCapabilities());
+        capabilities.setCodeLensProvider(getCodeLensOptions());
+        capabilities.setExecuteCommandProvider(getExecuteCommandOptions());
         return capabilities;
     }
 
@@ -676,6 +742,18 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return filter;
     }
 
+    private CodeLensOptions getCodeLensOptions()
+    {
+        return new CodeLensOptions();
+    }
+
+    private ExecuteCommandOptions getExecuteCommandOptions()
+    {
+        ExecuteCommandOptions options = new ExecuteCommandOptions(Collections.singletonList(LEGEND_COMMAND_ID));
+        options.setWorkDoneProgress(true);
+        return options;
+    }
+
     private void doShutdown()
     {
         LOGGER.info("Starting shut down process");
@@ -702,7 +780,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
     }
 
-    private ResponseErrorException newResponseErrorException(ResponseErrorCode code, String message)
+    ResponseErrorException newResponseErrorException(ResponseErrorCode code, String message)
     {
         return new ResponseErrorException(new ResponseError(code, message, null));
     }
