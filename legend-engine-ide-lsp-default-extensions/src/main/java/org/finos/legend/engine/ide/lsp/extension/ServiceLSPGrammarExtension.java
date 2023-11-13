@@ -14,9 +14,11 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.eclipse.collections.api.factory.Lists;
 import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
+import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 
 import java.util.List;
 
@@ -42,5 +44,11 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     protected String getClassifier(PackageableElement element)
     {
         return (element instanceof Service) ? "meta::legend::service::metamodel::Service" : null;
+    }
+
+    @Override
+    protected List<? extends TestSuite> getTestSuites(PackageableElement element)
+    {
+        return (element instanceof Service) ? ((Service) element).testSuites : Lists.mutable.empty();
     }
 }

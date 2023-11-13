@@ -21,6 +21,7 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 
 import java.util.Collections;
+import java.util.Map;
 
 /**
  * An LSP extension representing a Legend Engine top level grammar.
@@ -77,7 +78,7 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
      * @param commandId  command id
      * @return execution results
      */
-    default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId)
+    default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
         return Collections.emptyList();
     }

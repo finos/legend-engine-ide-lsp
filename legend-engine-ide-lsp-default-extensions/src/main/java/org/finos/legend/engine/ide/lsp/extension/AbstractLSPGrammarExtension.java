@@ -37,6 +37,9 @@ import org.finos.legend.engine.language.pure.modelManager.ModelManager;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.test.AtomicTest;
+import org.finos.legend.engine.protocol.pure.v1.model.test.Test;
+import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.AssertFail;
 import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.AssertPass;
 import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.EqualToJsonAssertFail;
@@ -50,15 +53,19 @@ import org.finos.legend.engine.testable.extension.TestableRunnerExtension;
 import org.finos.legend.engine.testable.extension.TestableRunnerExtensionLoader;
 import org.finos.legend.engine.testable.model.RunTestsResult;
 import org.finos.legend.engine.testable.model.RunTestsTestableInput;
+import org.finos.legend.engine.testable.model.UniqueTestId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
@@ -66,6 +73,14 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private static final String RUN_TESTS_COMMAND_ID = "legend.testable.runTests";
     private static final String RUN_TESTS_COMMAND_TITLE = "Run tests";
+
+    private static final String RUN_TEST_SUITE_COMMAND_ID = "legend.testable.runTestSuite";
+    private static final String RUN_TEST_SUITE_COMMAND_TITLE = "Run test suite";
+    private static final String TEST_SUITE_ID = "legend.testable.testSuiteId";
+
+    private static final String RUN_TEST_COMMAND_ID = "legend.testable.runTest";
+    private static final String RUN_TEST_COMMAND_TITLE = "Run test";
+    private static final String TEST_ID = "legend.testable.testId";
 
     private static final String PARSE_RESULT = "parse";
     private static final String COMPILE_RESULT = "compile";
@@ -181,6 +196,35 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 TextInterval location = toLocation(sourceInfo);
                 collectCommands(section, element, (id, title) -> commands.add(LegendCommand.newCommand(path, id, title, location)));
             }
+            List<? extends TestSuite> testSuites = getTestSuites(element);
+            testSuites.forEach(testSuite ->
+            {
+                SourceInformation sourceInformation = testSuite.sourceInformation;
+                if (isValidSourceInfo(sourceInfo))
+                {
+                    String path = element.getPath();
+                    TextInterval location = toLocation(sourceInformation);
+                    Map<String, String> executableArgs = new HashMap<>();
+                    executableArgs.put(TEST_SUITE_ID, testSuite.id);
+                    LegendCommand command = LegendCommand.newCommand(path, RUN_TEST_SUITE_COMMAND_ID, RUN_TEST_SUITE_COMMAND_TITLE, location, executableArgs);
+                    commands.add(command);
+                }
+                List<AtomicTest> tests = testSuite.tests;
+                tests.forEach(test ->
+                {
+                    SourceInformation testSourceInfo = test.sourceInformation;
+                    if (isValidSourceInfo(testSourceInfo))
+                    {
+                        String path = element.getPath();
+                        TextInterval location = toLocation(testSourceInfo);
+                        Map<String, String> executableArgs = new HashMap<>();
+                        executableArgs.put(TEST_SUITE_ID, testSuite.id);
+                        executableArgs.put(TEST_ID, test.id);
+                        LegendCommand command = LegendCommand.newCommand(path, RUN_TEST_COMMAND_ID, RUN_TEST_COMMAND_TITLE, location, executableArgs);
+                        commands.add(command);
+                    }
+                });
+            });
         });
         return commands;
     }
@@ -194,92 +238,151 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
-    @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId)
+    private Iterable<? extends  LegendExecutionResult> runTests(SectionState section, String entityPath, List<UniqueTestId> unitTestIds)
     {
-        if (RUN_TESTS_COMMAND_ID.equals(commandId))
+        CompileResult compileResult = getCompileResult(section);
+        if (compileResult.hasException())
         {
-            CompileResult compileResult = getCompileResult(section);
-            if (compileResult.hasException())
+            Exception e = compileResult.getException();
+            String message = e.getMessage();
+            StringWriter writer = new StringWriter();
+            try (PrintWriter pw = new PrintWriter(writer))
             {
-                Exception e = compileResult.getException();
-                String message = e.getMessage();
-                StringWriter writer = new StringWriter();
-                try (PrintWriter pw = new PrintWriter(writer))
-                {
-                    e.printStackTrace(pw);
-                }
-                return Collections.singletonList(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, (message == null) ? "Error" : message, writer.toString()));
+                e.printStackTrace(pw);
             }
-
-            try
-            {
-                TestableRunner runner = new TestableRunner(new ModelManager(DeploymentMode.PROD));
-                RunTestsTestableInput runTestsTestableInput = new RunTestsTestableInput();
-                runTestsTestableInput.testable = entityPath;
-                runTestsTestableInput.unitTestIds = Lists.fixedSize.empty();
-                RunTestsResult testsResult = runner.doTests(Collections.singletonList(runTestsTestableInput), compileResult.getPureModel(), compileResult.getPureModelContextData());
-                MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-                testsResult.results.forEach(res ->
-                {
-                    if (res instanceof TestError)
-                    {
-                        TestError testError = (TestError) res;
-                        StringBuilder builder = appendTestId(testError).append(": ERROR\n").append(testError.error);
-                        results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, builder.toString()));
-                    }
-                    else if (res instanceof TestExecuted)
-                    {
-                        TestExecuted testExecuted = (TestExecuted) res;
-                        String messagePrefix = appendTestId(testExecuted).toString();
-                        testExecuted.assertStatuses.forEach(assertStatus ->
-                        {
-                            if (assertStatus instanceof AssertPass)
-                            {
-                                results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.SUCCESS, messagePrefix + "." + assertStatus.id + ": PASS"));
-                            }
-                            else if (assertStatus instanceof AssertFail)
-                            {
-                                StringBuilder builder = new StringBuilder(messagePrefix).append('.').append(assertStatus.id).append(": FAILURE\n").append(((AssertFail) assertStatus).message);
-                                if (assertStatus instanceof EqualToJsonAssertFail)
-                                {
-                                    EqualToJsonAssertFail fail = (EqualToJsonAssertFail) assertStatus;
-                                    builder.append("\nexpected: ").append(fail.expected);
-                                    builder.append("\nactual:   ").append(fail.actual);
-                                }
-                                results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.FAILURE, builder.toString()));
-                            }
-                            else
-                            {
-                                String message = appendTestId(res).append(": WARNING\nUnknown assert status: ").append(assertStatus.getClass().getName()).toString();
-                                LOGGER.warn(message);
-                                results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.WARNING, message));
-                            }
-                        });
-                    }
-                    else
-                    {
-                        String message = "Unknown test result type: " + res.getClass().getName();
-                        LOGGER.warn(message);
-                        results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.WARNING, message));
-                    }
-                });
-                return results;
-            }
-            catch (Exception e)
-            {
-                String message = e.getMessage();
-                StringWriter writer = new StringWriter();
-                try (PrintWriter pw = new PrintWriter(writer))
-                {
-                    e.printStackTrace(pw);
-                }
-                return Collections.singletonList(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, (message == null) ? "Error" : message, writer.toString()));
-            }
+            return Collections.singletonList(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, (message == null) ? "Error" : message, writer.toString()));
         }
 
-        LOGGER.warn("Unknown command id for {}: {}", entityPath, commandId);
-        return Collections.emptyList();
+        try
+        {
+            TestableRunner runner = new TestableRunner(new ModelManager(DeploymentMode.PROD));
+            RunTestsTestableInput runTestsTestableInput = new RunTestsTestableInput();
+            runTestsTestableInput.testable = entityPath;
+            runTestsTestableInput.unitTestIds = unitTestIds;
+            RunTestsResult testsResult = runner.doTests(Collections.singletonList(runTestsTestableInput), compileResult.getPureModel(), compileResult.getPureModelContextData());
+            MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+            testsResult.results.forEach(res ->
+            {
+                if (res instanceof TestError)
+                {
+                    TestError testError = (TestError) res;
+                    StringBuilder builder = appendTestId(testError).append(": ERROR\n").append(testError.error);
+                    results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, builder.toString()));
+                }
+                else if (res instanceof TestExecuted)
+                {
+                    TestExecuted testExecuted = (TestExecuted) res;
+                    String messagePrefix = appendTestId(testExecuted).toString();
+                    testExecuted.assertStatuses.forEach(assertStatus ->
+                    {
+                        if (assertStatus instanceof AssertPass)
+                        {
+                            results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.SUCCESS, messagePrefix + "." + assertStatus.id + ": PASS"));
+                        }
+                        else if (assertStatus instanceof AssertFail)
+                        {
+                            StringBuilder builder = new StringBuilder(messagePrefix).append('.').append(assertStatus.id).append(": FAILURE\n").append(((AssertFail) assertStatus).message);
+                            if (assertStatus instanceof EqualToJsonAssertFail)
+                            {
+                                EqualToJsonAssertFail fail = (EqualToJsonAssertFail) assertStatus;
+                                builder.append("\nexpected: ").append(fail.expected);
+                                builder.append("\nactual:   ").append(fail.actual);
+                            }
+                            results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.FAILURE, builder.toString()));
+                        }
+                        else
+                        {
+                            String message = appendTestId(res).append(": WARNING\nUnknown assert status: ").append(assertStatus.getClass().getName()).toString();
+                            LOGGER.warn(message);
+                            results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.WARNING, message));
+                        }
+                    });
+                }
+                else
+                {
+                    String message = "Unknown test result type: " + res.getClass().getName();
+                    LOGGER.warn(message);
+                    results.add(LegendExecutionResult.newResult(LegendExecutionResult.Type.WARNING, message));
+                }
+            });
+            return results;
+        }
+        catch (Exception e)
+        {
+            String message = e.getMessage();
+            StringWriter writer = new StringWriter();
+            try (PrintWriter pw = new PrintWriter(writer))
+            {
+                e.printStackTrace(pw);
+            }
+            return Collections.singletonList(LegendExecutionResult.newResult(LegendExecutionResult.Type.ERROR, (message == null) ? "Error" : message, writer.toString()));
+        }
+    }
+
+    @Override
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
+    {
+        switch (commandId)
+        {
+            case RUN_TESTS_COMMAND_ID:
+            {
+                return runTests(section, entityPath, Lists.mutable.empty());
+            }
+            case RUN_TEST_SUITE_COMMAND_ID:
+            {
+                MutableList<UniqueTestId> testIds = Lists.mutable.empty();
+                ParseResult parseResult = section.getProperty(PARSE_RESULT);
+                String testSuiteId = executableArgs.get(TEST_SUITE_ID);
+                if (testSuiteId != null)
+                {
+                    PackageableElement element = parseResult.getElements().stream().filter(e -> e.getPath().equals(entityPath)).collect(Collectors.toList()).get(0);
+                    TestSuite testSuite = getTestSuites(element).stream().filter(t -> t.id.equals(testSuiteId)).collect(Collectors.toList()).get(0);
+                    testSuite.tests.forEach(test ->
+                    {
+                        UniqueTestId testId = new UniqueTestId();
+                        testId.atomicTestId = test.id;
+                        testId.testSuiteId = testSuiteId;
+                        testIds.add(testId);
+                    });
+                    return runTests(section, entityPath, testIds);
+                }
+                else
+                {
+                    LOGGER.warn("Unable to find test suite id to run tests", testSuiteId, entityPath, commandId);
+                    return Collections.emptyList();
+                }
+            }
+            case RUN_TEST_COMMAND_ID:
+            {
+                MutableList<UniqueTestId> testIds = Lists.mutable.empty();
+                ParseResult parseResult = section.getProperty(PARSE_RESULT);
+                String testSuiteId = executableArgs.get(TEST_SUITE_ID);
+                String testId = executableArgs.get(TEST_ID);
+                if (testSuiteId == null)
+                {
+                    LOGGER.warn("Unable to find test suite id to run tests", testSuiteId, entityPath, commandId);
+                    return Collections.emptyList();
+                }
+                if (testId == null)
+                {
+                    LOGGER.warn("Unable to find test id to run tests", testId, entityPath, commandId);
+                    return Collections.emptyList();
+                }
+                PackageableElement element = parseResult.getElements().stream().filter(e -> e.getPath().equals(entityPath)).collect(Collectors.toList()).get(0);
+                TestSuite testSuite = getTestSuites(element).stream().filter(t -> t.id.equals(testSuiteId)).collect(Collectors.toList()).get(0);
+                Test test = testSuite.tests.stream().filter(t -> t.id.equals(testId)).collect(Collectors.toList()).get(0);
+                UniqueTestId uniqueTestId = new UniqueTestId();
+                uniqueTestId.atomicTestId = test.id;
+                uniqueTestId.testSuiteId = testSuiteId;
+                testIds.add(uniqueTestId);
+                return runTests(section, entityPath, testIds);
+            }
+            default:
+            {
+                LOGGER.warn("Unknown command id for {}: {}", entityPath, commandId);
+                return Collections.emptyList();
+            }
+        }
     }
 
     private StringBuilder appendTestId(TestResult testResult)
@@ -407,6 +510,11 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     }
 
     protected abstract String getClassifier(PackageableElement element);
+
+    protected List<? extends TestSuite> getTestSuites(PackageableElement element)
+    {
+        return Lists.mutable.empty();
+    }
 
     protected void forEachChild(PackageableElement element, Consumer<LegendDeclaration> consumer)
     {
