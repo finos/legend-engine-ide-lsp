@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
@@ -105,6 +107,28 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                         ")",
                 LegendDiagnostic.newDiagnostic(TextInterval.newInterval(9, 49, 9, 60), "Can't find table 'UnknownTable' in schema 'default' and database 'EmployeeDatabase'", Kind.Error, Source.Compiler)
         );
+    }
+
+    @Test
+    public void testDiagnostics_multipleFiles_compilerError()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::EmployeeDatabase", "###Relational\n" +
+                "Database vscodelsp::test::EmployeeDatabase\n" +
+                "(\n" +
+                "   Table EmployeeTable(id INT PRIMARY KEY, hireDate DATE, hireType VARCHAR(10), fteFactor DOUBLE)\n" +
+                "   Table EmployeeDetailsTable(id INT PRIMARY KEY, birthDate DATE, yearsOfExperience DOUBLE)\n" +
+                "   Table FirmTable(firmName VARCHAR(100) PRIMARY KEY, employeeId INT PRIMARY KEY)\n" +
+                "\n" +
+                "   Join JoinEmployeeToFirm(EmployeeTable.id = FirmTable.employeeId)\n" +
+                "   Join JoinEmployeeToEmployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
+                "   Join JoinEmployeeToNowhere(EmployeeTable.id = UnknownTable.id)\n" +
+                ")");
+        codeFiles.put("vscodelsp::test::StudentDatabase", "###Relational\n" +
+                "Database vscodelsp::test::StudentDatabase\n" +
+                "(\n" +
+                ")");
+        testDiagnostics(codeFiles, "vscodelsp::test::EmployeeDatabase", LegendDiagnostic.newDiagnostic(TextInterval.newInterval(9, 49, 9, 60), "Can't find table 'UnknownTable' in schema 'default' and database 'EmployeeDatabase'", Kind.Error, Source.Compiler));
     }
 
     @Test

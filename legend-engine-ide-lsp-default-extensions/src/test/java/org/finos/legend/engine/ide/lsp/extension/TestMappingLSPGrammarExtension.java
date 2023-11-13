@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
@@ -76,6 +78,29 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         ")",
                 LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler)
         );
+    }
+
+    @Test
+    public void testDiagnostics_multipleFiles_compilerError()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::Employee", "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    foobar: Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}");
+        codeFiles.put("vscodelsp::test::EmployeeMapping", "###Mapping\n" +
+                "Mapping vscodelsp::test::EmployeeMapping\n" +
+                "(\n" +
+                "   Employee[emp] : Relational\n" +
+                "   {\n" +
+                "      hireDate : [EmployeeDatabase]EmployeeTable.hireDate,\n" +
+                "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
+                "   }\n" +
+                ")");
+        testDiagnostics(codeFiles, "vscodelsp::test::EmployeeMapping", LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler));
     }
 
     @Override

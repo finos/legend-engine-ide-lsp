@@ -28,6 +28,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.Warning;
 import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceInformation;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
@@ -138,6 +139,26 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             {
                 consumer.accept(LegendDiagnostic.newDiagnostic(toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler));
             }
+        }
+        if (compileResult.getPureModel() != null)
+        {
+            MutableList<Warning> warnings = compileResult.getPureModel().getWarnings();
+            warnings.forEach(warning ->
+            {
+                SourceInformation sourceInfo = warning.sourceInformation;
+                String docId = sectionState.getDocumentState().getDocumentId();
+                if (!isValidSourceInfo(sourceInfo))
+                {
+                    if ((sourceInfo != null) && docId.equals(sourceInfo.sourceId))
+                    {
+                        LOGGER.warn("Invalid source information in compiler warning in {}: cannot create diagnostic", docId, warning);
+                    }
+                }
+                else if (docId.equals(sourceInfo.sourceId))
+                {
+                    consumer.accept(LegendDiagnostic.newDiagnostic(toLocation(sourceInfo), warning.message, LegendDiagnostic.Kind.Warning, LegendDiagnostic.Source.Compiler));
+                }
+            });
         }
     }
 
