@@ -18,6 +18,9 @@ import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemLabelDetails;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.CompletionParams;
+import org.eclipse.lsp4j.CodeLens;
+import org.eclipse.lsp4j.CodeLensParams;
+import org.eclipse.lsp4j.Command;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -198,7 +201,7 @@ class LegendTextDocumentService implements TextDocumentService
             docState.forEachSectionState(sectionState ->
             {
                 String grammar = sectionState.getSection().getGrammar();
-                LegendLSPGrammarExtension extension = this.server.getGrammarExtension(grammar);
+                LegendLSPGrammarExtension extension = sectionState.getExtension();
                 if (extension == null)
                 {
                     LOGGER.warn("Could not get symbols for section {} of {}: no extension for grammar {}", sectionState.getSectionNumber(), uri, grammar);
@@ -256,7 +259,7 @@ class LegendTextDocumentService implements TextDocumentService
                 }
                 if (section.getEndLine() >= rangeStartLine)
                 {
-                    LegendLSPGrammarExtension extension = this.server.getGrammarExtension(section.getGrammar());
+                    LegendLSPGrammarExtension extension = sectionState.getExtension();
                     if (extension == null)
                     {
                         LOGGER.warn("Could not get semantic tokens for section of {}: no extension for grammar {}", uri, section.getGrammar());
@@ -389,7 +392,7 @@ class LegendTextDocumentService implements TextDocumentService
         docState.forEachSectionState(sectionState ->
         {
             String grammar = sectionState.getSection().getGrammar();
-            LegendLSPGrammarExtension extension = this.server.getGrammarExtension(grammar);
+            LegendLSPGrammarExtension extension = sectionState.getExtension();
             if (extension == null)
             {
                 LOGGER.warn("Could not get diagnostics for section of {}: no extension for grammar {}", docState.getDocumentId(), grammar);
@@ -433,7 +436,46 @@ class LegendTextDocumentService implements TextDocumentService
         }
     }
 
-    private Range toRange(TextInterval interval)
+    @Override
+    public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params)
+    {
+        return this.server.supplyPossiblyAsync(() -> getCodeLenses(params));
+    }
+
+    private List<? extends CodeLens> getCodeLenses(CodeLensParams params)
+    {
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+        synchronized (globalState)
+        {
+            String uri = params.getTextDocument().getUri();
+            DocumentState docState = globalState.getDocumentState(uri);
+            if (docState == null)
+            {
+                LOGGER.warn("No state for {}: cannot get code lenses", uri);
+                this.server.logWarningToClient("Cannot get code lenses for " + uri + ": not open in language server");
+                return Collections.emptyList();
+            }
+
+            List<CodeLens> codeLenses = new ArrayList<>();
+            docState.forEachSectionState(sectionState ->
+            {
+                LegendLSPGrammarExtension extension = sectionState.getExtension();
+                if (extension == null)
+                {
+                    LOGGER.warn("Could not get code lenses for section {} of {}: no extension for grammar {}", sectionState.getSectionNumber(), docState.getDocumentId(), sectionState.getSection().getGrammar());
+                    return;
+                }
+                extension.getCommands(sectionState).forEach(c ->
+                {
+                    Command command = new Command(c.getTitle(), LegendLanguageServer.LEGEND_COMMAND_ID, List.of(uri, sectionState.getSectionNumber(), c.getEntity(), c.getId()));
+                    codeLenses.add(new CodeLens(toRange(c.getLocation()), command, null));
+                });
+            });
+            return codeLenses;
+        }
+    }
+
+    private static Range toRange(TextInterval interval)
     {
         Position start = new Position(interval.getStart().getLine(), interval.getStart().getColumn());
         // Range end position is exclusive, whereas TextInterval end is inclusive

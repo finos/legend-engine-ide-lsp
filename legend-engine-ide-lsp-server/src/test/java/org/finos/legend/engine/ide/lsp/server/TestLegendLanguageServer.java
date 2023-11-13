@@ -169,19 +169,19 @@ public class TestLegendLanguageServer
             @Override
             public void telemetryEvent(Object object)
             {
-                throw new UnsupportedOperationException();
+                // Do nothing
             }
 
             @Override
             public void publishDiagnostics(PublishDiagnosticsParams diagnostics)
             {
-                throw new UnsupportedOperationException();
+                // Do nothing
             }
 
             @Override
             public void showMessage(MessageParams messageParams)
             {
-                throw new UnsupportedOperationException();
+                // Do nothing
             }
 
             @Override
@@ -193,7 +193,7 @@ public class TestLegendLanguageServer
             @Override
             public void logMessage(MessageParams message)
             {
-                throw new UnsupportedOperationException();
+                // Do nothing
             }
         };
     }

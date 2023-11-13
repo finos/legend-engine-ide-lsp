@@ -17,6 +17,8 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 
 import java.util.Collections;
@@ -60,5 +62,29 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default LegendCompletion getCompletions(String completionTrigger)
     {
         return new LegendCompletion("");
+    }
+
+    /**
+     * Return the Legend commands for the given section.
+     *
+     * @param section grammar section state
+     * @return Legend commands
+     */
+    default Iterable<? extends LegendCommand> getCommands(SectionState section)
+    {
+        return Collections.emptyList();
+    }
+
+    /**
+     * Execute a Legend command on an entity in a section.
+     *
+     * @param section    grammar section state
+     * @param entityPath entity path
+     * @param commandId  command id
+     * @return execution results
+     */
+    default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId)
+    {
+        return Collections.emptyList();
     }
 }
