@@ -110,6 +110,7 @@ public class LegendCompletion
         {
             return false;
         }
+
         LegendCompletion that = (LegendCompletion) other;
         return (this.trigger.equals(that.trigger)) &&
                 (this.type.equals(that.type)) &&
