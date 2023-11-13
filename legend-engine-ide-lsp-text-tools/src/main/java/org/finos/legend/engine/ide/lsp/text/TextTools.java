@@ -26,6 +26,7 @@ public class TextTools
     private static final Pattern LINE_BREAK_PATTERN = Pattern.compile("\\R");
     private static final Pattern LINE_START_PATTERN = Pattern.compile("^", Pattern.MULTILINE);
     private static final Pattern NON_WHITESPACE_PATTERN = Pattern.compile("[^\\h\\v]");
+    private static final Pattern WHITESPACE_PATTERN = Pattern.compile("[\\h\\v]");
 
     /**
      * Return the index of the first non-whitespace character found in a region of text, or -1 if no non-whitespace
@@ -35,12 +36,31 @@ public class TextTools
      * @param start start of region (inclusive)
      * @param end   end of region (exclusive)
      * @return index of first non-whitespace character or -1
+     * @see #indexOfWhitespace 
      * @see #isBlank
      */
     public static int indexOfNonWhitespace(CharSequence text, int start, int end)
     {
         checkRegionBounds(text, start, end);
         Matcher matcher = NON_WHITESPACE_PATTERN.matcher(text).region(start, end);
+        return matcher.find() ? matcher.start() : -1;
+    }
+
+    /**
+     * Return the index of the first whitespace character found in a region of text, or -1 if no whitespace character is
+     * found.
+     *
+     * @param text  text
+     * @param start start of region (inclusive)
+     * @param end   end of region (exclusive)
+     * @return index of first whitespace character or -1
+     * @see #indexOfNonWhitespace
+     * @see #isBlank 
+     */
+    public static int indexOfWhitespace(CharSequence text, int start, int end)
+    {
+        checkRegionBounds(text, start, end);
+        Matcher matcher = WHITESPACE_PATTERN.matcher(text).region(start, end);
         return matcher.find() ? matcher.start() : -1;
     }
 

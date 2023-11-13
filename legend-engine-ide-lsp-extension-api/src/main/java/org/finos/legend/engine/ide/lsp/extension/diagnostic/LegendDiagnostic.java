@@ -69,7 +69,7 @@ public class LegendDiagnostic implements Locatable
      *
      * @return diagnostic source
      */
-    public Source getType()
+    public Source getSource()
     {
         return this.source;
     }
