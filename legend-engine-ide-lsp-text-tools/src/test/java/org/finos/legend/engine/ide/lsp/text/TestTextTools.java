@@ -331,6 +331,34 @@ public class TestTextTools
     }
 
     @Test
+    public void testIndexOfWhitespace()
+    {
+        Assertions.assertEquals(-1, TextTools.indexOfWhitespace("", 0, 0));
+
+        String horizontal = "horizontal whitespace: \t\u00a0\u1680\u180e\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000";
+        Assertions.assertEquals(10, TextTools.indexOfWhitespace(horizontal, 0, horizontal.length()));
+        Assertions.assertEquals(22, TextTools.indexOfWhitespace(horizontal, 11, horizontal.length()));
+        for (int i = 22; i < horizontal.length(); i++)
+        {
+            Assertions.assertEquals(i, TextTools.indexOfWhitespace(horizontal, i, horizontal.length()));
+        }
+
+        String vertical = "vertical whitespace:\n\u000B\f\r\u0085\u2028\u2029";
+        Assertions.assertEquals(8, TextTools.indexOfWhitespace(vertical, 0, vertical.length()));
+        Assertions.assertEquals(20, TextTools.indexOfWhitespace(vertical, 9, vertical.length()));
+        for (int i = 20; i < vertical.length(); i++)
+        {
+            Assertions.assertEquals(i, TextTools.indexOfWhitespace(vertical, i, vertical.length()));
+        }
+
+        String mixed = horizontal + vertical;
+        Assertions.assertEquals(10, TextTools.indexOfWhitespace(mixed, 0, mixed.length()));
+        Assertions.assertEquals(22, TextTools.indexOfWhitespace(mixed, 11, mixed.length()));
+        Assertions.assertEquals(horizontal.length() + 8, TextTools.indexOfWhitespace(mixed, horizontal.length(), mixed.length()));
+        Assertions.assertEquals(horizontal.length() + 20, TextTools.indexOfWhitespace(mixed, horizontal.length() + 9, mixed.length()));
+    }
+
+    @Test
     public void testIsBlank()
     {
         assertIsBlank("", 0, 0);
