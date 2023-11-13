@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
@@ -114,6 +116,20 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Test
+    public void testDiagnostics_compilerWarning()
+    {
+        testDiagnostics(
+                "###Pure\n" +
+                        "Class vscodelsp::test::Employee\n" +
+                        "{\n" +
+                        "    foobar: Float[1];\n" +
+                        "    foobar: Float[1];\n" +
+                        "}",
+                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 4, 3, 20), "Found duplicated property 'foobar' in class 'vscodelsp::test::Employee'", Kind.Warning, Source.Compiler)
+        );
+    }
+
+    @Test
     public void testDiagnostics_noError()
     {
         testDiagnostics(
@@ -125,6 +141,27 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         "    hireType : String[1];\n" +
                         "}"
         );
+    }
+
+    @Test
+    public void testDiagnostics_multipleFiles_compilerError()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::Employee", "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    foobar: Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}");
+        codeFiles.put("vscodelsp::test::Employee1", "###Pure\n" +
+                "Class vscodelsp::test::Employee1 extends vscodelsp::test::Employee2\n" +
+                "{\n" +
+                "    foobar: Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}");
+        testDiagnostics(codeFiles, "vscodelsp::test::Employee1", LegendDiagnostic.newDiagnostic(TextInterval.newInterval(1, 0, 6, 0), "Can't find type 'vscodelsp::test::Employee2'", Kind.Error, Source.Compiler));
     }
 
     @Override

@@ -32,7 +32,9 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 class LegendWorkspaceService implements WorkspaceService
@@ -81,6 +83,7 @@ class LegendWorkspaceService implements WorkspaceService
                 int sectionNum = this.server.extractValueAs(args.get(1), Integer.class);
                 String entity = this.server.extractValueAs(args.get(2), String.class);
                 String id = this.server.extractValueAs(args.get(3), String.class);
+                Map<String, String> executableArgs = args.get(4) != null ?  this.server.extractValueAs(args.get(4), Map.class) : Collections.emptyMap();
                 this.server.notifyBegin(progressToken, entity);
 
                 LegendServerGlobalState globalState = this.server.getGlobalState();
@@ -98,7 +101,7 @@ class LegendWorkspaceService implements WorkspaceService
                     {
                         throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
                     }
-                    Iterable<? extends LegendExecutionResult> results = extension.execute(sectionState, entity, id);
+                    Iterable<? extends LegendExecutionResult> results = extension.execute(sectionState, entity, id, executableArgs);
                     results.forEach(result ->
                     {
                         switch (result.getType())

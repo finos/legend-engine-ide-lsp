@@ -30,9 +30,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 abstract class AbstractLSPGrammarExtensionTest
 {
@@ -74,6 +76,16 @@ abstract class AbstractLSPGrammarExtensionTest
         Assertions.assertEquals(expected, actual);
     }
 
+    protected void testDiagnostics(MutableMap<String, String> files, String expectedDocId, LegendDiagnostic... expectedDiagnostics)
+    {
+        Comparator<LegendDiagnostic> cmp = Comparator.comparing(d -> d.getLocation().getStart());
+        MutableList<LegendDiagnostic> expected = Lists.mutable.with(expectedDiagnostics).sortThis(cmp);
+        MutableList<SectionState> sectionStates = newSectionStates(files);
+        SectionState inputSectionState = sectionStates.detect(s -> expectedDocId.equals(s.getDocumentState().getDocumentId()));
+        MutableList<LegendDiagnostic> actual = Lists.mutable.<LegendDiagnostic>withAll(this.extension.getDiagnostics(inputSectionState)).sortThis(cmp);
+        Assertions.assertEquals(expected, actual);
+    }
+
     protected abstract LegendLSPGrammarExtension newExtension();
 
     protected SectionState newSectionState(String docId, String text)
@@ -86,6 +98,22 @@ abstract class AbstractLSPGrammarExtensionTest
         docState.sectionStates.add(sectionState);
 
         return sectionState;
+    }
+
+    protected MutableList<SectionState> newSectionStates(MutableMap<String, String> files)
+    {
+        TestGlobalState globalState = new TestGlobalState();
+        MutableList<SectionState> sectionStates = Lists.mutable.empty();
+        files.forEach((docId, text) ->
+        {
+            TestDocumentState docState = new TestDocumentState(globalState, docId, text);
+            TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(text), this.extension);
+
+            globalState.docStates.put(docId, docState);
+            docState.sectionStates.add(sectionState);
+            sectionStates.add(sectionState);
+        });
+        return sectionStates;
     }
 
     protected static GrammarSection newGrammarSection(String text)
