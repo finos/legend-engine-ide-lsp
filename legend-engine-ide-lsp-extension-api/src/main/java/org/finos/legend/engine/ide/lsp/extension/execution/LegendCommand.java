@@ -32,22 +32,13 @@ public class LegendCommand implements Locatable
     private final TextInterval location;
     private final Map<String, String> executableArgs;
 
-    private LegendCommand(String entity, String id, String title, TextInterval location)
-    {
-        this.entity = Objects.requireNonNull(entity, "entity is required");
-        this.id = Objects.requireNonNull(id, "commandId is required");
-        this.title = Objects.requireNonNull(title, "title is required");
-        this.location = Objects.requireNonNull(location, "location is required");
-        this.executableArgs = Collections.emptyMap();
-    }
-
     private LegendCommand(String entity, String id, String title, TextInterval location, Map<String, String> executableArgs)
     {
         this.entity = Objects.requireNonNull(entity, "entity is required");
         this.id = Objects.requireNonNull(id, "commandId is required");
         this.title = Objects.requireNonNull(title, "title is required");
         this.location = Objects.requireNonNull(location, "location is required");
-        this.executableArgs = Collections.unmodifiableMap(executableArgs);
+        this.executableArgs = (executableArgs == null) ? Collections.emptyMap() : Collections.unmodifiableMap(executableArgs);
     }
 
     @Override
@@ -67,7 +58,8 @@ public class LegendCommand implements Locatable
         return this.entity.equals(that.entity) &&
                 this.id.equals(that.id) &&
                 this.title.equals(that.title) &&
-                this.location.equals(that.location);
+                this.location.equals(that.location) &&
+                this.executableArgs.equals(that.executableArgs);
     }
 
     @Override
@@ -84,6 +76,7 @@ public class LegendCommand implements Locatable
                 "\", id=\"" + this.id +
                 "\", title=\"" + this.title +
                 ", location=" + this.location +
+                ", executableArgs=" + this.executableArgs +
                 "\"}";
     }
 
@@ -144,7 +137,7 @@ public class LegendCommand implements Locatable
      */
     public static LegendCommand newCommand(String entity, String id, String title, TextInterval location)
     {
-        return new LegendCommand(entity, id, title, location);
+        return newCommand(entity, id, title, location, null);
     }
 
     /**
@@ -160,10 +153,5 @@ public class LegendCommand implements Locatable
     public static LegendCommand newCommand(String entity, String id, String title, TextInterval location, Map<String, String> executableArgs)
     {
         return new LegendCommand(entity, id, title, location, executableArgs);
-    }
-
-    public String getExecutableArg(String id)
-    {
-        return this.executableArgs.get(id);
     }
 }

@@ -53,15 +53,18 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.server.LegendServerGlobalState.LegendServerDocumentState;
+import org.finos.legend.engine.ide.lsp.text.TextTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 class LegendTextDocumentService implements TextDocumentService
 {
@@ -391,11 +394,29 @@ class LegendTextDocumentService implements TextDocumentService
         List<Diagnostic> diagnostics = new ArrayList<>();
         docState.forEachSectionState(sectionState ->
         {
-            String grammar = sectionState.getSection().getGrammar();
             LegendLSPGrammarExtension extension = sectionState.getExtension();
             if (extension == null)
             {
-                LOGGER.warn("Could not get diagnostics for section of {}: no extension for grammar {}", docState.getDocumentId(), grammar);
+                GrammarSection section = sectionState.getSection();
+                if (section.hasGrammarDeclaration())
+                {
+                    int lineNum = section.getStartLine();
+                    String line = section.getLine(lineNum);
+                    int start = line.indexOf("###") + 3;
+                    int end = TextTools.indexOfWhitespace(line, start, line.length());
+                    StringBuilder message = new StringBuilder("Unknown grammar: ").append(section.getGrammar());
+                    Set<String> grammars = this.server.getGrammarLibrary().getGrammars();
+                    if (!grammars.isEmpty())
+                    {
+                        message.append(grammars.stream().sorted().collect(Collectors.joining(", ", "\nAvailable grammars: ", "")));
+                    }
+                    diagnostics.add(new Diagnostic(
+                            newRange(lineNum, start, lineNum, (end == -1) ? line.length() : end),
+                            message.toString(),
+                            DiagnosticSeverity.Error,
+                            LegendDiagnostic.Source.Parser.toString()));
+                }
+                LOGGER.warn("Could not get diagnostics for section of {}: no extension for grammar {}", docState.getDocumentId(), section.getGrammar());
                 return;
             }
             extension.getDiagnostics(sectionState).forEach(d -> diagnostics.add(toDiagnostic(d)));
@@ -405,7 +426,7 @@ class LegendTextDocumentService implements TextDocumentService
 
     private Diagnostic toDiagnostic(LegendDiagnostic diagnostic)
     {
-        return new Diagnostic(toRange(diagnostic.getLocation()), diagnostic.getMessage(), toDiagnosticSeverity(diagnostic.getKind()), diagnostic.getType().toString());
+        return new Diagnostic(toRange(diagnostic.getLocation()), diagnostic.getMessage(), toDiagnosticSeverity(diagnostic.getKind()), diagnostic.getSource().toString());
     }
 
     private DiagnosticSeverity toDiagnosticSeverity(LegendDiagnostic.Kind kind)
@@ -477,9 +498,13 @@ class LegendTextDocumentService implements TextDocumentService
 
     private static Range toRange(TextInterval interval)
     {
-        Position start = new Position(interval.getStart().getLine(), interval.getStart().getColumn());
         // Range end position is exclusive, whereas TextInterval end is inclusive
-        Position end = new Position(interval.getEnd().getLine(), interval.getEnd().getColumn() + 1);
-        return new Range(start, end);
+        return newRange(interval.getStart().getLine(), interval.getStart().getColumn(),
+                interval.getEnd().getLine(), interval.getEnd().getColumn() + 1);
+    }
+
+    private static Range newRange(int startLine, int startCol, int endLine, int endCol)
+    {
+        return new Range(new Position(startLine, startCol), new Position(endLine, endCol));
     }
 }

@@ -14,13 +14,14 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Extension for the Service grammar.
@@ -47,8 +48,21 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    protected List<? extends TestSuite> getTestSuites(PackageableElement element)
+    protected void forEachTestSuite(PackageableElement element, Consumer<? super TestSuite> consumer)
     {
-        return (element instanceof Service) ? ((Service) element).testSuites : Lists.mutable.empty();
+        if (element instanceof Service)
+        {
+            ((Service) element).testSuites.forEach(consumer);
+        }
+    }
+
+    @Override
+    protected TestSuite findTestSuite(PackageableElement element, String id)
+    {
+        if (element instanceof Service)
+        {
+            return Iterate.detect(((Service) element).testSuites, ts -> id.equals(ts.id));
+        }
+        return null;
     }
 }
