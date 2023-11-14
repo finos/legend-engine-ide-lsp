@@ -203,6 +203,33 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         }
 
         @Override
+        public int getLineCount()
+        {
+            synchronized (this.lock)
+            {
+                return (this.sectionIndex == null) ? 0 : this.sectionIndex.getLineCount();
+            }
+        }
+
+        @Override
+        public String getLine(int line)
+        {
+            synchronized (this.lock)
+            {
+                return (this.sectionIndex == null) ? null : this.sectionIndex.getLine(line);
+            }
+        }
+
+        @Override
+        public String getLines(int start, int end)
+        {
+            synchronized (this.lock)
+            {
+                return (this.sectionIndex == null) ? null : this.sectionIndex.getLines(start, end);
+            }
+        }
+
+        @Override
         public int getSectionCount()
         {
             synchronized (this.lock)
@@ -217,6 +244,23 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             synchronized (this.lock)
             {
                 return this.sectionStates.get(n);
+            }
+        }
+
+        @Override
+        public SectionState getSectionStateAtLine(int line)
+        {
+            synchronized (this.lock)
+            {
+                if (this.sectionIndex != null)
+                {
+                    int n = this.sectionIndex.getSectionNumberAtLine(line);
+                    if (n != -1)
+                    {
+                        return this.sectionStates.get(n);
+                    }
+                }
+                return null;
             }
         }
 

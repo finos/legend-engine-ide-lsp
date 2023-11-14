@@ -45,6 +45,34 @@ public interface DocumentState extends State
     String getText();
 
     /**
+     * Get the number of lines in the document.
+     *
+     * @return number of lines
+     */
+    int getLineCount();
+
+    /**
+     * Get the text of a line.
+     *
+     * @param line line number (zero based)
+     * @return line text
+     */
+    default String getLine(int line)
+    {
+        return getLines(line, line);
+    }
+
+    /**
+     * Get a multi-line interval of the text. Note that both {@code start} and {@code end} are inclusive.
+     *
+     * @param start start line (inclusive)
+     * @param end   end line (inclusive)
+     * @return multi-line interval
+     * @throws IndexOutOfBoundsException if either start or end is invalid or if end is before start
+     */
+    String getLines(int start, int end);
+
+    /**
      * Get the number of sections in the document. As long as the document has text, this will be non-zero.
      *
      * @return section count
@@ -58,6 +86,42 @@ public interface DocumentState extends State
      * @return state of the nth section
      */
     SectionState getSectionState(int n);
+
+    /**
+     * Get the state for the section at the given line. Note that there is not necessarily a section at every
+     * line, so this method may return null.
+     *
+     * @param line line number (zero based)
+     * @return state of the section at the given line
+     */
+    default SectionState getSectionStateAtLine(int line)
+    {
+        if ((line < 0) || (line >= getLineCount()))
+        {
+            throw new IndexOutOfBoundsException("Invalid line number: " + line + "; line count: " + getLineCount());
+        }
+
+        int low = 0;
+        int high = getSectionCount() - 1;
+        while (low <= high)
+        {
+            int mid = (low + high) >>> 1;
+            SectionState state = getSectionState(mid);
+            if (line < state.getSection().getStartLine())
+            {
+                high = mid - 1;
+            }
+            else if (line > state.getSection().getEndLine())
+            {
+                low = mid + 1;
+            }
+            else
+            {
+                return state;
+            }
+        }
+        return null;
+    }
 
     /**
      * Apply the given consumer to each section state in order.
