@@ -221,6 +221,12 @@ public class TestGrammarSectionIndex
                     List.of(actualSection.getGrammar(), actualSection.getStartLine(), actualSection.getEndLine()));
 
             Assertions.assertEquals(indexedText.getLines(expectedSection.startLine, expectedSection.endLine), actualSection.getText());
+
+            for (int line = actualSection.getStartLine(), end = actualSection.getEndLine(); line <= end; line++)
+            {
+                Assertions.assertEquals(i, index.getSectionNumberAtLine(line), "section " + i + " line " + line);
+                Assertions.assertSame(actualSection, index.getSectionAtLine(line), "section " + i + " line " + line);
+            }
         }
     }
 

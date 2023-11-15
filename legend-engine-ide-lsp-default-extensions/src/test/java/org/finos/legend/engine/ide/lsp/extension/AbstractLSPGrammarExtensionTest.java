@@ -30,11 +30,9 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Comparator;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 abstract class AbstractLSPGrammarExtensionTest
 {
@@ -90,9 +88,10 @@ abstract class AbstractLSPGrammarExtensionTest
 
     protected SectionState newSectionState(String docId, String text)
     {
+        LineIndexedText indexedText = LineIndexedText.index(text);
         TestGlobalState globalState = new TestGlobalState();
-        TestDocumentState docState = new TestDocumentState(globalState, docId, text);
-        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(text), this.extension);
+        TestDocumentState docState = new TestDocumentState(globalState, docId, indexedText);
+        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText), this.extension);
 
         globalState.docStates.put(docId, docState);
         docState.sectionStates.add(sectionState);
@@ -106,8 +105,9 @@ abstract class AbstractLSPGrammarExtensionTest
         MutableList<SectionState> sectionStates = Lists.mutable.empty();
         files.forEach((docId, text) ->
         {
-            TestDocumentState docState = new TestDocumentState(globalState, docId, text);
-            TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(text), this.extension);
+            LineIndexedText indexedText = LineIndexedText.index(text);
+            TestDocumentState docState = new TestDocumentState(globalState, docId, indexedText);
+            TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText), this.extension);
 
             globalState.docStates.put(docId, docState);
             docState.sectionStates.add(sectionState);
@@ -116,11 +116,9 @@ abstract class AbstractLSPGrammarExtensionTest
         return sectionStates;
     }
 
-    protected static GrammarSection newGrammarSection(String text)
+    protected static GrammarSection newGrammarSection(LineIndexedText indexedText)
     {
-        LineIndexedText indexedText = LineIndexedText.index(text);
-
-        Matcher matcher = GRAMMAR_LINE_PATTERN.matcher(text);
+        Matcher matcher = GRAMMAR_LINE_PATTERN.matcher(indexedText.getText());
         boolean hasGrammarLine;
         String grammar;
         int startLine;
@@ -169,7 +167,7 @@ abstract class AbstractLSPGrammarExtensionTest
             @Override
             public String getFullText()
             {
-                return text;
+                return indexedText.getText();
             }
 
             @Override
@@ -254,9 +252,9 @@ abstract class AbstractLSPGrammarExtensionTest
         private final MutableList<SectionState> sectionStates = Lists.mutable.empty();
         private final GlobalState globalState;
         private final String id;
-        private final String text;
+        private final LineIndexedText text;
 
-        private TestDocumentState(GlobalState globalState, String id, String text)
+        private TestDocumentState(GlobalState globalState, String id, LineIndexedText text)
         {
             this.globalState = globalState;
             this.id = id;
@@ -278,7 +276,19 @@ abstract class AbstractLSPGrammarExtensionTest
         @Override
         public String getText()
         {
-            return this.text;
+            return this.text.getText();
+        }
+
+        @Override
+        public int getLineCount()
+        {
+            return this.text.getLineCount();
+        }
+
+        @Override
+        public String getLines(int start, int end)
+        {
+            return this.text.getLines(start, end);
         }
 
         @Override
