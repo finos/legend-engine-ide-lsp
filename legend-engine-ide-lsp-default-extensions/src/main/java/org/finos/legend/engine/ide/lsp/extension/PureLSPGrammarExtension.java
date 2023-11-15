@@ -187,10 +187,10 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 .build();
     }
 
-    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    public LegendCompletion getCompletions(SectionState section, TextPosition location)
     {
         String completionTrigger = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
-        return (List.of(new LegendCompletion(completionTrigger)));
+        return new LegendCompletion(completionTrigger);
     }
 
 }

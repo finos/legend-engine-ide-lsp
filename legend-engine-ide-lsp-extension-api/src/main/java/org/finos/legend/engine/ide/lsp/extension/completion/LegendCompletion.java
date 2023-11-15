@@ -55,7 +55,8 @@ public class LegendCompletion
         else if (matchTrigger(trigger, ATTRIBUTE_TYPES_TRIGGERS))
         {
             this.suggestions = ATTRIBUTE_TYPES_SUGGESTIONS;
-        } else
+        }
+        else
         {
             this.suggestions = List.of();
         }
@@ -67,7 +68,8 @@ public class LegendCompletion
         else if (ATTRIBUTE_TYPES_TRIGGERS.contains(trigger))
         {
             this.type = "Attribute type";
-        } else
+        }
+        else
         {
             this.type = "";
         }

@@ -61,9 +61,9 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
         return Collections.emptyList();
     }
 
-    default Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    default LegendCompletion getCompletions(SectionState section, TextPosition location)
     {
-        return Collections.emptyList();
+        return new LegendCompletion("");
     }
 
     /**

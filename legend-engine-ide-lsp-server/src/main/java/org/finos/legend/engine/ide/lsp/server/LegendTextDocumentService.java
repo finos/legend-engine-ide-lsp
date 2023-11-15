@@ -52,6 +52,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.server.LegendServerGlobalState.LegendServerDocumentState;
 import org.finos.legend.engine.ide.lsp.text.TextTools;
 import org.slf4j.Logger;
@@ -323,17 +324,16 @@ class LegendTextDocumentService implements TextDocumentService
             DocumentState docState = globalState.getDocumentState(uri);
             if (docState == null)
             {
-                // TODO add warnings
+                LOGGER.warn("No state for {}: cannot get completions", uri);
                 return Collections.emptyList();
             }
             SectionState sectionState = docState.getSectionStateAtLine(line);
             if (sectionState == null)
             {
-                // TODO add warnings
+                LOGGER.warn("No state for {}: cannot get completions", uri);
                 return Collections.emptyList();
             }
-            String completionTrigger = docState.getLine(line).substring(0, character);
-            LegendCompletion legendCompletions = sectionState.getExtension().getCompletions(completionTrigger);
+            LegendCompletion legendCompletions = sectionState.getExtension().getCompletions(sectionState, TextPosition.newPosition(line, character));
             return getCompletionItems(legendCompletions);
         }
     }
