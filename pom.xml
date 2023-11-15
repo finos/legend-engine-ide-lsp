@@ -361,6 +361,17 @@
                 <artifactId>legend-pure-m2-store-relational-grammar</artifactId>
                 <version>${legend.pure.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-runtime-java-engine-compiled</artifactId>
+                <version>${legend.pure.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
             <!-- LEGEND PURE -->
 
             <!-- LEGEND ENGINE -->
@@ -455,17 +466,16 @@
                         <groupId>org.bouncycastle</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-language-pure-dsl-service-pure</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
                     <exclusion>
-                        <groupId>org.finos.legend.engine</groupId>
-                        <artifactId>legend-engine-pure-code-compiled-core</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.finos.legend.pure</groupId>
-                        <artifactId>legend-pure-runtime-java-engine-compiled</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.finos.legend.pure</groupId>
-                        <artifactId>legend-pure-runtime-java-extension-store-relational</artifactId>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -503,6 +513,28 @@
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-executionPlan-generation</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-executionPlan-execution</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.bouncycastle</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-testable</artifactId>
                 <version>${legend.engine.version}</version>
                 <exclusions>
@@ -519,6 +551,11 @@
                         <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-test-runner-shared</artifactId>
+                <version>${legend.engine.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
@@ -550,6 +587,32 @@
                 <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-configuration</artifactId>
                 <version>${legend.engine.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-pure-code-core-extension</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-pure-code-compiled-core</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.bouncycastle</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <!-- LEGEND ENGINE -->
 
