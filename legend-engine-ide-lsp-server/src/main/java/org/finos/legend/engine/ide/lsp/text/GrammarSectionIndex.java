@@ -94,6 +94,40 @@ public class GrammarSectionIndex
     }
 
     /**
+     * Get the number of lines in the text.
+     *
+     * @return number of lines
+     */
+    public int getLineCount()
+    {
+        return this.text.getLineCount();
+    }
+
+    /**
+     * Get the text of a line (using zero-based line numbering).
+     *
+     * @param line line number (zero based)
+     * @return line text
+     */
+    public String getLine(int line)
+    {
+        return this.text.getLine(line);
+    }
+
+    /**
+     * Get a multi-line interval of the text. Note that both {@code start} and {@code end} are inclusive.
+     *
+     * @param start start line (inclusive)
+     * @param end   end line (inclusive)
+     * @return multi-line interval
+     * @throws IndexOutOfBoundsException if either start or end is invalid or if end is before start
+     */
+    public String getLines(int start, int end)
+    {
+        return this.text.getLines(start, end);
+    }
+
+    /**
      * Get an unmodifiable list of the sections. These are in the order they appear in the original text document.
      *
      * @return sections
@@ -156,27 +190,50 @@ public class GrammarSectionIndex
      * @param line line number
      * @return section or null
      * @throws IndexOutOfBoundsException if there is no such line in the text document
+     * @see #getSectionNumberAtLine
      * @see #getSectionAtIndex
      */
     public GrammarSection getSectionAtLine(int line)
+    {
+        int n = getSectionNumberAtLine(line);
+        return (n == -1) ? null : getSection(n);
+    }
+
+    /**
+     * Get the number of the section at the given line of the text document. Note that there is not necessarily a
+     * section at every line in the document. The method returns -1 if there is not.
+     *
+     * @param line line number
+     * @return section number or -1
+     * @throws IndexOutOfBoundsException if there is no such line in the text document
+     * @see #getSectionAtLine
+     */
+    public int getSectionNumberAtLine(int line)
     {
         if (!this.text.isValidLine(line))
         {
             throw new IndexOutOfBoundsException("Invalid line number: " + line + "; line count: " + this.text.getLineCount());
         }
-        for (GrammarSection section : this.sections)
+        int low = 0;
+        int high = this.sections.size() - 1;
+        while (low <= high)
         {
-            int startLine = section.getStartLine();
-            if ((line == startLine) || ((line > startLine) && (line <= section.getEndLine())))
+            int mid = (low + high) >>> 1;
+            GrammarSection section = this.sections.get(mid);
+            if (line < section.getStartLine())
             {
-                return section;
+                high = mid - 1;
             }
-            if (line < startLine)
+            else if (line > section.getEndLine())
             {
-                return null;
+                low = mid + 1;
+            }
+            else
+            {
+                return mid;
             }
         }
-        return null;
+        return -1;
     }
 
     /**
