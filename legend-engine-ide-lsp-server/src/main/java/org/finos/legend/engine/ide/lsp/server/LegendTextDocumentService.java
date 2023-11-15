@@ -309,20 +309,33 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams completionParams)
     {
-        return this.server.supplyPossiblyAsync(() -> LegendCompletion(completionParams)).thenApply(Either::forLeft);
+        return this.server.supplyPossiblyAsync(() -> Either.forLeft(getCompletions(completionParams)));
     }
 
-    private List<CompletionItem> LegendCompletion(CompletionParams completionParams)
+    private List<CompletionItem> getCompletions(CompletionParams completionParams)
     {
         String uri = completionParams.getTextDocument().getUri();
         int line = completionParams.getPosition().getLine();
         int character = completionParams.getPosition().getCharacter();
-        String completionTrigger = this.server.getGlobalState().getOrCreateDocState(uri).getSectionState(0).getSection().getLine(line).substring(0, character);
-
-        String grammar = this.server.getGlobalState().getDocumentState(uri).getSectionState(0).getSection().getGrammar();
-        LegendCompletion legendCompletions = this.server.getGrammarExtension(grammar).getCompletions(completionTrigger);
-
-        return getCompletionItems(legendCompletions);
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+        synchronized (globalState)
+        {
+            DocumentState docState = globalState.getDocumentState(uri);
+            if (docState == null)
+            {
+                // TODO add warnings
+                return Collections.emptyList();
+            }
+            SectionState sectionState = docState.getSectionStateAtLine(line);
+            if (sectionState == null)
+            {
+                // TODO add warnings
+                return Collections.emptyList();
+            }
+            String completionTrigger = docState.getLine(line).substring(0, character);
+            LegendCompletion legendCompletions = sectionState.getExtension().getCompletions(completionTrigger);
+            return getCompletionItems(legendCompletions);
+        }
     }
 
     private List<CompletionItem> getCompletionItems(LegendCompletion legendCompletions)

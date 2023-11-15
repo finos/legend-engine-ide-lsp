@@ -18,9 +18,9 @@ import java.util.List;
 
 public class LegendCompletion
 {
-    String trigger;
-    String type;
-    List<? extends String> suggestions;
+    private final String trigger;
+    private final String type;
+    private final List<? extends String> suggestions;
 
     private static final List<String> ATTRIBUTE_TYPES = List.of("Integer ", "Date ", "StrictDate ", "String ", "Boolean ");
 
@@ -30,14 +30,13 @@ public class LegendCompletion
 
     private static final List<String> ATTRIBUTE_MULTIPLICITIES_TRIGGERS = ATTRIBUTE_TYPES;
 
-    private static final List<String> ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS = List.of("[0..1];\n", "[0..*];\n", "[1];\n", "[*];\n");
+    private static final List<String> ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS = List.of("[0..1];\n", "[1];\n", "[1..*];\n", "[*];\n");
 
-    private Boolean matchTrigger(String codeLine, List<String> triggers)
+    private boolean matchTrigger(String codeLine, List<String> triggers)
     {
         for (String triggerWord: triggers)
         {
-            if ((codeLine.length() - triggerWord.length()) > 0 &&
-                    codeLine.substring(codeLine.length() - triggerWord.length()).equals(triggerWord))
+            if (codeLine.endsWith(triggerWord))
             {
                 return true;
             }
@@ -47,9 +46,31 @@ public class LegendCompletion
 
     public LegendCompletion(String trigger)
     {
-        this.setTrigger(trigger);
-        this.setSuggestions();
-        this.setType();
+        this.trigger = trigger;
+
+        if (matchTrigger(trigger, ATTRIBUTE_MULTIPLICITIES_TRIGGERS))
+        {
+            this.suggestions = ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS;
+        }
+        else if (matchTrigger(trigger, ATTRIBUTE_TYPES_TRIGGERS))
+        {
+            this.suggestions = ATTRIBUTE_TYPES_SUGGESTIONS;
+        } else
+        {
+            this.suggestions = List.of();
+        }
+
+        if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.contains(trigger))
+        {
+            this.type = "Attribute multiplicities";
+        }
+        else if (ATTRIBUTE_TYPES_TRIGGERS.contains(trigger))
+        {
+            this.type = "Attribute type";
+        } else
+        {
+            this.type = "";
+        }
     }
 
     public List<? extends String> getSuggestions()
@@ -65,37 +86,6 @@ public class LegendCompletion
     public String getTrigger()
     {
         return trigger;
-    }
-
-    private void setTrigger(String trigger)
-    {
-        this.trigger = trigger;
-    }
-
-    private void setType()
-    {
-        this.type = "";
-        if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.contains(trigger))
-        {
-            this.type = "Attribute multiplicities";
-        }
-        if (ATTRIBUTE_TYPES_TRIGGERS.contains(trigger))
-        {
-            this.type = "Attribute type";
-        }
-    }
-
-    private void setSuggestions()
-    {
-        this.suggestions = List.of();
-        if (matchTrigger(trigger, ATTRIBUTE_MULTIPLICITIES_TRIGGERS))
-        {
-            this.suggestions = ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS;
-        }
-        if (matchTrigger(trigger, ATTRIBUTE_TYPES_TRIGGERS))
-        {
-            this.suggestions = ATTRIBUTE_TYPES_SUGGESTIONS;
-        }
     }
 
     @Override

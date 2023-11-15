@@ -16,6 +16,8 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Association;
@@ -185,9 +187,10 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 .build();
     }
 
-    public LegendCompletion getCompletions(String completionTrigger)
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
-        return (new LegendCompletion(completionTrigger));
+        String completionTrigger = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        return (List.of(new LegendCompletion(completionTrigger)));
     }
 
 }
