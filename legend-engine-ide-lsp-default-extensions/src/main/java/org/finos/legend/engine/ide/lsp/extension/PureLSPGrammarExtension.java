@@ -14,6 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -33,6 +36,7 @@ import org.finos.legend.engine.plan.generation.PlanGenerator;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
+import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Association;
@@ -47,12 +51,15 @@ import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
+import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
+import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.temporal.TemporalAccessor;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -79,6 +86,11 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
     private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
+
+    private static final JsonMapper JSON = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .build());
 
     public PureLSPGrammarExtension()
     {
@@ -240,7 +252,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
         if (result instanceof ConstantResult)
         {
-            consumer.accept(LegendExecutionResult.newResult(Type.SUCCESS, String.valueOf(((ConstantResult) result).getValue())));
+            consumer.accept(LegendExecutionResult.newResult(Type.SUCCESS, getConstantResult((ConstantResult) result)));
             return;
         }
         if (result instanceof StreamingResult)
@@ -259,5 +271,37 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             return;
         }
         consumer.accept(LegendExecutionResult.newResult(Type.WARNING, "Unhandled result type: " + result.getClass().getName()));
+    }
+
+    private String getConstantResult(ConstantResult constantResult)
+    {
+        return getConstantValueResult(constantResult.getValue());
+    }
+
+    private String getConstantValueResult(Object value)
+    {
+        if (value == null)
+        {
+            return "[]";
+        }
+        if (value instanceof Iterable)
+        {
+            StringBuilder builder = new StringBuilder();
+            ((Iterable<?>) value).forEach(v -> builder.append((builder.length() == 0) ? "[" : ", ").append(getConstantValueResult(v)));
+            return builder.append("]").toString();
+        }
+        if ((value instanceof String) || (value instanceof Boolean) || (value instanceof Number) || (value instanceof PureDate) || (value instanceof PureStrictTime) || (value instanceof TemporalAccessor))
+        {
+            return value.toString();
+        }
+        try
+        {
+            return JSON.writeValueAsString(value);
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Error converting value to JSON", e);
+        }
+        return value.toString();
     }
 }

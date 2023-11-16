@@ -347,6 +347,11 @@
             <!-- LEGEND PURE -->
             <dependency>
                 <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-m4</artifactId>
+                <version>${legend.pure.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-m3-core</artifactId>
                 <version>${legend.pure.version}</version>
                 <exclusions>
