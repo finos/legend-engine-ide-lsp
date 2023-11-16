@@ -38,6 +38,7 @@ import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserConte
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.modelManager.ModelManager;
+import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
@@ -85,6 +86,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     private static final String COMPILE_RESULT = "compile";
 
     private final Map<String, ? extends TestableRunnerExtension> testableRunners = TestableRunnerExtensionLoader.getClassifierPathToTestableRunnerMap();
+    private final Map<Class<? extends PackageableElement>, String> classToClassifier = ProtocolToClassifierPathLoader.getProtocolClassToClassifierMap();
 
     @Override
     public void initialize(SectionState section)
@@ -203,7 +205,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
         String classifier = getClassifier(element);
-        if (this.testableRunners.containsKey(classifier) && !getTestSuites(element).isEmpty())
+        if ((classifier != null) && this.testableRunners.containsKey(classifier) && !getTestSuites(element).isEmpty())
         {
             List<? extends TestSuite> testSuites = getTestSuites(element);
             if (!testSuites.isEmpty())
@@ -495,7 +497,10 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         return builder.build();
     }
 
-    protected abstract String getClassifier(PackageableElement element);
+    protected String getClassifier(PackageableElement element)
+    {
+        return this.classToClassifier.get(element.getClass());
+    }
 
     protected List<? extends TestSuite> getTestSuites(PackageableElement element)
     {
