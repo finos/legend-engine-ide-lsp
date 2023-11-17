@@ -516,8 +516,9 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     {
         String sourceId = sectionState.getDocumentState().getDocumentId();
         GrammarSection section = sectionState.getSection();
-        SourceInformation sectionSourceInfo = new SourceInformation(sourceId, section.getStartLine(), 0, section.getEndLine(), section.getLineLength(section.getEndLine()));
-        ParseTreeWalkerSourceInformation walkerSourceInfo = new ParseTreeWalkerSourceInformation.Builder(sourceId, section.getStartLine(), 0).build();
+        int startLine = section.hasGrammarDeclaration() ? (section.getStartLine() + 1) : section.getStartLine();
+        SourceInformation sectionSourceInfo = new SourceInformation(sourceId, startLine, 0, section.getEndLine(), section.getLineLength(section.getEndLine()));
+        ParseTreeWalkerSourceInformation walkerSourceInfo = new ParseTreeWalkerSourceInformation.Builder(sourceId, startLine, 0).build();
         return new SectionSourceCode(section.getText(true), section.getGrammar(), sectionSourceInfo, walkerSourceInfo);
     }
 
@@ -538,7 +539,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected static boolean isValidSourceInfo(SourceInformation sourceInfo)
     {
         return (sourceInfo != null) &&
-                (sourceInfo.startLine >= 0) &&
+                (sourceInfo.startLine > 0) &&
                 (sourceInfo.startColumn > 0) &&
                 (sourceInfo.startLine <= sourceInfo.endLine) &&
                 ((sourceInfo.startLine == sourceInfo.endLine) ? (sourceInfo.startColumn <= sourceInfo.endColumn) : (sourceInfo.endColumn > 0));
@@ -552,7 +553,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
      */
     protected static TextInterval toLocation(SourceInformation sourceInfo)
     {
-        return TextInterval.newInterval(sourceInfo.startLine, sourceInfo.startColumn - 1, sourceInfo.endLine, sourceInfo.endColumn - 1);
+        return TextInterval.newInterval(sourceInfo.startLine - 1, sourceInfo.startColumn - 1, sourceInfo.endLine - 1, sourceInfo.endColumn - 1);
     }
 
     protected static class Result<T>
