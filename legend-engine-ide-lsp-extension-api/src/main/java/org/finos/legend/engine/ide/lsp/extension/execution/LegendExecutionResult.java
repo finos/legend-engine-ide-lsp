@@ -24,9 +24,11 @@ public class LegendExecutionResult
     private final Type type;
     private final String message;
     private final String logMessage;
+    private final LegendExecutionSource source;
 
-    private LegendExecutionResult(Type type, String message, String logMessage)
+    private LegendExecutionResult(LegendExecutionSource source, Type type, String message, String logMessage)
     {
+        this.source = Objects.requireNonNull(source, "source is required");
         this.type = Objects.requireNonNull(type, "type is required");
         this.message = Objects.requireNonNull(message, "message is required");
         this.logMessage = logMessage;
@@ -62,6 +64,11 @@ public class LegendExecutionResult
         return this.logMessage;
     }
 
+    public LegendExecutionSource getSource()
+    {
+        return this.source;
+    }
+
     /**
      * Return the log message if present. If not present, then the result message will be returned if
      * {@code returnMessageIfAbsent} is true and null if it is false.
@@ -77,26 +84,57 @@ public class LegendExecutionResult
     /**
      * Construct a new Legend execution result.
      *
+     * @param source     result source
      * @param type       result type
      * @param message    result message
      * @param logMessage log message (optional)
      * @return execution result
      */
-    public static LegendExecutionResult newResult(Type type, String message, String logMessage)
+    public static LegendExecutionResult newResult(LegendExecutionSource source, Type type, String message, String logMessage)
     {
-        return new LegendExecutionResult(type, message, logMessage);
+        return new LegendExecutionResult(source, type, message, logMessage);
     }
 
     /**
      * Construct a new Legend execution result.
      *
+     * @param entityPath  result entityPath
+     * @param sourceType  result sourceType
+     * @param type       result type
+     * @param message    result message
+     * @param logMessage log message (optional)
+     * @return execution result
+     */
+    public static LegendExecutionResult newResult(String entityPath, LegendExecutionSource.SourceType sourceType, Type type, String message, String logMessage)
+    {
+        return new LegendExecutionResult(LegendExecutionSource.newSource(entityPath, sourceType), type, message, logMessage);
+    }
+
+    /**
+     * Construct a new Legend execution result.
+     *
+     * @param source  result source
      * @param type    result type
      * @param message result message
      * @return execution result
      */
-    public static LegendExecutionResult newResult(Type type, String message)
+    public static LegendExecutionResult newResult(LegendExecutionSource source, Type type, String message)
     {
-        return newResult(type, message, null);
+        return newResult(source, type, message, null);
+    }
+
+    /**
+     * Construct a new Legend execution result.
+     *
+     * @param entityPath  result entityPath
+     * @param sourceType  result sourceType
+     * @param type    result type
+     * @param message result message
+     * @return execution result
+     */
+    public static LegendExecutionResult newResult(String entityPath, LegendExecutionSource.SourceType sourceType, Type type, String message)
+    {
+        return newResult(LegendExecutionSource.newSource(entityPath, sourceType), type, message, null);
     }
 
     public enum Type
