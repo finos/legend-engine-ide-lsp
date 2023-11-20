@@ -27,7 +27,6 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
-import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
