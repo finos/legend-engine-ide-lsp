@@ -333,21 +333,21 @@ class LegendTextDocumentService implements TextDocumentService
                 LOGGER.warn("No state for {}: cannot get completions", uri);
                 return Collections.emptyList();
             }
-            LegendCompletion legendCompletions = sectionState.getExtension().getCompletions(sectionState, TextPosition.newPosition(line, character));
+            List<LegendCompletion> legendCompletions = sectionState.getExtension().getCompletions(sectionState, TextPosition.newPosition(line, character));
             return getCompletionItems(legendCompletions);
         }
     }
 
-    private List<CompletionItem> getCompletionItems(LegendCompletion legendCompletions)
+    private List<CompletionItem> getCompletionItems(List<LegendCompletion> legendCompletions)
     {
         List<CompletionItem> completions = new ArrayList<>();
 
-        for (String suggestion : legendCompletions.getSuggestions())
+        for (LegendCompletion legendCompletion : legendCompletions)
         {
-            CompletionItem completionItem = new CompletionItem(suggestion);
-            completionItem.setInsertText(suggestion);
+            CompletionItem completionItem = new CompletionItem(legendCompletion.getSuggestion());
+            completionItem.setInsertText(legendCompletion.getSuggestion());
             CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
-            detail.setDescription(legendCompletions.getType());
+            detail.setDescription(legendCompletion.getType());
             completionItem.setLabelDetails(detail);
             completions.add(completionItem);
         }

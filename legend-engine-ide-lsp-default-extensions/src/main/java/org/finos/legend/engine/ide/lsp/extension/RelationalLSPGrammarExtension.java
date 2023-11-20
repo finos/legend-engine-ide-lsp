@@ -29,6 +29,7 @@ import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -180,4 +181,10 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
                 .withLocation(toLocation(filter.sourceInformation))
                 .build();
     }
+
+    public List<String> getCompletionTriggers()
+    {
+        return Collections.emptyList();
+    }
+
 }

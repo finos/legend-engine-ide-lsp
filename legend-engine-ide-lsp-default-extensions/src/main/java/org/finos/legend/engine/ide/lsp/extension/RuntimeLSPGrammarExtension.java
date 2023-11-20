@@ -19,6 +19,7 @@ import org.finos.legend.engine.language.pure.grammar.from.runtime.RuntimeParser;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.PackageableRuntime;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -44,4 +45,10 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     {
         return (element instanceof PackageableRuntime) ? "meta::pure::runtime::PackageableRuntime" : null;
     }
+
+    public List<String> getCompletionTriggers()
+    {
+        return Collections.emptyList();
+    }
+
 }

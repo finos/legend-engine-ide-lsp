@@ -14,70 +14,18 @@
 
 package org.finos.legend.engine.ide.lsp.extension.completion;
 
-import java.util.List;
+import java.util.Objects;
 
 public class LegendCompletion
 {
-    private final String trigger;
     private final String type;
-    private final List<? extends String> suggestions;
 
-    private static final List<String> ATTRIBUTE_TYPES = List.of("Integer ", "Date ", "StrictDate ", "String ", "Boolean ");
+    private final String suggestion;
 
-    private static final List<String> ATTRIBUTE_TYPES_TRIGGERS = List.of(": ");
-
-    private static final List<String> ATTRIBUTE_TYPES_SUGGESTIONS = ATTRIBUTE_TYPES;
-
-    private static final List<String> ATTRIBUTE_MULTIPLICITIES_TRIGGERS = ATTRIBUTE_TYPES;
-
-    private static final List<String> ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS = List.of("[0..1];\n", "[1];\n", "[1..*];\n", "[*];\n");
-
-    private boolean matchTrigger(String codeLine, List<String> triggers)
+    public LegendCompletion(String description, String suggestion)
     {
-        for (String triggerWord: triggers)
-        {
-            if (codeLine.endsWith(triggerWord))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public LegendCompletion(String trigger)
-    {
-        this.trigger = trigger;
-
-        if (matchTrigger(trigger, ATTRIBUTE_MULTIPLICITIES_TRIGGERS))
-        {
-            this.suggestions = ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS;
-        }
-        else if (matchTrigger(trigger, ATTRIBUTE_TYPES_TRIGGERS))
-        {
-            this.suggestions = ATTRIBUTE_TYPES_SUGGESTIONS;
-        }
-        else
-        {
-            this.suggestions = List.of();
-        }
-
-        if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.contains(trigger))
-        {
-            this.type = "Attribute multiplicities";
-        }
-        else if (ATTRIBUTE_TYPES_TRIGGERS.contains(trigger))
-        {
-            this.type = "Attribute type";
-        }
-        else
-        {
-            this.type = "";
-        }
-    }
-
-    public List<? extends String> getSuggestions()
-    {
-        return suggestions;
+        this.type = Objects.requireNonNull(description, "type is required");
+        this.suggestion = Objects.requireNonNull(suggestion, "suggestion is required");
     }
 
     public String getType()
@@ -85,9 +33,9 @@ public class LegendCompletion
         return type;
     }
 
-    public String getTrigger()
+    public String getSuggestion()
     {
-        return trigger;
+        return suggestion;
     }
 
     @Override
@@ -104,26 +52,22 @@ public class LegendCompletion
         }
 
         LegendCompletion that = (LegendCompletion) other;
-        return (this.trigger.equals(that.trigger)) &&
+        return
                 (this.type.equals(that.type)) &&
-                this.suggestions.equals(that.suggestions);
+                this.suggestion.equals(that.suggestion);
     }
 
     @Override
     public int hashCode()
     {
-        int hashCode = this.trigger.hashCode();
-        hashCode = 17 * hashCode + this.type.hashCode();
-        hashCode = 17 * hashCode + this.suggestions.hashCode();
-        return hashCode;
+        return  17 * this.type.hashCode() + this.suggestion.hashCode();
     }
 
     @Override
     public String toString()
     {
-        return getClass().getSimpleName() + "{trigger = " + this.trigger +
-                ", type = " + this.type +
-                ", suggestions = " + this.suggestions + "\"}";
+        return getClass().getSimpleName() + "{type = " + this.type +
+                ", suggestion = " + this.suggestion + "\"}";
     }
 
 }

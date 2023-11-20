@@ -655,4 +655,10 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
         void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments);
     }
+
+    public List<String> getCompletionTriggers()
+    {
+        return Collections.emptyList();
+    }
+
 }

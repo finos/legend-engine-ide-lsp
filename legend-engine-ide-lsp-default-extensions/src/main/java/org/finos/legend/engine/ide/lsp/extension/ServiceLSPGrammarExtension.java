@@ -184,4 +184,10 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             }
         }
     }
+
+    public List<String> getCompletionTriggers()
+    {
+        return Collections.emptyList();
+    }
+
 }

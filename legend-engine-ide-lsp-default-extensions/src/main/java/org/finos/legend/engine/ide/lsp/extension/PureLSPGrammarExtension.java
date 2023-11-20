@@ -34,6 +34,7 @@ import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -54,6 +55,81 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             .with("native function")
             .with("Profile")
     );
+
+    private static final List<String> ATTRIBUTE_TYPES = List.of("Integer ", "Date ", "StrictDate ", "String ", "Boolean ");
+
+    private static final List<String> ATTRIBUTE_TYPES_TRIGGERS = List.of(": ");
+
+    private static final List<String> ATTRIBUTE_TYPES_SUGGESTIONS = ATTRIBUTE_TYPES;
+
+    private static final List<String> ATTRIBUTE_MULTIPLICITIES_TRIGGERS = ATTRIBUTE_TYPES;
+
+    private static final List<String> ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS = List.of("[0..1];\n", "[1];\n", "[1..*];\n", "[*];\n");
+
+    private static final List<String> BOILERPLATE_SUGGESTIONS = List.of(
+            "function go() : Any[*]\n" +
+                    "{\n" +
+                    "   1+1;\n" +
+                    "}\n",
+            "Class package::path::className\n" +
+                    "{\n" +
+                    "   attributeName: attributeType [attributeMultiplicity];\n" +
+                    "}\n");
+
+    @Override
+    public String getName()
+    {
+        return "Pure";
+    }
+
+    private boolean matchTrigger(String codeLine, List<String> triggers)
+    {
+        for (String triggerWord: triggers)
+        {
+            if (codeLine.endsWith(triggerWord))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<String> getCompletionTriggers()
+    {
+        List<String> allTriggers = new ArrayList<>(ATTRIBUTE_TYPES_TRIGGERS);
+        allTriggers.addAll(ATTRIBUTE_MULTIPLICITIES_TRIGGERS);
+        return allTriggers;
+    }
+
+    public List<LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    {
+        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        List<LegendCompletion> legendCompletions = new ArrayList<>();
+
+        if (matchTrigger(codeLine,ATTRIBUTE_TYPES_TRIGGERS))
+        {
+            for (String suggestion : ATTRIBUTE_TYPES_SUGGESTIONS)
+            {
+                legendCompletions.add(new LegendCompletion("Attribute type", suggestion));
+            }
+        }
+        if (matchTrigger(codeLine,ATTRIBUTE_MULTIPLICITIES_TRIGGERS))
+        {
+            for (String suggestion : ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS)
+            {
+                legendCompletions.add(new LegendCompletion("Attribute multiplicity", suggestion));
+            }
+        }
+        if (codeLine.isEmpty())
+        {
+            for (String suggestion : BOILERPLATE_SUGGESTIONS)
+            {
+                legendCompletions.add(new LegendCompletion("Pure boilerplate", suggestion));
+            }
+        }
+
+        return legendCompletions;
+    }
 
     public PureLSPGrammarExtension()
     {
@@ -187,10 +263,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 .build();
     }
 
-    public LegendCompletion getCompletions(SectionState section, TextPosition location)
-    {
-        String completionTrigger = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
-        return new LegendCompletion(completionTrigger);
-    }
+
 
 }

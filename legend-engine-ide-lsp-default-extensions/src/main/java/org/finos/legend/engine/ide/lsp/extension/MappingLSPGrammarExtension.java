@@ -214,4 +214,9 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         }
         return ListIterate.select(tests, t -> testName.equals(t.name));
     }
+
+    public List<String> getCompletionTriggers()
+    {
+        return Collections.emptyList();
+    }
 }
