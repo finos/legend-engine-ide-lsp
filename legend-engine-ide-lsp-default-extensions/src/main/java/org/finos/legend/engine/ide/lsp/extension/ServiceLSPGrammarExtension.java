@@ -65,12 +65,6 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    protected String getClassifier(PackageableElement element)
-    {
-        return (element instanceof Service) ? "meta::legend::service::metamodel::Service" : null;
-    }
-
-    @Override
     protected List<? extends TestSuite> getTestSuites(PackageableElement element)
     {
         if (element instanceof Service)

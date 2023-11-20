@@ -275,7 +275,7 @@ class LegendTextDocumentService implements TextDocumentService
                         if (!keywords.isEmpty())
                         {
                             Pattern pattern = Pattern.compile("(?<!\\w)(" + String.join("|", keywords) + ")(?!\\w)");
-                            int startLine = Math.max(section.getStartLine(), rangeStartLine);
+                            int startLine = Math.max(section.hasGrammarDeclaration() ? (section.getStartLine() + 1) : section.getStartLine(), rangeStartLine);
                             int endLine = Math.min(section.getEndLine(), isRangeEndLineInclusive ? rangeEndLine : (rangeEndLine - 1));
                             for (int n = startLine; n <= endLine; n++)
                             {

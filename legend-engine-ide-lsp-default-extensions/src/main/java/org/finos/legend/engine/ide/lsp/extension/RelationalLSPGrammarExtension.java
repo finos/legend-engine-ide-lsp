@@ -60,12 +60,6 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     }
 
     @Override
-    protected String getClassifier(PackageableElement element)
-    {
-        return (element instanceof Database) ? M2RelationalPaths.Database : null;
-    }
-
-    @Override
     protected void forEachChild(PackageableElement element, Consumer<LegendDeclaration> consumer)
     {
         if (element instanceof Database)

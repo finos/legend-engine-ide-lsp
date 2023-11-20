@@ -16,8 +16,6 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.runtime.RuntimeParser;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.PackageableRuntime;
 
 import java.util.Collections;
 import java.util.List;
@@ -38,12 +36,6 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     public Iterable<? extends String> getKeywords()
     {
         return KEYWORDS;
-    }
-
-    @Override
-    protected String getClassifier(PackageableElement element)
-    {
-        return (element instanceof PackageableRuntime) ? "meta::pure::runtime::PackageableRuntime" : null;
     }
 
     public List<String> getCompletionTriggers()

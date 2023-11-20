@@ -70,12 +70,6 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     }
 
     @Override
-    protected String getClassifier(PackageableElement element)
-    {
-        return (element instanceof Mapping) ? "meta::pure::mapping::Mapping" : null;
-    }
-
-    @Override
     protected List<? extends TestSuite> getTestSuites(PackageableElement element)
     {
         if (element instanceof Mapping)

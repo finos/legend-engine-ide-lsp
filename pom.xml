@@ -347,6 +347,11 @@
             <!-- LEGEND PURE -->
             <dependency>
                 <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-m4</artifactId>
+                <version>${legend.pure.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-m3-core</artifactId>
                 <version>${legend.pure.version}</version>
                 <exclusions>
@@ -355,6 +360,11 @@
                         <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-m2-dsl-mapping-pure</artifactId>
+                <version>${legend.pure.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.pure</groupId>
@@ -452,6 +462,11 @@
                         <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-pure-platform-dsl-mapping-java</artifactId>
+                <version>${legend.engine.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>

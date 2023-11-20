@@ -14,28 +14,60 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
+import org.finos.legend.engine.plan.execution.PlanExecutor;
+import org.finos.legend.engine.plan.execution.result.ConstantResult;
+import org.finos.legend.engine.plan.execution.result.ErrorResult;
+import org.finos.legend.engine.plan.execution.result.StreamingResult;
+import org.finos.legend.engine.plan.execution.result.serialization.SerializationFormat;
+import org.finos.legend.engine.plan.generation.PlanGenerator;
+import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
+import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
+import org.finos.legend.engine.plan.platform.PlanPlatform;
+import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
+import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Association;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Class;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Enumeration;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Function;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Measure;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Profile;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Property;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.QualifiedProperty;
+import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
+import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
+import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
+import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.temporal.TemporalAccessor;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.function.Consumer;
 
 /**
@@ -131,6 +163,14 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return legendCompletions;
     }
 
+    private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
+    private static final String EXEC_FUNCTION_TITLE = "Execute function";
+
+    private static final JsonMapper JSON = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .build());
+
     public PureLSPGrammarExtension()
     {
         super(new DomainParser());
@@ -143,34 +183,25 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     }
 
     @Override
-    protected String getClassifier(PackageableElement element)
+    protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
-        if (element instanceof Class)
-        {
-            return M3Paths.Class;
-        }
-        if (element instanceof Enumeration)
-        {
-            return M3Paths.Enumeration;
-        }
-        if (element instanceof Association)
-        {
-            return M3Paths.Association;
-        }
-        if (element instanceof Profile)
-        {
-            return M3Paths.Profile;
-        }
+        super.collectCommands(sectionState, element, consumer);
         if (element instanceof Function)
         {
-            return M3Paths.Function;
+            Function function = (Function) element;
+            if ((function.parameters == null) || function.parameters.isEmpty())
+            {
+                consumer.accept(EXEC_FUNCTION_ID, EXEC_FUNCTION_TITLE, function.sourceInformation);
+            }
         }
-        if (element instanceof Measure)
-        {
-            return M3Paths.Measure;
-        }
-        LOGGER.warn("Unhandled element type: {}", element.getClass());
-        return null;
+    }
+
+    @Override
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
+    {
+        return EXEC_FUNCTION_ID.equals(commandId) ?
+                executeFunction(section, entityPath) :
+                super.execute(section, entityPath, commandId, executableArgs);
     }
 
     @Override
@@ -263,6 +294,93 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 .build();
     }
 
+    private Iterable<? extends LegendExecutionResult> executeFunction(SectionState section, String entityPath)
+    {
+        CompileResult compileResult = getCompileResult(section);
+        if (compileResult.hasException())
+        {
+            return Collections.singletonList(errorResult(compileResult.getException()));
+        }
 
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+        try
+        {
+            PureModel pureModel = compileResult.getPureModel();
+            ConcreteFunctionDefinition<?> function = pureModel.getConcreteFunctionDefinition(entityPath, null);
+            MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
+            MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
+            SingleExecutionPlan executionPlan = PlanGenerator.generateExecutionPlan(function, null, null, null, pureModel, null, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
+            PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
+            collectResults(planExecutor.execute(executionPlan, Maps.mutable.empty(), "localUser", Lists.mutable.empty()), results::add);
+        }
+        catch (Exception e)
+        {
+            results.add(errorResult(e));
+        }
+        return results;
+    }
 
+    private void collectResults(org.finos.legend.engine.plan.execution.result.Result result, Consumer<? super LegendExecutionResult> consumer)
+    {
+        // TODO also collect results from activities
+        if (result instanceof ErrorResult)
+        {
+            ErrorResult errorResult = (ErrorResult) result;
+            consumer.accept(LegendExecutionResult.newResult(Type.ERROR, errorResult.getMessage(), errorResult.getTrace()));
+            return;
+        }
+        if (result instanceof ConstantResult)
+        {
+            consumer.accept(LegendExecutionResult.newResult(Type.SUCCESS, getConstantResult((ConstantResult) result)));
+            return;
+        }
+        if (result instanceof StreamingResult)
+        {
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1024);
+            try
+            {
+                ((StreamingResult) result).getSerializer(SerializationFormat.DEFAULT).stream(byteStream);
+            }
+            catch (IOException e)
+            {
+                consumer.accept(errorResult(e));
+                return;
+            }
+            consumer.accept(LegendExecutionResult.newResult(Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8)));
+            return;
+        }
+        consumer.accept(LegendExecutionResult.newResult(Type.WARNING, "Unhandled result type: " + result.getClass().getName()));
+    }
+
+    private String getConstantResult(ConstantResult constantResult)
+    {
+        return getConstantValueResult(constantResult.getValue());
+    }
+
+    private String getConstantValueResult(Object value)
+    {
+        if (value == null)
+        {
+            return "[]";
+        }
+        if (value instanceof Iterable)
+        {
+            StringBuilder builder = new StringBuilder();
+            ((Iterable<?>) value).forEach(v -> builder.append((builder.length() == 0) ? "[" : ", ").append(getConstantValueResult(v)));
+            return builder.append("]").toString();
+        }
+        if ((value instanceof String) || (value instanceof Boolean) || (value instanceof Number) || (value instanceof PureDate) || (value instanceof PureStrictTime) || (value instanceof TemporalAccessor))
+        {
+            return value.toString();
+        }
+        try
+        {
+            return JSON.writeValueAsString(value);
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Error converting value to JSON", e);
+        }
+        return value.toString();
+    }
 }
