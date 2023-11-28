@@ -102,6 +102,7 @@ class LegendWorkspaceService implements WorkspaceService
                         throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
                     }
                     Iterable<? extends LegendExecutionResult> results = extension.execute(sectionState, entity, id, executableArgs);
+                    this.server.notifyResult(progressToken, results);
                     results.forEach(result ->
                     {
                         switch (result.getType())

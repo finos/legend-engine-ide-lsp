@@ -546,6 +546,15 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         notifyProgress(token, end);
     }
 
+    void notifyResult(Either<String, Integer> token, Object value)
+    {
+        LanguageClient client = this.languageClient.get();
+        if (client != null)
+        {
+            client.notifyProgress(new ProgressParams(token, Either.forRight(value)));
+        }
+    }
+
     private void notifyProgress(Either<String, Integer> token, WorkDoneProgressNotification progress)
     {
         LanguageClient client = this.languageClient.get();
