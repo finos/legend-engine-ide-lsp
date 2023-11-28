@@ -686,23 +686,13 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
     }
 
-    private List<String> getCompletionTriggers()
-    {
-        List<String> completionTriggers = new ArrayList<>();
-        for (String grammar : this.grammars.getGrammars())
-        {
-            completionTriggers.addAll(getGrammarExtension(grammar).getCompletionTriggers());
-        }
-        return completionTriggers;
-    }
-
     private ServerCapabilities getServerCapabilities()
     {
         ServerCapabilities capabilities = new ServerCapabilities();
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Collections.singletonList(SemanticTokenTypes.Keyword), Collections.emptyList()), false, true));
         capabilities.setWorkspace(getWorkspaceServerCapabilities());
-        capabilities.setCompletionProvider(new CompletionOptions(false, getCompletionTriggers()));
+        capabilities.setCompletionProvider(new CompletionOptions(false, List.of()));
         capabilities.setCodeLensProvider(getCodeLensOptions());
         capabilities.setExecuteCommandProvider(getExecuteCommandOptions());
         return capabilities;

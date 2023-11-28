@@ -23,7 +23,6 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -62,12 +61,7 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
         return Collections.emptyList();
     }
 
-    default List<LegendCompletion> getCompletions(SectionState section, TextPosition location)
-    {
-        return Collections.emptyList();
-    }
-
-    default List<String> getCompletionTriggers()
+    default Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         return Collections.emptyList();
     }

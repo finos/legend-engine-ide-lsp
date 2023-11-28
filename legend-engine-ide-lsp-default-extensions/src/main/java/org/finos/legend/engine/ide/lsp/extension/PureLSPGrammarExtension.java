@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
@@ -26,8 +27,8 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
-import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.execution.result.ConstantResult;
@@ -58,7 +59,6 @@ import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -87,17 +87,12 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             .with("Profile")
     );
 
-    private static final List<String> ATTRIBUTE_TYPES = List.of("Integer ", "Date ", "StrictDate ", "String ", "Boolean ");
-
-    private static final List<String> ATTRIBUTE_TYPES_TRIGGERS = List.of(": ");
-
-    private static final List<String> ATTRIBUTE_TYPES_SUGGESTIONS = ATTRIBUTE_TYPES;
-
-    private static final List<String> ATTRIBUTE_MULTIPLICITIES_TRIGGERS = ATTRIBUTE_TYPES;
-
-    private static final List<String> ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS = List.of("[0..1];\n", "[1];\n", "[1..*];\n", "[*];\n");
-
-    private static final List<String> BOILERPLATE_SUGGESTIONS = List.of(
+    private static final ImmutableList<String> ATTRIBUTE_TYPES = PrimitiveUtilities.getPrimitiveTypeNames().collect(n -> n + " ", Lists.mutable.empty()).toImmutable();
+    private static final ImmutableList<String> ATTRIBUTE_TYPES_TRIGGERS = Lists.immutable.with(": ");
+    private static final ImmutableList<String> ATTRIBUTE_TYPES_SUGGESTIONS = ATTRIBUTE_TYPES;
+    private static final ImmutableList<String> ATTRIBUTE_MULTIPLICITIES_TRIGGERS = ATTRIBUTE_TYPES;
+    private static final ImmutableList<String> ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS = Lists.immutable.with("[0..1];\n", "[1];\n", "[1..*];\n", "[*];\n");
+    private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
             "function go() : Any[*]\n" +
                     "{\n" +
                     "   1+1;\n" +
@@ -113,50 +108,25 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return "Pure";
     }
 
-    private boolean matchTrigger(String codeLine, List<String> triggers)
-    {
-        for (String triggerWord: triggers)
-        {
-            if (codeLine.endsWith(triggerWord))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public List<String> getCompletionTriggers()
-    {
-        List<String> allTriggers = new ArrayList<>(ATTRIBUTE_TYPES_TRIGGERS);
-        allTriggers.addAll(ATTRIBUTE_MULTIPLICITIES_TRIGGERS);
-        return allTriggers;
-    }
-
-    public List<LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    @Override
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
-        List<LegendCompletion> legendCompletions = new ArrayList<>();
 
-        if (matchTrigger(codeLine,ATTRIBUTE_TYPES_TRIGGERS))
-        {
-            for (String suggestion : ATTRIBUTE_TYPES_SUGGESTIONS)
-            {
-                legendCompletions.add(new LegendCompletion("Attribute type", suggestion));
-            }
-        }
-        if (matchTrigger(codeLine,ATTRIBUTE_MULTIPLICITIES_TRIGGERS))
-        {
-            for (String suggestion : ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS)
-            {
-                legendCompletions.add(new LegendCompletion("Attribute multiplicity", suggestion));
-            }
-        }
         if (codeLine.isEmpty())
         {
-            for (String suggestion : BOILERPLATE_SUGGESTIONS)
-            {
-                legendCompletions.add(new LegendCompletion("Pure boilerplate", suggestion));
-            }
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Pure boilerplate", s));
+        }
+
+        MutableList<LegendCompletion> legendCompletions = Lists.mutable.empty();
+
+        if (ATTRIBUTE_TYPES_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            ATTRIBUTE_TYPES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute type", s), legendCompletions);
+        }
+        if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute multiplicity", s), legendCompletions);
         }
 
         return legendCompletions;

@@ -15,12 +15,15 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.mapping.MappingParser;
@@ -39,6 +42,7 @@ import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +53,7 @@ import java.util.ServiceLoader;
  */
 public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
-    private static final List<String> KEYWORDS = List.of("Mapping", "EnumerationMapping", "include");
+    private static final List<String> KEYWORDS = List.of("Mapping", "EnumerationMapping", "include", "primaryKey", "mainTable", "Relational");
 
     private static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.mapping.runLegacyTests";
     private static final String RUN_LEGACY_TESTS_COMMAND_TITLE = "Run legacy tests";
@@ -57,6 +61,26 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     private static final String RUN_LEGACY_TEST_COMMAND_ID = "legend.mapping.runLegacyTest";
     private static final String RUN_LEGACY_TEST_COMMAND_TITLE = "Run legacy test";
     private static final String LEGACY_TEST_ID = "legend.mapping.legacyTestId";
+
+    private static final ImmutableList<String> STORE_OBJECT_TRIGGERS = Lists.immutable.with("~");
+
+    private static final ImmutableList<String> STORE_OBJECT_SUGGESTIONS = Lists.immutable.with("primaryKey", "mainTable");
+
+    private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
+            "Mapping package::path::mappingName\n" +
+                    "( /*Mapping contains the business logic relating your (exposed) Class to your underlying store objects (tables/views).*/\n" +
+                    "  *package::path::className: Relational\n" +
+                    "  {\n" +
+                    "    ~primaryKey\n" +
+                    "  (\n" +
+                    "    [package::path::storeName]schemaName.TableName1.column1,\n" +
+                    "  )\n" +
+                    "    ~mainTable [package::path::storeName]schemaName.TableName1\n" +
+                    "    attribute1: [package::path::storeName]schemaName.TableName1.column1,\n" +
+                    "    attribute2: [package::path::storeName]schemaName.TableName1.column2,\n" +
+                    "    attribute3: multiply([package::path::storeName]schemaName.TableName1.column1, [package::path::storeName]schema.TableName1.column1)\n" +
+                    "  }\n" +
+                    ")\n");
 
     public MappingLSPGrammarExtension()
     {
@@ -209,8 +233,21 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return ListIterate.select(tests, t -> testName.equals(t.name));
     }
 
-    public List<String> getCompletionTriggers()
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
-        return Collections.emptyList();
+        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        List<LegendCompletion> legendCompletions = new ArrayList<>();
+
+        if (codeLine.isEmpty())
+        {
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Mapping boilerplate", s));
+        }
+
+        if (STORE_OBJECT_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            STORE_OBJECT_SUGGESTIONS.collect(s -> new LegendCompletion("Store object type", s), legendCompletions);
+        }
+
+        return legendCompletions;
     }
 }

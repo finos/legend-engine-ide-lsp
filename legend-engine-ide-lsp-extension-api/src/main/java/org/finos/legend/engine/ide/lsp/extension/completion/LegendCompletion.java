@@ -67,7 +67,7 @@ public class LegendCompletion
     public String toString()
     {
         return getClass().getSimpleName() + "{type = " + this.type +
-                ", suggestion = " + this.suggestion + "\"}";
+                ", suggestion = \"" + this.suggestion + "\"}";
     }
 
 }

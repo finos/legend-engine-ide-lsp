@@ -14,10 +14,14 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.runtime.RuntimeParser;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -25,7 +29,25 @@ import java.util.List;
  */
 public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
-    private static final List<String> KEYWORDS = List.of("Runtime", "import");
+    private static final List<String> KEYWORDS = List.of("Runtime", "import", "mappings", "connections");
+
+    private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
+            "Runtime package::path::runtimeName\n" +
+                "{\n" +
+                "  mappings:\n" +
+                "  [\n" +
+                "    package::path::mapping1,\n" +
+                "    package::path::mapping2\n" +
+                "  ];\n" +
+                "  connections:\n" +
+                "  [\n" +
+                "    package::path::store1:\n" +
+                "    [\n" +
+                "    connection_1: package::path::connection1\n" +
+                "    ]\n" +
+                "  ]\n" +
+                "}\n"
+    );
 
     public RuntimeLSPGrammarExtension()
     {
@@ -38,9 +60,15 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return KEYWORDS;
     }
 
-    public List<String> getCompletionTriggers()
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
-        return Collections.emptyList();
-    }
+        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
 
+        if (codeLine.isEmpty())
+        {
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Runtime boilerplate", s));
+        }
+
+        return List.of();
+    }
 }
