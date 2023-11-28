@@ -47,26 +47,26 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private static final List<String> KEYWORDS = List.of("Database", "Schema", "Table", "View", "include", "Join", "Filter");
 
-    private static final ImmutableList<String> SCHEMA_TRIGGERS = Lists.immutable.with("schema");
+    private static final ImmutableList<String> SCHEMA_TRIGGERS = Lists.immutable.with("Schema ");
 
     private static final ImmutableList<String> SCHEMA_SUGGESTIONS = Lists.immutable.with(
-            "Schema schemaName\n" +
+            "schemaName\n" +
                 "(\n" +
                 " Table TableName1(column1 INT PRIMARY KEY, column2 DATE)\n" +
                 " Table TableName2(column3 VARCHAR(10) PRIMARY KEY)\n" +
                 ")\n"
     );
 
-    private static final ImmutableList<String> TABLE_TRIGGERS = Lists.immutable.with("schema");
+    private static final ImmutableList<String> TABLE_TRIGGERS = Lists.immutable.with("Table ");
 
     private static final ImmutableList<String> TABLE_SUGGESTIONS = Lists.immutable.with(
-            "Table TableName1(column1 INT PRIMARY KEY, column2 DATE)\n"
+            "TableName1(column1 INT PRIMARY KEY, column2 DATE)\n"
     );
 
-    private static final ImmutableList<String> VIEW_TRIGGERS = Lists.immutable.with("schema");
+    private static final ImmutableList<String> VIEW_TRIGGERS = Lists.immutable.with("View ");
 
     private static final ImmutableList<String> VIEW_SUGGESTIONS = Lists.immutable.with(
-            "View viewName\n" +
+            "viewName\n" +
                 "(\n" +
                 "  field1: table1.column1, \n" +
                 "  field2: table2.column2,\n" +
@@ -77,13 +77,13 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     private static final ImmutableList<String> JOIN_TRIGGERS = Lists.immutable.with("Join ");
 
     private static final ImmutableList<String> JOIN_SUGGESTIONS = Lists.immutable.with(
-            "Join joinName(table1.column1 = table2.column2)"
+            "joinName(table1.column1 = table2.column2)"
     );
 
     private static final ImmutableList<String> FILTER_TRIGGERS = Lists.immutable.with("Filter ");
 
     private static final ImmutableList<String> FILTER_SUGGESTIONS = Lists.immutable.with(
-            "Filter filterName(table1.column1 > 12)"
+            "filterName(table1.column1 > 12)"
     );
 
     private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(

@@ -195,7 +195,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             "unitValue(",
             "weekOfYear(",
             "whenSubType(",
-            "year"
+            "year()"
     );
 
     private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
