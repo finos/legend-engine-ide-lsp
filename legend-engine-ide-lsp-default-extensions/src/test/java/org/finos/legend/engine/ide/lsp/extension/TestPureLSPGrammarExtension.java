@@ -36,6 +36,53 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     public void testGetDeclarations()
     {
         testGetDeclarations(
+                "Class test::model::TestClass1\n" +
+                        "{\r\n" +
+                        "}\n" +
+                        "\n" +
+                        "\r\n" +
+                        "Enum test::model::TestEnumeration\n" +
+                        "{\n" +
+                        "  VAL1, VAL2,\n" +
+                        "  VAL3, VAL4\r\n" +
+                        "}\n" +
+                        "\r\n" +
+                        "Profile test::model::TestProfile\n" +
+                        "{\n" +
+                        "  stereotypes: [st1, st2];\n" +
+                        "  tags: [tag1, tag2, tag3];\n" +
+                        "}\n" +
+                        "\r\n" +
+                        "Class test::model::TestClass2\n" +
+                        "{\n" +
+                        "   name : String[1];\n" +
+                        "   type : test::model::TestEnumeration[1];\n" +
+                        "}\n" +
+                        "\r\n" +
+                        "Association test::model::TestAssociation\n" +
+                        "{\n" +
+                        "   oneToTwo : test::model::TestClass2[*];\n" +
+                        "   twoToOne : test::model::TestClass1[*];\n" +
+                        "}\n",
+                LegendDeclaration.builder().withIdentifier("test::model::TestClass1").withClassifier(M3Paths.Class).withLocation(0, 0, 2, 0).build(),
+                LegendDeclaration.builder().withIdentifier("test::model::TestEnumeration").withClassifier(M3Paths.Enumeration).withLocation(5, 0, 9, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL1").withClassifier("test::model::TestEnumeration").withLocation(7, 2, 7, 5).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL2").withClassifier("test::model::TestEnumeration").withLocation(7, 8, 7, 11).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL3").withClassifier("test::model::TestEnumeration").withLocation(8, 2, 8, 5).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL4").withClassifier("test::model::TestEnumeration").withLocation(8, 8, 8, 11).build())
+                        .build(),
+                LegendDeclaration.builder().withIdentifier("test::model::TestProfile").withClassifier(M3Paths.Profile).withLocation(11, 0, 15, 0).build(),
+                LegendDeclaration.builder().withIdentifier("test::model::TestClass2").withClassifier(M3Paths.Class).withLocation(17, 0, 21, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("name").withClassifier(M3Paths.Property).withLocation(19, 3, 19, 19).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("type").withClassifier(M3Paths.Property).withLocation(20, 3, 20, 41).build())
+                        .build(),
+                LegendDeclaration.builder().withIdentifier("test::model::TestAssociation").withClassifier(M3Paths.Association).withLocation(23, 0, 27, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("oneToTwo").withClassifier(M3Paths.Property).withLocation(25, 3, 25, 40).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("twoToOne").withClassifier(M3Paths.Property).withLocation(26, 3, 26, 40).build())
+                        .build()
+        );
+
+        testGetDeclarations(
                 "###Pure\n" +
                         "\r\n" +
                         "Class test::model::TestClass1\n" +

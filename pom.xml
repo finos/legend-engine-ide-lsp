@@ -49,7 +49,7 @@
         <java.version.range>[17,18),[21,22)</java.version.range>
 
         <!-- Legend dependency versions -->
-        <legend.engine.version>4.32.1</legend.engine.version>
+        <legend.engine.version>4.33.6</legend.engine.version>
         <legend.pure.version>4.10.0</legend.pure.version>
 
         <!-- Dependency versions -->
@@ -347,6 +347,11 @@
             <!-- LEGEND PURE -->
             <dependency>
                 <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-m4</artifactId>
+                <version>${legend.pure.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-m3-core</artifactId>
                 <version>${legend.pure.version}</version>
                 <exclusions>
@@ -355,6 +360,11 @@
                         <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-m2-dsl-mapping-pure</artifactId>
+                <version>${legend.pure.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.pure</groupId>
@@ -452,6 +462,11 @@
                         <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-pure-platform-dsl-mapping-java</artifactId>
+                <version>${legend.engine.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>

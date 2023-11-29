@@ -16,6 +16,7 @@ package org.finos.legend.engine.ide.lsp.server;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.reflect.TypeToken;
 import org.eclipse.lsp4j.CodeLensOptions;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
@@ -56,6 +57,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +65,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
@@ -531,6 +534,20 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         notifyProgress(token, report);
     }
 
+    void notifyResult(Either<String, Integer> token, LegendExecutionResult result)
+    {
+        notifyResults(token, Collections.singletonList(result));
+    }
+
+    void notifyResults(Either<String, Integer> token, Iterable<? extends LegendExecutionResult> results)
+    {
+        LanguageClient client = this.languageClient.get();
+        if (client != null)
+        {
+            client.notifyProgress(new ProgressParams(token, Either.forRight(results)));
+        }
+    }
+
     void notifyEnd(Either<String, Integer> token)
     {
         notifyEnd(token, null);
@@ -573,6 +590,28 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         if (value instanceof String)
         {
             return this.gson.fromJson((String) value, cls);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    <K, V> Map<K, V> extractValueAsMap(Object value, Class<K> keyType, Class<V> valueType)
+    {
+        if (value == null)
+        {
+            return null;
+        }
+        if (value instanceof Map)
+        {
+            return (Map<K, V>) value;
+        }
+        if (value instanceof JsonElement)
+        {
+            return this.gson.fromJson((JsonElement) value, (TypeToken<Map<K, V>>) TypeToken.getParameterized(Map.class, keyType, valueType));
+        }
+        if (value instanceof String)
+        {
+            return this.gson.fromJson((String) value, (TypeToken<Map<K, V>>) TypeToken.getParameterized(Map.class, keyType, valueType));
         }
         return null;
     }
