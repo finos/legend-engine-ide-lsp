@@ -83,7 +83,7 @@ class LegendWorkspaceService implements WorkspaceService
                 int sectionNum = this.server.extractValueAs(args.get(1), Integer.class);
                 String entity = this.server.extractValueAs(args.get(2), String.class);
                 String id = this.server.extractValueAs(args.get(3), String.class);
-                Map<String, String> executableArgs = args.get(4) != null ?  this.server.extractValueAs(args.get(4), Map.class) : Collections.emptyMap();
+                Map<String, String> executableArgs = ((args.size() < 5) || (args.get(4) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(4), String.class, String.class);
                 this.server.notifyBegin(progressToken, entity);
 
                 LegendServerGlobalState globalState = this.server.getGlobalState();
@@ -102,14 +102,24 @@ class LegendWorkspaceService implements WorkspaceService
                         throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
                     }
                     Iterable<? extends LegendExecutionResult> results = extension.execute(sectionState, entity, id, executableArgs);
+                    this.server.notifyResults(progressToken, results);
                     results.forEach(result ->
                     {
                         switch (result.getType())
                         {
                             case SUCCESS:
                             {
-                                this.server.showInfoToClient(result.getMessage());
-                                this.server.logInfoToClient(result.getLogMessage(true));
+                                String message = result.getMessage();
+                                String logMessage = result.getLogMessage();
+                                if ((logMessage == null) || logMessage.equals(message))
+                                {
+                                    this.server.logInfoToClient(message);
+                                }
+                                else
+                                {
+                                    this.server.showInfoToClient(message);
+                                    this.server.logInfoToClient(logMessage);
+                                }
                                 break;
                             }
                             case FAILURE:
