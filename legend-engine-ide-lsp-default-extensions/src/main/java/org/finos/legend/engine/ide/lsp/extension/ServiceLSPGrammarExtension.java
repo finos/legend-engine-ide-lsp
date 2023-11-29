@@ -37,6 +37,10 @@ import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +56,8 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     private static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.service.runLegacyTests";
     private static final String RUN_LEGACY_TESTS_COMMAND_TITLE = "Run legacy tests";
 
+    private static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
+    private static final String REGISTER_SERVICE_COMMAND_TITLE = "Register service";
 
     public ServiceLSPGrammarExtension()
     {
@@ -88,6 +94,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         if (element instanceof Service)
         {
             Service service = (Service) element;
+            consumer.accept(REGISTER_SERVICE_COMMAND_ID, REGISTER_SERVICE_COMMAND_TITLE, service.sourceInformation);
             if (service.test != null)
             {
                 consumer.accept(RUN_LEGACY_TESTS_COMMAND_ID, RUN_LEGACY_TESTS_COMMAND_TITLE, service.sourceInformation);
@@ -98,9 +105,43 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
-        return RUN_LEGACY_TESTS_COMMAND_ID.equals(commandId) ?
-                runLegacyServiceTest(section, entityPath) :
-                super.execute(section, entityPath, commandId, executableArgs);
+        switch (commandId)
+        {
+            case RUN_LEGACY_TESTS_COMMAND_ID:
+                return runLegacyServiceTest(section, entityPath);
+            case REGISTER_SERVICE_COMMAND_ID:
+                return List.of(registerService(section));
+            default:
+                return super.execute(section, entityPath, commandId, executableArgs);
+
+        }
+    }
+
+
+    private HttpResponse post(String uri, String data) throws Exception
+    {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(uri))
+                .POST(HttpRequest.BodyPublishers.ofString(data))
+                .build();
+        HttpResponse<?> response = HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.discarding());
+        return response;
+    }
+
+    private LegendExecutionResult registerService(SectionState section)
+    {
+        String registerServiceUrl = "https://exec.alloy.site.gs.com/api/service/v1/register_fullInteractive?storeModel=false&generateLineage=true";
+        String payload = getCompileResult(section).getPureModelContextData().toString();
+
+        try
+        {
+            HttpResponse response = post(registerServiceUrl, payload);
+            return (LegendExecutionResult.newResult(Type.WARNING,response.toString()));
+        }
+        catch (Exception e)
+        {
+            return (LegendExecutionResult.newResult(Type.ERROR,"Service not registered, payload: " + payload));
+        }
     }
 
     private Iterable<? extends LegendExecutionResult> runLegacyServiceTest(SectionState section, String entityPath)
