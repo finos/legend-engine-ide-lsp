@@ -24,7 +24,6 @@ import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionSource.SourceType;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
@@ -221,7 +220,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, SourceType.QUERY));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
         }
 
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
@@ -237,7 +236,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
         catch (Exception e)
         {
-            results.add(errorResult(e, entityPath, SourceType.QUERY));
+            results.add(errorResult(e, entityPath));
         }
         return results;
     }
@@ -248,12 +247,12 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         if (result instanceof ErrorResult)
         {
             ErrorResult errorResult = (ErrorResult) result;
-            consumer.accept(LegendExecutionResult.newResult(entityPath, SourceType.QUERY, Type.ERROR, errorResult.getMessage(), errorResult.getTrace()));
+            consumer.accept(LegendExecutionResult.newResult(entityPath, Type.ERROR, errorResult.getMessage(), errorResult.getTrace()));
             return;
         }
         if (result instanceof ConstantResult)
         {
-            consumer.accept(LegendExecutionResult.newResult(entityPath, SourceType.QUERY, Type.SUCCESS, getConstantResult((ConstantResult) result)));
+            consumer.accept(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, getConstantResult((ConstantResult) result)));
             return;
         }
         if (result instanceof StreamingResult)
@@ -265,13 +264,13 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             }
             catch (IOException e)
             {
-                consumer.accept(errorResult(e, entityPath, SourceType.QUERY));
+                consumer.accept(errorResult(e, entityPath));
                 return;
             }
-            consumer.accept(LegendExecutionResult.newResult(entityPath, SourceType.QUERY, Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8)));
+            consumer.accept(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8)));
             return;
         }
-        consumer.accept(LegendExecutionResult.newResult(entityPath, SourceType.QUERY, Type.WARNING, "Unhandled result type: " + result.getClass().getName()));
+        consumer.accept(LegendExecutionResult.newResult(entityPath, Type.WARNING, "Unhandled result type: " + result.getClass().getName()));
     }
 
     private String getConstantResult(ConstantResult constantResult)

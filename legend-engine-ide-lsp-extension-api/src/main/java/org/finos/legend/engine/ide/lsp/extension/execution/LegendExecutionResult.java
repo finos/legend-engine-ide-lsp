@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension.execution;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -24,11 +26,11 @@ public class LegendExecutionResult
     private final Type type;
     private final String message;
     private final String logMessage;
-    private final LegendExecutionSource source;
+    private final List<String> sourceIds;
 
-    private LegendExecutionResult(LegendExecutionSource source, Type type, String message, String logMessage)
+    private LegendExecutionResult(List<String> sourceIds, Type type, String message, String logMessage)
     {
-        this.source = Objects.requireNonNull(source, "source is required");
+        this.sourceIds = Objects.requireNonNull(sourceIds, "sourceIds is required");
         this.type = Objects.requireNonNull(type, "type is required");
         this.message = Objects.requireNonNull(message, "message is required");
         this.logMessage = logMessage;
@@ -64,9 +66,9 @@ public class LegendExecutionResult
         return this.logMessage;
     }
 
-    public LegendExecutionSource getSource()
+    public List<String> getSourceIds()
     {
-        return this.source;
+        return this.sourceIds;
     }
 
     /**
@@ -84,57 +86,55 @@ public class LegendExecutionResult
     /**
      * Construct a new Legend execution result.
      *
-     * @param source     result source
+     * @param sourceIds     result sourceIds
      * @param type       result type
      * @param message    result message
      * @param logMessage log message (optional)
      * @return execution result
      */
-    public static LegendExecutionResult newResult(LegendExecutionSource source, Type type, String message, String logMessage)
+    public static LegendExecutionResult newResult(List<String> sourceIds, Type type, String message, String logMessage)
     {
-        return new LegendExecutionResult(source, type, message, logMessage);
+        return new LegendExecutionResult(sourceIds, type, message, logMessage);
     }
 
     /**
      * Construct a new Legend execution result.
      *
      * @param entityPath  result entityPath
-     * @param sourceType  result sourceType
      * @param type       result type
      * @param message    result message
      * @param logMessage log message (optional)
      * @return execution result
      */
-    public static LegendExecutionResult newResult(String entityPath, LegendExecutionSource.SourceType sourceType, Type type, String message, String logMessage)
+    public static LegendExecutionResult newResult(String entityPath, Type type, String message, String logMessage)
     {
-        return new LegendExecutionResult(LegendExecutionSource.newSource(entityPath, sourceType), type, message, logMessage);
+        return new LegendExecutionResult(Collections.singletonList(entityPath), type, message, logMessage);
     }
 
     /**
      * Construct a new Legend execution result.
      *
-     * @param source  result source
+     * @param sourceIds result sourceIds
      * @param type    result type
      * @param message result message
      * @return execution result
      */
-    public static LegendExecutionResult newResult(LegendExecutionSource source, Type type, String message)
+    public static LegendExecutionResult newResult(List<String> sourceIds, Type type, String message)
     {
-        return newResult(source, type, message, null);
+        return newResult(sourceIds, type, message, null);
     }
 
     /**
      * Construct a new Legend execution result.
      *
      * @param entityPath  result entityPath
-     * @param sourceType  result sourceType
      * @param type    result type
      * @param message result message
      * @return execution result
      */
-    public static LegendExecutionResult newResult(String entityPath, LegendExecutionSource.SourceType sourceType, Type type, String message)
+    public static LegendExecutionResult newResult(String entityPath, Type type, String message)
     {
-        return newResult(LegendExecutionSource.newSource(entityPath, sourceType), type, message, null);
+        return newResult(Collections.singletonList(entityPath), type, message, null);
     }
 
     public enum Type

@@ -19,7 +19,6 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionSource.SourceType;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
@@ -103,18 +102,18 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         PackageableElement element = getParseResult(section).getElement(entityPath);
         if (!(element instanceof Service))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, SourceType.TEST, Type.ERROR, "Unable to find service " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find service " + entityPath));
         }
         Service service = (Service) element;
         if (service.test == null)
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, SourceType.TEST, Type.ERROR, "Unable to find legacy test for service " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find legacy test for service " + entityPath));
         }
 
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, SourceType.TEST));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
         }
 
         PureModel pureModel = compileResult.getPureModel();
@@ -129,7 +128,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
         catch (Exception e)
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, SourceType.TEST));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
         }
 
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
@@ -150,7 +149,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                             e.printStackTrace(pw);
                         }
                     }
-                    results.add(LegendExecutionResult.newResult(entityPath, SourceType.TEST, toResultType(result), writer.toString()));
+                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, result.name()), toResultType(result), writer.toString()));
                 });
             }
         });
