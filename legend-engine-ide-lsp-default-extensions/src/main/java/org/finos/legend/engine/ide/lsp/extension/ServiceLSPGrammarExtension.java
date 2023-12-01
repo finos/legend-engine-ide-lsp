@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
@@ -25,6 +27,7 @@ import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServicePar
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
@@ -125,16 +128,36 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     private LegendExecutionResult registerService(SectionState section)
     {
         String registerServiceUrl = "https://exec.alloy.site.gs.com/api/service/v1/register_fullInteractive?storeModel=false&generateLineage=true";
-        String payload = getCompileResult(section).getPureModelContextData().toString();
+
+        PureModelContextData.Builder builder = PureModelContextData.newBuilder();
+        section.getDocumentState().getGlobalState().forEachDocumentState(docState -> docState.forEachSectionState(secState ->
+        {
+            ParseResult parseResult = secState.getProperty("parse");
+            if (parseResult != null)
+            {
+                builder.addElements(parseResult.getElements());
+            }
+        }));
 
         try
         {
+            PureModelContextData pureModelContextData = builder.build();
+            String payload = new ObjectMapper().writeValueAsString(pureModelContextData);
             HttpResponse response = post(registerServiceUrl, payload);
-            return (LegendExecutionResult.newResult(Type.WARNING,response.toString()));
+            return (LegendExecutionResult.newResult("entityPath", Type.WARNING, response.toString()));
         }
         catch (Exception e)
         {
-            return (LegendExecutionResult.newResult(Type.ERROR,"Service not registered, payload: " + payload));
+            String payload = null;
+            try
+            {
+                payload = new ObjectMapper().writeValueAsString(builder.build());
+            }
+            catch (JsonProcessingException ex)
+            {
+                throw new RuntimeException(ex);
+            }
+            return (LegendExecutionResult.newResult("entityPath", Type.ERROR,"Service not registered, payload: " + payload));
         }
     }
 
