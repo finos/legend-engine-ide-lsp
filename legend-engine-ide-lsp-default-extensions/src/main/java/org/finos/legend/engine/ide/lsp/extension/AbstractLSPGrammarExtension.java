@@ -25,7 +25,6 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionSource.SourceType;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -235,19 +234,19 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 String testSuiteId = executableArgs.get(TEST_SUITE_ID);
                 if (testSuiteId == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, SourceType.TEST, Type.ERROR, "Unable to find test suite id to run tests for " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite id to run tests for " + entityPath));
                 }
 
                 ParseResult parseResult = getParseResult(section);
                 PackageableElement element = parseResult.getElement(entityPath);
                 if (element == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, SourceType.TEST, Type.ERROR, "Unable to find " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find " + entityPath));
                 }
                 TestSuite testSuite = Iterate.detect(getTestSuites(element), ts -> testSuiteId.equals(ts.id));
                 if (testSuite == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, SourceType.TEST, Type.ERROR, "Unable to find test suite " + testSuiteId + " for " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite " + testSuiteId + " for " + entityPath));
                 }
                 return runTests(section, entityPath, ListIterate.collect(testSuite.tests, test -> newTestId(testSuiteId, test.id)));
             }
@@ -257,11 +256,11 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 String testId = executableArgs.get(TEST_ID);
                 if (testSuiteId == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, SourceType.TEST, Type.ERROR, "Unable to find test suite id to run test for " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite id to run test for " + entityPath));
                 }
                 if (testId == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, SourceType.TEST, Type.ERROR, "Unable to find test id to run test for " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test id to run test for " + entityPath));
                 }
                 return runTests(section, entityPath, Collections.singletonList(newTestId(testSuiteId, testId)));
             }
@@ -273,12 +272,12 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
-    protected LegendExecutionResult errorResult(Throwable t, String entityPath, SourceType type)
+    protected LegendExecutionResult errorResult(Throwable t, String entityPath)
     {
-        return errorResult(t, null, entityPath, type);
+        return errorResult(t, null, entityPath);
     }
 
-    protected LegendExecutionResult errorResult(Throwable t, String message, String entityPath, SourceType type)
+    protected LegendExecutionResult errorResult(Throwable t, String message, String entityPath)
     {
         StringWriter writer = new StringWriter();
         try (PrintWriter pw = new PrintWriter(writer))
@@ -295,7 +294,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             String tMessage = t.getMessage();
             resultMessage = (tMessage == null) ? "Error" : tMessage;
         }
-        return LegendExecutionResult.newResult(entityPath, type, Type.ERROR, resultMessage, writer.toString());
+        return LegendExecutionResult.newResult(entityPath, Type.ERROR, resultMessage, writer.toString());
     }
 
     private UniqueTestId newTestId(String testSuiteId, String atomicTestId)
@@ -311,7 +310,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, SourceType.TEST));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
         }
 
         try
@@ -328,7 +327,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 {
                     TestError testError = (TestError) res;
                     StringBuilder builder = appendTestId(testError).append(": ERROR\n").append(testError.error);
-                    results.add(LegendExecutionResult.newResult(LegendExecutionTestableSource.newTestableSource(res.testSuiteId, res.atomicTestId, entityPath, SourceType.TEST), Type.ERROR, builder.toString()));
+                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId), Type.ERROR, builder.toString()));
                 }
                 else if (res instanceof TestExecuted)
                 {
@@ -338,7 +337,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                     {
                         if (assertStatus instanceof AssertPass)
                         {
-                            results.add(LegendExecutionResult.newResult(LegendExecutionTestableSource.newTestableSource(res.testSuiteId, res.atomicTestId, assertStatus.id, entityPath, SourceType.TEST), Type.SUCCESS, messagePrefix + "." + assertStatus.id + ": PASS"));
+                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.SUCCESS, messagePrefix + "." + assertStatus.id + ": PASS"));
                         }
                         else if (assertStatus instanceof AssertFail)
                         {
@@ -349,13 +348,13 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                                 builder.append("\nexpected: ").append(fail.expected);
                                 builder.append("\nactual:   ").append(fail.actual);
                             }
-                            results.add(LegendExecutionResult.newResult(LegendExecutionTestableSource.newTestableSource(res.testSuiteId, res.atomicTestId, assertStatus.id, entityPath, SourceType.TEST), Type.FAILURE, builder.toString()));
+                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.FAILURE, builder.toString()));
                         }
                         else
                         {
                             String message = appendTestId(res).append(": WARNING\nUnknown assert status: ").append(assertStatus.getClass().getName()).toString();
                             LOGGER.warn(message);
-                            results.add(LegendExecutionResult.newResult(LegendExecutionTestableSource.newTestableSource(res.testSuiteId, res.atomicTestId, assertStatus.id, entityPath, SourceType.TEST), Type.WARNING, message));
+                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.WARNING, message));
                         }
                     });
                 }
@@ -363,14 +362,14 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 {
                     String message = "Unknown test result type: " + res.getClass().getName();
                     LOGGER.warn(message);
-                    results.add(LegendExecutionResult.newResult(LegendExecutionTestableSource.newTestableSource(res.testSuiteId, res.atomicTestId, entityPath, SourceType.TEST), Type.WARNING, message));
+                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId), Type.WARNING, message));
                 }
             });
             return results;
         }
         catch (Exception e)
         {
-            return Collections.singletonList(errorResult(e, entityPath, SourceType.TEST));
+            return Collections.singletonList(errorResult(e, entityPath));
         }
     }
 
