@@ -15,12 +15,15 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.set.MutableSet;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
@@ -29,6 +32,14 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     public void testGetName()
     {
         testGetName("Mapping");
+    }
+
+    @Test
+    public void testGetKeywords()
+    {
+        MutableSet<String> missingKeywords = Sets.mutable.with("AggregationAware", "AggregateSpecification", "EnumerationMapping", "include", "Mapping", "MappingTests", "Operation", "Pure", "Relational", "XStore");
+        this.extension.getKeywords().forEach(missingKeywords::remove);
+        Assertions.assertEquals(Sets.mutable.empty(), missingKeywords);
     }
 
     @Test
