@@ -43,7 +43,6 @@ jobs:
       with:
         name: license-reports
         path: '**/dependencies.html'
-        working-directory: ${{ matrix.module-folder }}
     - name: Upload license XML reports
       uses: actions/upload-artifact@v3
       with:
