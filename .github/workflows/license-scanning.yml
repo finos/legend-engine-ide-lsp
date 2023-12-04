@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        module-folder: ["./"]
+        module-folder: ["."]
     steps:
     - uses: actions/checkout@v3
     - name: Install XQ
