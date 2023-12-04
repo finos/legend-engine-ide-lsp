@@ -35,7 +35,7 @@ jobs:
       run: mvn clean install -Dmaven.test.skip=true
       working-directory: .
       env:
-        JAVA_HOME: ${{ github.workspace }}/.java
+        JAVA_HOME: /opt/hostedtoolcache/Java_Adopt_jdk/11.0.21-9/x64
 
     - name: License XML report
       run: mvn org.codehaus.mojo:license-maven-plugin:2.0.0:download-licenses
