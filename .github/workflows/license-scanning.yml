@@ -42,7 +42,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: license-reports
-        path: './dependencies.html'
+        path: 'dependencies.html'
     - name: Upload license XML reports
       uses: actions/upload-artifact@v3
       with:
