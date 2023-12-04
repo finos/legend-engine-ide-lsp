@@ -47,4 +47,3 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: license-xml-report
-        path: '/report'
