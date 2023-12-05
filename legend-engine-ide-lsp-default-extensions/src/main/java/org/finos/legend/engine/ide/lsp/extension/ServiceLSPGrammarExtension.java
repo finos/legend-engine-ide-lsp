@@ -40,7 +40,6 @@ import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -348,7 +347,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
-        List<LegendCompletion> legendCompletions = new ArrayList<>();
+        List<LegendCompletion> legendCompletions = Lists.mutable.empty();
 
         if (codeLine.isEmpty())
         {

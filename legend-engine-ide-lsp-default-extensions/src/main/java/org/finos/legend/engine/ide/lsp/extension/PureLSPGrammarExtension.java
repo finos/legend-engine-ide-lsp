@@ -102,36 +102,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                     "   attributeName: attributeType [attributeMultiplicity];\n" +
                     "}\n");
 
-    @Override
-    public String getName()
-    {
-        return "Pure";
-    }
-
-    @Override
-    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
-    {
-        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
-
-        if (codeLine.isEmpty())
-        {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Pure boilerplate", s));
-        }
-
-        MutableList<LegendCompletion> legendCompletions = Lists.mutable.empty();
-
-        if (ATTRIBUTE_TYPES_TRIGGERS.anySatisfy(codeLine::endsWith))
-        {
-            ATTRIBUTE_TYPES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute type", s), legendCompletions);
-        }
-        if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.anySatisfy(codeLine::endsWith))
-        {
-            ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute multiplicity", s), legendCompletions);
-        }
-
-        return legendCompletions;
-    }
-
     private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
 
@@ -351,5 +321,29 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             LOGGER.error("Error converting value to JSON", e);
         }
         return value.toString();
+    }
+
+    @Override
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    {
+        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+
+        if (codeLine.isEmpty())
+        {
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Pure boilerplate", s));
+        }
+
+        MutableList<LegendCompletion> legendCompletions = Lists.mutable.empty();
+
+        if (ATTRIBUTE_TYPES_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            ATTRIBUTE_TYPES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute type", s), legendCompletions);
+        }
+        if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute multiplicity", s), legendCompletions);
+        }
+
+        return legendCompletions;
     }
 }

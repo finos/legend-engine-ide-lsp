@@ -330,7 +330,7 @@ class LegendTextDocumentService implements TextDocumentService
             SectionState sectionState = docState.getSectionStateAtLine(line);
             if (sectionState == null)
             {
-                LOGGER.warn("No state for {}: cannot get completions", uri);
+                LOGGER.warn("Cannot find section state for line {} of {}: cannot get completions", line, uri);
                 return Collections.emptyList();
             }
             Iterable<? extends LegendCompletion> legendCompletions = sectionState.getExtension().getCompletions(sectionState, TextPosition.newPosition(line, character));
@@ -347,18 +347,12 @@ class LegendTextDocumentService implements TextDocumentService
             CompletionItem completionItem = new CompletionItem(legendCompletion.getSuggestion());
             completionItem.setInsertText(legendCompletion.getSuggestion());
             CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
-            detail.setDescription(legendCompletion.getType());
+            detail.setDescription(legendCompletion.getDescription());
             completionItem.setLabelDetails(detail);
             completions.add(completionItem);
         }
 
         return completions;
-    }
-
-    @Override
-    public CompletableFuture<CompletionItem> resolveCompletionItem(CompletionItem completionItem)
-    {
-        return CompletableFuture.completedFuture(completionItem);
     }
 
     @Override

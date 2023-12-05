@@ -34,7 +34,6 @@ import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -100,7 +99,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
-        List<LegendCompletion> legendCompletions = new ArrayList<>();
+        List<LegendCompletion> legendCompletions = Lists.mutable.empty();
 
         if (codeLine.isEmpty())
         {

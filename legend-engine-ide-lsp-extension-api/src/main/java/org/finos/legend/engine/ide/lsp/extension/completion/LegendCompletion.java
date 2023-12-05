@@ -18,19 +18,19 @@ import java.util.Objects;
 
 public class LegendCompletion
 {
-    private final String type;
+    private final String description;
 
     private final String suggestion;
 
     public LegendCompletion(String description, String suggestion)
     {
-        this.type = Objects.requireNonNull(description, "type is required");
+        this.description = description;
         this.suggestion = Objects.requireNonNull(suggestion, "suggestion is required");
     }
 
-    public String getType()
+    public String getDescription()
     {
-        return type;
+        return description;
     }
 
     public String getSuggestion()
@@ -53,20 +53,19 @@ public class LegendCompletion
 
         LegendCompletion that = (LegendCompletion) other;
         return
-                (this.type.equals(that.type)) &&
-                this.suggestion.equals(that.suggestion);
+                (this.description.equals(that.description)) && this.suggestion.equals(that.suggestion);
     }
 
     @Override
     public int hashCode()
     {
-        return  17 * this.type.hashCode() + this.suggestion.hashCode();
+        return  17 * this.description.hashCode() + this.suggestion.hashCode();
     }
 
     @Override
     public String toString()
     {
-        return getClass().getSimpleName() + "{type = " + this.type +
+        return getClass().getSimpleName() + "{description = " + this.description +
                 ", suggestion = \"" + this.suggestion + "\"}";
     }
 
