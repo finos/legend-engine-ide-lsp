@@ -1,34 +1,27 @@
 <!--
  Copyright 2023 Goldman Sachs
-
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  You may obtain a copy of the License at
-
       http://www.apache.org/licenses/LICENSE-2.0
-
  Unless required by applicable law or agreed to in writing, software
  distributed under the License is distributed on an "AS IS" BASIS,
  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>org.finos</groupId>
         <artifactId>finos</artifactId>
         <version>5</version>
     </parent>
-
     <name>Legend Engine IDE LSP</name>
     <groupId>org.finos.legend.engine.ide.lsp</groupId>
     <artifactId>legend-engine-ide-lsp</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-
     <modules>
         <module>legend-engine-ide-lsp-text-tools</module>
         <module>legend-engine-ide-lsp-extension-api</module>
@@ -38,7 +31,6 @@
         <module>legend-engine-ide-lsp-test-reports</module>
         <module>legend-engine-ide-lsp-server-shaded</module>
     </modules>
-
     <properties>
         <!-- Build Variables -->
         <encoding>UTF-8</encoding>
@@ -47,11 +39,9 @@
         <maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
         <maven.compiler.release>11</maven.compiler.release>
         <java.version.range>[17,18),[21,22)</java.version.range>
-
         <!-- Legend dependency versions -->
         <legend.engine.version>4.33.6</legend.engine.version>
         <legend.pure.version>4.10.0</legend.pure.version>
-
         <!-- Dependency versions -->
         <commons-codec.version>1.15</commons-codec.version>
         <commons-io.version>2.7</commons-io.version>
@@ -66,7 +56,6 @@
         <lsp4j.version>0.21.1</lsp4j.version>
         <pac4j.version>3.8.3</pac4j.version>
         <slf4j.version>2.0.9</slf4j.version>
-
         <!-- Plugin versions -->
         <jacoco.maven.plugin.version>0.8.10</jacoco.maven.plugin.version>
         <maven.checkstyle.plugin.version>3.3.0</maven.checkstyle.plugin.version>
@@ -82,12 +71,10 @@
         <nexus.staging.maven.plugin.version>1.6.13</nexus.staging.maven.plugin.version>
         <versions.maven.plugin.version>2.16.1</versions.maven.plugin.version>
     </properties>
-
     <scm>
         <developerConnection>scm:git:https://github.com/finos/legend-engine-ide-lsp</developerConnection>
         <tag>HEAD</tag>
     </scm>
-
     <build>
         <pluginManagement>
             <plugins>
@@ -148,7 +135,6 @@
                     <artifactId>versions-maven-plugin</artifactId>
                     <version>${versions.maven.plugin.version}</version>
                 </plugin>
-
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
@@ -156,7 +142,6 @@
                 </plugin>
             </plugins>
         </pluginManagement>
-
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -265,12 +250,10 @@
                     <trimStackTrace>false</trimStackTrace>
                 </configuration>
             </plugin>
-
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>versions-maven-plugin</artifactId>
             </plugin>
-
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -313,7 +296,6 @@
             </plugin>
         </plugins>
     </build>
-
     <dependencyManagement>
         <dependencies>
             <!-- LEGEND ENGINE LSP -->
@@ -343,7 +325,6 @@
                 <version>${project.version}</version>
             </dependency>
             <!-- LEGEND ENGINE LSP -->
-
             <!-- LEGEND PURE -->
             <dependency>
                 <groupId>org.finos.legend.pure</groupId>
@@ -373,18 +354,24 @@
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.pure</groupId>
-                <artifactId>legend-pure-m2-store-relational-pure</artifactId>
-                <version>${legend.pure.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>junit</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-runtime-java-engine-compiled</artifactId>
+
+    
+          
+            
+    
+
+          
+          Expand Down
+          
+            
+    
+
+          
+          Expand Up
+    
+    @@ -526,6 +537,17 @@
+  
                 <version>${legend.pure.version}</version>
                 <exclusions>
                     <exclusion>
@@ -394,7 +381,6 @@
                 </exclusions>
             </dependency>
             <!-- LEGEND PURE -->
-
             <!-- LEGEND ENGINE -->
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
@@ -539,18 +525,24 @@
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
-                <artifactId>legend-engine-xt-relationalStore-pure</artifactId>
-                <version>${legend.engine.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>junit</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-executionPlan-generation</artifactId>
+
+    
+          
+            
+    
+
+          
+          Expand Down
+          
+            
+    
+
+          
+          Expand Up
+    
+    @@ -758,4 +780,4 @@
+  
                 <version>${legend.engine.version}</version>
                 <exclusions>
                     <exclusion>
@@ -652,31 +644,26 @@
                 </exclusions>
             </dependency>
             <!-- LEGEND ENGINE -->
-
             <dependency>
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>com.zaxxer</groupId>
                 <artifactId>HikariCP</artifactId>
                 <version>4.0.3</version>
             </dependency>
-
             <dependency>
                 <groupId>commons-codec</groupId>
                 <artifactId>commons-codec</artifactId>
@@ -687,13 +674,11 @@
                 <artifactId>commons-io</artifactId>
                 <version>${commons-io.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
                 <version>${commons-lang3.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpclient</artifactId>
@@ -710,7 +695,6 @@
                 <artifactId>httpcore</artifactId>
                 <version>4.4.13</version>
             </dependency>
-
             <dependency>
                 <groupId>org.eclipse.collections</groupId>
                 <artifactId>eclipse-collections</artifactId>
@@ -721,7 +705,6 @@
                 <artifactId>eclipse-collections-api</artifactId>
                 <version>${eclipse.collections.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.eclipse.lsp4j</groupId>
                 <artifactId>org.eclipse.lsp4j</artifactId>
@@ -732,7 +715,6 @@
                 <artifactId>org.eclipse.lsp4j.jsonrpc</artifactId>
                 <version>${lsp4j.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
@@ -753,7 +735,6 @@
                 <artifactId>jackson-dataformat-yaml</artifactId>
                 <version>${jackson.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.junit</groupId>
                 <artifactId>junit-bom</artifactId>
@@ -761,13 +742,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
             <dependency>
                 <groupId>org.pac4j</groupId>
                 <artifactId>pac4j-core</artifactId>
                 <version>${pac4j.version}</version>
             </dependency>
-
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
