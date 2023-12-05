@@ -74,7 +74,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                     "  {\n" +
                     "    ~primaryKey\n" +
                     "  (\n" +
-                    "    [package::path::storeName]schemaName.TableName1.column1,\n" +
+                    "    [package::path::storeName]schemaName.TableName1.column1\n" +
                     "  )\n" +
                     "    ~mainTable [package::path::storeName]schemaName.TableName1\n" +
                     "    attribute1: [package::path::storeName]schemaName.TableName1.column1,\n" +

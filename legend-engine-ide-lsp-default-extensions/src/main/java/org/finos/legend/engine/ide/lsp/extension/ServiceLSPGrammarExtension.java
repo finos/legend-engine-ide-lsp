@@ -205,16 +205,16 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                     "  documentation: 'This service returns data about foobar. Parameter1 represents ... and can take values ... . Parameter2 represents ... and can take values ... .';\n" +
                     "  execution: Single\n" +
                     "  {\n" +
-                    "    query:" +
+                    "    query:\n" +
                     "    {\n" +
                     "      parameter1: Date[1], parameter2: String[1] | \n" +
                     "        package::path::className.all()\n" +
                     "        ->filter(x| $x.attribute1 > 12)\n" +
                     "        ->project([ x| $x.attribute1, x|$x.attribute3 ], ['id', 'multipliedValue'])\n" +
                     "        ->filter(x| $x.getFloat('multipliedValue') > 0)\n" +
-                    "    };\n" +
-                    "    package::path::mappingName;\n" +
+                    "    mapping: package::path::mappingName;\n" +
                     "    runtime: package::path::runtimeName;\n" +
+                    "    };\n" +
                     "  }\n" +
                     "}\n");
 

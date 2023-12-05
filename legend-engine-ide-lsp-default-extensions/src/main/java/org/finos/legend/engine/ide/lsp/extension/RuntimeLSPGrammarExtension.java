@@ -45,7 +45,7 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                 "    [\n" +
                 "    connection_1: package::path::connection1\n" +
                 "    ]\n" +
-                "  ]\n" +
+                "  ];\n" +
                 "}\n"
     );
 
