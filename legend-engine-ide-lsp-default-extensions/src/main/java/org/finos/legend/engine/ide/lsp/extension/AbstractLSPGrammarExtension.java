@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -37,8 +38,11 @@ import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceI
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
+import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
+import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
 import org.finos.legend.engine.language.pure.modelManager.ModelManager;
 import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
+import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
@@ -49,6 +53,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.Equa
 import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestError;
 import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestExecuted;
 import org.finos.legend.engine.protocol.pure.v1.model.test.result.TestResult;
+import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.engine.testable.TestableRunner;
@@ -60,8 +65,10 @@ import org.finos.legend.engine.testable.model.UniqueTestId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +94,9 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private final Map<String, ? extends TestableRunnerExtension> testableRunners = TestableRunnerExtensionLoader.getClassifierPathToTestableRunnerMap();
     private final Map<Class<? extends PackageableElement>, String> classToClassifier = ProtocolToClassifierPathLoader.getProtocolClassToClassifierMap();
+
+    private ObjectMapper protocolMapper;
+    private PureGrammarComposer composer;
 
     @Override
     public void initialize(SectionState section)
@@ -480,6 +490,47 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             }
         }));
         return builder.build();
+    }
+
+    protected PureModelContextData deserializePMCD(String json)
+    {
+        try
+        {
+            return getProtocolMapper().readValue(json, PureModelContextData.class);
+        }
+        catch (IOException e)
+        {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private ObjectMapper getProtocolMapper()
+    {
+        synchronized (this)
+        {
+            if (this.protocolMapper == null)
+            {
+                this.protocolMapper = PureProtocolObjectMapperFactory.getNewObjectMapper();
+            }
+            return this.protocolMapper;
+        }
+    }
+
+    protected String toGrammar(PureModelContextData pmcd)
+    {
+        return getComposer().renderPureModelContextData(pmcd);
+    }
+
+    private PureGrammarComposer getComposer()
+    {
+        synchronized (this)
+        {
+            if (this.composer == null)
+            {
+                this.composer = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().withRenderStyle(RenderStyle.PRETTY).build());
+            }
+            return this.composer;
+        }
     }
 
     protected LegendDeclaration getDeclaration(PackageableElement element)

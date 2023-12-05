@@ -52,7 +52,6 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     private static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.service.runLegacyTests";
     private static final String RUN_LEGACY_TESTS_COMMAND_TITLE = "Run legacy tests";
 
-
     public ServiceLSPGrammarExtension()
     {
         super(ServiceParserExtension.NAME, new ServiceParserExtension());
