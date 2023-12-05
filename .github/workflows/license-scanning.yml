@@ -3,9 +3,14 @@ name: License Scanning
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+    paths:
+      - '**/pom.xml'
+      - '.github/workflows/license-scanning.yml'
   pull_request:
     paths:
-      - 'pom.xml'
+      - '**/pom.xml'
       - '.github/workflows/license-scanning.yml'
 
 env:
