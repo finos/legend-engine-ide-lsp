@@ -18,6 +18,10 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.RelationalGrammarParserExtension;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
@@ -179,7 +183,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         PackageableElement element = getParseResult(section).getElement(entityPath);
         if (!(element instanceof Database))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find database " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.ERROR, "Unable to find database " + entityPath));
         }
 
         CompileResult compileResult = getCompileResult(section);
@@ -201,7 +205,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
                     "They should not be considered a replacement for thoughtful modeling.\n" +
                     "Please review carefully before making any use of them.\n" +
                     "***WARNING***\n\n\n";
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, warning + code));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, warning + code));
         }
         catch (Exception e)
         {
