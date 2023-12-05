@@ -66,7 +66,7 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Runtime boilerplate", s));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Runtime boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
         }
 
         return List.of();

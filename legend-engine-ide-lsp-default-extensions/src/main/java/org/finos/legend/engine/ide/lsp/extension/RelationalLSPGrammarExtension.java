@@ -103,7 +103,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Relational boilerplate", s));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Relational boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
         }
 
         if (SCHEMA_TRIGGERS.anySatisfy(codeLine::endsWith))

@@ -351,7 +351,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Service boilerplate", s));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Service boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
         }
 
         if (FUNCTIONS_TRIGGERS.anySatisfy(codeLine::endsWith))

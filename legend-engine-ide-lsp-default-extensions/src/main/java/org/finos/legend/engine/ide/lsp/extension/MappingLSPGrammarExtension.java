@@ -64,6 +64,22 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
 
     private static final ImmutableList<String> STORE_OBJECT_SUGGESTIONS = Lists.immutable.with("primaryKey", "mainTable");
 
+    private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
+            "Mapping package::path::mappingName\n" +
+                    "( /*Mapping contains the business logic relating your (exposed) Class to your underlying store objects (tables/views).*/\n" +
+                    "  *package::path::className: Relational\n" +
+                    "  {\n" +
+                    "    ~primaryKey\n" +
+                    "  (\n" +
+                    "    [package::path::storeName]schemaName.TableName1.column1,\n" +
+                    "  )\n" +
+                    "    ~mainTable [package::path::storeName]schemaName.TableName1\n" +
+                    "    attribute1: [package::path::storeName]schemaName.TableName1.column1,\n" +
+                    "    attribute2: [package::path::storeName]schemaName.TableName1.column2,\n" +
+                    "    attribute3: multiply([package::path::storeName]schemaName.TableName1.column1, [package::path::storeName]schema.TableName1.column1)\n" +
+                    "  }\n" +
+                    ")\n");
+
     public MappingLSPGrammarExtension()
     {
         super(MappingParser.newInstance(PureGrammarParserExtensions.fromAvailableExtensions()));
@@ -222,9 +238,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
 
         if (codeLine.isEmpty())
         {
-            String boilerplateSuggestions = String.valueOf(getClass().getClassLoader().getResourceAsStream("src/main/java/resources/completions/MappingBoilerplate.pure"));
-
-            return List.of(new LegendCompletion("Mapping boilerplate", boilerplateSuggestions));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Mapping boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
         }
 
         if (STORE_OBJECT_TRIGGERS.anySatisfy(codeLine::endsWith))
