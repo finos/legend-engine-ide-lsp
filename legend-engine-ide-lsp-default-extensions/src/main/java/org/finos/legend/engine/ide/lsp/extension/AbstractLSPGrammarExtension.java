@@ -436,16 +436,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         globalState.logInfo("Starting compilation");
         try
         {
-            PureModelContextData.Builder builder = PureModelContextData.newBuilder();
-            globalState.forEachDocumentState(docState -> docState.forEachSectionState(secState ->
-            {
-                ParseResult parseResult = secState.getProperty(PARSE_RESULT);
-                if (parseResult != null)
-                {
-                    builder.addElements(parseResult.getElements());
-                }
-            }));
-            PureModelContextData pureModelContextData = builder.build();
+            PureModelContextData pureModelContextData = buildPureModelContextData(globalState);
             PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, Collections.emptyList());
             globalState.logInfo("Compilation completed successfully");
             return new CompileResult(pureModel, pureModelContextData);
@@ -471,6 +462,24 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             globalState.logWarning("Unexpected error during compilation");
             return new CompileResult(e);
         }
+    }
+
+    protected PureModelContextData buildPureModelContextData(GlobalState globalState)
+    {
+        PureModelContextData.Builder builder = PureModelContextData.newBuilder();
+        globalState.forEachDocumentState(docState -> docState.forEachSectionState(secState ->
+        {
+            ParseResult parseResult = secState.getProperty(PARSE_RESULT);
+            if ((parseResult == null) && (secState.getExtension() instanceof AbstractLSPGrammarExtension))
+            {
+                parseResult = ((AbstractLSPGrammarExtension) secState.getExtension()).getParseResult(secState);
+            }
+            if (parseResult != null)
+            {
+                builder.addElements(parseResult.getElements());
+            }
+        }));
+        return builder.build();
     }
 
     protected LegendDeclaration getDeclaration(PackageableElement element)

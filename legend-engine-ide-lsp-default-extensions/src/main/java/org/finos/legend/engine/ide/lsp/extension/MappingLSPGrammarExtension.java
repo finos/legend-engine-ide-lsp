@@ -16,7 +16,10 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.factory.Sets;
+import org.eclipse.collections.api.list.ListIterable;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
@@ -25,6 +28,7 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.mapping.MappingParser;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
@@ -52,7 +56,6 @@ import java.util.ServiceLoader;
  */
 public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
-    private static final List<String> KEYWORDS = List.of("Mapping", "EnumerationMapping", "include");
     private static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.mapping.runLegacyTests";
     private static final String RUN_LEGACY_TESTS_COMMAND_TITLE = "Run legacy tests";
 
@@ -80,15 +83,18 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                     "  }\n" +
                     ")\n");
 
+    private final ListIterable<String> keywords;
+
     public MappingLSPGrammarExtension()
     {
         super(MappingParser.newInstance(PureGrammarParserExtensions.fromAvailableExtensions()));
+        this.keywords = findKeywords();
     }
 
     @Override
     public Iterable<? extends String> getKeywords()
     {
-        return KEYWORDS;
+        return this.keywords;
     }
 
     @Override
@@ -229,6 +235,13 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             return tests;
         }
         return ListIterate.select(tests, t -> testName.equals(t.name));
+    }
+
+    private static ListIterable<String> findKeywords()
+    {
+        MutableSet<String> keywords = Sets.mutable.with("Mapping", "MappingTests", "include");
+        PureGrammarParserExtensionLoader.extensions().forEach(ext -> ext.getExtraMappingElementParsers().forEach(p -> keywords.add(p.getElementTypeName())));
+        return Lists.immutable.withAll(keywords);
     }
 
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)

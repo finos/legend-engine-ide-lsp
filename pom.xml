@@ -53,16 +53,17 @@
         <legend.pure.version>4.10.0</legend.pure.version>
 
         <!-- Dependency versions -->
-        <commons-codec.version>1.15</commons-codec.version>
-        <commons-io.version>2.7</commons-io.version>
-        <commons-lang3.version>3.11</commons-lang3.version>
+        <commons-codec.version>1.16.0</commons-codec.version>
+        <commons-compress.version>1.25.0</commons-compress.version>
+        <commons-io.version>2.15.1</commons-io.version>
+        <commons-lang3.version>3.14.0</commons-lang3.version>
         <eclipse.collections.version>10.4.0</eclipse.collections.version>
         <gson.version>2.10.1</gson.version>
         <jackson.version>2.10.5</jackson.version>
         <jackson.databind.version>2.10.5.1</jackson.databind.version>
-        <junit.version>5.10.0</junit.version>
-        <guava.version>31.1-jre</guava.version>
-        <logback.version>1.4.11</logback.version>
+        <junit.version>5.10.1</junit.version>
+        <guava.version>32.1.3-jre</guava.version>
+        <logback.version>1.4.14</logback.version>
         <lsp4j.version>0.21.1</lsp4j.version>
         <pac4j.version>3.8.3</pac4j.version>
         <slf4j.version>2.0.9</slf4j.version>
@@ -373,6 +374,17 @@
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.pure</groupId>
+                <artifactId>legend-pure-m2-store-relational-pure</artifactId>
+                <version>${legend.pure.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.pure</groupId>
                 <artifactId>legend-pure-runtime-java-engine-compiled</artifactId>
                 <version>${legend.pure.version}</version>
                 <exclusions>
@@ -450,6 +462,10 @@
                 <version>${legend.engine.version}</version>
                 <exclusions>
                     <exclusion>
+                        <groupId>com.hazelcast</groupId>
+                        <artifactId>hazelcast</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>commons-logging</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
@@ -525,6 +541,17 @@
                 <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-xt-relationalStore-protocol</artifactId>
                 <version>${legend.engine.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-xt-relationalStore-pure</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
@@ -666,6 +693,11 @@
                 <version>${commons-io.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>

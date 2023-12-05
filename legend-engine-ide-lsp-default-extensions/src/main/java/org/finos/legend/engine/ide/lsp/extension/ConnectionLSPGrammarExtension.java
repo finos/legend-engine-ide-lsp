@@ -15,8 +15,9 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ListIterable;
-import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.set.MutableSet;
 import org.finos.legend.engine.language.pure.grammar.from.connection.ConnectionParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
@@ -42,8 +43,8 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
 
     private static ListIterable<String> findKeywords()
     {
-        MutableList<String> keywords = Lists.mutable.empty();
+        MutableSet<String> keywords = Sets.mutable.empty();
         PureGrammarParserExtensionLoader.extensions().forEach(ext -> ext.getExtraConnectionParsers().forEach(p -> keywords.add(p.getConnectionTypeName())));
-        return keywords.toImmutable();
+        return Lists.immutable.withAll(keywords);
     }
 }
