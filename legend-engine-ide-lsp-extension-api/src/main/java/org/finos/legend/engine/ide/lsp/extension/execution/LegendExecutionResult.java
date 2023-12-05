@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension.execution;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -21,15 +23,33 @@ import java.util.Objects;
  */
 public class LegendExecutionResult
 {
+    private final List<String> ids;
     private final Type type;
     private final String message;
     private final String logMessage;
 
-    private LegendExecutionResult(Type type, String message, String logMessage)
+    private LegendExecutionResult(List<String> ids, Type type, String message, String logMessage)
     {
+        Objects.requireNonNull(ids, "ids may not be null").forEach(id -> Objects.requireNonNull(id, "id may not be null"));
+        if (ids.isEmpty())
+        {
+            throw new IllegalArgumentException("ids may not be empty");
+        }
+        this.ids = ids;
         this.type = Objects.requireNonNull(type, "type is required");
         this.message = Objects.requireNonNull(message, "message is required");
         this.logMessage = logMessage;
+    }
+
+    /**
+     * Get the result ids. These should be understood hierarchically. For example, the list could consist of an entity
+     * path, a test suite id, and a test id.
+     *
+     * @return result ids
+     */
+    public List<String> getIds()
+    {
+        return this.ids;
     }
 
     /**
@@ -74,29 +94,97 @@ public class LegendExecutionResult
         return ((this.logMessage == null) && returnMessageIfAbsent) ? this.message : this.logMessage;
     }
 
-    /**
-     * Construct a new Legend execution result.
-     *
-     * @param type       result type
-     * @param message    result message
-     * @param logMessage log message (optional)
-     * @return execution result
-     */
-    public static LegendExecutionResult newResult(Type type, String message, String logMessage)
+    @Override
+    public boolean equals(Object other)
     {
-        return new LegendExecutionResult(type, message, logMessage);
+        if (this == other)
+        {
+            return true;
+        }
+
+        if (!(other instanceof LegendExecutionResult))
+        {
+            return false;
+        }
+
+        LegendExecutionResult that = (LegendExecutionResult) other;
+        return (this.type == that.type) &&
+                this.message.equals(that.message) &&
+                Objects.equals(this.logMessage, that.logMessage) &&
+                this.ids.equals(that.ids);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(this.ids, this.type, this.message, this.logMessage);
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder builder = new StringBuilder(getClass().getSimpleName()).append('{');
+        if (!this.ids.isEmpty())
+        {
+            int start = builder.length();
+            this.ids.forEach(id -> ((builder.length() == start) ? builder.append("ids=[\"") : builder.append("\", \"")).append(id));
+            builder.append("] ");
+        }
+        return builder.append("type=").append(this.type).append('}').toString();
     }
 
     /**
      * Construct a new Legend execution result.
      *
+     * @param ids        result ids
+     * @param type       result type
+     * @param message    result message
+     * @param logMessage log message (optional)
+     * @return execution result
+     */
+    public static LegendExecutionResult newResult(List<String> ids, Type type, String message, String logMessage)
+    {
+        return new LegendExecutionResult(ids, type, message, logMessage);
+    }
+
+    /**
+     * Construct a new Legend execution result.
+     *
+     * @param id         result id
+     * @param type       result type
+     * @param message    result message
+     * @param logMessage log message (optional)
+     * @return execution result
+     */
+    public static LegendExecutionResult newResult(String id, Type type, String message, String logMessage)
+    {
+        return newResult(Collections.singletonList(id), type, message, logMessage);
+    }
+
+    /**
+     * Construct a new Legend execution result.
+     *
+     * @param ids     result ids
      * @param type    result type
      * @param message result message
      * @return execution result
      */
-    public static LegendExecutionResult newResult(Type type, String message)
+    public static LegendExecutionResult newResult(List<String> ids, Type type, String message)
     {
-        return newResult(type, message, null);
+        return newResult(ids, type, message, null);
+    }
+
+    /**
+     * Construct a new Legend execution result.
+     *
+     * @param id      result id
+     * @param type    result type
+     * @param message result message
+     * @return execution result
+     */
+    public static LegendExecutionResult newResult(String id, Type type, String message)
+    {
+        return newResult(id, type, message, null);
     }
 
     public enum Type

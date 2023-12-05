@@ -127,7 +127,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         PackageableElement element = getParseResult(section).getElement(entityPath);
         if (!(element instanceof Mapping))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(Type.ERROR, "Unable to find mapping " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find mapping " + entityPath));
         }
         Mapping mapping = (Mapping) element;
         List<MappingTest_Legacy> tests = getLegacyMappingTests(mapping, testName);
@@ -136,13 +136,13 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             String message = (testName == null) ?
                     ("Unable to find legacy tests for mapping " + entityPath) :
                     ("Unable to find legacy test " + testName + " for mapping " + entityPath);
-            return Collections.singletonList(LegendExecutionResult.newResult(Type.ERROR, message));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, message));
         }
 
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException()));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
         }
 
         PureModel pureModel = compileResult.getPureModel();
@@ -160,7 +160,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                 {
                     case SUCCESS:
                     {
-                        results.add(LegendExecutionResult.newResult(Type.SUCCESS, entityPath + "." + result.getTestName() + ": SUCCESS"));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.SUCCESS, entityPath + "." + result.getTestName() + ": SUCCESS"));
                         break;
                     }
                     case FAILURE:
@@ -171,7 +171,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                             builder.append("\nexpected: ").append(result.getExpected().get());
                             builder.append("\nactual:   ").append(result.getActual().get());
                         }
-                        results.add(LegendExecutionResult.newResult(Type.FAILURE, builder.toString()));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.FAILURE, builder.toString()));
                         break;
                     }
                     case ERROR:
@@ -184,18 +184,18 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                                 result.getException().printStackTrace(pw);
                             }
                         }
-                        results.add(LegendExecutionResult.newResult(Type.ERROR, writer.toString()));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name),Type.ERROR, writer.toString()));
                         break;
                     }
                     default:
                     {
-                        results.add(LegendExecutionResult.newResult(Type.SUCCESS, entityPath + "." + result.getTestName() + ": " + result.getResult().name() + " (unhandled result type)"));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.SUCCESS, entityPath + "." + result.getTestName() + ": " + result.getResult().name() + " (unhandled result type)"));
                     }
                 }
             }
             catch (Exception e)
             {
-                results.add(errorResult(e));
+                results.add(errorResult(e, entityPath));
             }
         });
         return results;

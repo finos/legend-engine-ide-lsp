@@ -267,18 +267,18 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         PackageableElement element = getParseResult(section).getElement(entityPath);
         if (!(element instanceof Service))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(Type.ERROR, "Unable to find service " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find service " + entityPath));
         }
         Service service = (Service) element;
         if (service.test == null)
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(Type.ERROR, "Unable to find legacy test for service " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find legacy test for service " + entityPath));
         }
 
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException()));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
         }
 
         PureModel pureModel = compileResult.getPureModel();
@@ -293,7 +293,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
         catch (Exception e)
         {
-            return Collections.singletonList(errorResult(compileResult.getException()));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
         }
 
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
@@ -314,7 +314,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                             e.printStackTrace(pw);
                         }
                     }
-                    results.add(LegendExecutionResult.newResult(toResultType(result), writer.toString()));
+                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, result.name()), toResultType(result), writer.toString()));
                 });
             }
         });

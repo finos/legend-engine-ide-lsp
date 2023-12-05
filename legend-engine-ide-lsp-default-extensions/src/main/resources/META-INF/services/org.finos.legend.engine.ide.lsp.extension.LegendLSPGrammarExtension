@@ -1,3 +1,4 @@
+org.finos.legend.engine.ide.lsp.extension.ConnectionLSPGrammarExtension
 org.finos.legend.engine.ide.lsp.extension.MappingLSPGrammarExtension
 org.finos.legend.engine.ide.lsp.extension.PureLSPGrammarExtension
 org.finos.legend.engine.ide.lsp.extension.RelationalLSPGrammarExtension
