@@ -462,6 +462,10 @@
                 <version>${legend.engine.version}</version>
                 <exclusions>
                     <exclusion>
+                        <groupId>org.finos.legend.shared</groupId>
+                        <artifactId>legend-shared-pac4j</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>com.hazelcast</groupId>
                         <artifactId>hazelcast</artifactId>
                     </exclusion>
@@ -622,6 +626,10 @@
                     <exclusion>
                         <groupId>javax.ws.rs</groupId>
                         <artifactId>*</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.databricks</groupId>
+                        <artifactId>databricks-jdbc</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
