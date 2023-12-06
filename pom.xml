@@ -96,6 +96,22 @@
         <tag>HEAD</tag>
     </scm>
 
+     <repositories>
+        <repository>
+            <id>ossrh</id>
+            <name>OSSRH Public Group</name>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>ossrh-releases</id>
+            <name>OSSRH Public Releases Group</name>
+            <url>https://s01.oss.sonatype.org/content/repositories/releases/</url>
+        </repository>
+    </repositories>
+
     <build>
         <pluginManagement>
             <plugins>
