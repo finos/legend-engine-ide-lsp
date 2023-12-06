@@ -34,6 +34,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.FINOS_GITHUB_TOKEN }}
     
       - name: Cache Maven dependencies
         uses: actions/cache@v3
