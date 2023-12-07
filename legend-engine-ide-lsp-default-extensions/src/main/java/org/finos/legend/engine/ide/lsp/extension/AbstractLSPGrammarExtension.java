@@ -14,7 +14,17 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.core.StreamWriteFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -66,6 +76,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
@@ -77,6 +88,8 @@ import java.util.function.Consumer;
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLSPGrammarExtension.class);
+
+    private static final String ENGINE_SERVER_URL = System.getProperty("legend.engine.server.url");
 
     private static final String RUN_TESTS_COMMAND_ID = "legend.testable.runTests";
     private static final String RUN_TESTS_COMMAND_TITLE = "Run tests";
@@ -95,7 +108,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     private final Map<String, ? extends TestableRunnerExtension> testableRunners = TestableRunnerExtensionLoader.getClassifierPathToTestableRunnerMap();
     private final Map<Class<? extends PackageableElement>, String> classToClassifier = ProtocolToClassifierPathLoader.getProtocolClassToClassifierMap();
 
-    private ObjectMapper protocolMapper;
+    private JsonMapper protocolMapper;
     private PureGrammarComposer composer;
 
     @Override
@@ -504,15 +517,57 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
-    private ObjectMapper getProtocolMapper()
+    private JsonMapper getProtocolMapper()
     {
         synchronized (this)
         {
             if (this.protocolMapper == null)
             {
-                this.protocolMapper = PureProtocolObjectMapperFactory.getNewObjectMapper();
+                this.protocolMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+                        .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+                        .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+                        .build());
             }
             return this.protocolMapper;
+        }
+    }
+
+    protected boolean isEngineServerConfigured()
+    {
+        return ENGINE_SERVER_URL != null;
+    }
+
+    protected <T> T postEngineServer(String path, Object payload, Class<T> responseType)
+    {
+        if (!isEngineServerConfigured())
+        {
+            throw new IllegalStateException("Engine server is not configured");
+        }
+        String url = ENGINE_SERVER_URL + path;
+        try
+        {
+            JsonMapper json = getProtocolMapper();
+            HttpPost httpPost = new HttpPost(url);
+            httpPost.setEntity(new StringEntity(json.writeValueAsString(payload), ContentType.APPLICATION_JSON));
+
+            try (CloseableHttpClient client = newHttpClient();
+                 CloseableHttpResponse response = client.execute(httpPost))
+            {
+                HttpEntity entity = response.getEntity();
+                if (response.getStatusLine().getStatusCode() != 200)
+                {
+                    String responseString = EntityUtils.toString(entity);
+                    throw new RuntimeException("Engine server responded to " + url + " with status: " + response.getStatusLine().getStatusCode() + "\nresponse: " + responseString);
+                }
+                try (InputStream stream = entity.getContent())
+                {
+                    return json.readValue(stream, responseType);
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            throw new UncheckedIOException(e);
         }
     }
 
@@ -531,6 +586,12 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             }
             return this.composer;
         }
+    }
+
+    private CloseableHttpClient newHttpClient()
+    {
+        // TODO configure the client properly
+        return HttpClientBuilder.create().build();
     }
 
     protected LegendDeclaration getDeclaration(PackageableElement element)
