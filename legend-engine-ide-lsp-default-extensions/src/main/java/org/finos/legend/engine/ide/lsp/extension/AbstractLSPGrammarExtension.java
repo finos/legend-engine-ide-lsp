@@ -17,14 +17,6 @@ package org.finos.legend.engine.ide.lsp.extension;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -83,13 +75,12 @@ import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.function.Consumer;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLSPGrammarExtension.class);
-
-    private static final String ENGINE_SERVER_URL = System.getProperty("legend.engine.server.url");
 
     private static final String RUN_TESTS_COMMAND_ID = "legend.testable.runTests";
     private static final String RUN_TESTS_COMMAND_TITLE = "Run tests";
@@ -107,6 +98,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private final Map<String, ? extends TestableRunnerExtension> testableRunners = TestableRunnerExtensionLoader.getClassifierPathToTestableRunnerMap();
     private final Map<Class<? extends PackageableElement>, String> classToClassifier = ProtocolToClassifierPathLoader.getProtocolClassToClassifierMap();
+    private final LegendEngineServerClient engineServerClient = newEngineServerClient();
 
     private JsonMapper protocolMapper;
     private PureGrammarComposer composer;
@@ -534,7 +526,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected boolean isEngineServerConfigured()
     {
-        return ENGINE_SERVER_URL != null;
+        return this.engineServerClient.isServerConfigured();
     }
 
     protected <T> T postEngineServer(String path, Object payload, Class<T> responseType)
@@ -543,26 +535,14 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         {
             throw new IllegalStateException("Engine server is not configured");
         }
-        String url = ENGINE_SERVER_URL + path;
+
         try
         {
-            JsonMapper json = getProtocolMapper();
-            HttpPost httpPost = new HttpPost(url);
-            httpPost.setEntity(new StringEntity(json.writeValueAsString(payload), ContentType.APPLICATION_JSON));
-
-            try (CloseableHttpClient client = newHttpClient();
-                 CloseableHttpResponse response = client.execute(httpPost))
+            JsonMapper mapper = getProtocolMapper();
+            String payloadJson = mapper.writeValueAsString(payload);
+            try (InputStream stream = this.engineServerClient.post(path, payloadJson))
             {
-                HttpEntity entity = response.getEntity();
-                if (response.getStatusLine().getStatusCode() != 200)
-                {
-                    String responseString = EntityUtils.toString(entity);
-                    throw new RuntimeException("Engine server responded to " + url + " with status: " + response.getStatusLine().getStatusCode() + "\nresponse: " + responseString);
-                }
-                try (InputStream stream = entity.getContent())
-                {
-                    return json.readValue(stream, responseType);
-                }
+                return mapper.readValue(stream, responseType);
             }
         }
         catch (IOException e)
@@ -586,12 +566,6 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             }
             return this.composer;
         }
-    }
-
-    private CloseableHttpClient newHttpClient()
-    {
-        // TODO configure the client properly
-        return HttpClientBuilder.create().build();
     }
 
     protected LegendDeclaration getDeclaration(PackageableElement element)
@@ -675,6 +649,20 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected static TextInterval toLocation(SourceInformation sourceInfo)
     {
         return TextInterval.newInterval(sourceInfo.startLine - 1, sourceInfo.startColumn - 1, sourceInfo.endLine - 1, sourceInfo.endColumn - 1);
+    }
+
+    private static LegendEngineServerClient newEngineServerClient()
+    {
+        for (LegendEngineServerClient client : ServiceLoader.load(LegendEngineServerClient.class))
+        {
+            if (client.isServerConfigured())
+            {
+                LOGGER.debug("Using Legend Engine server client: {}", client.getClass().getName());
+                return client;
+            }
+        }
+        LOGGER.debug("Using default Legend Engine server client");
+        return new DefaultLegendEngineServerClient();
     }
 
     protected static class Result<T>
