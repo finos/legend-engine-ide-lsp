@@ -74,15 +74,6 @@ jobs:
         with:
           theme: dark
 
-      - name: Set up Maven Central
-        uses: actions/setup-java@v2
-        with:
-          distribution: "zulu"
-          java-version: "11"
-          server-id: ossrh
-          server-username: CI_DEPLOY_USERNAME
-          server-password: CI_DEPLOY_PASSWORD
-
       - name: Compute next development version
         run: |
           releaseVersion=${{ github.event.inputs.releaseVersion }}
