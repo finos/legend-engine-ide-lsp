@@ -20,9 +20,6 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.RelationalGrammarParserExtension;
-import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
-import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
-import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Column;
@@ -33,7 +30,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.r
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Schema;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.View;
-import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.pure.generated.core_relational_relational_autogeneration_relationalToPure;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.slf4j.Logger;
@@ -112,8 +108,8 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
             org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database) pureModel.getStore(entityPath);
             String targetPackage = element._package;
             String result = core_relational_relational_autogeneration_relationalToPure.Root_meta_relational_transform_autogen_classesAssociationsAndMappingFromDatabase_Database_1__String_1__String_1_(database, targetPackage, pureModel.getExecutionSupport());
-            PureModelContextData pmcd = PureProtocolObjectMapperFactory.getNewObjectMapper().readValue(result, PureModelContextData.class);
-            String code = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().withRenderStyle(RenderStyle.PRETTY).build()).renderPureModelContextData(pmcd);
+            PureModelContextData pmcd = deserializePMCD(result);
+            String code = toGrammar(pmcd);
             String warning = "***WARNING***\n" +
                     "These models and mappings are intended only as examples.\n" +
                     "They should not be considered a replacement for thoughtful modeling.\n" +
