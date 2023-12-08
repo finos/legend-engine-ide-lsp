@@ -81,7 +81,7 @@ jobs:
           DOCKER_USERNAME: finos
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn javadoc:javadoc deploy -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
+        run: mvn javadoc:javadoc deploy -P attach-sources -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
 
       - name: Upload Test Results
         if: always()

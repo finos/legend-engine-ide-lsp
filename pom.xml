@@ -88,7 +88,7 @@
         <sonar.moduleKey>${project.groupId}:${project.artifactId}</sonar.moduleKey>
         <sonar.organization>finos</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        
+
     </properties>
 
     <scm>
@@ -276,10 +276,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
