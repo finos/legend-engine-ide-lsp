@@ -16,14 +16,17 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.ListIterable;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
@@ -59,6 +62,26 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     private static final String RUN_LEGACY_TEST_COMMAND_ID = "legend.mapping.runLegacyTest";
     private static final String RUN_LEGACY_TEST_COMMAND_TITLE = "Run legacy test";
     private static final String LEGACY_TEST_ID = "legend.mapping.legacyTestId";
+
+    private static final ImmutableList<String> STORE_OBJECT_TRIGGERS = Lists.immutable.with("~");
+
+    private static final ImmutableList<String> STORE_OBJECT_SUGGESTIONS = Lists.immutable.with("primaryKey", "mainTable");
+
+    private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
+            "Mapping package::path::mappingName\n" +
+                    "( /*Mapping contains the business logic relating your (exposed) Class to your underlying store objects (tables/views).*/\n" +
+                    "  *package::path::className: Relational\n" +
+                    "  {\n" +
+                    "    ~primaryKey\n" +
+                    "  (\n" +
+                    "    [package::path::storeName]schemaName.TableName1.column1\n" +
+                    "  )\n" +
+                    "    ~mainTable [package::path::storeName]schemaName.TableName1\n" +
+                    "    attribute1: [package::path::storeName]schemaName.TableName1.column1,\n" +
+                    "    attribute2: [package::path::storeName]schemaName.TableName1.column2,\n" +
+                    "    attribute3: multiply([package::path::storeName]schemaName.TableName1.column1, [package::path::storeName]schema.TableName1.column1)\n" +
+                    "  }\n" +
+                    ")\n");
 
     private final ListIterable<String> keywords;
 
@@ -219,5 +242,23 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         MutableSet<String> keywords = Sets.mutable.with("Mapping", "MappingTests", "include");
         PureGrammarParserExtensionLoader.extensions().forEach(ext -> ext.getExtraMappingElementParsers().forEach(p -> keywords.add(p.getElementTypeName())));
         return Lists.immutable.withAll(keywords);
+    }
+
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    {
+        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        List<LegendCompletion> legendCompletions = Lists.mutable.empty();
+
+        if (codeLine.isEmpty())
+        {
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Mapping boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
+        }
+
+        if (STORE_OBJECT_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            STORE_OBJECT_SUGGESTIONS.collect(s -> new LegendCompletion("Store object type", s), legendCompletions);
+        }
+
+        return legendCompletions;
     }
 }

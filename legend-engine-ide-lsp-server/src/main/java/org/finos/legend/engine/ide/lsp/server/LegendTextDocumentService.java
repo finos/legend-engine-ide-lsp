@@ -17,6 +17,10 @@ package org.finos.legend.engine.ide.lsp.server;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.CodeLensParams;
 import org.eclipse.lsp4j.Command;
+import org.eclipse.lsp4j.CompletionItem;
+import org.eclipse.lsp4j.CompletionItemLabelDetails;
+import org.eclipse.lsp4j.CompletionList;
+import org.eclipse.lsp4j.CompletionParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -42,11 +46,13 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.server.LegendServerGlobalState.LegendServerDocumentState;
 import org.finos.legend.engine.ide.lsp.text.TextTools;
 import org.slf4j.Logger;
@@ -408,6 +414,54 @@ class LegendTextDocumentService implements TextDocumentService
                 return DiagnosticSeverity.Error;
             }
         }
+    }
+
+    @Override
+    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams completionParams)
+    {
+        return this.server.supplyPossiblyAsync(() -> Either.forLeft((List<CompletionItem>) getCompletions(completionParams)));
+    }
+
+    private Iterable<CompletionItem> getCompletions(CompletionParams completionParams)
+    {
+        String uri = completionParams.getTextDocument().getUri();
+        int line = completionParams.getPosition().getLine();
+        int character = completionParams.getPosition().getCharacter();
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+        synchronized (globalState)
+        {
+            DocumentState docState = globalState.getDocumentState(uri);
+            if (docState == null)
+            {
+                LOGGER.warn("No state for {}: cannot get completions", uri);
+                return Collections.emptyList();
+            }
+            SectionState sectionState = docState.getSectionStateAtLine(line);
+            if (sectionState == null)
+            {
+                LOGGER.warn("Cannot find section state for line {} of {}: cannot get completions", line, uri);
+                return Collections.emptyList();
+            }
+            Iterable<? extends LegendCompletion> legendCompletions = sectionState.getExtension().getCompletions(sectionState, TextPosition.newPosition(line, character));
+            return getCompletionItems(legendCompletions);
+        }
+    }
+
+    private Iterable<CompletionItem> getCompletionItems(Iterable<? extends LegendCompletion> legendCompletions)
+    {
+        List<CompletionItem> completions = new ArrayList<>();
+
+        for (LegendCompletion legendCompletion : legendCompletions)
+        {
+            CompletionItem completionItem = new CompletionItem(legendCompletion.getSuggestion());
+            completionItem.setInsertText(legendCompletion.getSuggestion());
+            CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
+            detail.setDescription(legendCompletion.getDescription());
+            completionItem.setLabelDetails(detail);
+            completions.add(completionItem);
+        }
+
+        return completions;
     }
 
     @Override

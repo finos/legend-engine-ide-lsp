@@ -19,12 +19,15 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
@@ -83,6 +86,21 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             .with("native function")
             .with("Profile")
     );
+
+    private static final ImmutableList<String> ATTRIBUTE_TYPES = PrimitiveUtilities.getPrimitiveTypeNames().collect(n -> n + " ", Lists.mutable.empty()).toImmutable();
+    private static final ImmutableList<String> ATTRIBUTE_TYPES_TRIGGERS = Lists.immutable.with(": ");
+    private static final ImmutableList<String> ATTRIBUTE_TYPES_SUGGESTIONS = ATTRIBUTE_TYPES;
+    private static final ImmutableList<String> ATTRIBUTE_MULTIPLICITIES_TRIGGERS = ATTRIBUTE_TYPES;
+    private static final ImmutableList<String> ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS = Lists.immutable.with("[0..1];\n", "[1];\n", "[1..*];\n", "[*];\n");
+    private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
+            "function go() : Any[*]\n" +
+                    "{\n" +
+                    "   1+1;\n" +
+                    "}\n",
+            "Class package::path::className\n" +
+                    "{\n" +
+                    "   attributeName: attributeType [attributeMultiplicity];\n" +
+                    "}\n");
 
     private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
@@ -303,5 +321,29 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             LOGGER.error("Error converting value to JSON", e);
         }
         return value.toString();
+    }
+
+    @Override
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    {
+        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+
+        if (codeLine.isEmpty())
+        {
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Pure boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
+        }
+
+        MutableList<LegendCompletion> legendCompletions = Lists.mutable.empty();
+
+        if (ATTRIBUTE_TYPES_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            ATTRIBUTE_TYPES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute type", s), legendCompletions);
+        }
+        if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute multiplicity", s), legendCompletions);
+        }
+
+        return legendCompletions;
     }
 }
