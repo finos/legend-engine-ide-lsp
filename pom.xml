@@ -36,7 +36,7 @@
         <module>legend-engine-ide-lsp-server</module>
         <module>legend-engine-ide-lsp-default-extensions</module>
         <module>legend-engine-ide-lsp-test-reports</module>
-        <module>legend-engine-ide-lsp-server-shaded</module>
+<!--        <module>legend-engine-ide-lsp-server-shaded</module>-->
     </modules>
 
     <properties>
