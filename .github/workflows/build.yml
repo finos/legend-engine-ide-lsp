@@ -15,8 +15,8 @@
 name: Build CI
 
 env:
-  CI_DEPLOY_USERNAME: ${{ secrets.CI_DEPLOY_USERNAME }}
-  CI_DEPLOY_PASSWORD: ${{ secrets.CI_DEPLOY_PASSWORD }}
+  CI_DEPLOYMENT_USERNAME: ${{ secrets.CI_DEPLOYMENT_USERNAME }}
+  CI_DEPLOYMENT_PASSWORD: ${{ secrets.CI_DEPLOYMENT_PASSWORD }}
   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
 on: [push, pull_request]
@@ -50,8 +50,8 @@ jobs:
           java-version: 21
           java-package: jdk
           server-id: ossrh
-          server-username: CI_DEPLOY_USERNAME
-          server-password: CI_DEPLOY_PASSWORD
+          server-username: CI_DEPLOYMENT_USERNAME
+          server-password: CI_DEPLOYMENT_PASSWORD
 
       - name: Check Java version
         run: java -version
