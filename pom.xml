@@ -26,7 +26,7 @@
     <name>Legend Engine IDE LSP</name>
     <groupId>org.finos.legend.engine.ide.lsp</groupId>
     <artifactId>legend-engine-ide-lsp</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -36,7 +36,7 @@
         <module>legend-engine-ide-lsp-server</module>
         <module>legend-engine-ide-lsp-default-extensions</module>
         <module>legend-engine-ide-lsp-test-reports</module>
-<!--        <module>legend-engine-ide-lsp-server-shaded</module>-->
+        <module>legend-engine-ide-lsp-server-shaded</module>
     </modules>
 
     <properties>
