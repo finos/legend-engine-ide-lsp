@@ -69,7 +69,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             "Service package::path::serviceName\n" +
                     "{\n" +
                     "  pattern: 'uri/to/the/service/{parameter1}/{parameter2}';\n" +
-                    "  owners: ['kerberos1', 'kerberos2']; // at least two active workers\n" +
+                    "  ownership: DID { identifier: '' }; // old/deprecated grammar: owners: [ 'kerberos1', 'kerberos2' ] \n" +
                     "  documentation: 'This service returns data about foobar. Parameter1 represents ... and can take values ... . Parameter2 represents ... and can take values ... .';\n" +
                     "  execution: Single\n" +
                     "  {\n" +
