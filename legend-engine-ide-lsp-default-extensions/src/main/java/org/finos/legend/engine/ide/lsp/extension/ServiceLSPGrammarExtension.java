@@ -15,11 +15,6 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.util.EntityUtils;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
@@ -45,7 +40,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
-import org.finos.legend.engine.shared.core.kerberos.HttpClientBuilder;
 import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
 import org.finos.legend.engine.test.runner.service.ServiceTestRunner;
 import org.finos.legend.engine.test.runner.shared.TestResult;
@@ -70,7 +64,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
     private static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
     private static final String REGISTER_SERVICE_COMMAND_TITLE = "Register service";
-    private static final String REGISTER_SERVICE_FULLINTERACTIVE_URL = "https://dev.exec.alloy.site.gs.com/api/service/v1/register_fullInteractive?storeModel=false&generateLineage=false";
+    private static final String REGISTER_SERVICE_FULLINTERACTIVE_URI = "/service/v1/register_fullInteractive?storeModel=false&generateLineage=false";
 
 
 
@@ -126,15 +120,6 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
     }
 
-    private HttpResponse post(String url, String payload) throws Exception
-    {
-        HttpPost request = new HttpPost(url);
-        request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
-        HttpClient client = HttpClientBuilder.getHttpClient(new BasicCookieStore());
-
-        return client.execute(request);
-    }
-
     private LegendExecutionResult registerService(SectionState section, String entityPath)
     {
         try
@@ -158,7 +143,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
             String payload = PureProtocolObjectMapperFactory.getNewObjectMapper().writeValueAsString(builder.withOrigin(pmcp).build());
 
-            HttpResponse response = post(REGISTER_SERVICE_FULLINTERACTIVE_URL, payload);
+            HttpResponse response = postEngineServer(REGISTER_SERVICE_FULLINTERACTIVE_URI, payload, HttpResponse.class);
             String responseString = EntityUtils.toString(response.getEntity());
 
             if (responseString.contains("\"status\":\"error\""))
