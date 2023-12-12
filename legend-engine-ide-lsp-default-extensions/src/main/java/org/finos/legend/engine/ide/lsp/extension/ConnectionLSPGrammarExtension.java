@@ -26,6 +26,8 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.grammar.from.connection.ConnectionParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
+import org.finos.legend.engine.plan.execution.stores.relational.connection.api.schema.model.DatabaseBuilderInput;
+import org.finos.legend.engine.plan.execution.stores.relational.connection.api.schema.model.DatabasePattern;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
@@ -97,33 +99,25 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
             return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Not a " + RelationalDatabaseConnection.class.getSimpleName() + ": " + entityPath));
         }
 
-        MutableMap<String, Object> input = buildInput(packageableConn);
+        DatabaseBuilderInput input = buildInput(packageableConn);
         PureModelContextData result = postEngineServer("/pure/v1/utilities/database/schemaExploration", input, PureModelContextData.class);
         String code = toGrammar(result);
         return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, code));
     }
 
-    private MutableMap<String, Object> buildInput(PackageableConnection packageableConn)
+    private DatabaseBuilderInput buildInput(PackageableConnection packageableConn)
     {
-        MutableMap<String, String> pattern = Maps.mutable.with(
-                "catalog", "%",
-                "schemaPattern", "%",
-                "tablePattern", "%"
-        );
-        MutableMap<String, Object> config = Maps.mutable.with(
-                "enrichTables", true,
-                "enrichPrimaryKeys", true,
-                "enrichColumns", true,
-                "patterns", Lists.fixedSize.with(pattern)
-        );
-        MutableMap<String, String> targetDB = Maps.mutable.with(
-                "name", packageableConn.name + "Database",
-                "package", packageableConn._package
-        );
-        return Maps.mutable.with(
-                "config", config,
-                "connection", packageableConn.connectionValue,
-                "targetDatabase", targetDB);
+        DatabaseBuilderInput builderInput = new DatabaseBuilderInput();
+
+        builderInput.connection = (RelationalDatabaseConnection) packageableConn.connectionValue;
+        builderInput.config.enrichTables = true;
+        builderInput.config.enrichColumns = true;
+        builderInput.config.enrichPrimaryKeys = true;
+        builderInput.config.patterns = Lists.mutable.of(new DatabasePattern("%", "%", "%", false, false));
+        builderInput.targetDatabase.name = packageableConn.name + "Database";
+        builderInput.targetDatabase._package =packageableConn._package;
+
+        return builderInput;
     }
 
     private static ListIterable<String> findKeywords()
