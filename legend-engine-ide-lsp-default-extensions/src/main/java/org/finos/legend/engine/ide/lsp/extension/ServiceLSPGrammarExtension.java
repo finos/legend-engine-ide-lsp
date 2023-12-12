@@ -14,11 +14,12 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.util.EntityUtils;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
@@ -44,6 +45,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
+import org.finos.legend.engine.shared.core.kerberos.HttpClientBuilder;
 import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
 import org.finos.legend.engine.test.runner.service.ServiceTestRunner;
 import org.finos.legend.engine.test.runner.shared.TestResult;
@@ -124,15 +126,11 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
     }
 
-    private CloseableHttpResponse post(String url, String payload) throws Exception
+    private HttpResponse post(String url, String payload) throws Exception
     {
         HttpPost request = new HttpPost(url);
         request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
-
-        CloseableHttpClient client = new PureHttpClientBuilderProvider()
-                .create(PureHttpClientBuilder.class, SafeguardClients.forCurrentUser(true))
-                .withKerberos()
-                .build;
+        HttpClient client = HttpClientBuilder.getHttpClient(new BasicCookieStore());
 
         return client.execute(request);
     }
@@ -153,14 +151,14 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
             PureModelContextPointer pmcp = new PureModelContextPointer();
             pmcp.serializer = new Protocol("pure", PureClientVersions.production);
-            pmcp.sdlcInfo= new AlloySDLC();
+            pmcp.sdlcInfo = new AlloySDLC();
             pmcp.sdlcInfo.baseVersion = "latest";
             pmcp.sdlcInfo.version = "none";
             pmcp.sdlcInfo.packageableElementPointers = Collections.singletonList(new PackageableElementPointer(PackageableElementType.SERVICE, entityPath));
 
             String payload = PureProtocolObjectMapperFactory.getNewObjectMapper().writeValueAsString(builder.withOrigin(pmcp).build());
 
-            CloseableHttpResponse response = post(REGISTER_SERVICE_FULLINTERACTIVE_URL, payload);
+            HttpResponse response = post(REGISTER_SERVICE_FULLINTERACTIVE_URL, payload);
             String responseString = EntityUtils.toString(response.getEntity());
 
             if (responseString.contains("\"status\":\"error\""))
