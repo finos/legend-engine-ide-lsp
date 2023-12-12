@@ -15,8 +15,8 @@
 name: Release
 
 env:
-  CI_DEPLOY_USERNAME: ${{ secrets.CI_DEPLOY_USERNAME }}
-  CI_DEPLOY_PASSWORD: ${{ secrets.CI_DEPLOY_PASSWORD }}
+  CI_DEPLOYMENT_USERNAME: ${{ secrets.CI_DEPLOYMENT_USERNAME }}
+  CI_DEPLOYMENT_PASSWORD: ${{ secrets.CI_DEPLOYMENT_PASSWORD }}
   CI_GPG_PASSPHRASE: ${{ secrets.CI_GPG_PASSPHRASE }}
   DOCKER_USERNAME: finos
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -56,8 +56,10 @@ jobs:
           java-version: 21
           java-package: jdk
           server-id: ossrh
-          server-username: CI_DEPLOY_USERNAME
-          server-password: CI_DEPLOY_PASSWORD
+          server-username: CI_DEPLOYMENT_USERNAME
+          server-password: CI_DEPLOYMENT_PASSWORD
+          gpg-private-key: ${{ secrets.CI_GPG_PRIVATE_KEY }}
+          gpg-passphrase: CI_GPG_PASSPHRASE
 
       - name: Check Java version
         run: java -version 
@@ -75,17 +77,6 @@ jobs:
         with:
           theme: dark
 
-      - name: Set up Maven Central
-        uses: actions/setup-java@v2
-        with:
-          distribution: "zulu"
-          java-version: "11"
-          server-id: ossrh
-          server-username: CI_DEPLOY_USERNAME
-          server-password: CI_DEPLOY_PASSWORD
-          gpg-private-key: ${{ secrets.CI_GPG_PRIVATE_KEY }}
-          gpg-passphrase: CI_GPG_PASSPHRASE
-
       - name: Compute next development version
         run: |
           releaseVersion=${{ github.event.inputs.releaseVersion }}
@@ -99,4 +90,4 @@ jobs:
         run: mvn -B -e release:prepare -Darguments='-B -e' -DpreparationGoals=clean -DreleaseVersion=${{ github.event.inputs.releaseVersion }} -DdevelopmentVersion=${{ env.DEVELOPMENT_VERSION }} -P release
 
       - name: Perform release
-        run: mvn -B -e release:perform -Darguments='-B -e' -P release,docker
+        run: mvn -B -e release:perform -Darguments='-B -e' -P release

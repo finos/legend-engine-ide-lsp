@@ -14,9 +14,6 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import com.gs.pure.client.PureHttpClientBuilder;
-import com.gs.pure.client.PureHttpClientBuilderProvider;
-import com.gs.safeguard.client.SafeguardClients;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
@@ -120,7 +117,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             case RUN_LEGACY_TESTS_COMMAND_ID:
                 return runLegacyServiceTest(section, entityPath);
             case REGISTER_SERVICE_COMMAND_ID:
-                return List.of(registerService(section));
+                return List.of(registerService(section, entityPath));
             default:
                 return super.execute(section, entityPath, commandId, executableArgs);
 
