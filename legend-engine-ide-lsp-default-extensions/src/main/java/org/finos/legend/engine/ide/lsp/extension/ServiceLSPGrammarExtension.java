@@ -14,6 +14,15 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.gs.pure.client.PureHttpClientBuilder;
+import com.gs.pure.client.PureHttpClientBuilderProvider;
+import com.gs.safeguard.client.SafeguardClients;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.util.EntityUtils;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
@@ -25,6 +34,14 @@ import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServicePar
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
+import org.finos.legend.engine.protocol.Protocol;
+import org.finos.legend.engine.protocol.pure.PureClientVersions;
+import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
+import org.finos.legend.engine.protocol.pure.v1.model.context.AlloySDLC;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementType;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
@@ -51,6 +68,11 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
     private static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.service.runLegacyTests";
     private static final String RUN_LEGACY_TESTS_COMMAND_TITLE = "Run legacy tests";
+
+    private static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
+    private static final String REGISTER_SERVICE_COMMAND_TITLE = "Register service";
+    private static final String REGISTER_SERVICE_FULLINTERACTIVE_URL = "https://dev.exec.alloy.site.gs.com/api/service/v1/register_fullInteractive?storeModel=false&generateLineage=false";
+
 
 
     public ServiceLSPGrammarExtension()
@@ -82,6 +104,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         if (element instanceof Service)
         {
             Service service = (Service) element;
+            consumer.accept(REGISTER_SERVICE_COMMAND_ID, REGISTER_SERVICE_COMMAND_TITLE, service.sourceInformation);
             if (service.test != null)
             {
                 consumer.accept(RUN_LEGACY_TESTS_COMMAND_ID, RUN_LEGACY_TESTS_COMMAND_TITLE, service.sourceInformation);
@@ -92,9 +115,68 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
-        return RUN_LEGACY_TESTS_COMMAND_ID.equals(commandId) ?
-                runLegacyServiceTest(section, entityPath) :
-                super.execute(section, entityPath, commandId, executableArgs);
+        switch (commandId)
+        {
+            case RUN_LEGACY_TESTS_COMMAND_ID:
+                return runLegacyServiceTest(section, entityPath);
+            case REGISTER_SERVICE_COMMAND_ID:
+                return List.of(registerService(section));
+            default:
+                return super.execute(section, entityPath, commandId, executableArgs);
+
+        }
+    }
+
+    private CloseableHttpResponse post(String url, String payload) throws Exception
+    {
+        HttpPost request = new HttpPost(url);
+        request.setEntity(new StringEntity(payload, ContentType.APPLICATION_JSON));
+
+        CloseableHttpClient client = new PureHttpClientBuilderProvider()
+                .create(PureHttpClientBuilder.class, SafeguardClients.forCurrentUser(true))
+                .withKerberos()
+                .build;
+
+        return client.execute(request);
+    }
+
+    private LegendExecutionResult registerService(SectionState section, String entityPath)
+    {
+        try
+        {
+            PureModelContextData.Builder builder = PureModelContextData.newBuilder();
+            section.getDocumentState().getGlobalState().forEachDocumentState(docState -> docState.forEachSectionState(secState ->
+            {
+                ParseResult parseResult = secState.getProperty("parse");
+                if (parseResult != null)
+                {
+                    builder.addElements(parseResult.getElements());
+                }
+            }));
+
+            PureModelContextPointer pmcp = new PureModelContextPointer();
+            pmcp.serializer = new Protocol("pure", PureClientVersions.production);
+            pmcp.sdlcInfo= new AlloySDLC();
+            pmcp.sdlcInfo.baseVersion = "latest";
+            pmcp.sdlcInfo.version = "none";
+            pmcp.sdlcInfo.packageableElementPointers = Collections.singletonList(new PackageableElementPointer(PackageableElementType.SERVICE, entityPath));
+
+            String payload = PureProtocolObjectMapperFactory.getNewObjectMapper().writeValueAsString(builder.withOrigin(pmcp).build());
+
+            CloseableHttpResponse response = post(REGISTER_SERVICE_FULLINTERACTIVE_URL, payload);
+            String responseString = EntityUtils.toString(response.getEntity());
+
+            if (responseString.contains("\"status\":\"error\""))
+            {
+                throw new RuntimeException(responseString);
+            }
+            return (LegendExecutionResult.newResult("entityPath", Type.SUCCESS, response.toString()));
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            return (LegendExecutionResult.newResult("entityPath", Type.ERROR,e.getMessage()));
+        }
     }
 
     private Iterable<? extends LegendExecutionResult> runLegacyServiceTest(SectionState section, String entityPath)
