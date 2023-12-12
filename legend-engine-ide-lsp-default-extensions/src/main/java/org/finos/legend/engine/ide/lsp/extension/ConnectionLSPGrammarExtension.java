@@ -14,11 +14,11 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Collections;
+import java.util.Map;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ListIterable;
-import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.set.MutableSet;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
@@ -32,9 +32,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextDa
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
-
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * Extension for the Connection grammar.
@@ -115,7 +112,7 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
         builderInput.config.enrichPrimaryKeys = true;
         builderInput.config.patterns = Lists.mutable.of(new DatabasePattern("%", "%", "%", false, false));
         builderInput.targetDatabase.name = packageableConn.name + "Database";
-        builderInput.targetDatabase._package =packageableConn._package;
+        builderInput.targetDatabase._package = packageableConn._package;
 
         return builderInput;
     }

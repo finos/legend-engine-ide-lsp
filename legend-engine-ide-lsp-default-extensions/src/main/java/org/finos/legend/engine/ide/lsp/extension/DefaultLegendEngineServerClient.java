@@ -14,6 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -21,10 +24,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
+import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
 
 class DefaultLegendEngineServerClient implements LegendEngineServerClient
 {
@@ -37,12 +37,12 @@ class DefaultLegendEngineServerClient implements LegendEngineServerClient
     }
 
     @Override
-    public InputStream post(String path, String payload, String contentType)
+    public <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> processor)
     {
-        return post(path, new StringEntity(payload, contentType));
+        return post(path, new StringEntity(payload, contentType), processor);
     }
 
-    private InputStream post(String path, HttpEntity payload)
+    private <T> T post(String path, HttpEntity payload, ThrowingFunction<InputStream, T> processor)
     {
         if (!isServerConfigured())
         {
@@ -63,7 +63,14 @@ class DefaultLegendEngineServerClient implements LegendEngineServerClient
                     String responseString = EntityUtils.toString(entity);
                     throw new RuntimeException("Engine server responded to " + url + " with status: " + response.getStatusLine().getStatusCode() + "\nresponse: " + responseString);
                 }
-                return entity.getContent();
+                try (InputStream content = entity.getContent())
+                {
+                    return processor.safeValueOf(content);
+                }
+                catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
             }
         }
         catch (IOException e)
