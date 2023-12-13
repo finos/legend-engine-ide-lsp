@@ -17,6 +17,15 @@ package org.finos.legend.engine.ide.lsp.extension;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.UncheckedIOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -66,17 +75,6 @@ import org.finos.legend.engine.testable.model.RunTestsTestableInput;
 import org.finos.legend.engine.testable.model.UniqueTestId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.UncheckedIOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.function.Consumer;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
@@ -540,10 +538,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         {
             JsonMapper mapper = getProtocolMapper();
             String payloadJson = mapper.writeValueAsString(payload);
-            try (InputStream stream = this.engineServerClient.post(path, payloadJson))
-            {
-                return mapper.readValue(stream, responseType);
-            }
+            return this.engineServerClient.post(path, payloadJson, stream -> mapper.readValue(stream, responseType));
         }
         catch (IOException e)
         {
