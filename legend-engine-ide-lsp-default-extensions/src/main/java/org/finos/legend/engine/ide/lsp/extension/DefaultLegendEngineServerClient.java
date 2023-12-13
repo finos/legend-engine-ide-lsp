@@ -20,6 +20,7 @@ import java.io.UncheckedIOException;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -28,18 +29,21 @@ import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
 
 class DefaultLegendEngineServerClient implements LegendEngineServerClient
 {
-    private final String engineServerUrl = System.getProperty("legend.engine.server.url");
+    private String getEngineServerUrl()
+    {
+        return System.getProperty("legend.engine.server.url");
+    }
 
     @Override
     public boolean isServerConfigured()
     {
-        return this.engineServerUrl != null;
+        return this.getEngineServerUrl() != null;
     }
 
     @Override
     public <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> processor)
     {
-        return post(path, new StringEntity(payload, contentType), processor);
+        return post(path, new StringEntity(payload, ContentType.getByMimeType(contentType)), processor);
     }
 
     private <T> T post(String path, HttpEntity payload, ThrowingFunction<InputStream, T> processor)
@@ -81,8 +85,8 @@ class DefaultLegendEngineServerClient implements LegendEngineServerClient
 
     private String buildUrl(String path)
     {
-        return this.engineServerUrl +
-                (this.engineServerUrl.endsWith("/") ?
+        return this.getEngineServerUrl() +
+                (this.getEngineServerUrl().endsWith("/") ?
                  (path.startsWith("/") ? path.substring(1) : path) :
                  (path.startsWith("/") ? path : ("/" + path)));
     }

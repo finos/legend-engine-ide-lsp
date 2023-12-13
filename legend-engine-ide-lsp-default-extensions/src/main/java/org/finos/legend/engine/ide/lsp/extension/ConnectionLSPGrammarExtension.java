@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Collections;
 import java.util.Map;
 import org.eclipse.collections.api.factory.Lists;
@@ -38,7 +39,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.r
  */
 public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
-    private static final String GENERATE_DB_COMMAND_ID = "legend.service.generateDatabase";
+    static final String GENERATE_DB_COMMAND_ID = "legend.service.generateDatabase";
     private static final String GENERATE_DB_COMMAND_TITLE = "Generate database";
 
     private final ListIterable<String> keywords;
@@ -110,7 +111,7 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
         builderInput.config.enrichTables = true;
         builderInput.config.enrichColumns = true;
         builderInput.config.enrichPrimaryKeys = true;
-        builderInput.config.patterns = Lists.mutable.of(new DatabasePattern("%", "%", "%", false, false));
+        builderInput.config.patterns = Lists.mutable.of(new DatabasePatternFixedTypo("%", "%", "%", false, false));
         builderInput.targetDatabase.name = packageableConn.name + "Database";
         builderInput.targetDatabase._package = packageableConn._package;
 
@@ -122,5 +123,21 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
         MutableSet<String> keywords = Sets.mutable.empty();
         PureGrammarParserExtensionLoader.extensions().forEach(ext -> ext.getExtraConnectionParsers().forEach(p -> keywords.add(p.getConnectionTypeName())));
         return Lists.immutable.withAll(keywords);
+    }
+
+    // todo remove once this is released - https://github.com/finos/legend-engine/pull/2507
+    private class DatabasePatternFixedTypo extends DatabasePattern
+    {
+        public DatabasePatternFixedTypo(String catalog, String schemaPattern, String tablePattern, boolean escapeSchemaPattern, boolean escapeTablePattern)
+        {
+            super(catalog, schemaPattern, tablePattern, escapeSchemaPattern, escapeTablePattern);
+        }
+
+        @Override
+        @JsonProperty("escapteTablePattern")
+        public boolean isEscapeTablePattern()
+        {
+            return super.isEscapeTablePattern();
+        }
     }
 }
