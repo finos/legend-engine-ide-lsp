@@ -17,6 +17,7 @@ package org.finos.legend.engine.ide.lsp.server;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
+import java.util.concurrent.Executors;
 import org.eclipse.lsp4j.CodeLensOptions;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
@@ -1010,12 +1011,14 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
      *
      * @param args server arguments
      */
-    public static void main(String[] args)
+    public static void main(String[] args) throws InterruptedException
     {
         LOGGER.info("Launching server");
+        Objects.requireNonNull(Thread.currentThread().getContextClassLoader().getResource("platform_store_relational.definition.json"));
         LegendLanguageServer server = LegendLanguageServer.builder()
                 .withGrammars(ServiceLoader.load(LegendLSPGrammarExtension.class))
                 .withInlineDSLs(ServiceLoader.load(LegendLSPInlineDSLExtension.class))
+                .asynchronous(Executors.newCachedThreadPool())
                 .build();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
