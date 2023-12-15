@@ -26,7 +26,7 @@
     <name>Legend Engine IDE LSP</name>
     <groupId>org.finos.legend.engine.ide.lsp</groupId>
     <artifactId>legend-engine-ide-lsp</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -555,6 +555,17 @@
                 <exclusions>
                     <exclusion>
                         <groupId>junit</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine-xt-relationalStore-executionPlan-connection-api</artifactId>
+                <version>${legend.engine.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>*</groupId>
                         <artifactId>*</artifactId>
                     </exclusion>
                 </exclusions>
