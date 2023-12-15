@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.eclipse.collections.api.factory.Lists;
@@ -87,10 +89,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
 
-    private static final JsonMapper JSON = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
-            .enable(SerializationFeature.INDENT_OUTPUT)
-            .serializationInclusion(JsonInclude.Include.NON_NULL)
-            .build());
+    private JsonMapper functionResultMapper;
 
     public PureLSPGrammarExtension()
     {
@@ -121,8 +120,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
         return EXEC_FUNCTION_ID.equals(commandId) ?
-                executeFunction(section, entityPath) :
-                super.execute(section, entityPath, commandId, executableArgs);
+               executeFunction(section, entityPath) :
+               super.execute(section, entityPath, commandId, executableArgs);
     }
 
     @Override
@@ -296,12 +295,30 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
         try
         {
-            return JSON.writeValueAsString(value);
+            return getFunctionResultMapper().writeValueAsString(value);
         }
         catch (Exception e)
         {
             LOGGER.error("Error converting value to JSON", e);
         }
         return value.toString();
+    }
+
+    private JsonMapper getFunctionResultMapper()
+    {
+        synchronized (this)
+        {
+            if (this.functionResultMapper == null)
+            {
+                this.functionResultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+                        .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+                        .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+                        .enable(SerializationFeature.INDENT_OUTPUT)
+                        .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                        .serializationInclusion(JsonInclude.Include.NON_NULL)
+                        .build());
+            }
+            return this.functionResultMapper;
+        }
     }
 }

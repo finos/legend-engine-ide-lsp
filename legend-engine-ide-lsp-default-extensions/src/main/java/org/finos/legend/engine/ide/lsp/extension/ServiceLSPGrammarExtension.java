@@ -14,6 +14,12 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.core.StreamWriteFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
@@ -25,6 +31,14 @@ import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServicePar
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
+import org.finos.legend.engine.protocol.Protocol;
+import org.finos.legend.engine.protocol.pure.PureClientVersions;
+import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
+import org.finos.legend.engine.protocol.pure.v1.model.context.AlloySDLC;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementType;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
@@ -51,6 +65,11 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
     private static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.service.runLegacyTests";
     private static final String RUN_LEGACY_TESTS_COMMAND_TITLE = "Run legacy tests";
+
+    private static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
+    private static final String REGISTER_SERVICE_COMMAND_TITLE = "Register service";
+
+    private JsonMapper resultMapper;
 
     public ServiceLSPGrammarExtension()
     {
@@ -81,6 +100,10 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         if (element instanceof Service)
         {
             Service service = (Service) element;
+            if (isEngineServerConfigured())
+            {
+                consumer.accept(REGISTER_SERVICE_COMMAND_ID, REGISTER_SERVICE_COMMAND_TITLE, service.sourceInformation);
+            }
             if (service.test != null)
             {
                 consumer.accept(RUN_LEGACY_TESTS_COMMAND_ID, RUN_LEGACY_TESTS_COMMAND_TITLE, service.sourceInformation);
@@ -91,9 +114,21 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
-        return RUN_LEGACY_TESTS_COMMAND_ID.equals(commandId) ?
-                runLegacyServiceTest(section, entityPath) :
-                super.execute(section, entityPath, commandId, executableArgs);
+        switch (commandId)
+        {
+            case RUN_LEGACY_TESTS_COMMAND_ID:
+            {
+                return runLegacyServiceTest(section, entityPath);
+            }
+            case REGISTER_SERVICE_COMMAND_ID:
+            {
+                return registerService(section, entityPath);
+            }
+            default:
+            {
+                return super.execute(section, entityPath, commandId, executableArgs);
+            }
+        }
     }
 
     private Iterable<? extends LegendExecutionResult> runLegacyServiceTest(SectionState section, String entityPath)
@@ -175,6 +210,60 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             {
                 return Type.WARNING;
             }
+        }
+    }
+
+    private Iterable<? extends LegendExecutionResult> registerService(SectionState section, String entityPath)
+    {
+        try
+        {
+            Protocol serializer = new Protocol("pure", PureClientVersions.production);
+            PureModelContextPointer origin = new PureModelContextPointer();
+            origin.serializer = serializer;
+            origin.sdlcInfo = new AlloySDLC();
+            origin.sdlcInfo.baseVersion = "latest";
+            origin.sdlcInfo.version = "none";
+            origin.sdlcInfo.packageableElementPointers = Collections.singletonList(new PackageableElementPointer(PackageableElementType.SERVICE, entityPath));
+            PureModelContextData pmcd = pureModelContextDataBuilder(section.getDocumentState().getGlobalState())
+                    .withSerializer(serializer)
+                    .withOrigin(origin)
+                    .build();
+            String response = postEngineServer("/service/v1/register_fullInteractive", pmcd);
+            try
+            {
+                // Try to parse it as JSON and then format it prettily
+                JsonMapper mapper = getResultMapper();
+                JsonNode node = mapper.readTree(response);
+                String formatted = mapper.writeValueAsString(node);
+                return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, formatted));
+            }
+            catch (Exception ignore)
+            {
+                // Couldn't format as JSON
+                return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, response));
+            }
+        }
+        catch (Exception e)
+        {
+            return Collections.singletonList(errorResult(e, entityPath));
+        }
+    }
+
+    private JsonMapper getResultMapper()
+    {
+        synchronized (this)
+        {
+            if (this.resultMapper == null)
+            {
+                this.resultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+                        .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+                        .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+                        .enable(SerializationFeature.INDENT_OUTPUT)
+                        .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                        .serializationInclusion(JsonInclude.Include.NON_NULL)
+                        .build());
+            }
+            return this.resultMapper;
         }
     }
 }
