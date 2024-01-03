@@ -68,6 +68,9 @@
         <pac4j.version>3.8.3</pac4j.version>
         <slf4j.version>2.0.9</slf4j.version>
 
+        <maven.invoker.version>3.2.0</maven.invoker.version>
+        <maven.shared.utils.version>3.4.2</maven.shared.utils.version>
+
         <!-- Plugin versions -->
         <jacoco.maven.plugin.version>0.8.10</jacoco.maven.plugin.version>
         <maven.checkstyle.plugin.version>3.3.0</maven.checkstyle.plugin.version>
@@ -561,17 +564,6 @@
             </dependency>
             <dependency>
                 <groupId>org.finos.legend.engine</groupId>
-                <artifactId>legend-engine-xt-relationalStore-executionPlan-connection-api</artifactId>
-                <version>${legend.engine.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>*</groupId>
-                        <artifactId>*</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.finos.legend.engine</groupId>
                 <artifactId>legend-engine-executionPlan-generation</artifactId>
                 <version>${legend.engine.version}</version>
                 <exclusions>
@@ -678,6 +670,19 @@
                 </exclusions>
             </dependency>
             <!-- LEGEND ENGINE -->
+
+            <dependency>
+                <groupId>org.apache.maven.shared</groupId>
+                <artifactId>maven-invoker</artifactId>
+                <version>${maven.invoker.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.maven.shared</groupId>
+                <artifactId>maven-shared-utils</artifactId>
+                <version>${maven.shared.utils.version}</version>
+            </dependency>
+
 
             <dependency>
                 <groupId>ch.qos.logback</groupId>

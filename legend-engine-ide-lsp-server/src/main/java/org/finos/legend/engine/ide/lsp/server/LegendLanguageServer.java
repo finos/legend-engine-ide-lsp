@@ -17,6 +17,20 @@ package org.finos.legend.engine.ide.lsp.server;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.eclipse.lsp4j.CodeLensOptions;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
@@ -53,6 +67,9 @@ import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
+import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
+import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
@@ -60,21 +77,6 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * {@link LanguageServer} implementation for Legend.
@@ -95,24 +97,21 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final LegendWorkspaceService workspaceService;
     private final AtomicReference<LanguageClient> languageClient = new AtomicReference<>(null);
     private final AtomicInteger state = new AtomicInteger(UNINITIALIZED);
-    private final boolean async;
-    private final Executor executor;
-    private final LegendLSPGrammarLibrary grammars;
-    private final LegendLSPInlineDSLLibrary inlineDSLs;
+    private final ClasspathFactory classpathFactory;
+    private final ExtensionsGuard extensionGuard;
+
     private final LegendServerGlobalState globalState = new LegendServerGlobalState(this);
     private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new Gson();
 
     private final Set<String> rootFolders = new HashSet<>();
 
-    private LegendLanguageServer(boolean async, Executor executor, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
+    private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
         this.textDocumentService = new LegendTextDocumentService(this);
         this.workspaceService = new LegendWorkspaceService(this);
-        this.async = async;
-        this.executor = executor;
-        this.grammars = grammars;
-        this.inlineDSLs = inlineDSLs;
+        this.extensionGuard = new ExtensionsGuard(async, executor, grammars, inlineDSLs);
+        this.classpathFactory = Objects.requireNonNull(classpathFactory, "missing classpath factory");
     }
 
     @Override
@@ -126,7 +125,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.error(message);
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
-        return supplyPossiblyAsync_internal(() -> doInitialize(initializeParams));
+        return this.extensionGuard.supplyPossiblyAsync_internal(() -> doInitialize(initializeParams));
     }
 
     @Override
@@ -145,7 +144,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.warn("Server already {}", getStateDescription(currentState));
             return CompletableFuture.completedFuture(null);
         }
-        return supplyPossiblyAsync_internal(() ->
+        return this.extensionGuard.supplyPossiblyAsync_internal(() ->
         {
             doShutdown();
             return null;
@@ -290,13 +289,13 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     <T> CompletableFuture<T> supplyPossiblyAsync(Supplier<T> supplier)
     {
         checkReady();
-        return supplyPossiblyAsync_internal(supplier);
+        return this.extensionGuard.supplyPossiblyAsync_internal(supplier);
     }
 
     CompletableFuture<?> runPossiblyAsync(Runnable runnable)
     {
         checkReady();
-        return runPossiblyAsync_internal(runnable);
+        return this.extensionGuard.runPossiblyAsync_internal(runnable);
     }
 
     LegendServerGlobalState getGlobalState()
@@ -314,19 +313,19 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     LegendLSPGrammarLibrary getGrammarLibrary()
     {
         checkNotShutDown();
-        return this.grammars;
+        return this.extensionGuard.getGrammars();
     }
 
     LegendLSPGrammarExtension getGrammarExtension(String grammar)
     {
         checkNotShutDown();
-        return this.grammars.getExtension(grammar);
+        return this.extensionGuard.getGrammars().getExtension(grammar);
     }
 
     LegendLSPInlineDSLLibrary getInlineDSLLibrary()
     {
         checkNotShutDown();
-        return this.inlineDSLs;
+        return this.extensionGuard.getInlineDSLs();
     }
 
     void setWorkspaceFolders(Iterable<? extends WorkspaceFolder> folders)
@@ -373,7 +372,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             String message = "Added root folder: " + folderUri;
             LOGGER.info(message);
             logInfoToClient(message);
-            runPossiblyAsync_internal(() -> this.globalState.addFolder(folderUri));
+            this.extensionGuard.runPossiblyAsync_internal(() -> this.globalState.addFolder(folderUri));
         }
     }
 
@@ -424,16 +423,16 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.info(message);
             logInfoToClient(message);
         }
-        runPossiblyAsync_internal(() ->
+        this.extensionGuard.runPossiblyAsync_internal(() ->
         {
-           if (addedFolders != null)
-           {
-               addedFolders.forEach(this.globalState::addFolder);
-           }
-           if (removedFolders != null)
-           {
-               removedFolders.forEach(this.globalState::removeFolder);
-           }
+            if (addedFolders != null)
+            {
+                addedFolders.forEach(this.globalState::addFolder);
+            }
+            if (removedFolders != null)
+            {
+                removedFolders.forEach(this.globalState::removeFolder);
+            }
         });
     }
 
@@ -616,38 +615,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return null;
     }
 
-    private <T> CompletableFuture<T> supplyPossiblyAsync_internal(Supplier<T> supplier)
-    {
-        return this.async ?
-                supplyAsync(supplier) :
-                CompletableFuture.completedFuture(supplier.get());
-    }
-
-    private CompletableFuture<?> runPossiblyAsync_internal(Runnable runnable)
-    {
-        if (this.async)
-        {
-            return runAsync(runnable);
-        }
-
-        runnable.run();
-        return CompletableFuture.completedFuture(null);
-    }
-
-    private <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier)
-    {
-        return (this.executor == null) ?
-                CompletableFuture.supplyAsync(supplier) :
-                CompletableFuture.supplyAsync(supplier, this.executor);
-    }
-
-    private CompletableFuture<?> runAsync(Runnable runnable)
-    {
-        return (this.executor == null) ?
-                CompletableFuture.runAsync(runnable) :
-                CompletableFuture.runAsync(runnable, this.executor);
-    }
-
     private InitializeResult doInitialize(InitializeParams initializeParams)
     {
         LOGGER.info("Initializing server");
@@ -662,6 +629,9 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
         logInfoToClient("Initializing server");
         List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
+
+        this.extensionGuard.init(this.classpathFactory.create(workspaceFolders));
+
         if (workspaceFolders != null)
         {
             setWorkspaceFolders(workspaceFolders);
@@ -872,6 +842,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         private boolean async = true;
         private Executor executor;
+        private ClasspathFactory classpathFactory = new EmbeddedClasspathFactory();
         private final LegendLSPGrammarLibrary.Builder grammars = LegendLSPGrammarLibrary.builder();
         private final LegendLSPInlineDSLLibrary.Builder inlineDSLs = LegendLSPInlineDSLLibrary.builder();
 
@@ -888,6 +859,12 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         {
             this.async = false;
             this.executor = null;
+            return this;
+        }
+
+        public Builder classpathFromMaven(File defaultPom)
+        {
+            this.classpathFactory = new ClasspathUsingMavenFactory(defaultPom);
             return this;
         }
 
@@ -1000,7 +977,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
          */
         public LegendLanguageServer build()
         {
-            return new LegendLanguageServer(this.async, this.executor, this.grammars.build(), this.inlineDSLs.build());
+            return new LegendLanguageServer(this.async, this.executor, this.classpathFactory, this.grammars.build(), this.inlineDSLs.build());
         }
 
     }
@@ -1014,8 +991,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         LOGGER.info("Launching server");
         LegendLanguageServer server = LegendLanguageServer.builder()
-                .withGrammars(ServiceLoader.load(LegendLSPGrammarExtension.class))
-                .withInlineDSLs(ServiceLoader.load(LegendLSPInlineDSLExtension.class))
+                .classpathFromMaven(new File(args[0]))
                 .build();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());

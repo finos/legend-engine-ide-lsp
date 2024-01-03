@@ -172,6 +172,8 @@ class LegendWorkspaceService implements WorkspaceService
     @Override
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params)
     {
+        // todo - retrigger classpath / classloader init?
+
         LOGGER.debug("Did change watched files: {}", params);
         this.server.runPossiblyAsync(() ->
         {
@@ -211,6 +213,8 @@ class LegendWorkspaceService implements WorkspaceService
     @Override
     public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params)
     {
+        // todo - retrigger classpath / classloader init?
+
         LOGGER.debug("Did change workspace folders: {}", params);
         synchronized (this.server.getGlobalState())
         {
@@ -222,6 +226,8 @@ class LegendWorkspaceService implements WorkspaceService
     @Override
     public void didCreateFiles(CreateFilesParams params)
     {
+        // todo - retrigger classpath / classloader init?
+
         LOGGER.debug("Did create files: {}", params);
         this.server.runPossiblyAsync(() ->
         {
