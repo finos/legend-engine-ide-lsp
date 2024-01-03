@@ -14,27 +14,22 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.util.Set;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
-import org.eclipse.lsp4j.MessageActionItem;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
-import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
-
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 public class TestLegendLanguageServer
 {
@@ -43,6 +38,7 @@ public class TestLegendLanguageServer
     {
         // Initial state
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
+        server.connect(newLanguageClient());
         Assertions.assertTrue(server.isUninitialized());
         Assertions.assertFalse(server.isInitialized());
         Assertions.assertFalse(server.isShutDown());
@@ -64,7 +60,7 @@ public class TestLegendLanguageServer
         server.initialized(new InitializedParams());
         Assertions.assertInstanceOf(LegendWorkspaceService.class, server.getWorkspaceService());
         Assertions.assertInstanceOf(LegendTextDocumentService.class, server.getTextDocumentService());
-        Assertions.assertNull(server.getLanguageClient());
+        Assertions.assertNotNull(server.getLanguageClient());
 
         // Shut down
         Object shutDownResult = server.shutdown().get();
@@ -154,6 +150,23 @@ public class TestLegendLanguageServer
         Assertions.assertEquals("Multiple extensions named: \"ext1\"", e.getMessage());
     }
 
+    @Test
+    void testInitializedReloadExtensions() throws Exception
+    {
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
+        DummyLanguageClient languageClient = newLanguageClient();
+        server.connect(languageClient);
+        server.initialize(new InitializeParams()).get();
+        Assertions.assertTrue(server.getGrammarLibrary().getGrammars().isEmpty());
+        server.initialized(new InitializedParams());
+
+        Assertions.assertTrue(languageClient.clientLog.contains("logMessage - Info - Using app classpath"));
+        Assertions.assertTrue(languageClient.clientLog.contains("refreshCodeLenses"));
+        Assertions.assertTrue(languageClient.clientLog.contains("refreshDiagnostics"));
+        Assertions.assertTrue(languageClient.clientLog.contains("refreshInlayHints"));
+        Assertions.assertTrue(languageClient.clientLog.contains("refreshSemanticTokens"));
+    }
+
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)
     {
         ResponseErrorException e = Assertions.assertThrows(ResponseErrorException.class, executable);
@@ -162,39 +175,9 @@ public class TestLegendLanguageServer
         Assertions.assertEquals(message, e.getMessage());
     }
 
-    private LanguageClient newLanguageClient()
+
+    private DummyLanguageClient newLanguageClient()
     {
-        return new LanguageClient()
-        {
-            @Override
-            public void telemetryEvent(Object object)
-            {
-                // Do nothing
-            }
-
-            @Override
-            public void publishDiagnostics(PublishDiagnosticsParams diagnostics)
-            {
-                // Do nothing
-            }
-
-            @Override
-            public void showMessage(MessageParams messageParams)
-            {
-                // Do nothing
-            }
-
-            @Override
-            public CompletableFuture<MessageActionItem> showMessageRequest(ShowMessageRequestParams requestParams)
-            {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public void logMessage(MessageParams message)
-            {
-                // Do nothing
-            }
-        };
+        return new DummyLanguageClient();
     }
 }

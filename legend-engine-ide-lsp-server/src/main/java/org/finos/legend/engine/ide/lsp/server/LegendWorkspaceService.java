@@ -167,11 +167,17 @@ class LegendWorkspaceService implements WorkspaceService
     {
         this.server.checkReady();
         LOGGER.debug("Did change configuration: {}", params);
+        // todo maybe server can have a map of configs to consumers of these properties
+        // todo if default pom changes? this.server.initializeExtensions();
+        // todo this.server.setEngineServerUrl();
     }
 
     @Override
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params)
     {
+        // todo - retrigger classpath / classloader init?
+        // todo this.server.initializeExtensions();
+
         LOGGER.debug("Did change watched files: {}", params);
         this.server.runPossiblyAsync(() ->
         {
@@ -211,6 +217,8 @@ class LegendWorkspaceService implements WorkspaceService
     @Override
     public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params)
     {
+        // todo - retrigger classpath / classloader init?
+
         LOGGER.debug("Did change workspace folders: {}", params);
         synchronized (this.server.getGlobalState())
         {
@@ -222,6 +230,8 @@ class LegendWorkspaceService implements WorkspaceService
     @Override
     public void didCreateFiles(CreateFilesParams params)
     {
+        // todo - retrigger classpath / classloader init?
+
         LOGGER.debug("Did create files: {}", params);
         this.server.runPossiblyAsync(() ->
         {

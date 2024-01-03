@@ -40,10 +40,14 @@
                         <bannedDependencies>
                             <includes>
                                 <include>ch.qos.logback:*:${logback.version}:jar:runtime</include>
-                                <include>com.google.code.gson:gson:*:jar:runtime</include>
                                 <include>org.eclipse.lsp4j:*:*:jar:runtime</include>
                                 <include>org.finos.legend.engine.ide.lsp:*:${project.version}:jar:runtime</include>
                                 <include>org.slf4j:slf4j-api:${slf4j.version}:jar:runtime</include>
+                                <!-- the below allowed dependencies are relocated on shaded jar to prevent conflicts when loading dynamically other jars-->
+                                <include>com.google.code.gson:gson:*:jar:runtime</include>
+                                <include>org.apache.maven.shared:maven-invoker:${maven.invoker.version}:jar:runtime</include>
+                                <include>org.apache.maven.shared:maven-shared-utils:${maven.shared.utils.version}:jar:runtime</include>
+                                <include>commons-io:commons-io:${commons-io.version}:jar:runtime</include>
                             </includes>
                         </bannedDependencies>
                     </rules>
@@ -78,6 +82,20 @@
                                     <mainClass>org.finos.legend.engine.ide.lsp.server.LegendLanguageServer</mainClass>
                                 </transformer>
                             </transformers>
+                            <relocations>
+                                <relocation>
+                                    <pattern>org.apache.maven.shared</pattern>
+                                    <shadedPattern>org.finos.legend.engine.ide.lsp.shaded.org.apache.maven.shared</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.apache.commons.io</pattern>
+                                    <shadedPattern>org.finos.legend.engine.ide.lsp.shaded.org.apache.commons.io</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.gson</pattern>
+                                    <shadedPattern>org.finos.legend.engine.ide.lsp.shaded.com.google.gson</shadedPattern>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>

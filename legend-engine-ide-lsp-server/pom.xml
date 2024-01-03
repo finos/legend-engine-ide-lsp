@@ -44,6 +44,9 @@
                                 <include>org.eclipse.lsp4j:*:${lsp4j.version}:jar:compile</include>
                                 <include>org.finos.legend.engine.ide.lsp:*:${project.version}:jar:compile</include>
                                 <include>org.slf4j:slf4j-api:${slf4j.version}:jar:compile</include>
+                                <include>org.apache.maven.shared:maven-invoker:${maven.invoker.version}:jar:compile</include>
+                                <include>org.apache.maven.shared:maven-shared-utils:${maven.shared.utils.version}:jar:compile</include>
+                                <include>commons-io:commons-io:${commons-io.version}:jar:compile</include>
                             </includes>
                         </bannedDependencies>
                     </rules>
@@ -64,6 +67,16 @@
         </dependency>
         <!-- LEGEND ENGINE LSP -->
 
+        <dependency>
+            <groupId>org.apache.maven.shared</groupId>
+            <artifactId>maven-invoker</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.maven.shared</groupId>
+            <artifactId>maven-shared-utils</artifactId>
+        </dependency>
+        
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>

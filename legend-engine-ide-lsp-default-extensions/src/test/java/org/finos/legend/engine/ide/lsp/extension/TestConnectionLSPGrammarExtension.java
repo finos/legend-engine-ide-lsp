@@ -27,7 +27,6 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
-import org.finos.legend.engine.plan.execution.stores.relational.connection.api.schema.model.DatabaseBuilderInput;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.junit.jupiter.api.Assertions;
@@ -94,7 +93,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
                 try
                 {
-                    DatabaseBuilderInput body = objectMapper.readValue(exchange.getRequestBody(), DatabaseBuilderInput.class);
+                    ConnectionLSPGrammarExtension.DatabaseBuilderInput body = objectMapper.readValue(exchange.getRequestBody(), ConnectionLSPGrammarExtension.DatabaseBuilderInput.class);
                     Assertions.assertEquals("model::MyStore", body.connection.element);
                     Assertions.assertEquals("model", body.targetDatabase._package);
                     Assertions.assertEquals("MyConnectionDatabase", body.targetDatabase.name);
