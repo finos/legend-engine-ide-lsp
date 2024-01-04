@@ -26,8 +26,29 @@
     <artifactId>legend-engine-ide-lsp-server-shaded</artifactId>
     <name>Legend Engine IDE LSP Server Shaded</name>
 
+    <properties>
+        <logback.version>1.4.14</logback.version>
+    </properties>
+
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <configuration>
+                    <rules>
+                        <bannedDependencies>
+                            <includes>
+                                <include>ch.qos.logback:*:${logback.version}:jar:runtime</include>
+                                <include>com.google.code.gson:gson:*:jar:runtime</include>
+                                <include>org.eclipse.lsp4j:*:*:jar:runtime</include>
+                                <include>org.finos.legend.engine.ide.lsp:*:${project.version}:jar:runtime</include>
+                                <include>org.slf4j:slf4j-api:${slf4j.version}:jar:runtime</include>
+                            </includes>
+                        </bannedDependencies>
+                    </rules>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -71,14 +92,9 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>org.finos.legend.engine.ide.lsp</groupId>
-            <artifactId>legend-engine-ide-lsp-default-extensions</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
             <scope>runtime</scope>
         </dependency>
     </dependencies>
