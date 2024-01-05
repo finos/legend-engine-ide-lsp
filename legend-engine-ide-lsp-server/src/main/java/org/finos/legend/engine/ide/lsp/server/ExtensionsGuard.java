@@ -17,7 +17,11 @@ package org.finos.legend.engine.ide.lsp.server;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ServiceLoader;
 import java.util.function.Supplier;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtensionLoader;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
@@ -56,8 +60,17 @@ class ExtensionsGuard
 
             Thread.currentThread().setContextClassLoader(classLoader);
 
-            this.grammars = LegendLSPGrammarLibrary.builder().withExtensions(this.providedGrammarExtensions).withExtensionsFrom(classLoader).build();
-            this.inlineDSLs = LegendLSPInlineDSLLibrary.builder().withExtensions(this.providedInlineDSLs).withExtensionsFrom(classLoader).build();
+            List<LegendLSPGrammarExtension> grammars = new ArrayList<>();
+            List<LegendLSPInlineDSLExtension> inlineDSL = new ArrayList<>();
+
+            ServiceLoader.load(LegendLSPExtensionLoader.class, classLoader).forEach(x ->
+            {
+                x.loadLegendLSPGrammarExtension(classLoader).forEach(grammars::add);
+                x.loadLegendLSPInlineDSLExtension(classLoader).forEach(inlineDSL::add);
+            });
+
+            this.grammars = LegendLSPGrammarLibrary.builder().withExtensions(this.providedGrammarExtensions).withExtensions(grammars).build();
+            this.inlineDSLs = LegendLSPInlineDSLLibrary.builder().withExtensions(this.providedInlineDSLs).withExtensions(inlineDSL).build();
 
             this.server.logInfoToClient("Grammar extensions available: " + String.join(", ", this.grammars.getExtensionNames()));
             this.server.logInfoToClient("Inline DSL extensions available: " + String.join(", ", this.inlineDSLs.getExtensionNames()));
