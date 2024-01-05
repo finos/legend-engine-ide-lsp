@@ -14,8 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
@@ -27,12 +27,11 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.grammar.from.connection.ConnectionParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
-import org.finos.legend.engine.plan.execution.stores.relational.connection.api.schema.model.DatabaseBuilderInput;
-import org.finos.legend.engine.plan.execution.stores.relational.connection.api.schema.model.DatabasePattern;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
 
 /**
  * Extension for the Connection grammar.
@@ -74,8 +73,8 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
         return GENERATE_DB_COMMAND_ID.equals(commandId) ?
-               generateDBFromConnection(section, entityPath) :
-               super.execute(section, entityPath, commandId, executableArgs);
+                generateDBFromConnection(section, entityPath) :
+                super.execute(section, entityPath, commandId, executableArgs);
     }
 
     private Iterable<? extends LegendExecutionResult> generateDBFromConnection(SectionState section, String entityPath)
@@ -111,7 +110,7 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
         builderInput.config.enrichTables = true;
         builderInput.config.enrichColumns = true;
         builderInput.config.enrichPrimaryKeys = true;
-        builderInput.config.patterns = Lists.mutable.of(new DatabasePatternFixedTypo("%", "%", "%", false, false));
+        builderInput.config.patterns = Lists.mutable.of(new DatabasePattern());
         builderInput.targetDatabase.name = packageableConn.name + "Database";
         builderInput.targetDatabase._package = packageableConn._package;
 
@@ -125,19 +124,38 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
         return Lists.immutable.withAll(keywords);
     }
 
-    // todo remove once this is released - https://github.com/finos/legend-engine/pull/2507
-    private class DatabasePatternFixedTypo extends DatabasePattern
+    static class DatabaseBuilderInput
     {
-        public DatabasePatternFixedTypo(String catalog, String schemaPattern, String tablePattern, boolean escapeSchemaPattern, boolean escapeTablePattern)
-        {
-            super(catalog, schemaPattern, tablePattern, escapeSchemaPattern, escapeTablePattern);
-        }
+        public DatabaseBuilderConfig config;
 
-        @Override
-        @JsonProperty("escapteTablePattern")
-        public boolean isEscapeTablePattern()
+        public RelationalDatabaseConnection connection;
+
+        public Database targetDatabase;
+
+        public DatabaseBuilderInput()
         {
-            return super.isEscapeTablePattern();
+            this.config = new DatabaseBuilderConfig();
+            this.targetDatabase = new Database();
         }
+    }
+
+    static class DatabasePattern
+    {
+        public final String catalog = "%";
+
+        public final String schemaPattern = "%";
+
+        public final String tablePattern = "%";
+    }
+
+    static class DatabaseBuilderConfig
+    {
+        public boolean enrichTables;
+
+        public boolean enrichPrimaryKeys;
+
+        public boolean enrichColumns;
+
+        public List<DatabasePattern> patterns = Lists.mutable.empty();
     }
 }

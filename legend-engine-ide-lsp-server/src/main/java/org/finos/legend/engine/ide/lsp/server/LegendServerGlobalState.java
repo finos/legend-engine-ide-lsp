@@ -397,6 +397,15 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             this.sectionStates = createSectionStates(this.sectionIndex);
         }
 
+        public void recreateSectionStates()
+        {
+            synchronized (this.lock)
+            {
+                this.globalState.clearProperties();
+                this.sectionStates = createSectionStates(this.sectionIndex);
+            }
+        }
+
         private List<LegendServerSectionState> createSectionStates(GrammarSectionIndex index)
         {
             if (index == null)

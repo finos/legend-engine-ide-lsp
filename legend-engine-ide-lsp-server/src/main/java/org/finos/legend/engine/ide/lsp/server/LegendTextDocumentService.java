@@ -14,6 +14,14 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.CodeLensParams;
 import org.eclipse.lsp4j.Command;
@@ -52,15 +60,6 @@ import org.finos.legend.engine.ide.lsp.text.TextTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 class LegendTextDocumentService implements TextDocumentService
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendTextDocumentService.class);
@@ -75,103 +74,115 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didOpen(DidOpenTextDocumentParams params)
     {
-        LegendServerGlobalState globalState = this.server.getGlobalState();
-        synchronized (globalState)
+        this.server.runPossiblyAsync(() ->
         {
-            this.server.checkReady();
-            TextDocumentItem doc = params.getTextDocument();
-            String uri = doc.getUri();
-            LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
-            LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
-            docState.open(doc.getVersion(), doc.getText());
-        }
+            LegendServerGlobalState globalState = this.server.getGlobalState();
+            synchronized (globalState)
+            {
+                this.server.checkReady();
+                TextDocumentItem doc = params.getTextDocument();
+                String uri = doc.getUri();
+                LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
+                LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
+                docState.open(doc.getVersion(), doc.getText());
+            }
+        });
     }
 
     @Override
     public void didChange(DidChangeTextDocumentParams params)
     {
-        LegendServerGlobalState globalState = this.server.getGlobalState();
-        synchronized (globalState)
+        this.server.runPossiblyAsync(() ->
         {
-            this.server.checkReady();
-            VersionedTextDocumentIdentifier doc = params.getTextDocument();
-            String uri = doc.getUri();
-            LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
+            LegendServerGlobalState globalState = this.server.getGlobalState();
+            synchronized (globalState)
+            {
+                this.server.checkReady();
+                VersionedTextDocumentIdentifier doc = params.getTextDocument();
+                String uri = doc.getUri();
+                LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
 
-            LegendServerDocumentState docState = globalState.getDocumentState(uri);
-            if (docState == null)
-            {
-                LOGGER.warn("Change to {} (version {}) before it was opened", uri, doc.getVersion());
-                docState = globalState.getOrCreateDocState(uri);
-            }
+                LegendServerDocumentState docState = globalState.getDocumentState(uri);
+                if (docState == null)
+                {
+                    LOGGER.warn("Change to {} (version {}) before it was opened", uri, doc.getVersion());
+                    docState = globalState.getOrCreateDocState(uri);
+                }
 
-            List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
-            if ((changes == null) || changes.isEmpty())
-            {
-                LOGGER.debug("No changes to {}", uri);
-                docState.change(doc.getVersion());
-                return;
-            }
+                List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
+                if ((changes == null) || changes.isEmpty())
+                {
+                    LOGGER.debug("No changes to {}", uri);
+                    docState.change(doc.getVersion());
+                    return;
+                }
 
-            if (changes.size() > 1)
-            {
-                String message = "Expected at most one change to " + uri + ", got " + changes.size() + "; processing only the first";
-                LOGGER.warn(message);
-                this.server.logWarningToClient(message);
+                if (changes.size() > 1)
+                {
+                    String message = "Expected at most one change to " + uri + ", got " + changes.size() + "; processing only the first";
+                    LOGGER.warn(message);
+                    this.server.logWarningToClient(message);
+                }
+                docState.change(doc.getVersion(), changes.get(0).getText());
+                try
+                {
+                    publishDiagnosticsToClient(docState);
+                }
+                catch (Exception e)
+                {
+                    LOGGER.error("Error publishing diagnostics for {} to client", uri, e);
+                    this.server.logErrorToClient("Error publishing diagnostics for " + uri + " to client: see server log for more details");
+                }
             }
-            docState.change(doc.getVersion(), changes.get(0).getText());
-            try
-            {
-                publishDiagnosticsToClient(docState);
-            }
-            catch (Exception e)
-            {
-                LOGGER.error("Error publishing diagnostics for {} to client", uri, e);
-                this.server.logErrorToClient("Error publishing diagnostics for " + uri + " to client: see server log for more details");
-            }
-        }
+        });
     }
 
     @Override
     public void didClose(DidCloseTextDocumentParams params)
     {
-        LegendServerGlobalState globalState = this.server.getGlobalState();
-        synchronized (globalState)
+        this.server.runPossiblyAsync(() ->
         {
-            this.server.checkReady();
-            String uri = params.getTextDocument().getUri();
-            LOGGER.debug("Closed {}", uri);
-            LegendServerDocumentState docState = globalState.getDocumentState(uri);
-            if (docState == null)
+            LegendServerGlobalState globalState = this.server.getGlobalState();
+            synchronized (globalState)
             {
-                LOGGER.warn("Closed notification for a document that is not open: {}", uri);
+                this.server.checkReady();
+                String uri = params.getTextDocument().getUri();
+                LOGGER.debug("Closed {}", uri);
+                LegendServerDocumentState docState = globalState.getDocumentState(uri);
+                if (docState == null)
+                {
+                    LOGGER.warn("Closed notification for a document that is not open: {}", uri);
+                }
+                else
+                {
+                    docState.close();
+                }
             }
-            else
-            {
-                docState.close();
-            }
-        }
+        });
     }
 
     @Override
     public void didSave(DidSaveTextDocumentParams params)
     {
-        LegendServerGlobalState globalState = this.server.getGlobalState();
-        synchronized (globalState)
+        this.server.runPossiblyAsync(() ->
         {
-            this.server.checkReady();
-            String uri = params.getTextDocument().getUri();
-            LOGGER.debug("Saved {}", uri);
-            LegendServerDocumentState docState = globalState.getDocumentState(uri);
-            if (docState == null)
+            LegendServerGlobalState globalState = this.server.getGlobalState();
+            synchronized (globalState)
             {
-                LOGGER.warn("Saved notification for a document that is not open: {}", uri);
+                this.server.checkReady();
+                String uri = params.getTextDocument().getUri();
+                LOGGER.debug("Saved {}", uri);
+                LegendServerDocumentState docState = globalState.getDocumentState(uri);
+                if (docState == null)
+                {
+                    LOGGER.warn("Saved notification for a document that is not open: {}", uri);
+                }
+                else
+                {
+                    docState.save(params.getText());
+                }
             }
-            else
-            {
-                docState.save(params.getText());
-            }
-        }
+        });
     }
 
     @Override

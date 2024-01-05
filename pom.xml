@@ -51,6 +51,10 @@
         <junit.version>5.10.1</junit.version>
         <slf4j.version>2.0.10</slf4j.version>
 
+        <commons-io.version>2.15.1</commons-io.version>
+        <maven.invoker.version>3.2.0</maven.invoker.version>
+        <maven.shared.utils.version>3.4.2</maven.shared.utils.version>
+
         <!-- Plugin versions -->
         <jacoco.maven.plugin.version>0.8.10</jacoco.maven.plugin.version>
         <maven.checkstyle.plugin.version>3.3.0</maven.checkstyle.plugin.version>
@@ -135,6 +139,9 @@
                     <configuration>
                         <trimStackTrace>false</trimStackTrace>
                         <reportsDirectory>${project.parent.basedir}/legend-engine-ide-lsp-test-reports/surefire-reports-aggregate</reportsDirectory>
+                        <systemPropertyVariables>
+                            <maven.home>${maven.home}</maven.home>
+                        </systemPropertyVariables>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -325,6 +332,30 @@
                 <version>${slf4j.version}</version>
             </dependency>
             <!-- LOGGING -->
+
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.maven.shared</groupId>
+                <artifactId>maven-invoker</artifactId>
+                <version>${maven.invoker.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>javax.inject</groupId>
+                        <artifactId>javax.inject</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.maven.shared</groupId>
+                <artifactId>maven-shared-utils</artifactId>
+                <version>${maven.shared.utils.version}</version>
+            </dependency>
 
             <!-- TEST -->
             <dependency>
