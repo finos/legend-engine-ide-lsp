@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import java.io.Closeable;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.function.Supplier;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
@@ -62,9 +64,9 @@ class ExtensionsGuard
 
             this.classLoader = classLoader;
         }
-        catch (Throwable e)
+        catch (IOException e)
         {
-            throw new RuntimeException(e);
+            throw new UncheckedIOException(e);
         }
         finally
         {

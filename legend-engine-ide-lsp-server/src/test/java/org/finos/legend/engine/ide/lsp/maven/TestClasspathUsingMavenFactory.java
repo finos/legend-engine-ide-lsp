@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.maven;
 
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
@@ -47,7 +48,7 @@ class TestClasspathUsingMavenFactory
                         "            <version>2.15.1</version>\n" +
                         "        </dependency>\n" +
                         "    </dependencies>\n" +
-                        "</project>");
+                        "</project>", StandardCharsets.UTF_8);
 
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
         DummyLanguageClient languageClient = new DummyLanguageClient();
@@ -56,8 +57,10 @@ class TestClasspathUsingMavenFactory
         ClassLoader classLoader = new ClasspathUsingMavenFactory(pom.toFile())
                 .create(server, Collections.emptyList()).get();
 
-        Assertions.assertInstanceOf(URLClassLoader.class, classLoader);
-        Assertions.assertEquals(1, ((URLClassLoader) classLoader).getURLs().length);
-        Assertions.assertTrue(((URLClassLoader) classLoader).getURLs()[0].toString().endsWith("commons-io-2.15.1.jar"));
+        try (URLClassLoader urlClassLoader = Assertions.assertInstanceOf(URLClassLoader.class, classLoader))
+        {
+            Assertions.assertEquals(1, urlClassLoader.getURLs().length);
+            Assertions.assertTrue(urlClassLoader.getURLs()[0].toString().endsWith("commons-io-2.15.1.jar"));
+        }
     }
 }
