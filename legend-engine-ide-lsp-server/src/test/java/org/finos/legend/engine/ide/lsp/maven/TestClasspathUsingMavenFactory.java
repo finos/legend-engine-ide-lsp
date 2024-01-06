@@ -54,8 +54,9 @@ class TestClasspathUsingMavenFactory
         DummyLanguageClient languageClient = new DummyLanguageClient();
         server.connect(languageClient);
 
-        ClassLoader classLoader = new ClasspathUsingMavenFactory(pom.toFile())
-                .create(server, Collections.emptyList()).get();
+        ClasspathUsingMavenFactory factory = new ClasspathUsingMavenFactory(pom.toFile());
+        factory.initialize(server);
+        ClassLoader classLoader = factory.create(Collections.emptyList()).get();
 
         try (URLClassLoader urlClassLoader = Assertions.assertInstanceOf(URLClassLoader.class, classLoader))
         {
