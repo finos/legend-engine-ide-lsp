@@ -47,6 +47,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
     private final Invoker invoker;
     private final File defaultPom;
     private final ByteArrayOutputStream outputStream;
+    private LegendLanguageServer server;
 
     public ClasspathUsingMavenFactory(File defaultPom)
     {
@@ -79,7 +80,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
             CommandLineUtils.StringStreamConsumer systemOut = new CommandLineUtils.StringStreamConsumer();
             CommandLineUtils.StringStreamConsumer systemErr = new CommandLineUtils.StringStreamConsumer();
-            int result = CommandLineUtils.executeCommandLine(commandline, systemOut, systemErr, 2);
+            int result = CommandLineUtils.executeCommandLine(commandline, systemOut, systemErr, 30);
 
             if (result == 0)
             {
@@ -103,9 +104,15 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
     }
 
     @Override
-    public CompletableFuture<ClassLoader> create(LegendLanguageServer server, Iterable<String> folders)
+    public void initialize(LegendLanguageServer server)
     {
-        server.logInfoToClient("Discovering classpath using maven");
+        this.server = server;
+    }
+
+    @Override
+    public CompletableFuture<ClassLoader> create(Iterable<String> folders)
+    {
+        this.server.logInfoToClient("Discovering classpath using maven");
 
         ConfigurationItem mavenExecPathConfig = new ConfigurationItem();
         mavenExecPathConfig.setSection("maven.executable.path");
@@ -114,15 +121,15 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         defaultPomConfig.setSection("legend.extensions.dependencies.pom");
 
         ConfigurationParams configurationParams = new ConfigurationParams(Arrays.asList(mavenExecPathConfig, defaultPomConfig));
-        return server.getLanguageClient().configuration(configurationParams).thenApply(x ->
+        return this.server.getLanguageClient().configuration(configurationParams).thenApply(x ->
         {
-            String mavenExecPath = server.extractValueAs(x.get(0), String.class);
-            String overrideDefaultPom = server.extractValueAs(x.get(1), String.class);
+            String mavenExecPath = this.server.extractValueAs(x.get(0), String.class);
+            String overrideDefaultPom = this.server.extractValueAs(x.get(1), String.class);
 
             try
             {
                 File maven = getMavenExecLocation(mavenExecPath);
-                server.logInfoToClient("Maven path: " + maven);
+                this.server.logInfoToClient("Maven path: " + maven);
 
                 File pom = (overrideDefaultPom == null || overrideDefaultPom.isEmpty()) ? this.defaultPom : new File(overrideDefaultPom);
 
@@ -131,7 +138,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 // todo otherwise, check if pom exists on root
                 // todo last, use a default pom...
 
-                server.logInfoToClient("Dependencies loaded from POM: " + pom);
+                this.server.logInfoToClient("Dependencies loaded from POM: " + pom);
 
                 File legendLspClasspath = File.createTempFile("legend_lsp_classpath", ".txt");
                 legendLspClasspath.deleteOnExit();
@@ -147,17 +154,20 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 request.setTimeoutInSeconds((int) TimeUnit.MINUTES.toSeconds(5));
                 request.setJavaHome(Optional.ofNullable(System.getProperty("java.home")).map(File::new).orElse(null));
                 request.setMavenHome(maven);
+                request.setShowErrors(true);
+                request.setShowVersion(true);
 
                 InvocationResult result = this.invoker.execute(request);
                 if (result.getExitCode() != 0)
                 {
                     String output = this.outputStream.toString(StandardCharsets.UTF_8);
-                    throw new IllegalStateException("Maven invoker failed\n\n" + output, result.getExecutionException());
+                    this.server.logErrorToClient("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
+                    return null;
                 }
 
                 String classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8);
 
-                server.logInfoToClient("Classpath used: " + classpath);
+                this.server.logInfoToClient("Classpath used: " + classpath);
 
                 String[] classpathEntries = classpath.split(";");
                 URL[] urls = new URL[classpathEntries.length];
@@ -170,13 +180,10 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 ClassLoader parentClassloader = ClasspathUsingMavenFactory.class.getClassLoader();
                 return new URLClassLoader("legend-lsp", urls, parentClassloader);
             }
-            catch (RuntimeException e)
-            {
-                throw e;
-            }
             catch (Exception e)
             {
-                throw new RuntimeException(e);
+                this.server.logErrorToClient("Unable to initialize Legend extensions - " + e.getMessage());
+                return null;
             }
             finally
             {

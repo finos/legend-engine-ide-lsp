@@ -17,6 +17,16 @@ package org.finos.legend.engine.ide.lsp.extension;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -67,19 +77,6 @@ import org.finos.legend.engine.testable.model.RunTestsTestableInput;
 import org.finos.legend.engine.testable.model.UniqueTestId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.function.Consumer;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
@@ -297,22 +294,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected LegendExecutionResult errorResult(Throwable t, String message, String entityPath)
     {
-        StringWriter writer = new StringWriter();
-        try (PrintWriter pw = new PrintWriter(writer))
-        {
-            t.printStackTrace(pw);
-        }
-        String resultMessage;
-        if (message != null)
-        {
-            resultMessage = message;
-        }
-        else
-        {
-            String tMessage = t.getMessage();
-            resultMessage = (tMessage == null) ? "Error" : tMessage;
-        }
-        return LegendExecutionResult.newResult(entityPath, Type.ERROR, resultMessage, writer.toString());
+        return LegendExecutionResult.errorResult(t, message, entityPath);
     }
 
     private UniqueTestId newTestId(String testSuiteId, String atomicTestId)

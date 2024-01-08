@@ -19,7 +19,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -186,6 +185,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     public void initialized(InitializedParams params)
     {
         checkReady();
+        this.classpathFactory.initialize(this);
         this.initializeExtensions();
         this.initializeEngineServerUrl();
     }
@@ -195,7 +195,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         ConfigurationItem urlConfig = new ConfigurationItem();
         urlConfig.setSection("legend.engine.server.url");
 
-        ConfigurationParams configurationParams = new ConfigurationParams(Arrays.asList(urlConfig));
+        ConfigurationParams configurationParams = new ConfigurationParams(Collections.singletonList(urlConfig));
         this.getLanguageClient().configuration(configurationParams).thenAccept(x ->
         {
             String url = this.extractValueAs(x.get(0), String.class);
@@ -221,7 +221,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         logInfoToClient("Initializing extensions");
 
-        this.classpathFactory.create(this, Collections.unmodifiableSet(this.rootFolders))
+        this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
                 .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
                 .thenRun(() ->
@@ -584,7 +584,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         logToClient(MessageType.Warning, message);
     }
 
-    void logErrorToClient(String message)
+    public void logErrorToClient(String message)
     {
         logToClient(MessageType.Error, message);
     }

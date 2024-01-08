@@ -19,5 +19,10 @@ import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
 public interface ClasspathFactory
 {
-    CompletableFuture<ClassLoader> create(LegendLanguageServer server, Iterable<String> folders);
+    default void initialize(LegendLanguageServer server)
+    {
+
+    }
+
+    CompletableFuture<ClassLoader> create(Iterable<String> folders);
 }

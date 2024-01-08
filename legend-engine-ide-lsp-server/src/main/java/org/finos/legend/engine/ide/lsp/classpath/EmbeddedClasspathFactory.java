@@ -19,10 +19,18 @@ import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
 public class EmbeddedClasspathFactory implements ClasspathFactory
 {
+    private LegendLanguageServer server;
+
     @Override
-    public CompletableFuture<ClassLoader> create(LegendLanguageServer server, Iterable<String> folders)
+    public void initialize(LegendLanguageServer server)
     {
-        server.logInfoToClient("Using app classpath");
+        this.server = server;
+    }
+
+    @Override
+    public CompletableFuture<ClassLoader> create(Iterable<String> folders)
+    {
+        this.server.logInfoToClient("Using app classpath");
         return CompletableFuture.completedFuture(EmbeddedClasspathFactory.class.getClassLoader());
     }
 }
