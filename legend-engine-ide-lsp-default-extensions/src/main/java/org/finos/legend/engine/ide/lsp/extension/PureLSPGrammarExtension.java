@@ -230,8 +230,22 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
             MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
             SingleExecutionPlan executionPlan = PlanGenerator.generateExecutionPlan(function, null, null, null, pureModel, null, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
-            PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
-            collectResults(entityPath, planExecutor.execute(executionPlan, Maps.mutable.empty(), "localUser", Lists.mutable.empty()), results::add);
+
+            if (this.isEngineServerConfigured())
+            {
+                LegendExecutionResult legendExecutionResult = this.postEngineServer("/executionPlan/v1/execution/executePlan?serializationFormat=DEFAULT", executionPlan, is ->
+                {
+                    ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
+                    is.transferTo(os);
+                    return LegendExecutionResult.newResult(entityPath, Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server");
+                });
+                results.add(legendExecutionResult);
+            }
+            else
+            {
+                PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
+                collectResults(entityPath, planExecutor.execute(executionPlan, Maps.mutable.empty(), "localUser", Lists.mutable.empty()), results::add);
+            }
         }
         catch (Exception e)
         {
