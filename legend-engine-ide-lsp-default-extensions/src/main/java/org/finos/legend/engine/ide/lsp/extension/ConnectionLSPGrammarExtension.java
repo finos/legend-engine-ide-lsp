@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextDa
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
 
 /**
  * Extension for the Connection grammar.
@@ -130,13 +130,21 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
 
         public RelationalDatabaseConnection connection;
 
-        public Database targetDatabase;
+        public TargetDatabase targetDatabase;
 
         public DatabaseBuilderInput()
         {
             this.config = new DatabaseBuilderConfig();
-            this.targetDatabase = new Database();
+            this.targetDatabase = new TargetDatabase();
         }
+    }
+
+    static class TargetDatabase
+    {
+        public String name;
+
+        @JsonProperty(value = "package")
+        public String _package;
     }
 
     static class DatabasePattern

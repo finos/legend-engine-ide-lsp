@@ -93,7 +93,12 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
                 try
                 {
-                    ConnectionLSPGrammarExtension.DatabaseBuilderInput body = objectMapper.readValue(exchange.getRequestBody(), ConnectionLSPGrammarExtension.DatabaseBuilderInput.class);
+                    String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    Assertions.assertEquals(
+                            "{\"config\":{\"enrichTables\":true,\"enrichPrimaryKeys\":true,\"enrichColumns\":true,\"patterns\":[{\"catalog\":\"%\",\"schemaPattern\":\"%\",\"tablePattern\":\"%\"}]},\"connection\":{\"_type\":\"RelationalDatabaseConnection\",\"element\":\"model::MyStore\",\"elementSourceInformation\":{\"sourceId\":\"\",\"startLine\":4,\"startColumn\":10,\"endLine\":4,\"endColumn\":23},\"sourceInformation\":{\"sourceId\":\"\",\"startLine\":2,\"startColumn\":1,\"endLine\":12,\"endColumn\":1},\"type\":\"H2\",\"timeZone\":null,\"quoteIdentifiers\":null,\"postProcessorWithParameter\":[],\"datasourceSpecification\":{\"_type\":\"h2Local\",\"sourceInformation\":{\"sourceId\":\"\",\"startLine\":6,\"startColumn\":3,\"endLine\":10,\"endColumn\":4},\"testDataSetupCsv\":null,\"testDataSetupSqls\":[]},\"authenticationStrategy\":{\"_type\":\"h2Default\",\"sourceInformation\":{\"sourceId\":\"\",\"startLine\":11,\"startColumn\":3,\"endLine\":11,\"endColumn\":18}},\"databaseType\":\"H2\",\"postProcessors\":null,\"localMode\":null},\"targetDatabase\":{\"name\":\"MyConnectionDatabase\",\"package\":\"model\"}}",
+                            requestBody
+                    );
+                    ConnectionLSPGrammarExtension.DatabaseBuilderInput body = objectMapper.readValue(requestBody, ConnectionLSPGrammarExtension.DatabaseBuilderInput.class);
                     Assertions.assertEquals("model::MyStore", body.connection.element);
                     Assertions.assertEquals("model", body.targetDatabase._package);
                     Assertions.assertEquals("MyConnectionDatabase", body.targetDatabase.name);
