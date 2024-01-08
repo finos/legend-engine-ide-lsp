@@ -233,7 +233,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
             if (this.isEngineServerConfigured())
             {
-                LegendExecutionResult legendExecutionResult = this.postEngineServer("/executionPlan/v1/execution/executePlan", executionPlan, is ->
+                LegendExecutionResult legendExecutionResult = this.postEngineServer("/executionPlan/v1/execution/executePlan?serializationFormat=DEFAULT", executionPlan, is ->
                 {
                     ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
                     is.transferTo(os);
