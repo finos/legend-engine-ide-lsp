@@ -102,6 +102,8 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                     "  }\n" +
                     "}\n");
 
+    private JsonMapper resultMapper;
+
     public ServiceLSPGrammarExtension()
     {
         super(ServiceParserExtension.NAME, new ServiceParserExtension());
