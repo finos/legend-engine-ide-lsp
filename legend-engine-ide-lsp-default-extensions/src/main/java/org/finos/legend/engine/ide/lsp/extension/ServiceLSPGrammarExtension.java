@@ -21,11 +21,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
@@ -68,6 +71,36 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
     private static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
     private static final String REGISTER_SERVICE_COMMAND_TITLE = "Register service";
+
+    private static final ImmutableList<String> FUNCTIONS_TRIGGERS = Lists.immutable.with("->");
+
+    private static final ImmutableList<String> FUNCTIONS_SUGGESTIONS = Lists.immutable.with(
+            "filter(x|",
+            "project([ x| $x.attribute1 ],['attribute1'])",
+            "groupBy([ x| $x.attribute1 ],[ agg(x|$x.attribute2, x|sum($x)) ])",
+            "distinct()",
+            "limit(10)");
+
+    private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
+            "Service package::path::serviceName\n" +
+                    "{\n" +
+                    "  pattern: 'uri/to/the/service/{parameter1}/{parameter2}';\n" +
+                    "  ownership: DID { identifier: '' }; // old/deprecated grammar: owners: [ 'kerberos1', 'kerberos2' ] \n" +
+                    "  documentation: 'This service returns data about foobar. Parameter1 represents ... and can take values ... . Parameter2 represents ... and can take values ... .';\n" +
+                    "  execution: Single\n" +
+                    "  {\n" +
+                    "    query:\n" +
+                    "    {\n" +
+                    "      parameter1: Date[1], parameter2: String[1] | \n" +
+                    "        package::path::className.all()\n" +
+                    "        ->filter(x| $x.attribute1 > 12)\n" +
+                    "        ->project([ x| $x.attribute1, x|$x.attribute3 ], ['id', 'multipliedValue'])\n" +
+                    "        ->filter(x| $x.getFloat('multipliedValue') > 0)\n" +
+                    "    mapping: package::path::mappingName;\n" +
+                    "    runtime: package::path::runtimeName;\n" +
+                    "    };\n" +
+                    "  }\n" +
+                    "}\n");
 
     private JsonMapper resultMapper;
 
@@ -265,5 +298,24 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             }
             return this.resultMapper;
         }
+    }
+
+    @Override
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    {
+        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        List<LegendCompletion> legendCompletions = Lists.mutable.empty();
+
+        if (codeLine.isEmpty())
+        {
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Service boilerplate", s.replaceAll("\n",System.lineSeparator())));
+        }
+
+        if (FUNCTIONS_TRIGGERS.anySatisfy(codeLine::endsWith))
+        {
+            FUNCTIONS_SUGGESTIONS.collect(s -> new LegendCompletion("Join definition", s), legendCompletions);
+        }
+
+        return legendCompletions;
     }
 }

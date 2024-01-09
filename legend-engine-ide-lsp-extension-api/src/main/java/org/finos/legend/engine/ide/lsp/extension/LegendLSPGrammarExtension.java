@@ -14,11 +14,13 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 
 import java.util.Collections;
 import java.util.Map;
@@ -55,6 +57,11 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
      * @return Legend diagnostics
      */
     default Iterable<? extends LegendDiagnostic> getDiagnostics(SectionState section)
+    {
+        return Collections.emptyList();
+    }
+
+    default Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         return Collections.emptyList();
     }
