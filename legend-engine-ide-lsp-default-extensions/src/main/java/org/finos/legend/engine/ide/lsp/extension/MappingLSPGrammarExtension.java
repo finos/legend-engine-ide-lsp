@@ -244,6 +244,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return Lists.immutable.withAll(keywords);
     }
 
+    @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
@@ -251,7 +252,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Mapping boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Mapping boilerplate", s.replaceAll("\n",System.lineSeparator())));
         }
 
         if (STORE_OBJECT_TRIGGERS.anySatisfy(codeLine::endsWith))

@@ -60,13 +60,14 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return KEYWORDS;
     }
 
+    @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Runtime boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Runtime boilerplate", s.replaceAll("\n",System.lineSeparator())));
         }
 
         return List.of();

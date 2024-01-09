@@ -430,10 +430,10 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams completionParams)
     {
-        return this.server.supplyPossiblyAsync(() -> Either.forLeft((List<CompletionItem>) getCompletions(completionParams)));
+        return this.server.supplyPossiblyAsync(() -> Either.forLeft(getCompletions(completionParams)));
     }
 
-    private Iterable<CompletionItem> getCompletions(CompletionParams completionParams)
+    private List<CompletionItem> getCompletions(CompletionParams completionParams)
     {
         String uri = completionParams.getTextDocument().getUri();
         int line = completionParams.getPosition().getLine();
@@ -458,7 +458,7 @@ class LegendTextDocumentService implements TextDocumentService
         }
     }
 
-    private Iterable<CompletionItem> getCompletionItems(Iterable<? extends LegendCompletion> legendCompletions)
+    private List<CompletionItem> getCompletionItems(Iterable<? extends LegendCompletion> legendCompletions)
     {
         List<CompletionItem> completions = new ArrayList<>();
 

@@ -52,13 +52,13 @@ public class LegendCompletion
         }
 
         LegendCompletion that = (LegendCompletion) other;
-        return this.suggestion.equals(that.suggestion) && ((this.description == null && that.description == null) || this.description.equals(that.description));
+        return this.suggestion.equals(that.suggestion) && Objects.equals(this.description, that.description);
     }
 
     @Override
     public int hashCode()
     {
-        return  17 * this.suggestion.hashCode() + (this.description == null ? 0 : this.description.hashCode());
+        return  17 * this.suggestion.hashCode() + Objects.hashCode(this.description);
     }
 
     @Override

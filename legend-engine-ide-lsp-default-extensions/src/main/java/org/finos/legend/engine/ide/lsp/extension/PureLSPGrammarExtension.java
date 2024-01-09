@@ -361,7 +361,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Pure boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Pure boilerplate", s.replaceAll("\n",System.lineSeparator())));
         }
 
         MutableList<LegendCompletion> legendCompletions = Lists.mutable.empty();

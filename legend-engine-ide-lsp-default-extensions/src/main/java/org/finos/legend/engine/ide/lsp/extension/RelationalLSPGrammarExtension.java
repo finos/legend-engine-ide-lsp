@@ -105,6 +105,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
             ")\n"
     );
 
+    @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
@@ -112,28 +113,28 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Relational boilerplate", s.replaceAll("\n",System.getProperty("line.separator"))));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Relational boilerplate", s.replaceAll("\n",System.lineSeparator())));
         }
 
         if (SCHEMA_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
-            SCHEMA_SUGGESTIONS.collect(s -> new LegendCompletion("Schema definition", s), legendCompletions);
+            SCHEMA_SUGGESTIONS.collect(s -> new LegendCompletion("Schema definition", s.replaceAll("\n", System.lineSeparator())), legendCompletions);
         }
         if (TABLE_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
-            TABLE_SUGGESTIONS.collect(s -> new LegendCompletion("Table definition", s), legendCompletions);
+            TABLE_SUGGESTIONS.collect(s -> new LegendCompletion("Table definition", s.replaceAll("\n", System.lineSeparator())), legendCompletions);
         }
         if (VIEW_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
-            VIEW_SUGGESTIONS.collect(s -> new LegendCompletion("View definition", s), legendCompletions);
+            VIEW_SUGGESTIONS.collect(s -> new LegendCompletion("View definition", s.replaceAll("\n", System.lineSeparator())), legendCompletions);
         }
         if (JOIN_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
-            JOIN_SUGGESTIONS.collect(s -> new LegendCompletion("Join definition", s), legendCompletions);
+            JOIN_SUGGESTIONS.collect(s -> new LegendCompletion("Join definition", s.replaceAll("\n", System.lineSeparator())), legendCompletions);
         }
         if (FILTER_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
-            FILTER_SUGGESTIONS.collect(s -> new LegendCompletion("Filter definition", s), legendCompletions);
+            FILTER_SUGGESTIONS.collect(s -> new LegendCompletion("Filter definition", s.replaceAll("\n", System.lineSeparator())), legendCompletions);
         }
         return legendCompletions;
     }
