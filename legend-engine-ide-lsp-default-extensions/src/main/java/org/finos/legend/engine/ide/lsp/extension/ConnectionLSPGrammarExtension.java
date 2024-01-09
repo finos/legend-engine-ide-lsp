@@ -14,11 +14,13 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ListIterable;
-import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.set.MutableSet;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
@@ -31,15 +33,12 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.Package
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
 
-import java.util.Collections;
-import java.util.Map;
-
 /**
  * Extension for the Connection grammar.
  */
 public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
-    private static final String GENERATE_DB_COMMAND_ID = "legend.service.generateDatabase";
+    static final String GENERATE_DB_COMMAND_ID = "legend.service.generateDatabase";
     private static final String GENERATE_DB_COMMAND_TITLE = "Generate database";
 
     private final ListIterable<String> keywords;
@@ -74,8 +73,8 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
         return GENERATE_DB_COMMAND_ID.equals(commandId) ?
-               generateDBFromConnection(section, entityPath) :
-               super.execute(section, entityPath, commandId, executableArgs);
+                generateDBFromConnection(section, entityPath) :
+                super.execute(section, entityPath, commandId, executableArgs);
     }
 
     private Iterable<? extends LegendExecutionResult> generateDBFromConnection(SectionState section, String entityPath)
@@ -97,33 +96,25 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
             return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Not a " + RelationalDatabaseConnection.class.getSimpleName() + ": " + entityPath));
         }
 
-        MutableMap<String, Object> input = buildInput(packageableConn);
+        DatabaseBuilderInput input = buildInput(packageableConn);
         PureModelContextData result = postEngineServer("/pure/v1/utilities/database/schemaExploration", input, PureModelContextData.class);
         String code = toGrammar(result);
         return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, code));
     }
 
-    private MutableMap<String, Object> buildInput(PackageableConnection packageableConn)
+    private DatabaseBuilderInput buildInput(PackageableConnection packageableConn)
     {
-        MutableMap<String, String> pattern = Maps.mutable.with(
-                "catalog", "%",
-                "schemaPattern", "%",
-                "tablePattern", "%"
-        );
-        MutableMap<String, Object> config = Maps.mutable.with(
-                "enrichTables", true,
-                "enrichPrimaryKeys", true,
-                "enrichColumns", true,
-                "patterns", Lists.fixedSize.with(pattern)
-        );
-        MutableMap<String, String> targetDB = Maps.mutable.with(
-                "name", packageableConn.name + "Database",
-                "package", packageableConn._package
-        );
-        return Maps.mutable.with(
-                "config", config,
-                "connection", packageableConn.connectionValue,
-                "targetDatabase", targetDB);
+        DatabaseBuilderInput builderInput = new DatabaseBuilderInput();
+
+        builderInput.connection = (RelationalDatabaseConnection) packageableConn.connectionValue;
+        builderInput.config.enrichTables = true;
+        builderInput.config.enrichColumns = true;
+        builderInput.config.enrichPrimaryKeys = true;
+        builderInput.config.patterns = Lists.mutable.of(new DatabasePattern());
+        builderInput.targetDatabase.name = packageableConn.name + "Database";
+        builderInput.targetDatabase._package = packageableConn._package;
+
+        return builderInput;
     }
 
     private static ListIterable<String> findKeywords()
@@ -131,5 +122,48 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
         MutableSet<String> keywords = Sets.mutable.empty();
         PureGrammarParserExtensionLoader.extensions().forEach(ext -> ext.getExtraConnectionParsers().forEach(p -> keywords.add(p.getConnectionTypeName())));
         return Lists.immutable.withAll(keywords);
+    }
+
+    static class DatabaseBuilderInput
+    {
+        public DatabaseBuilderConfig config;
+
+        public RelationalDatabaseConnection connection;
+
+        public TargetDatabase targetDatabase;
+
+        public DatabaseBuilderInput()
+        {
+            this.config = new DatabaseBuilderConfig();
+            this.targetDatabase = new TargetDatabase();
+        }
+    }
+
+    static class TargetDatabase
+    {
+        public String name;
+
+        @JsonProperty(value = "package")
+        public String _package;
+    }
+
+    static class DatabasePattern
+    {
+        public final String catalog = "%";
+
+        public final String schemaPattern = "%";
+
+        public final String tablePattern = "%";
+    }
+
+    static class DatabaseBuilderConfig
+    {
+        public boolean enrichTables;
+
+        public boolean enrichPrimaryKeys;
+
+        public boolean enrichColumns;
+
+        public List<DatabasePattern> patterns = Lists.mutable.empty();
     }
 }

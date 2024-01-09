@@ -14,6 +14,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension.execution;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -39,6 +41,26 @@ public class LegendExecutionResult
         this.type = Objects.requireNonNull(type, "type is required");
         this.message = Objects.requireNonNull(message, "message is required");
         this.logMessage = logMessage;
+    }
+
+    public static LegendExecutionResult errorResult(Throwable t, String message, String entityPath)
+    {
+        StringWriter writer = new StringWriter();
+        try (PrintWriter pw = new PrintWriter(writer))
+        {
+            t.printStackTrace(pw);
+        }
+        String resultMessage;
+        if (message != null)
+        {
+            resultMessage = message;
+        }
+        else
+        {
+            String tMessage = t.getMessage();
+            resultMessage = (tMessage == null) ? "Error" : tMessage;
+        }
+        return LegendExecutionResult.newResult(entityPath, Type.ERROR, resultMessage, writer.toString());
     }
 
     /**

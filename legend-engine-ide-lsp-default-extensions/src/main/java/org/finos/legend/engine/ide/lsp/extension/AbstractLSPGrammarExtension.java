@@ -17,10 +17,21 @@ package org.finos.legend.engine.ide.lsp.extension;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
@@ -66,17 +77,6 @@ import org.finos.legend.engine.testable.model.RunTestsTestableInput;
 import org.finos.legend.engine.testable.model.UniqueTestId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.UncheckedIOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.function.Consumer;
 
 abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
@@ -294,22 +294,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected LegendExecutionResult errorResult(Throwable t, String message, String entityPath)
     {
-        StringWriter writer = new StringWriter();
-        try (PrintWriter pw = new PrintWriter(writer))
-        {
-            t.printStackTrace(pw);
-        }
-        String resultMessage;
-        if (message != null)
-        {
-            resultMessage = message;
-        }
-        else
-        {
-            String tMessage = t.getMessage();
-            resultMessage = (tMessage == null) ? "Error" : tMessage;
-        }
-        return LegendExecutionResult.newResult(entityPath, Type.ERROR, resultMessage, writer.toString());
+        return LegendExecutionResult.errorResult(t, message, entityPath);
     }
 
     private UniqueTestId newTestId(String testSuiteId, String atomicTestId)
@@ -481,6 +466,11 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected PureModelContextData buildPureModelContextData(GlobalState globalState)
     {
+        return pureModelContextDataBuilder(globalState).build();
+    }
+
+    protected PureModelContextData.Builder pureModelContextDataBuilder(GlobalState globalState)
+    {
         PureModelContextData.Builder builder = PureModelContextData.newBuilder();
         globalState.forEachDocumentState(docState -> docState.forEachSectionState(secState ->
         {
@@ -494,7 +484,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 builder.addElements(parseResult.getElements());
             }
         }));
-        return builder.build();
+        return builder;
     }
 
     protected PureModelContextData deserializePMCD(String json)
@@ -529,7 +519,22 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         return this.engineServerClient.isServerConfigured();
     }
 
+    protected String postEngineServer(String path, Object payload)
+    {
+        return postEngineServer(path, payload, stream ->
+        {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            stream.transferTo(bytes);
+            return bytes.toString(StandardCharsets.UTF_8);
+        });
+    }
+
     protected <T> T postEngineServer(String path, Object payload, Class<T> responseType)
+    {
+        return postEngineServer(path, payload, stream -> getProtocolMapper().readValue(stream, responseType));
+    }
+
+    protected <T> T postEngineServer(String path, Object payload, ThrowingFunction<InputStream, T> consumer)
     {
         if (!isEngineServerConfigured())
         {
@@ -540,10 +545,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         {
             JsonMapper mapper = getProtocolMapper();
             String payloadJson = mapper.writeValueAsString(payload);
-            try (InputStream stream = this.engineServerClient.post(path, payloadJson))
-            {
-                return mapper.readValue(stream, responseType);
-            }
+            return this.engineServerClient.post(path, payloadJson, consumer);
         }
         catch (IOException e)
         {

@@ -14,6 +14,10 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.CreateFilesParams;
 import org.eclipse.lsp4j.DeleteFilesParams;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
@@ -31,11 +35,6 @@ import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 class LegendWorkspaceService implements WorkspaceService
 {
@@ -101,7 +100,17 @@ class LegendWorkspaceService implements WorkspaceService
                     {
                         throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
                     }
-                    Iterable<? extends LegendExecutionResult> results = extension.execute(sectionState, entity, id, executableArgs);
+                    Iterable<? extends LegendExecutionResult> results;
+
+                    try
+                    {
+                        results = extension.execute(sectionState, entity, id, executableArgs);
+                    }
+                    catch (Throwable e)
+                    {
+                        String message = "Command execution " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
+                        results = Collections.singletonList(LegendExecutionResult.errorResult(new Exception(message, e), message, entity));
+                    }
                     this.server.notifyResults(progressToken, results);
                     results.forEach(result ->
                     {
@@ -167,11 +176,17 @@ class LegendWorkspaceService implements WorkspaceService
     {
         this.server.checkReady();
         LOGGER.debug("Did change configuration: {}", params);
+        // todo maybe server can have a map of configs to consumers of these properties
+        // todo if default pom changes? this.server.initializeExtensions();
+        // todo this.server.setEngineServerUrl();
     }
 
     @Override
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params)
     {
+        // todo - retrigger classpath / classloader init?
+        // todo this.server.initializeExtensions();
+
         LOGGER.debug("Did change watched files: {}", params);
         this.server.runPossiblyAsync(() ->
         {
@@ -211,6 +226,8 @@ class LegendWorkspaceService implements WorkspaceService
     @Override
     public void didChangeWorkspaceFolders(DidChangeWorkspaceFoldersParams params)
     {
+        // todo - retrigger classpath / classloader init?
+
         LOGGER.debug("Did change workspace folders: {}", params);
         synchronized (this.server.getGlobalState())
         {
@@ -222,6 +239,8 @@ class LegendWorkspaceService implements WorkspaceService
     @Override
     public void didCreateFiles(CreateFilesParams params)
     {
+        // todo - retrigger classpath / classloader init?
+
         LOGGER.debug("Did create files: {}", params);
         this.server.runPossiblyAsync(() ->
         {

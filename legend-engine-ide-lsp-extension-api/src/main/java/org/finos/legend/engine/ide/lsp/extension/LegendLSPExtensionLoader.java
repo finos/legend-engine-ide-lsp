@@ -14,20 +14,12 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import java.io.InputStream;
-import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
-
-public interface LegendEngineServerClient
+/**
+ *  Loader for LSP grammar and DSL extensions
+ */
+public interface LegendLSPExtensionLoader
 {
-    default boolean isServerConfigured()
-    {
-        return false;
-    }
+    Iterable<LegendLSPGrammarExtension> loadLegendLSPGrammarExtension(ClassLoader classLoader);
 
-    default <T> T post(String path, String payload, ThrowingFunction<InputStream, T> consumer)
-    {
-        return post(path, payload, "application/json", consumer);
-    }
-
-    <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> consumer);
+    Iterable<LegendLSPInlineDSLExtension> loadLegendLSPInlineDSLExtension(ClassLoader classLoader);
 }

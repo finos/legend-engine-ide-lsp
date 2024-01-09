@@ -50,7 +50,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalLSPGrammarExtension.class);
 
-    private static final String GENERATE_MODEL_MAPPING_COMMAND_ID = "legend.service.generateModel";
+    static final String GENERATE_MODEL_MAPPING_COMMAND_ID = "legend.service.generateModel";
     private static final String GENERATE_MODEL_MAPPING_COMMAND_TITLE = "Generate sample models";
 
     private static final List<String> KEYWORDS = List.of("Database", "Schema", "Table", "View", "include", "Join", "Filter");

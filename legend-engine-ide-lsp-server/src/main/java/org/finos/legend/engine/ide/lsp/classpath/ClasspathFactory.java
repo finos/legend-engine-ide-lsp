@@ -1,4 +1,4 @@
-// Copyright 2023 Goldman Sachs
+// Copyright 2024 Goldman Sachs
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package org.finos.legend.engine.ide.lsp.extension;
+package org.finos.legend.engine.ide.lsp.classpath;
 
-import java.io.InputStream;
-import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
+import java.util.concurrent.CompletableFuture;
+import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
-public interface LegendEngineServerClient
+public interface ClasspathFactory
 {
-    default boolean isServerConfigured()
+    default void initialize(LegendLanguageServer server)
     {
-        return false;
+
     }
 
-    default <T> T post(String path, String payload, ThrowingFunction<InputStream, T> consumer)
-    {
-        return post(path, payload, "application/json", consumer);
-    }
-
-    <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> consumer);
+    CompletableFuture<ClassLoader> create(Iterable<String> folders);
 }

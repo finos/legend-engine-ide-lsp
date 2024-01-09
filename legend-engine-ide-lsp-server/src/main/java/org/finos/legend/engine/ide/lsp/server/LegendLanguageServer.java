@@ -17,7 +17,24 @@ package org.finos.legend.engine.ide.lsp.server;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.eclipse.lsp4j.CodeLensOptions;
+import org.eclipse.lsp4j.ConfigurationItem;
+import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
@@ -54,6 +71,9 @@ import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.eclipse.lsp4j.services.WorkspaceService;
+import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
+import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
+import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
@@ -61,21 +81,6 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 /**
  * {@link LanguageServer} implementation for Legend.
@@ -96,44 +101,149 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final LegendWorkspaceService workspaceService;
     private final AtomicReference<LanguageClient> languageClient = new AtomicReference<>(null);
     private final AtomicInteger state = new AtomicInteger(UNINITIALIZED);
-    private final boolean async;
+    private final ClasspathFactory classpathFactory;
+    private final ExtensionsGuard extensionGuard;
     private final Executor executor;
-    private final LegendLSPGrammarLibrary grammars;
-    private final LegendLSPInlineDSLLibrary inlineDSLs;
+    private final boolean async;
     private final LegendServerGlobalState globalState = new LegendServerGlobalState(this);
     private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new Gson();
-
     private final Set<String> rootFolders = new HashSet<>();
 
-    private LegendLanguageServer(boolean async, Executor executor, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
+    private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
         this.textDocumentService = new LegendTextDocumentService(this);
         this.workspaceService = new LegendWorkspaceService(this);
+        this.extensionGuard = new ExtensionsGuard(this, grammars, inlineDSLs);
         this.async = async;
         this.executor = executor;
-        this.grammars = grammars;
-        this.inlineDSLs = inlineDSLs;
+        this.classpathFactory = Objects.requireNonNull(classpathFactory, "missing classpath factory");
     }
 
     @Override
     public CompletableFuture<InitializeResult> initialize(InitializeParams initializeParams)
     {
         LOGGER.debug("Initialize server requested: {}", initializeParams);
-        int currentState = this.state.get();
-        if (currentState >= INITIALIZING)
+        if (this.state.get() >= INITIALIZING)
         {
-            String message = getCannotInitializeMessage(currentState);
+            String message = getCannotInitializeMessage(this.state.get());
             LOGGER.error(message);
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
-        return supplyPossiblyAsync_internal(() -> doInitialize(initializeParams));
+
+        LOGGER.info("Initializing server");
+        LOGGER.debug("Initialize params: {}", initializeParams);
+        if (!this.state.compareAndSet(UNINITIALIZED, INITIALIZING))
+        {
+            String message = getCannotInitializeMessage(this.state.get());
+            LOGGER.warn(message);
+            logWarningToClient(message);
+            throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
+        }
+
+        logInfoToClient("Initializing server");
+        List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
+
+        InitializeResult result = new InitializeResult(getServerCapabilities());
+        CompletableFuture<InitializeResult> completableFuture = CompletableFuture.completedFuture(result);
+        CompletableFuture<InitializeResult> initFuture = completableFuture;
+
+        if (workspaceFolders != null)
+        {
+            initFuture = setWorkspaceFolders(workspaceFolders).thenComposeAsync(x -> completableFuture);
+        }
+
+        if (!this.state.compareAndSet(INITIALIZING, INITIALIZED))
+        {
+            String message;
+            switch (this.state.get())
+            {
+                case SHUTTING_DOWN:
+                {
+                    message = "Server began shutting down during initialization";
+                    break;
+                }
+                case SHUT_DOWN:
+                {
+                    message = "Server shut down during initialization";
+                    break;
+                }
+                default:
+                {
+                    message = "Server entered unexpected state during initialization: " + getStateDescription(this.state.get());
+                }
+            }
+            LOGGER.warn(message);
+            logWarningToClient(message);
+            throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
+        }
+        LOGGER.info("Server initialized");
+        logInfoToClient("Server initialized");
+        return initFuture;
     }
 
     @Override
     public void initialized(InitializedParams params)
     {
         checkReady();
+        this.classpathFactory.initialize(this);
+        this.initializeExtensions();
+        this.initializeEngineServerUrl();
+    }
+
+    private void initializeEngineServerUrl()
+    {
+        ConfigurationItem urlConfig = new ConfigurationItem();
+        urlConfig.setSection("legend.engine.server.url");
+
+        ConfigurationParams configurationParams = new ConfigurationParams(Collections.singletonList(urlConfig));
+        this.getLanguageClient().configuration(configurationParams).thenAccept(x ->
+        {
+            String url = this.extractValueAs(x.get(0), String.class);
+            this.setEngineServerUrl(url);
+        });
+    }
+
+    private void setEngineServerUrl(String url)
+    {
+        if (url != null && !url.isEmpty())
+        {
+            this.logInfoToClient("Using server URL: " + url);
+            System.setProperty("legend.engine.server.url", url);
+        }
+        else
+        {
+            this.logWarningToClient("No server URL found.  Some functionality won't work");
+            System.clearProperty("legend.engine.server.url");
+        }
+    }
+
+    private void initializeExtensions()
+    {
+        logInfoToClient("Initializing extensions");
+
+        this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
+                .thenAccept(this.extensionGuard::initialize)
+                .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
+                .thenRun(() ->
+                {
+                    LanguageClient languageClient = this.getLanguageClient();
+                    languageClient.refreshCodeLenses();
+                    languageClient.refreshDiagnostics();
+                    languageClient.refreshInlayHints();
+                    languageClient.refreshInlineValues();
+                    languageClient.refreshSemanticTokens();
+                }).exceptionally(x ->
+                {
+                    LOGGER.error("Failed during post-initialization", x);
+                    logErrorToClient("Failed during post-initialization: " + x.getMessage());
+                    return null;
+                });
+    }
+
+    private void reprocessDocuments()
+    {
+        this.globalState.forEachDocumentState(x -> ((LegendServerGlobalState.LegendServerDocumentState) x).recreateSectionStates());
     }
 
     @Override
@@ -146,7 +256,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.warn("Server already {}", getStateDescription(currentState));
             return CompletableFuture.completedFuture(null);
         }
-        return supplyPossiblyAsync_internal(() ->
+        return this.supplyPossiblyAsync_internal(() ->
         {
             doShutdown();
             return null;
@@ -291,13 +401,35 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     <T> CompletableFuture<T> supplyPossiblyAsync(Supplier<T> supplier)
     {
         checkReady();
-        return supplyPossiblyAsync_internal(supplier);
+        return this.supplyPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(supplier));
     }
 
     CompletableFuture<?> runPossiblyAsync(Runnable runnable)
     {
         checkReady();
-        return runPossiblyAsync_internal(runnable);
+        return this.runPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(runnable));
+    }
+
+    private CompletableFuture<?> runPossiblyAsync_internal(Runnable work)
+    {
+        return this.supplyPossiblyAsync_internal(() ->
+                {
+                    work.run();
+                    return null;
+                }
+        );
+    }
+
+    private <T> CompletableFuture<T> supplyPossiblyAsync_internal(Supplier<T> work)
+    {
+        if (this.async)
+        {
+            return (this.executor == null) ?
+                    CompletableFuture.supplyAsync(work) :
+                    CompletableFuture.supplyAsync(work, this.executor);
+        }
+
+        return CompletableFuture.completedFuture(work.get());
     }
 
     LegendServerGlobalState getGlobalState()
@@ -306,7 +438,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return this.globalState;
     }
 
-    LanguageClient getLanguageClient()
+    public LanguageClient getLanguageClient()
     {
         checkNotShutDown();
         return this.languageClient.get();
@@ -315,22 +447,22 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     LegendLSPGrammarLibrary getGrammarLibrary()
     {
         checkNotShutDown();
-        return this.grammars;
+        return this.extensionGuard.getGrammars();
     }
 
     LegendLSPGrammarExtension getGrammarExtension(String grammar)
     {
         checkNotShutDown();
-        return this.grammars.getExtension(grammar);
+        return this.extensionGuard.getGrammars().getExtension(grammar);
     }
 
     LegendLSPInlineDSLLibrary getInlineDSLLibrary()
     {
         checkNotShutDown();
-        return this.inlineDSLs;
+        return this.extensionGuard.getInlineDSLs();
     }
 
-    void setWorkspaceFolders(Iterable<? extends WorkspaceFolder> folders)
+    CompletableFuture<?> setWorkspaceFolders(Iterable<? extends WorkspaceFolder> folders)
     {
         List<String> addedFolders;
         List<String> removedFolders;
@@ -347,7 +479,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             this.rootFolders.addAll(newRootFolders);
         }
 
-        updateStateWithFolderChanges(addedFolders, removedFolders);
+        return updateStateWithFolderChanges(addedFolders, removedFolders);
     }
 
     void addRootFolderFromFile(String fileUri)
@@ -374,7 +506,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             String message = "Added root folder: " + folderUri;
             LOGGER.info(message);
             logInfoToClient(message);
-            runPossiblyAsync_internal(() -> this.globalState.addFolder(folderUri));
+            this.runPossiblyAsync_internal(() -> this.globalState.addFolder(folderUri));
         }
     }
 
@@ -411,7 +543,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
     }
 
-    private void updateStateWithFolderChanges(List<String> addedFolders, List<String> removedFolders)
+    private CompletableFuture<?> updateStateWithFolderChanges(Collection<String> addedFolders, Collection<String> removedFolders)
     {
         if ((addedFolders != null) && !addedFolders.isEmpty())
         {
@@ -425,17 +557,17 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             LOGGER.info(message);
             logInfoToClient(message);
         }
-        runPossiblyAsync_internal(() ->
+        return this.runPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(() ->
         {
-           if (addedFolders != null)
-           {
-               addedFolders.forEach(this.globalState::addFolder);
-           }
-           if (removedFolders != null)
-           {
-               removedFolders.forEach(this.globalState::removeFolder);
-           }
-        });
+            if (addedFolders != null)
+            {
+                addedFolders.forEach(this.globalState::addFolder);
+            }
+            if (removedFolders != null)
+            {
+                removedFolders.forEach(this.globalState::removeFolder);
+            }
+        }));
     }
 
     void logToClient(String message)
@@ -443,7 +575,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         logToClient(MessageType.Log, message);
     }
 
-    void logInfoToClient(String message)
+    public void logInfoToClient(String message)
     {
         logToClient(MessageType.Info, message);
     }
@@ -453,7 +585,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         logToClient(MessageType.Warning, message);
     }
 
-    void logErrorToClient(String message)
+    public void logErrorToClient(String message)
     {
         logToClient(MessageType.Error, message);
     }
@@ -574,7 +706,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     }
 
     @SuppressWarnings("unchecked")
-    <T> T extractValueAs(Object value, Class<T> cls)
+    public <T> T extractValueAs(Object value, Class<T> cls)
     {
         if (value == null)
         {
@@ -615,87 +747,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             return this.gson.fromJson((String) value, (TypeToken<Map<K, V>>) TypeToken.getParameterized(Map.class, keyType, valueType));
         }
         return null;
-    }
-
-    private <T> CompletableFuture<T> supplyPossiblyAsync_internal(Supplier<T> supplier)
-    {
-        return this.async ?
-                supplyAsync(supplier) :
-                CompletableFuture.completedFuture(supplier.get());
-    }
-
-    private CompletableFuture<?> runPossiblyAsync_internal(Runnable runnable)
-    {
-        if (this.async)
-        {
-            return runAsync(runnable);
-        }
-
-        runnable.run();
-        return CompletableFuture.completedFuture(null);
-    }
-
-    private <T> CompletableFuture<T> supplyAsync(Supplier<T> supplier)
-    {
-        return (this.executor == null) ?
-                CompletableFuture.supplyAsync(supplier) :
-                CompletableFuture.supplyAsync(supplier, this.executor);
-    }
-
-    private CompletableFuture<?> runAsync(Runnable runnable)
-    {
-        return (this.executor == null) ?
-                CompletableFuture.runAsync(runnable) :
-                CompletableFuture.runAsync(runnable, this.executor);
-    }
-
-    private InitializeResult doInitialize(InitializeParams initializeParams)
-    {
-        LOGGER.info("Initializing server");
-        LOGGER.debug("Initialize params: {}", initializeParams);
-        if (!this.state.compareAndSet(UNINITIALIZED, INITIALIZING))
-        {
-            String message = getCannotInitializeMessage(this.state.get());
-            LOGGER.warn(message);
-            logWarningToClient(message);
-            throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
-        }
-
-        logInfoToClient("Initializing server");
-        List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
-        if (workspaceFolders != null)
-        {
-            setWorkspaceFolders(workspaceFolders);
-        }
-        InitializeResult result = new InitializeResult(getServerCapabilities());
-        if (!this.state.compareAndSet(INITIALIZING, INITIALIZED))
-        {
-            int currentState = this.state.get();
-            String message;
-            switch (currentState)
-            {
-                case SHUTTING_DOWN:
-                {
-                    message = "Server began shutting down during initialization";
-                    break;
-                }
-                case SHUT_DOWN:
-                {
-                    message = "Server shut down during initialization";
-                    break;
-                }
-                default:
-                {
-                    message = "Server entered unexpected state during initialization: " + getStateDescription(currentState);
-                }
-            }
-            LOGGER.warn(message);
-            logWarningToClient(message);
-            throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
-        }
-        LOGGER.info("Server initialized");
-        logInfoToClient("Server initialized");
-        return result;
     }
 
     private String getCannotInitializeMessage(int currentState)
@@ -874,6 +925,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         private boolean async = true;
         private Executor executor;
+        private ClasspathFactory classpathFactory = new EmbeddedClasspathFactory();
         private final LegendLSPGrammarLibrary.Builder grammars = LegendLSPGrammarLibrary.builder();
         private final LegendLSPInlineDSLLibrary.Builder inlineDSLs = LegendLSPInlineDSLLibrary.builder();
 
@@ -890,6 +942,12 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         {
             this.async = false;
             this.executor = null;
+            return this;
+        }
+
+        public Builder classpathFromMaven(File defaultPom)
+        {
+            this.classpathFactory = new ClasspathUsingMavenFactory(defaultPom);
             return this;
         }
 
@@ -1002,7 +1060,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
          */
         public LegendLanguageServer build()
         {
-            return new LegendLanguageServer(this.async, this.executor, this.grammars.build(), this.inlineDSLs.build());
+            return new LegendLanguageServer(this.async, this.executor, this.classpathFactory, this.grammars.build(), this.inlineDSLs.build());
         }
 
     }
@@ -1016,8 +1074,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         LOGGER.info("Launching server");
         LegendLanguageServer server = LegendLanguageServer.builder()
-                .withGrammars(ServiceLoader.load(LegendLSPGrammarExtension.class))
-                .withInlineDSLs(ServiceLoader.load(LegendLSPInlineDSLExtension.class))
+                .classpathFromMaven(new File(args[0]))
                 .build();
         Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());

@@ -20,6 +20,7 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -82,6 +83,12 @@ abstract class AbstractLSPGrammarExtensionTest
         SectionState inputSectionState = sectionStates.detect(s -> expectedDocId.equals(s.getDocumentState().getDocumentId()));
         MutableList<LegendDiagnostic> actual = Lists.mutable.<LegendDiagnostic>withAll(this.extension.getDiagnostics(inputSectionState)).sortThis(cmp);
         Assertions.assertEquals(expected, actual);
+    }
+
+    protected Iterable<? extends LegendExecutionResult> testCommand(String code, String entityPath, String command)
+    {
+        SectionState sectionState = newSectionState("", code);
+        return this.extension.execute(sectionState, entityPath, command, Maps.fixedSize.empty());
     }
 
     protected abstract LegendLSPGrammarExtension newExtension();

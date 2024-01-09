@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.eclipse.collections.api.factory.Lists;
@@ -105,10 +107,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
 
-    private static final JsonMapper JSON = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
-            .enable(SerializationFeature.INDENT_OUTPUT)
-            .serializationInclusion(JsonInclude.Include.NON_NULL)
-            .build());
+    private JsonMapper functionResultMapper;
 
     public PureLSPGrammarExtension()
     {
@@ -139,8 +138,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
         return EXEC_FUNCTION_ID.equals(commandId) ?
-                executeFunction(section, entityPath) :
-                super.execute(section, entityPath, commandId, executableArgs);
+               executeFunction(section, entityPath) :
+               super.execute(section, entityPath, commandId, executableArgs);
     }
 
     @Override
@@ -249,8 +248,22 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
             MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
             SingleExecutionPlan executionPlan = PlanGenerator.generateExecutionPlan(function, null, null, null, pureModel, null, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
-            PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
-            collectResults(entityPath, planExecutor.execute(executionPlan, Maps.mutable.empty(), "localUser", Lists.mutable.empty()), results::add);
+
+            if (this.isEngineServerConfigured())
+            {
+                LegendExecutionResult legendExecutionResult = this.postEngineServer("/executionPlan/v1/execution/executePlan?serializationFormat=DEFAULT", executionPlan, is ->
+                {
+                    ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
+                    is.transferTo(os);
+                    return LegendExecutionResult.newResult(entityPath, Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server");
+                });
+                results.add(legendExecutionResult);
+            }
+            else
+            {
+                PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
+                collectResults(entityPath, planExecutor.execute(executionPlan, Maps.mutable.empty(), "localUser", Lists.mutable.empty()), results::add);
+            }
         }
         catch (Exception e)
         {
@@ -314,13 +327,31 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
         try
         {
-            return JSON.writeValueAsString(value);
+            return getFunctionResultMapper().writeValueAsString(value);
         }
         catch (Exception e)
         {
             LOGGER.error("Error converting value to JSON", e);
         }
         return value.toString();
+    }
+
+    private JsonMapper getFunctionResultMapper()
+    {
+        synchronized (this)
+        {
+            if (this.functionResultMapper == null)
+            {
+                this.functionResultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+                        .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+                        .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+                        .enable(SerializationFeature.INDENT_OUTPUT)
+                        .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+                        .serializationInclusion(JsonInclude.Include.NON_NULL)
+                        .build());
+            }
+            return this.functionResultMapper;
+        }
     }
 
     @Override
@@ -346,4 +377,5 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
         return legendCompletions;
     }
+
 }
