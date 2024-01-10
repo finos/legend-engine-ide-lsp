@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import org.eclipse.lsp4j.CodeLensOptions;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
+import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
 import org.eclipse.lsp4j.FileOperationOptions;
@@ -781,6 +782,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Collections.singletonList(SemanticTokenTypes.Keyword), Collections.emptyList()), false, true));
         capabilities.setWorkspace(getWorkspaceServerCapabilities());
+        capabilities.setCompletionProvider(new CompletionOptions(false, List.of()));
         capabilities.setCodeLensProvider(getCodeLensOptions());
         capabilities.setExecuteCommandProvider(getExecuteCommandOptions());
         return capabilities;
