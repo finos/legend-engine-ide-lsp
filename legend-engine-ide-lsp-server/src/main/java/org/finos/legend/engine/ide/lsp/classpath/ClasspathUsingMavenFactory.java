@@ -69,7 +69,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 commandline.setExecutable("where");
                 commandline.addArguments("mvn");
             }
-            else if (Os.isFamily(Os.FAMILY_UNIX))
+            else if (Os.isFamily(Os.FAMILY_UNIX) || Os.isFamily(Os.FAMILY_MAC))
             {
                 commandline.setExecutable("which");
                 commandline.addArguments("mvn");
