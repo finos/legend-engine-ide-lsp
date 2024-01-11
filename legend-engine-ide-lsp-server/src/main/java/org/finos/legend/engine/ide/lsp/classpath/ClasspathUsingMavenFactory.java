@@ -36,6 +36,7 @@ import org.apache.maven.shared.invoker.InvokerLogger;
 import org.apache.maven.shared.invoker.PrintStreamHandler;
 import org.apache.maven.shared.invoker.PrintStreamLogger;
 import org.apache.maven.shared.utils.Os;
+import org.apache.maven.shared.utils.cli.CommandLineException;
 import org.apache.maven.shared.utils.cli.CommandLineUtils;
 import org.apache.maven.shared.utils.cli.Commandline;
 import org.eclipse.lsp4j.ConfigurationItem;
@@ -57,7 +58,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         this.invoker.setLogger(new PrintStreamLogger(new PrintStream(this.outputStream, true), InvokerLogger.INFO));
     }
 
-    private static File getMavenExecLocation(String mavenHome) throws Exception
+    private File getMavenExecLocation(String mavenHome)
     {
         if (mavenHome == null || mavenHome.isEmpty())
         {
@@ -75,26 +76,37 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             }
             else
             {
-                throw new UnsupportedOperationException("OS not supported");
+                this.server.logErrorToClient("Cannot find maven executable on unsupported OS");
+                return null;
             }
 
             CommandLineUtils.StringStreamConsumer systemOut = new CommandLineUtils.StringStreamConsumer();
             CommandLineUtils.StringStreamConsumer systemErr = new CommandLineUtils.StringStreamConsumer();
-            int result = CommandLineUtils.executeCommandLine(commandline, systemOut, systemErr, 30);
 
-            if (result == 0)
+            try
             {
-                String[] split = systemOut.getOutput().split(System.lineSeparator());
-                if (split.length == 0)
+                int result = CommandLineUtils.executeCommandLine(commandline, systemOut, systemErr, 30);
+
+                if (result == 0)
                 {
+                    String[] split = systemOut.getOutput().split(System.lineSeparator());
+                    if (split.length == 0)
+                    {
+                        return null;
+                    }
+                    String location = split[0];
+                    return new File(location);
+                }
+                else
+                {
+                    this.server.logErrorToClient("Error finding mvn executable: " + systemErr.getOutput());
                     return null;
                 }
-                String location = split[0];
-                return new File(location);
             }
-            else
+            catch (CommandLineException e)
             {
-                throw new RuntimeException("Error finding mvn executable: " + systemErr.getOutput());
+                this.server.logErrorToClient("Error running command " + commandline + ".  Cannot find location for maven.  Error: " + systemErr.getOutput());
+                return null;
             }
         }
         else
@@ -128,7 +140,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
             try
             {
-                File maven = getMavenExecLocation(mavenExecPath);
+                File maven = this.getMavenExecLocation(mavenExecPath);
                 this.server.logInfoToClient("Maven path: " + maven);
 
                 File pom = (overrideDefaultPom == null || overrideDefaultPom.isEmpty()) ? this.defaultPom : new File(overrideDefaultPom);
@@ -156,6 +168,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 request.setMavenHome(maven);
                 request.setShowErrors(true);
                 request.setShowVersion(true);
+                request.setUpdateSnapshots(true);
 
                 InvocationResult result = this.invoker.execute(request);
                 if (result.getExitCode() != 0)
