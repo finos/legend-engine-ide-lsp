@@ -204,7 +204,6 @@ public class TextInterval
 
     public boolean includes(TextPosition position)
     {
-        return (this.start.equals(position) || this.start.isBefore(position))
-            && (this.end.equals(position) || this.end.isAfter(position));
+        return !position.isBefore(this.start) && !position.isAfter(this.end);
     }
 }
