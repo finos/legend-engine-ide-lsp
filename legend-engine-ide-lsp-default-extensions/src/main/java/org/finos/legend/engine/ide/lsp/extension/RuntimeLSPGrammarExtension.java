@@ -14,15 +14,16 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.List;
+import java.util.Set;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.runtime.RuntimeParser;
-
-import java.util.List;
 
 /**
  * Extension for the Runtime grammar.
@@ -63,13 +64,14 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
-        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        String codeLine = section.getSection().getPrecedingText(location);
+        List<LegendCompletion> legendCompletions = Lists.mutable.empty();
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Runtime boilerplate", s.replaceAll("\n",System.lineSeparator())));
+            BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Runtime boilerplate", s.replaceAll("\n",System.lineSeparator())), legendCompletions);
         }
 
-        return List.of();
+        return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, Set.of("Runtime")));
     }
 }

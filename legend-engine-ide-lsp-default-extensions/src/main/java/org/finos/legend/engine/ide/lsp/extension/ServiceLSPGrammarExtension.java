@@ -20,9 +20,16 @@ import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -51,13 +58,6 @@ import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
 import org.finos.legend.engine.test.runner.service.ServiceTestRunner;
 import org.finos.legend.engine.test.runner.shared.TestResult;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
 
 /**
  * Extension for the Service grammar.
@@ -102,7 +102,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                     "  }\n" +
                     "}\n");
 
-    private JsonMapper resultMapper;
+    private volatile JsonMapper resultMapper;
 
     public ServiceLSPGrammarExtension()
     {
@@ -303,19 +303,19 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
-        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        String codeLine = section.getSection().getPrecedingText(location);
         List<LegendCompletion> legendCompletions = Lists.mutable.empty();
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Service boilerplate", s.replaceAll("\n",System.lineSeparator())));
+            BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Service boilerplate", s.replaceAll("\n", System.lineSeparator())), legendCompletions);
         }
 
         if (FUNCTIONS_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
-            FUNCTIONS_SUGGESTIONS.collect(s -> new LegendCompletion("Join definition", s), legendCompletions);
+            FUNCTIONS_SUGGESTIONS.collect(s -> new LegendCompletion("Function evaluation", s), legendCompletions);
         }
 
-        return legendCompletions;
+        return CompositeIterable.with(legendCompletions, (Iterable<LegendCompletion>) super.getCompletions(section, location));
     }
 }

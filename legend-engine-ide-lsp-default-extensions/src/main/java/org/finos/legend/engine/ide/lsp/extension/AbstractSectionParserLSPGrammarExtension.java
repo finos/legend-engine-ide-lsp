@@ -14,22 +14,40 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.Vocabulary;
+import org.antlr.v4.runtime.misc.IntervalSet;
 import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.ListIterate;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceInformation;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
+import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserUtility;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtension;
+import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.extension.SectionParser;
+import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
-
-import java.util.function.Consumer;
+import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 
 abstract class AbstractSectionParserLSPGrammarExtension extends AbstractLSPGrammarExtension
 {
     protected final SectionParser parser;
+    private final Set<String> grammarSupportedTypes;
 
     protected AbstractSectionParserLSPGrammarExtension(SectionParser parser)
     {
         this.parser = parser;
+        this.grammarSupportedTypes = this.getAntlrExpectedTokens();
     }
 
     protected AbstractSectionParserLSPGrammarExtension(String parserName, PureGrammarParserExtension extension)
@@ -57,5 +75,81 @@ abstract class AbstractSectionParserLSPGrammarExtension extends AbstractLSPGramm
             throw new RuntimeException("Cannot find parser: " + name);
         }
         return parser;
+    }
+
+    /**
+     * The default implementation set the types supported by the grammar as keywords
+     *
+     * @return Keywords on this section parser
+     */
+    @Override
+    public Iterable<? extends String> getKeywords()
+    {
+        return this.grammarSupportedTypes;
+    }
+
+    /**
+     * Implementation that defaults completion suggestions to grammar supported types
+     *
+     * @param section  grammar section state where completion triggered
+     * @param location location where completion triggered
+     * @return Completion suggestion contextual to section and location
+     */
+    @Override
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    {
+        return this.computeCompletionsForSupportedTypes(section, location, this.grammarSupportedTypes);
+    }
+
+    protected Set<String> getAntlrExpectedTokens()
+    {
+        Set<String> expectedTokens = Collections.emptySet();
+
+        try
+        {
+            this.parse(
+                    new SectionSourceCode(
+                            "~bad~code~bad~code~",
+                            this.parser.getSectionTypeName(),
+                            SourceInformation.getUnknownSourceInformation(),
+                            new ParseTreeWalkerSourceInformation.Builder("memory", 0, 0).build()
+                    ),
+                    x ->
+                    {
+                    },
+                    new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions())
+            );
+        }
+        catch (EngineException e)
+        {
+            if (e.getCause() instanceof RecognitionException)
+            {
+                RecognitionException re = (RecognitionException) e.getCause();
+                expectedTokens = getExpectedTokens(re);
+
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        return expectedTokens;
+    }
+
+    private Set<String> getExpectedTokens(RecognitionException re)
+    {
+        IntervalSet expectedTokensIds = re.getExpectedTokens();
+        Optional<Vocabulary> vocabulary = Optional.ofNullable(re.getRecognizer())
+                .map(Recognizer::getVocabulary);
+        return Optional.ofNullable(expectedTokensIds)
+                .map(IntervalSet::toList)
+                .<Set<String>>flatMap(x -> vocabulary.map(v -> ListIterate
+                        .collect(x, v::getLiteralName)
+                        .select(Objects::nonNull)
+                        .collect(t -> PureGrammarParserUtility.fromGrammarString(t, true))
+                        .toSet()
+                ))
+                .orElse(Collections.emptySet());
     }
 }

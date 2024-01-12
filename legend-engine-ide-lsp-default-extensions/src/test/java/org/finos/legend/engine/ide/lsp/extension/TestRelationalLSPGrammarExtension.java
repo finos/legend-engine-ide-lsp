@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Set;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.utility.Iterate;
@@ -29,7 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.finos.legend.engine.ide.lsp.extension.RelationalLSPGrammarExtension.GENERATE_MODEL_MAPPING_COMMAND_ID;
 
-public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
+public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<RelationalLSPGrammarExtension>
 {
     @Test
     public void testGetName()
@@ -272,8 +273,15 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 ")\n", result.getMessage());
     }
 
+    @Test
+    void testAntlrExpectedTokens()
+    {
+        Set<String> antlrExpectedTokens = this.extension.getAntlrExpectedTokens();
+        Assertions.assertEquals(Set.of("Database"), antlrExpectedTokens);
+    }
+
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected RelationalLSPGrammarExtension newExtension()
     {
         return new RelationalLSPGrammarExtension();
     }

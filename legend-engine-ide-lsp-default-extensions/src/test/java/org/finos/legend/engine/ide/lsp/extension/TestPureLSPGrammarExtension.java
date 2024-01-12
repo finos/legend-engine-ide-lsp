@@ -24,7 +24,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Test;
 
-public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
+public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<PureLSPGrammarExtension>
 {
     @Test
     public void testGetName()
@@ -212,7 +212,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected PureLSPGrammarExtension newExtension()
     {
         return new PureLSPGrammarExtension();
     }

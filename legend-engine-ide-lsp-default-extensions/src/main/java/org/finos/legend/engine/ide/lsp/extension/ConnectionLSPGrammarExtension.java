@@ -22,9 +22,11 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ListIterable;
 import org.eclipse.collections.api.set.MutableSet;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.connection.ConnectionParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
@@ -75,6 +77,12 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
         return GENERATE_DB_COMMAND_ID.equals(commandId) ?
                 generateDBFromConnection(section, entityPath) :
                 super.execute(section, entityPath, commandId, executableArgs);
+    }
+
+    @Override
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    {
+        return this.computeCompletionsForSupportedTypes(section, location, this.keywords.toSet());
     }
 
     private Iterable<? extends LegendExecutionResult> generateDBFromConnection(SectionState section, String entityPath)

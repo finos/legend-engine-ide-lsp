@@ -22,6 +22,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.CodeLensParams;
 import org.eclipse.lsp4j.Command;
@@ -438,6 +440,7 @@ class LegendTextDocumentService implements TextDocumentService
         String uri = completionParams.getTextDocument().getUri();
         int line = completionParams.getPosition().getLine();
         int character = completionParams.getPosition().getCharacter();
+        TextPosition location = TextPosition.newPosition(line, character);
         LegendServerGlobalState globalState = this.server.getGlobalState();
         synchronized (globalState)
         {
@@ -453,8 +456,31 @@ class LegendTextDocumentService implements TextDocumentService
                 LOGGER.warn("Cannot find section state for line {} of {}: cannot get completions", line, uri);
                 return Collections.emptyList();
             }
-            Iterable<? extends LegendCompletion> legendCompletions = sectionState.getExtension().getCompletions(sectionState, TextPosition.newPosition(line, character));
-            return getCompletionItems(legendCompletions);
+
+            List<LegendCompletion> completionItems = List.of();
+
+            String upToSuggestLocation = sectionState.getSection().getPrecedingText(location);
+            if (upToSuggestLocation.isEmpty() || upToSuggestLocation.startsWith("#"))
+            {
+                completionItems = this.server.getGrammarLibrary()
+                        .getGrammars()
+                        .stream()
+                        .map(x -> new LegendCompletion("Section - " + x, (upToSuggestLocation.isEmpty() || upToSuggestLocation.endsWith("#") ? "#".repeat(3 - upToSuggestLocation.length()) : "") + x))
+                        .collect(Collectors.toList());
+            }
+
+            if (sectionState.getExtension() != null)
+            {
+                Iterable<? extends LegendCompletion> legendCompletions = sectionState.getExtension().getCompletions(sectionState, location);
+
+                completionItems = Stream.concat(
+                        StreamSupport.stream(legendCompletions.spliterator(), false),
+                        completionItems.stream()
+                ).collect(Collectors.toList());
+            }
+
+
+            return getCompletionItems(completionItems);
         }
     }
 

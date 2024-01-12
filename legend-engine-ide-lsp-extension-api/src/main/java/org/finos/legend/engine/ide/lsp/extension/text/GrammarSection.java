@@ -98,6 +98,28 @@ public interface GrammarSection
     }
 
     /**
+     * Get a single line of the section.
+     * @param position the position used to figure out what line number to extract
+     * @return section line
+     * @throws IndexOutOfBoundsException if there is no such line in the section
+     */
+    default String getLine(TextPosition position)
+    {
+        return getLine(position.getLine());
+    }
+
+    /**
+     * Get a single line of the section up to the column on the given position.
+     * @param position the position used to figure out what line number to extract, and up to what column
+     * @return section text between start of line and up to the position column
+     * @throws IndexOutOfBoundsException if there is no such line in the section or column is bigger than line length
+     */
+    default String getPrecedingText(TextPosition position)
+    {
+        return getLine(position).substring(0, position.getColumn());
+    }
+
+    /**
      * Get a multi-line interval of the section text. Note that both {@code start} and {@code end} are inclusive.
      *
      * @param start start line (inclusive)

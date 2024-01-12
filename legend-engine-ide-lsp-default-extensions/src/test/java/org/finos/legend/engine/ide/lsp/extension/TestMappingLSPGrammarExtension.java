@@ -26,7 +26,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
+public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<MappingLSPGrammarExtension>
 {
     @Test
     public void testGetName()
@@ -115,7 +115,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected MappingLSPGrammarExtension newExtension()
     {
         return new MappingLSPGrammarExtension();
     }

@@ -163,7 +163,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 request.setOutputHandler(new PrintStreamHandler(new PrintStream(this.outputStream, true), true));
                 request.setGoals(Collections.singletonList("dependency:build-classpath"));
                 request.setProperties(properties);
-                request.setTimeoutInSeconds((int) TimeUnit.MINUTES.toSeconds(5));
+                request.setTimeoutInSeconds((int) TimeUnit.MINUTES.toSeconds(15));
                 request.setJavaHome(Optional.ofNullable(System.getProperty("java.home")).map(File::new).orElse(null));
                 request.setMavenHome(maven);
                 request.setShowErrors(true);

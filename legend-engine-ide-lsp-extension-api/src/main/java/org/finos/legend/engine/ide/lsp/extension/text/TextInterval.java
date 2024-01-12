@@ -201,4 +201,10 @@ public class TextInterval
     {
         return newInterval(TextPosition.newPosition(startLine, startColumn), TextPosition.newPosition(endLine, endColumn));
     }
+
+    public boolean includes(TextPosition position)
+    {
+        return (this.start.equals(position) || this.start.isBefore(position))
+            && (this.end.equals(position) || this.end.isAfter(position));
+    }
 }
