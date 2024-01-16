@@ -79,7 +79,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
 
-    private static final Set<String> TYPES = Set.of(
+    private static final Set<String> SUGGESTABLE_KEYWORDS = Set.of(
             "Association",
             "Class",
             "Enum",
@@ -89,7 +89,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     );
 
     private static final List<String> KEYWORDS = List.copyOf(PrimitiveUtilities.getPrimitiveTypeNames().toSet()
-            .withAll(TYPES)
+            .withAll(SUGGESTABLE_KEYWORDS)
             .with("let")
             .with("native function")
     );
@@ -378,7 +378,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute multiplicity", s), legendCompletions);
         }
 
-        return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, TYPES));
+        return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, SUGGESTABLE_KEYWORDS));
     }
 
 }
