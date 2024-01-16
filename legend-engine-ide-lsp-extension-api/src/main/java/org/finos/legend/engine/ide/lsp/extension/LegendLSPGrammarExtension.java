@@ -61,6 +61,12 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
         return Collections.emptyList();
     }
 
+    /**
+     * Return the completion suggestion base on section and location
+     * @param section grammar section state where completion triggered
+     * @param location location where completion triggered
+     * @return Completion suggestion contextual to section and location
+     */
     default Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         return Collections.emptyList();

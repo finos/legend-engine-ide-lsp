@@ -14,6 +14,10 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Comparator;
+import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -30,16 +34,11 @@ import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Comparator;
-import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-abstract class AbstractLSPGrammarExtensionTest
+abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtension>
 {
     private static final Pattern GRAMMAR_LINE_PATTERN = Pattern.compile("^\\h*+###(?<parser>\\w++)\\h*+$\\R?", Pattern.MULTILINE);
 
-    protected LegendLSPGrammarExtension extension = newExtension();
+    protected T extension = newExtension();
 
     @Test
     public void testDiagnostics_emptySection()
@@ -91,7 +90,7 @@ abstract class AbstractLSPGrammarExtensionTest
         return this.extension.execute(sectionState, entityPath, command, Maps.fixedSize.empty());
     }
 
-    protected abstract LegendLSPGrammarExtension newExtension();
+    protected abstract T newExtension();
 
     protected SectionState newSectionState(String docId, String text)
     {

@@ -25,8 +25,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -34,6 +37,7 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
@@ -44,6 +48,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.Warning;
@@ -388,7 +393,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         return sectionState.getProperty(PARSE_RESULT, () -> tryParse(sectionState));
     }
 
-    protected ParseResult tryParse(SectionState sectionState)
+    private ParseResult tryParse(SectionState sectionState)
     {
         MutableList<PackageableElement> elements = Lists.mutable.empty();
         try
@@ -627,6 +632,21 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
+    protected Optional<PackageableElement> getElementAtPosition(SectionState sectionState, TextPosition position)
+    {
+        ParseResult parseResult = this.getParseResult(sectionState);
+        return parseResult
+                .getElements()
+                .stream()
+                .filter(x -> this.isPositionIncludedOnSourceInfo(position, x.sourceInformation))
+                .findAny();
+    }
+
+    private boolean isPositionIncludedOnSourceInfo(TextPosition position, SourceInformation sourceInformation)
+    {
+        return isValidSourceInfo(sourceInformation) && toLocation(sourceInformation).includes(position);
+    }
+
     /**
      * Check if the source information is valid.
      *
@@ -651,6 +671,22 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected static TextInterval toLocation(SourceInformation sourceInfo)
     {
         return TextInterval.newInterval(sourceInfo.startLine - 1, sourceInfo.startColumn - 1, sourceInfo.endLine - 1, sourceInfo.endColumn - 1);
+    }
+
+    protected Iterable<LegendCompletion> computeCompletionsForSupportedTypes(SectionState section, TextPosition location, Set<String> supportedTypes)
+    {
+        String text = section.getSection().getLineUpTo(location);
+
+        if (text.isEmpty())
+        {
+            return supportedTypes.stream().map(x -> new LegendCompletion("New " + x, x)).collect(Collectors.toList());
+        }
+        else if (this.getElementAtPosition(section, location).isEmpty())
+        {
+            return supportedTypes.stream().filter(x -> x.startsWith(text)).map(x -> new LegendCompletion("New " + x, x)).collect(Collectors.toList());
+        }
+
+        return List.of();
     }
 
     private static LegendEngineServerClient newEngineServerClient()

@@ -35,7 +35,7 @@ import org.junit.jupiter.api.Test;
 import static org.finos.legend.engine.ide.lsp.extension.ConnectionLSPGrammarExtension.GENERATE_DB_COMMAND_ID;
 
 
-public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
+public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<ConnectionLSPGrammarExtension>
 {
     @Test
     public void testGetName()
@@ -148,7 +148,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
     }
 
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected ConnectionLSPGrammarExtension newExtension()
     {
         return new ConnectionLSPGrammarExtension();
     }

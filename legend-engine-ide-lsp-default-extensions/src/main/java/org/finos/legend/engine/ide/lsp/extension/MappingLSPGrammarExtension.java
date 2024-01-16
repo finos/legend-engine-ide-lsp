@@ -14,12 +14,20 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Set;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.ListIterable;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
@@ -43,13 +51,6 @@ import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.test.runner.mapping.MappingTestRunner;
 import org.finos.legend.engine.test.runner.mapping.RichMappingTestResult;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
-
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
 
 /**
  * Extension for the Mapping grammar.
@@ -206,7 +207,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                                 result.getException().printStackTrace(pw);
                             }
                         }
-                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name),Type.ERROR, writer.toString()));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.ERROR, writer.toString()));
                         break;
                     }
                     default:
@@ -247,19 +248,18 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
-        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        String codeLine = section.getSection().getLineUpTo(location);
         List<LegendCompletion> legendCompletions = Lists.mutable.empty();
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Mapping boilerplate", s.replaceAll("\n",System.lineSeparator())));
+            BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Mapping boilerplate", s.replaceAll("\n", System.lineSeparator())), legendCompletions);
         }
-
-        if (STORE_OBJECT_TRIGGERS.anySatisfy(codeLine::endsWith))
+        else if (STORE_OBJECT_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
             STORE_OBJECT_SUGGESTIONS.collect(s -> new LegendCompletion("Store object type", s), legendCompletions);
         }
 
-        return legendCompletions;
+        return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, Set.of("Mapping")));
     }
 }

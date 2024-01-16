@@ -78,6 +78,32 @@ public class TestTextInterval
         assertNotSubsumes(TextInterval.newInterval(1, 10, 5, 17), TextInterval.newInterval(0, 0, 1, 9), true);
     }
 
+    @Test
+    void includesPosition()
+    {
+        TextInterval textInterval = TextInterval.newInterval(2, 10, 5, 17);
+        Assertions.assertFalse(textInterval.includes(TextPosition.newPosition(1, 10)),
+                "should not be included as line is before start line");
+
+        Assertions.assertFalse(textInterval.includes(TextPosition.newPosition(2, 9)),
+                "should not be included as column is before start column");
+
+        Assertions.assertTrue(textInterval.includes(TextPosition.newPosition(2, 10)),
+                "should be included as position is equal as start of interval");
+
+        Assertions.assertTrue(textInterval.includes(TextPosition.newPosition(3, 15)),
+                "should be included as position is after start and before end of interval");
+
+        Assertions.assertTrue(textInterval.includes(TextPosition.newPosition(5, 17)),
+                "should be included as position is equal as end of interval");
+
+        Assertions.assertFalse(textInterval.includes(TextPosition.newPosition(5, 18)),
+                "should not be included as column is after interval end column");
+
+        Assertions.assertFalse(textInterval.includes(TextPosition.newPosition(6, 17)),
+                "should not be included as column is after interval end line");
+    }
+
     private void assertSubsumes(TextInterval interval1, TextInterval interval2)
     {
         assertSubsumes(interval1, interval2, false);

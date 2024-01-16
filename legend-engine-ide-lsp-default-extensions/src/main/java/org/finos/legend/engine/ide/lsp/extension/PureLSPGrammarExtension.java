@@ -19,10 +19,21 @@ import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.temporal.TemporalAccessor;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.function.Consumer;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
@@ -61,16 +72,6 @@ import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.temporal.TemporalAccessor;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.function.Consumer;
-
 /**
  * Extension for the Pure grammar.
  */
@@ -78,15 +79,19 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
 
+    private static final Set<String> SUGGESTABLE_KEYWORDS = Set.of(
+            "Association",
+            "Class",
+            "Enum",
+            "function",
+            "import",
+            "Profile"
+    );
+
     private static final List<String> KEYWORDS = List.copyOf(PrimitiveUtilities.getPrimitiveTypeNames().toSet()
-            .with("Association")
-            .with("Class")
-            .with("Enum")
-            .with("function")
-            .with("import")
+            .withAll(SUGGESTABLE_KEYWORDS)
             .with("let")
             .with("native function")
-            .with("Profile")
     );
 
     private static final ImmutableList<String> ATTRIBUTE_TYPES = PrimitiveUtilities.getPrimitiveTypeNames().collect(n -> n + " ", Lists.mutable.empty()).toImmutable();
@@ -138,8 +143,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
         return EXEC_FUNCTION_ID.equals(commandId) ?
-               executeFunction(section, entityPath) :
-               super.execute(section, entityPath, commandId, executableArgs);
+                executeFunction(section, entityPath) :
+                super.execute(section, entityPath, commandId, executableArgs);
     }
 
     @Override
@@ -357,25 +362,23 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
-        String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+        MutableList<LegendCompletion> legendCompletions = Lists.mutable.empty();
+        String codeLine = section.getSection().getLineUpTo(location);
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Pure boilerplate", s.replaceAll("\n",System.lineSeparator())));
+            BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Pure boilerplate", s.replaceAll("\n", System.lineSeparator())), legendCompletions);
         }
-
-        MutableList<LegendCompletion> legendCompletions = Lists.mutable.empty();
-
-        if (ATTRIBUTE_TYPES_TRIGGERS.anySatisfy(codeLine::endsWith))
+        else if (ATTRIBUTE_TYPES_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
             ATTRIBUTE_TYPES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute type", s), legendCompletions);
         }
-        if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.anySatisfy(codeLine::endsWith))
+        else if (ATTRIBUTE_MULTIPLICITIES_TRIGGERS.anySatisfy(codeLine::endsWith))
         {
             ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute multiplicity", s), legendCompletions);
         }
 
-        return legendCompletions;
+        return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, SUGGESTABLE_KEYWORDS));
     }
 
 }
