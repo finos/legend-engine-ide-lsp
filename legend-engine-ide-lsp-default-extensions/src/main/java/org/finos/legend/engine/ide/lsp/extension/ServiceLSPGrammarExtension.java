@@ -102,7 +102,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                     "  }\n" +
                     "}\n");
 
-    private volatile JsonMapper resultMapper;
+    private JsonMapper resultMapper;
 
     public ServiceLSPGrammarExtension()
     {
