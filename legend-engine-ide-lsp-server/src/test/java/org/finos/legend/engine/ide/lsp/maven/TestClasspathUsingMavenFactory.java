@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
@@ -56,7 +57,7 @@ class TestClasspathUsingMavenFactory
 
         ClasspathUsingMavenFactory factory = new ClasspathUsingMavenFactory(pom.toFile());
         factory.initialize(server);
-        ClassLoader classLoader = factory.create(Collections.emptyList()).get();
+        ClassLoader classLoader = factory.create(Collections.emptyList(), Either.forLeft("")).get();
 
         try (URLClassLoader urlClassLoader = Assertions.assertInstanceOf(URLClassLoader.class, classLoader))
         {

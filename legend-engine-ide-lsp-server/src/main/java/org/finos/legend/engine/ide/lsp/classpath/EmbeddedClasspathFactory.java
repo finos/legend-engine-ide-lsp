@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.classpath;
 
 import java.util.concurrent.CompletableFuture;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
 public class EmbeddedClasspathFactory implements ClasspathFactory
@@ -28,7 +29,7 @@ public class EmbeddedClasspathFactory implements ClasspathFactory
     }
 
     @Override
-    public CompletableFuture<ClassLoader> create(Iterable<String> folders)
+    public CompletableFuture<ClassLoader> create(Iterable<String> folders, Either<String, Integer> progressToken)
     {
         this.server.logInfoToClient("Using app classpath");
         return CompletableFuture.completedFuture(EmbeddedClasspathFactory.class.getClassLoader());

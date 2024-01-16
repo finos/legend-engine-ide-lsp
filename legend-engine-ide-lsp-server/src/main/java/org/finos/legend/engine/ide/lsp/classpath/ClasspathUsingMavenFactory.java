@@ -41,6 +41,7 @@ import org.apache.maven.shared.utils.cli.CommandLineUtils;
 import org.apache.maven.shared.utils.cli.Commandline;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
 public class ClasspathUsingMavenFactory implements ClasspathFactory
@@ -122,8 +123,10 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
     }
 
     @Override
-    public CompletableFuture<ClassLoader> create(Iterable<String> folders)
+    public CompletableFuture<ClassLoader> create(Iterable<String> folders, Either<String, Integer> progressToken)
     {
+        this.server.notifyProgress(progressToken, "Preparing for maven...");
+
         this.server.logInfoToClient("Discovering classpath using maven");
 
         ConfigurationItem mavenExecPathConfig = new ConfigurationItem();
@@ -151,6 +154,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 // todo last, use a default pom...
 
                 this.server.logInfoToClient("Dependencies loaded from POM: " + pom);
+                this.server.notifyProgress(progressToken, "Loading dependencies using maven...");
 
                 File legendLspClasspath = File.createTempFile("legend_lsp_classpath", ".txt");
                 legendLspClasspath.deleteOnExit();
@@ -160,7 +164,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
                 InvocationRequest request = new DefaultInvocationRequest();
                 request.setPomFile(pom);
-                request.setOutputHandler(new PrintStreamHandler(new PrintStream(this.outputStream, true), true));
+                request.setOutputHandler(new ClasspathUsingMavenOutputHandler(progressToken, new PrintStream(this.outputStream, true), true));
                 request.setGoals(Collections.singletonList("dependency:build-classpath"));
                 request.setProperties(properties);
                 request.setTimeoutInSeconds((int) TimeUnit.MINUTES.toSeconds(15));
@@ -181,6 +185,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 String classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8);
 
                 this.server.logInfoToClient("Classpath used: " + classpath);
+                this.server.notifyProgress(progressToken, "Maven finished and classpath is ready...");
 
                 String[] classpathEntries = classpath.split(";");
                 URL[] urls = new URL[classpathEntries.length];
@@ -203,5 +208,23 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 this.outputStream.reset();
             }
         });
+    }
+
+    private class ClasspathUsingMavenOutputHandler extends PrintStreamHandler
+    {
+        private final Either<String, Integer> token;
+
+        public ClasspathUsingMavenOutputHandler(Either<String, Integer> token, PrintStream out, boolean alwaysFlush)
+        {
+            super(out, alwaysFlush);
+            this.token = token;
+        }
+
+        @Override
+        public void consumeLine(String line)
+        {
+            super.consumeLine(line);
+            ClasspathUsingMavenFactory.this.server.notifyProgress(token, line);
+        }
     }
 }
