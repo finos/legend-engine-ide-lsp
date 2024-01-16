@@ -516,7 +516,7 @@ class LegendTextDocumentService implements TextDocumentService
             }
             extension.getCommands(sectionState).forEach(c ->
             {
-                Command command = new Command(c.getTitle(), LegendLanguageServer.LEGEND_COMMAND_ID, List.of(uri, sectionState.getSectionNumber(), c.getEntity(), c.getId(), c.getExecutableArgs()));
+                Command command = new Command(c.getTitle(), c.getInputParameters() != null && !c.getInputParameters().isEmpty() ? LegendLanguageServer.LEGEND_COMMAND_WITH_INPUTS_ID : LegendLanguageServer.LEGEND_COMMAND_ID, List.of(uri, sectionState.getSectionNumber(), c.getEntity(), c.getId(), c.getExecutableArgs(), c.getInputParameters()));
                 codeLenses.add(new CodeLens(toRange(c.getLocation().getTextInterval()), command, null));
             });
         });

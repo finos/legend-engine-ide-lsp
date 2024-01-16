@@ -83,6 +83,7 @@ class LegendWorkspaceService implements WorkspaceService
                 String entity = this.server.extractValueAs(args.get(2), String.class);
                 String id = this.server.extractValueAs(args.get(3), String.class);
                 Map<String, String> executableArgs = ((args.size() < 5) || (args.get(4) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(4), String.class, String.class);
+                Map<String, Object> inputParameters = ((args.size() < 6) || (args.get(5) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(5), String.class, Object.class);
                 this.server.notifyBegin(progressToken, entity);
 
                 LegendServerGlobalState globalState = this.server.getGlobalState();
@@ -102,7 +103,7 @@ class LegendWorkspaceService implements WorkspaceService
 
                 try
                 {
-                    results = extension.execute(sectionState, entity, id, executableArgs);
+                    results = inputParameters.isEmpty() ? extension.execute(sectionState, entity, id, executableArgs) : extension.execute(sectionState, entity, id, executableArgs, inputParameters);
                 }
                 catch (Throwable e)
                 {

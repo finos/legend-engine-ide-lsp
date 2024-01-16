@@ -29,21 +29,25 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
+
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
+import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
+import org.finos.legend.engine.plan.execution.nodes.helpers.ExecuteNodeParameterTransformationHelper;
 import org.finos.legend.engine.plan.execution.result.ConstantResult;
 import org.finos.legend.engine.plan.execution.result.ErrorResult;
 import org.finos.legend.engine.plan.execution.result.StreamingResult;
@@ -62,6 +66,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Property;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.QualifiedProperty;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
@@ -110,6 +115,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                     "}\n");
 
     private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
+    private static final String EXEC_FUNCTION_WITH_PARAMETERS_ID = "legend.pure.executeFunctionWithParameters";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
 
     private final JsonMapper functionResultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
@@ -142,15 +148,65 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             {
                 consumer.accept(EXEC_FUNCTION_ID, EXEC_FUNCTION_TITLE, function.sourceInformation);
             }
+            else
+            {
+                Map<String, LegendInputParamter> parameters = Maps.mutable.empty();
+                function.parameters.forEach(p ->
+                {
+                    CompileResult compileResult = getCompileResult(sectionState);
+                    PackageableElement paramElement = compileResult.getPureModelContextData().getElements().stream().filter(e -> e.getPath().equals(p._class)).findFirst().orElse(null);
+                    if (paramElement != null && paramElement instanceof Enumeration)
+                    {
+                        parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p, paramElement));
+                    }
+                    else
+                    {
+                        parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p));
+                    }
+                });
+                consumer.accept(EXEC_FUNCTION_WITH_PARAMETERS_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, Collections.emptyMap(), parameters);
+            }
+        }
+    }
+
+    private static class LegendFunctionInputParameter extends LegendInputParamter
+    {
+        private Variable variable;
+        private PackageableElement element;
+
+        private LegendFunctionInputParameter(Variable variable, PackageableElement element)
+        {
+            this.variable = variable;
+            this.element = element;
+        }
+
+        public Variable getVariable()
+        {
+            return this.variable;
+        }
+
+        public PackageableElement getElement()
+        {
+            return this.element;
+        }
+
+        public static LegendFunctionInputParameter newFunctionParameter(Variable variable)
+        {
+            return newFunctionParameter(variable, null);
+        }
+
+        public static LegendFunctionInputParameter newFunctionParameter(Variable variable, PackageableElement element)
+        {
+            return new LegendFunctionInputParameter(variable, element);
         }
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
-        return EXEC_FUNCTION_ID.equals(commandId) ?
-                executeFunction(section, entityPath) :
-                super.execute(section, entityPath, commandId, executableArgs);
+        return EXEC_FUNCTION_ID.equals(commandId) || EXEC_FUNCTION_WITH_PARAMETERS_ID.equals(commandId) ?
+               executeFunction(section, entityPath, inputParameters) :
+               super.execute(section, entityPath, commandId, executableArgs, inputParameters);
     }
 
     @Override
@@ -243,7 +299,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 .build();
     }
 
-    private Iterable<? extends LegendExecutionResult> executeFunction(SectionState section, String entityPath)
+    private Iterable<? extends LegendExecutionResult> executeFunction(SectionState section, String entityPath, Map<String, Object> inputParameters)
     {
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
@@ -273,7 +329,9 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             else
             {
                 PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
-                collectResults(entityPath, planExecutor.execute(executionPlan, Maps.mutable.empty(), "localUser", Lists.mutable.empty()), results::add);
+                MutableMap<String, org.finos.legend.engine.plan.execution.result.Result> parametersToConstantResult = Maps.mutable.empty();
+                ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
+                collectResults(entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Lists.mutable.empty()), results::add);
             }
         }
         catch (Exception e)
