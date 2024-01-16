@@ -459,7 +459,7 @@ class LegendTextDocumentService implements TextDocumentService
 
             List<LegendCompletion> completionItems = List.of();
 
-            String upToSuggestLocation = sectionState.getSection().getPrecedingText(location);
+            String upToSuggestLocation = sectionState.getSection().getLineUpTo(location);
             if (upToSuggestLocation.isEmpty() || upToSuggestLocation.startsWith("#"))
             {
                 completionItems = this.server.getGrammarLibrary()

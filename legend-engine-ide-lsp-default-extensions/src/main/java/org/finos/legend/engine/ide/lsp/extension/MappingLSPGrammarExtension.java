@@ -248,7 +248,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
-        String codeLine = section.getSection().getPrecedingText(location);
+        String codeLine = section.getSection().getLineUpTo(location);
         List<LegendCompletion> legendCompletions = Lists.mutable.empty();
 
         if (codeLine.isEmpty())

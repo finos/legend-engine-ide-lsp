@@ -675,7 +675,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected Iterable<LegendCompletion> computeCompletionsForSupportedTypes(SectionState section, TextPosition location, Set<String> supportedTypes)
     {
-        String text = section.getSection().getPrecedingText(location);
+        String text = section.getSection().getLineUpTo(location);
 
         if (text.isEmpty())
         {

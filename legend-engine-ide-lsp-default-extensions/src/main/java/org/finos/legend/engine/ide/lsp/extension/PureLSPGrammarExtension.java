@@ -363,7 +363,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
         MutableList<LegendCompletion> legendCompletions = Lists.mutable.empty();
-        String codeLine = section.getSection().getPrecedingText(location);
+        String codeLine = section.getSection().getLineUpTo(location);
 
         if (codeLine.isEmpty())
         {

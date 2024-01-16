@@ -109,14 +109,24 @@ public interface GrammarSection
     }
 
     /**
-     * Get a single line of the section up to the column on the given position.
-     * @param position the position used to figure out what line number to extract, and up to what column
+     * Get a single line of the section up to the given position.  The column on the position determines the length of
+     * returned string (ie the position's column is not included)
+     * <p>
+     * This is similar to {@code this.getLine(position.geLine()).substring(0, position.getColumn())}
+     *
+     * @param position the position used to figure out what line number to extract, and the length of the line substring
      * @return section text between start of line and up to the position column
      * @throws IndexOutOfBoundsException if there is no such line in the section or column is bigger than line length
      */
-    default String getPrecedingText(TextPosition position)
+
+    default String getLineUpTo(TextPosition position)
     {
-        return getLine(position).substring(0, position.getColumn());
+        String lineContent = this.getLine(position.getLine());
+        if (position.getColumn() > lineContent.length())
+        {
+            throw new IndexOutOfBoundsException(String.format("Line %d length's %d is less than requested %d", position.getLine(), lineContent.length(), position.getColumn()));
+        }
+        return lineContent.substring(0, position.getColumn());
     }
 
     /**

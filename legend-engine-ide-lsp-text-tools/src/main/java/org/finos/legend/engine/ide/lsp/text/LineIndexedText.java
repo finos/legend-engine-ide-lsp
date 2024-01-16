@@ -269,9 +269,9 @@ public class LineIndexedText
      */
     public boolean isValidInterval(int startLine, int startColumn, int endLine, int endColumn)
     {
-        return (startLine == endLine) ?
-                isValidInterval(startLine, startColumn, endColumn) :
-                (startLine < endLine) && isValidColumn(startLine, startColumn) && isValidColumn(endLine, endColumn);
+        return (startLine == endLine && isValidInterval(startLine, startColumn, endColumn))
+                ||
+                ((startLine < endLine) && isValidColumn(startLine, startColumn) && isValidColumn(endLine, endColumn));
     }
 
     /**

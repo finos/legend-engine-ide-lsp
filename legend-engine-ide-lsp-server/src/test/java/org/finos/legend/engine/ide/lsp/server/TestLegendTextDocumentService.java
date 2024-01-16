@@ -135,12 +135,7 @@ public class TestLegendTextDocumentService
         // with ###T preceding
         asserter.accept(new Position(9, 4), Set.of("TestGrammar", "EmptyGrammar"));
     }
-
-    private static void assertExpectedCompletionItems(String uri, TextDocumentService service, Position position, Set<String> expected) throws InterruptedException, ExecutionException
-    {
-
-    }
-
+    
     private static LegendLanguageServer newServer(LegendLSPGrammarExtension... extensions) throws ExecutionException, InterruptedException
     {
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammars(extensions).build();

@@ -14,6 +14,10 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Comparator;
+import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -29,11 +33,6 @@ import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.Comparator;
-import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtension>
 {
