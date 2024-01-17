@@ -14,16 +14,18 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Set;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.junit.jupiter.api.Assertions;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
+public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<ServiceLSPGrammarExtension>
 {
     @Test
     public void testGetName()
@@ -124,8 +126,15 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals("Service boilerplate", boilerPlate);
     }
 
+    @Test
+    void testAntlrExpectedTokens()
+    {
+        Set<String> antlrExpectedTokens = this.extension.getAntlrExpectedTokens();
+        Assertions.assertEquals(Set.of("Service", "ExecutionEnvironment"), antlrExpectedTokens);
+    }
+
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected ServiceLSPGrammarExtension newExtension()
     {
         return new ServiceLSPGrammarExtension();
     }

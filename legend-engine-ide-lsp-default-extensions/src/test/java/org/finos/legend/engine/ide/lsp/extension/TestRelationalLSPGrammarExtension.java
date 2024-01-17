@@ -30,10 +30,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Set;
 
 import static org.finos.legend.engine.ide.lsp.extension.RelationalLSPGrammarExtension.GENERATE_MODEL_MAPPING_COMMAND_ID;
 
-public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
+public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<RelationalLSPGrammarExtension>
 {
     @Test
     public void testGetName()
@@ -312,9 +313,15 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
         String filterSuggestions = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(8, 7)).iterator().next().getDescription();
         Assertions.assertEquals("Filter definition", filterSuggestions);
     }
+    @Test
+    void testAntlrExpectedTokens()
+    {
+        Set<String> antlrExpectedTokens = this.extension.getAntlrExpectedTokens();
+        Assertions.assertEquals(Set.of("Database"), antlrExpectedTokens);
+    }
 
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected RelationalLSPGrammarExtension newExtension()
     {
         return new RelationalLSPGrammarExtension();
     }

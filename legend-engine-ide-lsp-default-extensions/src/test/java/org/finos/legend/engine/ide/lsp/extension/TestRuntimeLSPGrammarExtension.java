@@ -21,8 +21,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-
-public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
+public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<RuntimeLSPGrammarExtension>
 {
     @Test
     public void testGetName()
@@ -87,7 +86,7 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected RuntimeLSPGrammarExtension newExtension()
     {
         return new RuntimeLSPGrammarExtension();
     }

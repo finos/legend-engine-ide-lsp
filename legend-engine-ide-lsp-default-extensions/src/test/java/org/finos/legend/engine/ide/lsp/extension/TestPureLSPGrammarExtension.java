@@ -240,7 +240,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected PureLSPGrammarExtension newExtension()
     {
         return new PureLSPGrammarExtension();
     }

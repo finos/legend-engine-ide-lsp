@@ -14,6 +14,14 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 
@@ -29,16 +37,11 @@ import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.junit.jupiter.api.Assertions;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 public class TestLegendTextDocumentService
 {
@@ -223,6 +226,51 @@ public class TestLegendTextDocumentService
         Assertions.assertEquals(0, completionsSize);
     }
 
+
+    @Test
+    void testDefaultCompletionsAdded() throws Exception
+    {
+        LegendLSPGrammarExtension extWithKeywords = newExtension("TestGrammar", Arrays.asList("Date", "Integer", "String", "Float", "StrictDate", "Boolean", "let", "true", "false"));
+        LegendLSPGrammarExtension extNoKeywords = newExtension("EmptyGrammar", Collections.emptyList());
+        LegendLanguageServer server = newServer(extWithKeywords, extNoKeywords);
+
+        String uri = "file:///testNoKeywordHighlighting.pure";
+        String code = "\r\n" +
+                "###EmptyGrammar\n" +
+                "Class vscodelsp::test::Employee\r\n" +
+                "{\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\r\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n" +
+                "###T\n";
+
+        TextDocumentService service = server.getTextDocumentService();
+        service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+
+        BiConsumer<Position, Set<String>> asserter = (position, expected) ->
+        {
+            CompletionParams completionParams = new CompletionParams(
+                    new TextDocumentIdentifier(uri),
+                    position
+            );
+            List<CompletionItem> items = service.completion(completionParams).join().getLeft();
+            Assertions.assertEquals(2, items.size());
+            Assertions.assertEquals(expected, items.stream().map(CompletionItem::getLabel).collect(Collectors.toSet()));
+        };
+
+        // start of line
+        asserter.accept(new Position(9, 0), Set.of("###TestGrammar", "###EmptyGrammar"));
+        // with # preceding
+        asserter.accept(new Position(9, 1), Set.of("##TestGrammar", "##EmptyGrammar"));
+        // with ## preceding
+        asserter.accept(new Position(9, 2), Set.of("#TestGrammar", "#EmptyGrammar"));
+        // with ### preceding
+        asserter.accept(new Position(9, 3), Set.of("TestGrammar", "EmptyGrammar"));
+        // with ###T preceding
+        asserter.accept(new Position(9, 4), Set.of("TestGrammar", "EmptyGrammar"));
+    }
 
     private static LegendLanguageServer newServer(LegendLSPGrammarExtension... extensions) throws ExecutionException, InterruptedException
     {

@@ -139,7 +139,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Override
-    protected LegendLSPGrammarExtension newExtension()
+    protected MappingLSPGrammarExtension newExtension()
     {
         return new MappingLSPGrammarExtension();
     }

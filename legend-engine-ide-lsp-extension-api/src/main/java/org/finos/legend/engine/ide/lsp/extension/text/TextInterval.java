@@ -201,4 +201,9 @@ public class TextInterval
     {
         return newInterval(TextPosition.newPosition(startLine, startColumn), TextPosition.newPosition(endLine, endColumn));
     }
+
+    public boolean includes(TextPosition position)
+    {
+        return !position.isBefore(this.start) && !position.isAfter(this.end);
+    }
 }
