@@ -190,7 +190,7 @@ public class TestLegendTextDocumentService
 
         Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2", "###TestGrammar"), suggestions);
         Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2", "###TestGrammar"), labels);
-        Assertions.assertEquals(Arrays.asList("Test boilerplate","Test boilerplate","Test boilerplate"), descriptions);
+        Assertions.assertEquals(Arrays.asList("Test boilerplate","Test boilerplate","Section - TestGrammar"), descriptions);
     }
 
 
