@@ -33,9 +33,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.CodeLensOptions;
+import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
-import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
 import org.eclipse.lsp4j.FileOperationOptions;
@@ -108,7 +108,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final LegendServerGlobalState globalState = new LegendServerGlobalState(this);
     private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new Gson();
-    private final Set<String> rootFolders = new HashSet<>();
+    private final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
 
     private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
     {
@@ -187,17 +187,21 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         checkReady();
         this.classpathFactory.initialize(this);
-        this.initializeExtensions();
-        this.initializeEngineServerUrl();
+        CompletableFuture<Void> initializeExtensions = this.initializeExtensions();
+        CompletableFuture<Void> engineServerUrl = this.initializeEngineServerUrl();
+
+        CompletableFuture.allOf(initializeExtensions, engineServerUrl)
+                .thenRun(() -> this.logInfoToClient("Extension finished post-initialization"));
+
     }
 
-    private void initializeEngineServerUrl()
+    private CompletableFuture<Void> initializeEngineServerUrl()
     {
         ConfigurationItem urlConfig = new ConfigurationItem();
         urlConfig.setSection("legend.engine.server.url");
 
         ConfigurationParams configurationParams = new ConfigurationParams(Collections.singletonList(urlConfig));
-        this.getLanguageClient().configuration(configurationParams).thenAccept(x ->
+        return this.getLanguageClient().configuration(configurationParams).thenAccept(x ->
         {
             String url = this.extractValueAs(x.get(0), String.class);
             this.setEngineServerUrl(url);
@@ -218,13 +222,15 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
     }
 
-    private void initializeExtensions()
+    private CompletableFuture<Void> initializeExtensions()
     {
         logInfoToClient("Initializing extensions");
 
-        this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
+        return this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
                 .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
+                // trigger compilation
+                .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::publishDiagnosticsToClient)))
                 .thenRun(() ->
                 {
                     LanguageClient languageClient = this.getLanguageClient();
@@ -496,12 +502,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     void addRootFolder(String folderUri)
     {
-        boolean added;
-        synchronized (this.rootFolders)
-        {
-            added = this.rootFolders.add(folderUri);
-        }
-        if (added)
+        if (this.rootFolders.add(folderUri))
         {
             String message = "Added root folder: " + folderUri;
             LOGGER.info(message);
