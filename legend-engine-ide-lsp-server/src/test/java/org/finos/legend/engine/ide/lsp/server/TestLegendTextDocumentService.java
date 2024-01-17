@@ -188,9 +188,9 @@ public class TestLegendTextDocumentService
         List<String> labels = completions.stream().map(CompletionItem::getLabel).collect(Collectors.toList());
         List<String> descriptions = completions.stream().map(r -> r.getLabelDetails().getDescription()).collect(Collectors.toList());
 
-        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2"), suggestions);
-        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2"), labels);
-        Assertions.assertEquals(Arrays.asList("Test boilerplate","Test boilerplate"), descriptions);
+        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2", "###TestGrammar"), suggestions);
+        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2", "###TestGrammar"), labels);
+        Assertions.assertEquals(Arrays.asList("Test boilerplate","Test boilerplate","Test boilerplate"), descriptions);
     }
 
 

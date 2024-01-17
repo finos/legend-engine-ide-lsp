@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
+public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<PureLSPGrammarExtension>
 {
     @Test
     public void testGetName()
