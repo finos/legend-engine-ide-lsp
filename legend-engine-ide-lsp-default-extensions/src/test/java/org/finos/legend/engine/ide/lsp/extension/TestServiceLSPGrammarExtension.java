@@ -19,6 +19,8 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
@@ -109,6 +111,17 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "}\n",
                 LegendDiagnostic.newDiagnostic(TextInterval.newInterval(10, 18, 10, 44), "Can't find mapping 'test::mappings::TestMapping'", Kind.Error, Source.Compiler)
         );
+    }
+
+    @Test
+    public void testCompletion()
+    {
+        String code = "###Service\n" +
+                "Service package::path::serviceName\n" +
+                "\n";
+
+        String boilerPlate = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(1, 0)).iterator().next().getDescription();
+        Assertions.assertEquals("Service boilerplate", boilerPlate);
     }
 
     @Override

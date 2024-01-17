@@ -16,13 +16,18 @@ package org.finos.legend.engine.ide.lsp.extension;
 
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.map.MutableMap;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 {
@@ -209,6 +214,29 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "    hireType : String[1];\n" +
                 "}");
         testDiagnostics(codeFiles, "vscodelsp::test::Employee1", LegendDiagnostic.newDiagnostic(TextInterval.newInterval(1, 0, 6, 0), "Can't find type 'vscodelsp::test::Employee2'", Kind.Error, Source.Compiler));
+    }
+
+    @Test
+    public void testCompletion()
+    {
+        String code = "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "foobar1: Float [1];\n" +
+                "foobar2: Float [1];\n" +
+                "}";
+
+        String boilerPlate = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 0)).iterator().next().getDescription();
+        Assertions.assertEquals("Pure boilerplate", boilerPlate);
+
+        Iterable<? extends LegendCompletion> noCompletion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 1));
+        Assertions.assertEquals(List.of(), noCompletion);
+
+        String attributeTypesSuggestion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(3, 9)).iterator().next().getDescription();
+        Assertions.assertEquals("Attribute type", attributeTypesSuggestion);
+
+        String attributeMultiplicitiesSuggestion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(3, 15)).iterator().next().getDescription();
+        Assertions.assertEquals("Attribute multiplicity", attributeMultiplicitiesSuggestion);
     }
 
     @Override

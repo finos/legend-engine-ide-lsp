@@ -17,15 +17,19 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.utility.Iterate;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.finos.legend.engine.ide.lsp.extension.RelationalLSPGrammarExtension.GENERATE_MODEL_MAPPING_COMMAND_ID;
 
@@ -270,6 +274,43 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 "    )\n" +
                 "  }\n" +
                 ")\n", result.getMessage());
+    }
+
+    @Test
+    public void testCompletion()
+    {
+        String code = "###Relational" +
+                        "Database package::path::storeName\n" +
+                        "(\n" +
+                        "Schema schemaName\n" +
+                        "(\n" +
+                        "Table TableName(column1 INT PRIMARY KEY, column2 DATE)\n" +
+                        "View ViewName(column3 VARCHAR(10) PRIMARY KEY)\n" +
+                        ")\n" +
+                        "Join \n" +
+                        "Filter \n" +
+                ")\n";
+
+        String boilerPlate = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 0)).iterator().next().getDescription();
+        Assertions.assertEquals("Relational boilerplate", boilerPlate);
+
+        Iterable<? extends LegendCompletion> noCompletion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 1));
+        Assertions.assertEquals(List.of(), noCompletion);
+
+        String schemaSuggestions = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 7)).iterator().next().getDescription();
+        Assertions.assertEquals("Schema definition", schemaSuggestions);
+
+        String tableSuggestions = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(4, 6)).iterator().next().getDescription();
+        Assertions.assertEquals("Table definition", tableSuggestions);
+
+        String viewSuggestions = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(5, 5)).iterator().next().getDescription();
+        Assertions.assertEquals("View definition", viewSuggestions);
+
+        String joinSuggestions = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(7, 5)).iterator().next().getDescription();
+        Assertions.assertEquals("Join definition", joinSuggestions);
+
+        String filterSuggestions = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(8, 7)).iterator().next().getDescription();
+        Assertions.assertEquals("Filter definition", filterSuggestions);
     }
 
     @Override

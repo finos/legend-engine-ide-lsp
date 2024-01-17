@@ -17,7 +17,10 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
 
 public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 {
@@ -70,6 +73,17 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 " }\n",
                 LegendDiagnostic.newDiagnostic(TextInterval.newInterval(2, 0, 6, 1), "Runtime must cover at least one mapping", LegendDiagnostic.Kind.Warning, LegendDiagnostic.Source.Compiler)
         );
+    }
+
+    @Test
+    public void testCompletion()
+    {
+        String code = "\n" +
+                "###Runtime\n" +
+                "\n";
+
+        String boilerPlate = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 0)).iterator().next().getDescription();
+        Assertions.assertEquals("Runtime boilerplate", boilerPlate);
     }
 
     @Override
