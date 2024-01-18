@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
+
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
@@ -34,6 +36,9 @@ import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.junit.jupiter.api.Assertions;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Test;
 
 public class TestLegendTextDocumentService
@@ -92,6 +97,135 @@ public class TestLegendTextDocumentService
     }
 
     @Test
+    public void testCompletion() throws Exception
+    {
+        LegendLSPGrammarExtension ext = newExtension("TestGrammar", Collections.emptyList());
+        LegendLanguageServer server = newServer(ext);
+
+        String uri = "file:///testCompletion.pure";
+        String code = "\n" +
+                "###TestGrammar\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    completionTrigger;\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n" +
+                "\n";
+
+        TextDocumentService service = server.getTextDocumentService();
+        service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+
+        List<CompletionItem> completions = service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(4, 21))).get().getLeft();
+        List<String> suggestions = completions.stream().map(CompletionItem::getInsertText).collect(Collectors.toList());
+        List<String> labels = completions.stream().map(CompletionItem::getLabel).collect(Collectors.toList());
+        List<String> descriptions = completions.stream().map(r -> r.getLabelDetails().getDescription()).collect(Collectors.toList());
+
+        Assertions.assertEquals(Arrays.asList("completionSuggestion1","completionSuggestion2"), suggestions);
+        Assertions.assertEquals(Arrays.asList("completionSuggestion1","completionSuggestion2"), labels);
+        Assertions.assertEquals(Arrays.asList("Test completion","Test completion"), descriptions);
+    }
+
+    @Test
+    public void testNoCompletion() throws Exception
+    {
+        LegendLSPGrammarExtension ext = newExtension("TestGrammar", Collections.emptyList());
+        LegendLanguageServer server = newServer(ext);
+
+        String uri = "file:///testCompletion.pure";
+        String code = "\n" +
+                "###TestGrammar\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    completionTrigger;\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n" +
+                "\n";
+
+        TextDocumentService service = server.getTextDocumentService();
+        service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+
+        Integer completionsSize =
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(0, 1))).get().getLeft().size() +
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(4, 2))).get().getLeft().size() +
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(4, 3))).get().getLeft().size() +
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(4, 22))).get().getLeft().size();
+
+        Assertions.assertEquals(0, completionsSize);
+    }
+
+    @Test
+    public void testBoilerplate() throws Exception
+    {
+        LegendLSPGrammarExtension ext = newExtension("TestGrammar", Collections.emptyList());
+        LegendLanguageServer server = newServer(ext);
+
+        String uri = "file:///testCompletion.pure";
+        String code = "\n" +
+                "###TestGrammar\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    completionTrigger;\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n" +
+                "\n";
+
+        TextDocumentService service = server.getTextDocumentService();
+        service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+
+        List<CompletionItem> completions = service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(2, 0))).get().getLeft();
+        List<String> suggestions = completions.stream().map(CompletionItem::getInsertText).collect(Collectors.toList());
+        List<String> labels = completions.stream().map(CompletionItem::getLabel).collect(Collectors.toList());
+        List<String> descriptions = completions.stream().map(r -> r.getLabelDetails().getDescription()).collect(Collectors.toList());
+
+        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2", "###TestGrammar"), suggestions);
+        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2", "###TestGrammar"), labels);
+        Assertions.assertEquals(Arrays.asList("Test boilerplate","Test boilerplate","Section - TestGrammar"), descriptions);
+    }
+
+
+    @Test
+    public void testNoBoilerplate() throws Exception
+    {
+        LegendLSPGrammarExtension ext = newExtension("TestGrammar", Collections.emptyList());
+        LegendLanguageServer server = newServer(ext);
+
+        String uri = "file:///testCompletion.pure";
+        String code = "\n" +
+                "###TestGrammar\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    completionTrigger;\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n" +
+                "\n";
+
+        TextDocumentService service = server.getTextDocumentService();
+        service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+
+        Integer completionsSize =
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(2, 1))).get().getLeft().size() +
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(2, 2))).get().getLeft().size() +
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(2, 3))).get().getLeft().size() +
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(3, 1))).get().getLeft().size() +
+                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(4, 1))).get().getLeft().size();
+
+        Assertions.assertEquals(0, completionsSize);
+    }
+
+
+    @Test
     void testDefaultCompletionsAdded() throws Exception
     {
         LegendLSPGrammarExtension extWithKeywords = newExtension("TestGrammar", Arrays.asList("Date", "Integer", "String", "Float", "StrictDate", "Boolean", "let", "true", "false"));
@@ -135,7 +269,7 @@ public class TestLegendTextDocumentService
         // with ###T preceding
         asserter.accept(new Position(9, 4), Set.of("TestGrammar", "EmptyGrammar"));
     }
-    
+
     private static LegendLanguageServer newServer(LegendLSPGrammarExtension... extensions) throws ExecutionException, InterruptedException
     {
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammars(extensions).build();
@@ -147,6 +281,13 @@ public class TestLegendTextDocumentService
     {
         return new LegendLSPGrammarExtension()
         {
+
+            private final List<String> COMPLETION_TRIGGERS = List.of("completionTrigger");
+
+            private final List<String> COMPLETION_SUGGESTIONS = List.of("completionSuggestion1", "completionSuggestion2");
+
+            private final List<String> BOILERPLATE_SUGGESTIONS = List.of("boilerplateSuggestion1", "boilerplateSuggestion2");
+
             @Override
             public String getName()
             {
@@ -157,6 +298,24 @@ public class TestLegendTextDocumentService
             public Iterable<? extends String> getKeywords()
             {
                 return keywords;
+            }
+
+            public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+            {
+                String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
+                List<LegendCompletion> legendCompletions = new ArrayList<>();
+
+                if (codeLine.isEmpty())
+                {
+                    BOILERPLATE_SUGGESTIONS.stream().map(s -> new LegendCompletion("Test boilerplate", s)).forEach(legendCompletions::add);
+                }
+
+                if (COMPLETION_TRIGGERS.stream().anyMatch(codeLine::endsWith))
+                {
+                    COMPLETION_SUGGESTIONS.stream().map(s -> new LegendCompletion("Test completion", s)).forEach(legendCompletions::add);
+                }
+
+                return legendCompletions;
             }
         };
     }

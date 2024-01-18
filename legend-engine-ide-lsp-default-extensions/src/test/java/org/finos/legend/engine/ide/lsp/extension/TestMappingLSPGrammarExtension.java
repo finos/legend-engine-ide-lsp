@@ -18,11 +18,13 @@ import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.set.MutableSet;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +42,26 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         MutableSet<String> missingKeywords = Sets.mutable.with("AggregationAware", "AggregateSpecification", "EnumerationMapping", "include", "Mapping", "MappingTests", "Operation", "Pure", "Relational", "XStore");
         this.extension.getKeywords().forEach(missingKeywords::remove);
         Assertions.assertEquals(Sets.mutable.empty(), missingKeywords);
+    }
+
+    @Test
+    public void testCompletion()
+    {
+        String code = "\n" +
+                "###Mapping\n" +
+                "\n" +
+                "Mapping test::mapping::TestMapping\n" +
+                "(\n" +
+                "~mainTable [package::path::storeName]schemaName.TableName1\n" +
+                " )\n";
+        String boilerPlate = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 0)).iterator().next().getDescription();
+        Assertions.assertEquals("Mapping boilerplate", boilerPlate);
+
+        Iterable<? extends LegendCompletion> noCompletion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 1));
+        Assertions.assertFalse(noCompletion.iterator().hasNext());
+
+        String storeObjectSuggestion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(5, 1)).iterator().next().getDescription();
+        Assertions.assertEquals("Store object type", storeObjectSuggestion);
     }
 
     @Test
