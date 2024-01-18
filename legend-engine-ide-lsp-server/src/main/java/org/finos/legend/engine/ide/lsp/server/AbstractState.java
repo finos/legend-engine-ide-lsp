@@ -14,43 +14,43 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 import org.finos.legend.engine.ide.lsp.extension.state.State;
 
 abstract class AbstractState implements State
 {
-    private final ConcurrentMap<String, Object> properties = new ConcurrentHashMap<>();
+    private final Map<String, Object> properties = new HashMap<>();
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> T getProperty(String key)
+    public synchronized <T> T getProperty(String key)
     {
         return (T) this.properties.get(key);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> T getProperty(String key, Supplier<? extends T> supplier)
+    public synchronized <T> T getProperty(String key, Supplier<? extends T> supplier)
     {
         return (T) this.properties.computeIfAbsent(key, k -> supplier.get());
     }
 
     @Override
-    public void setProperty(String key, Object value)
+    public synchronized void setProperty(String key, Object value)
     {
         this.properties.compute(key, (x, y) -> value);
     }
 
     @Override
-    public void removeProperty(String key)
+    public synchronized void removeProperty(String key)
     {
         this.properties.remove(key);
     }
 
     @Override
-    public void clearProperties()
+    public synchronized void clearProperties()
     {
         this.properties.clear();
     }

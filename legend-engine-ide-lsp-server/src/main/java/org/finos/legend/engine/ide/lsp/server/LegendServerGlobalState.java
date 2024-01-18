@@ -23,9 +23,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
@@ -41,7 +41,7 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendServerGlobalState.class);
 
-    private final ConcurrentMap<String, LegendServerDocumentState> docs = new ConcurrentHashMap<>();
+    private final Map<String, LegendServerDocumentState> docs = new HashMap<>();
     private final LegendLanguageServer server;
 
     LegendServerGlobalState(LegendLanguageServer server)
@@ -51,13 +51,13 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
     }
 
     @Override
-    public LegendServerDocumentState getDocumentState(String id)
+    public synchronized LegendServerDocumentState getDocumentState(String id)
     {
         return this.docs.get(id);
     }
 
     @Override
-    public void forEachDocumentState(Consumer<? super DocumentState> consumer)
+    public synchronized void forEachDocumentState(Consumer<? super DocumentState> consumer)
     {
         this.docs.values().forEach(consumer);
     }
@@ -80,12 +80,12 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         this.server.logErrorToClient(message);
     }
 
-    LegendServerDocumentState getOrCreateDocState(String uri)
+    synchronized LegendServerDocumentState getOrCreateDocState(String uri)
     {
         return this.docs.computeIfAbsent(uri, k -> new LegendServerDocumentState(this, uri));
     }
 
-    void deleteDocState(String uri)
+    synchronized void deleteDocState(String uri)
     {
         this.docs.remove(uri);
         this.clearProperties();
