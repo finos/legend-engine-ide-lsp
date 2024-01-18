@@ -29,7 +29,6 @@ import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Set;
 
 import static org.finos.legend.engine.ide.lsp.extension.RelationalLSPGrammarExtension.GENERATE_MODEL_MAPPING_COMMAND_ID;
@@ -296,7 +295,7 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
         Assertions.assertEquals("Relational boilerplate", boilerPlate);
 
         Iterable<? extends LegendCompletion> noCompletion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 1));
-        Assertions.assertEquals(List.of(), noCompletion);
+        Assertions.assertFalse(noCompletion.iterator().hasNext());
 
         String schemaSuggestions = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 7)).iterator().next().getDescription();
         Assertions.assertEquals("Schema definition", schemaSuggestions);
@@ -313,6 +312,7 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
         String filterSuggestions = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(8, 7)).iterator().next().getDescription();
         Assertions.assertEquals("Filter definition", filterSuggestions);
     }
+
     @Test
     void testAntlrExpectedTokens()
     {

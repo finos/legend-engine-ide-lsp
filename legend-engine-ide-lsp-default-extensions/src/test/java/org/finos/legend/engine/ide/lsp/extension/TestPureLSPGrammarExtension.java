@@ -27,8 +27,6 @@ import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<PureLSPGrammarExtension>
 {
     @Test
@@ -230,7 +228,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         Assertions.assertEquals("Pure boilerplate", boilerPlate);
 
         Iterable<? extends LegendCompletion> noCompletion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 1));
-        Assertions.assertEquals(List.of(), noCompletion);
+        Assertions.assertFalse(noCompletion.iterator().hasNext());
 
         String attributeTypesSuggestion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(3, 9)).iterator().next().getDescription();
         Assertions.assertEquals("Attribute type", attributeTypesSuggestion);

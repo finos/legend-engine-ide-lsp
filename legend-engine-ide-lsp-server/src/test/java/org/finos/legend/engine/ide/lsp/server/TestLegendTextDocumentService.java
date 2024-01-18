@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -21,9 +22,6 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
-
-import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.list.ImmutableList;
 
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionParams;
@@ -284,11 +282,11 @@ public class TestLegendTextDocumentService
         return new LegendLSPGrammarExtension()
         {
 
-            private final ImmutableList<String> COMPLETION_TRIGGERS = Lists.immutable.with("completionTrigger");
+            private final List<String> COMPLETION_TRIGGERS = List.of("completionTrigger");
 
-            private final ImmutableList<String> COMPLETION_SUGGESTIONS = Lists.immutable.with("completionSuggestion1", "completionSuggestion2");
+            private final List<String> COMPLETION_SUGGESTIONS = List.of("completionSuggestion1", "completionSuggestion2");
 
-            private final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with("boilerplateSuggestion1", "boilerplateSuggestion2");
+            private final List<String> BOILERPLATE_SUGGESTIONS = List.of("boilerplateSuggestion1", "boilerplateSuggestion2");
 
             @Override
             public String getName()
@@ -305,16 +303,16 @@ public class TestLegendTextDocumentService
             public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
             {
                 String codeLine = section.getSection().getLine(location.getLine()).substring(0, location.getColumn());
-                List<LegendCompletion> legendCompletions = Lists.mutable.empty();
+                List<LegendCompletion> legendCompletions = new ArrayList<>();
 
                 if (codeLine.isEmpty())
                 {
-                    return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Test boilerplate", s));
+                    BOILERPLATE_SUGGESTIONS.stream().map(s -> new LegendCompletion("Test boilerplate", s)).forEach(legendCompletions::add);
                 }
 
-                if (COMPLETION_TRIGGERS.anySatisfy(codeLine::endsWith))
+                if (COMPLETION_TRIGGERS.stream().anyMatch(codeLine::endsWith))
                 {
-                    COMPLETION_SUGGESTIONS.collect(s -> new LegendCompletion("Test completion", s), legendCompletions);
+                    COMPLETION_SUGGESTIONS.stream().map(s -> new LegendCompletion("Test completion", s)).forEach(legendCompletions::add);
                 }
 
                 return legendCompletions;

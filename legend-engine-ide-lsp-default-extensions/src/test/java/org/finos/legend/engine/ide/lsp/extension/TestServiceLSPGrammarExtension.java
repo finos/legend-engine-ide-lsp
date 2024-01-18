@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import java.util.Set;
+
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
@@ -22,7 +24,6 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Sou
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.junit.jupiter.api.Assertions;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<ServiceLSPGrammarExtension>
@@ -121,6 +122,9 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         String code = "###Service\n" +
                 "Service package::path::serviceName\n" +
                 "\n";
+
+        Iterable<? extends LegendCompletion> noCompletion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(0, 1));
+        Assertions.assertFalse(noCompletion.iterator().hasNext());
 
         String boilerPlate = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(1, 0)).iterator().next().getDescription();
         Assertions.assertEquals("Service boilerplate", boilerPlate);

@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
@@ -80,6 +81,9 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         String code = "\n" +
                 "###Runtime\n" +
                 "\n";
+
+        Iterable<? extends LegendCompletion> noCompletion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(1, 1));
+        Assertions.assertFalse(noCompletion.iterator().hasNext());
 
         String boilerPlate = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 0)).iterator().next().getDescription();
         Assertions.assertEquals("Runtime boilerplate", boilerPlate);

@@ -28,8 +28,6 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<MappingLSPGrammarExtension>
 {
     @Test
@@ -60,7 +58,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals("Mapping boilerplate", boilerPlate);
 
         Iterable<? extends LegendCompletion> noCompletion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 1));
-        Assertions.assertEquals(List.of(), noCompletion);
+        Assertions.assertFalse(noCompletion.iterator().hasNext());
 
         String storeObjectSuggestion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(5, 1)).iterator().next().getDescription();
         Assertions.assertEquals("Store object type", storeObjectSuggestion);
