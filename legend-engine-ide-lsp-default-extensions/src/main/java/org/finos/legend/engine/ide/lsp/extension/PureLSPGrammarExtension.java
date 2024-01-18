@@ -112,7 +112,13 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
 
-    private volatile JsonMapper functionResultMapper;
+    private final JsonMapper functionResultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+            .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+            .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .build());
 
     public PureLSPGrammarExtension()
     {
@@ -343,16 +349,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
     private JsonMapper getFunctionResultMapper()
     {
-        if (this.functionResultMapper == null)
-        {
-            this.functionResultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
-                    .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
-                    .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
-                    .enable(SerializationFeature.INDENT_OUTPUT)
-                    .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
-                    .serializationInclusion(JsonInclude.Include.NON_NULL)
-                    .build());
-        }
         return this.functionResultMapper;
     }
 
