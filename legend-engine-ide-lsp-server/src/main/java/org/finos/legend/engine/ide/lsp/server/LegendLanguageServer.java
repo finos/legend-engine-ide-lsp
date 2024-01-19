@@ -33,9 +33,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.CodeLensOptions;
+import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
-import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
 import org.eclipse.lsp4j.FileOperationOptions;
@@ -54,6 +54,7 @@ import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.WorkDoneProgressBegin;
+import org.eclipse.lsp4j.WorkDoneProgressCreateParams;
 import org.eclipse.lsp4j.WorkDoneProgressEnd;
 import org.eclipse.lsp4j.WorkDoneProgressNotification;
 import org.eclipse.lsp4j.WorkDoneProgressReport;
@@ -220,25 +221,43 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     private void initializeExtensions()
     {
-        logInfoToClient("Initializing extensions");
-
-        this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
-                .thenAccept(this.extensionGuard::initialize)
-                .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
-                .thenRun(() ->
-                {
-                    LanguageClient languageClient = this.getLanguageClient();
-                    languageClient.refreshCodeLenses();
-                    languageClient.refreshDiagnostics();
-                    languageClient.refreshInlayHints();
-                    languageClient.refreshInlineValues();
-                    languageClient.refreshSemanticTokens();
-                }).exceptionally(x ->
-                {
-                    LOGGER.error("Failed during post-initialization", x);
-                    logErrorToClient("Failed during post-initialization: " + x.getMessage());
-                    return null;
-                });
+        this.startProgress("Finalize Initialization (This can take few minutes)", "Figuring out next steps...")
+                .thenApply(token ->
+                        this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders), token)
+                                .thenApply(x ->
+                                {
+                                    this.notifyProgress(token, "Looking at the classpath for the features Legend supports...");
+                                    return Objects.requireNonNull(x, "Not able to determine classpath");
+                                })
+                                .thenAccept(this.extensionGuard::initialize)
+                                .thenRun(() -> this.notifyProgress(token, "Processing Legend code on workspace to figure out the features you want..."))
+                                .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
+                                .thenCompose(_void ->
+                                {
+                                    this.notifyProgress(token, "Almost there.  Asking the IDE to refresh for all the goodies we can provide...");
+                                    LanguageClient languageClient = this.getLanguageClient();
+                                    return CompletableFuture.allOf(
+                                            languageClient.refreshCodeLenses(),
+                                            languageClient.refreshDiagnostics(),
+                                            languageClient.refreshInlayHints(),
+                                            languageClient.refreshInlineValues(),
+                                            languageClient.refreshSemanticTokens()
+                                    );
+                                })
+                                .whenComplete((_void, exp) ->
+                                {
+                                    if (exp != null)
+                                    {
+                                        LOGGER.error("Failed during post-initialization", exp);
+                                        logErrorToClient("Failed during post-initialization: " + exp.getMessage());
+                                        this.notifyEnd(token, "We are sorry, something went wrong while initializing.  Check logs for details.");
+                                    }
+                                    else
+                                    {
+                                        this.notifyEnd(token, "Legend extension is ready!");
+                                    }
+                                })
+                );
     }
 
     private void reprocessDocuments()
@@ -628,6 +647,17 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return Either.forRight(this.progressId.getAndIncrement());
     }
 
+    CompletableFuture<Either<String, Integer>> startProgress(String title, String message)
+    {
+        Either<String, Integer> token = this.newProgressToken();
+        return this.getLanguageClient().createProgress(new WorkDoneProgressCreateParams(token))
+                .thenApply(_void ->
+                {
+                    this.notifyBegin(token, message, title);
+                    return token;
+                });
+    }
+
     Either<String, Integer> possiblyNewProgressToken(Either<String, Integer> token)
     {
         return (token == null) ? newProgressToken() : token;
@@ -657,7 +687,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         notifyProgress(token, begin);
     }
 
-    void notifyProgress(Either<String, Integer> token, String message)
+    public void notifyProgress(Either<String, Integer> token, String message)
     {
         WorkDoneProgressReport report = new WorkDoneProgressReport();
         if (message != null)

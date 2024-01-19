@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.classpath;
 
 import java.util.concurrent.CompletableFuture;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
 public interface ClasspathFactory
@@ -24,5 +25,5 @@ public interface ClasspathFactory
 
     }
 
-    CompletableFuture<ClassLoader> create(Iterable<String> folders);
+    CompletableFuture<ClassLoader> create(Iterable<String> folders, Either<String, Integer> progressToken);
 }
