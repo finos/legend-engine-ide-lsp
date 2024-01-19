@@ -102,7 +102,13 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                     "  }\n" +
                     "}\n");
 
-    private JsonMapper resultMapper;
+    private final JsonMapper resultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+            .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+            .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
+            .serializationInclusion(JsonInclude.Include.NON_NULL)
+            .build());
 
     public ServiceLSPGrammarExtension()
     {
@@ -284,20 +290,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
     private JsonMapper getResultMapper()
     {
-        synchronized (this)
-        {
-            if (this.resultMapper == null)
-            {
-                this.resultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
-                        .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
-                        .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
-                        .enable(SerializationFeature.INDENT_OUTPUT)
-                        .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
-                        .serializationInclusion(JsonInclude.Include.NON_NULL)
-                        .build());
-            }
-            return this.resultMapper;
-        }
+        return this.resultMapper;
     }
 
     @Override

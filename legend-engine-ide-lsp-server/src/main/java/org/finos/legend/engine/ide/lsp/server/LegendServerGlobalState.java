@@ -14,15 +14,6 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
-import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
-import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
-import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
-import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -37,6 +28,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
+import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class LegendServerGlobalState extends AbstractState implements GlobalState
 {
@@ -52,21 +51,15 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
     }
 
     @Override
-    public LegendServerDocumentState getDocumentState(String id)
+    public synchronized LegendServerDocumentState getDocumentState(String id)
     {
-        synchronized (this.lock)
-        {
-            return this.docs.get(id);
-        }
+        return this.docs.get(id);
     }
 
     @Override
-    public void forEachDocumentState(Consumer<? super DocumentState> consumer)
+    public synchronized void forEachDocumentState(Consumer<? super DocumentState> consumer)
     {
-        synchronized (this.lock)
-        {
-            this.docs.values().forEach(consumer);
-        }
+        this.docs.values().forEach(consumer);
     }
 
     @Override
@@ -87,70 +80,60 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         this.server.logErrorToClient(message);
     }
 
-    LegendServerDocumentState getOrCreateDocState(String uri)
+    synchronized LegendServerDocumentState getOrCreateDocState(String uri)
     {
-        synchronized (this.lock)
+        return this.docs.computeIfAbsent(uri, k -> new LegendServerDocumentState(this, uri));
+    }
+
+    synchronized void deleteDocState(String uri)
+    {
+        this.docs.remove(uri);
+        this.clearProperties();
+    }
+
+    synchronized void renameDoc(String oldUri, String newUri)
+    {
+        if (this.docs.containsKey(newUri))
         {
-            return this.docs.computeIfAbsent(uri, k -> new LegendServerDocumentState(this, uri));
+            throw new IllegalStateException("Cannot rename " + oldUri + " to " + newUri + ": file already exists");
+        }
+
+        LegendServerDocumentState oldState = this.docs.remove(oldUri);
+        if (oldState != null)
+        {
+            LegendServerDocumentState newState = new LegendServerDocumentState(this, newUri);
+            newState.version = oldState.version;
+            newState.sectionIndex = oldState.sectionIndex;
+            newState.sectionStates = newState.createSectionStates(newState.sectionIndex);
+            this.docs.put(newUri, newState);
         }
     }
 
-    void deleteDocState(String uri)
-    {
-        synchronized (this.lock)
-        {
-            this.docs.remove(uri);
-        }
-    }
-
-    void renameDoc(String oldUri, String newUri)
-    {
-        synchronized (this.lock)
-        {
-            if (this.docs.containsKey(newUri))
-            {
-                throw new IllegalStateException("Cannot rename " + oldUri + " to " + newUri + ": file already exists");
-            }
-
-            LegendServerDocumentState oldState = this.docs.remove(oldUri);
-            if (oldState != null)
-            {
-                LegendServerDocumentState newState = new LegendServerDocumentState(this, newUri);
-                newState.version = oldState.version;
-                newState.sectionIndex = oldState.sectionIndex;
-                newState.sectionStates = newState.createSectionStates(newState.sectionIndex);
-                this.docs.put(newUri, newState);
-            }
-        }
-    }
-
-    void addFolder(String folderUri)
+    synchronized void addFolder(String folderUri)
     {
         try
         {
             Path folderPath = Paths.get(URI.create(folderUri));
-            synchronized (this.lock)
+            try (Stream<Path> stream = Files.find(folderPath, Integer.MAX_VALUE,
+                    (path, attr) -> attr.isRegularFile() && path.getFileName().toString().endsWith(".pure"),
+                    FileVisitOption.FOLLOW_LINKS))
             {
-                try (Stream<Path> stream = Files.find(folderPath, Integer.MAX_VALUE,
-                        (path, attr) -> attr.isRegularFile() && path.getFileName().toString().endsWith(".pure"),
-                        FileVisitOption.FOLLOW_LINKS))
+                stream.forEach(path ->
                 {
-                    stream.forEach(path ->
+                    StringBuilder builder = new StringBuilder(folderUri);
+                    folderPath.relativize(path).forEach(p ->
                     {
-                        StringBuilder builder = new StringBuilder(folderUri);
-                        folderPath.relativize(path).forEach(p ->
+                        if (builder.charAt(builder.length() - 1) != '/')
                         {
-                            if (builder.charAt(builder.length() - 1) != '/')
-                            {
-                                builder.append('/');
-                            }
-                            builder.append(URLEncoder.encode(p.toString(), StandardCharsets.UTF_8));
-                        });
-                        LegendServerDocumentState docState = getOrCreateDocState(builder.toString());
-                        docState.initialize();
+                            builder.append('/');
+                        }
+                        builder.append(URLEncoder.encode(p.toString(), StandardCharsets.UTF_8));
                     });
-                }
+                    LegendServerDocumentState docState = getOrCreateDocState(builder.toString());
+                    docState.initialize();
+                });
             }
+            this.clearProperties();
         }
         catch (Exception e)
         {
@@ -158,12 +141,10 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         }
     }
 
-    void removeFolder(String folderUri)
+    synchronized void removeFolder(String folderUri)
     {
-        synchronized (this.lock)
-        {
-            this.docs.keySet().removeIf(uri -> uri.startsWith(folderUri));
-        }
+        this.docs.keySet().removeIf(uri -> uri.startsWith(folderUri));
+        this.clearProperties();
     }
 
     static class LegendServerDocumentState extends AbstractState implements DocumentState
@@ -176,7 +157,6 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
 
         private LegendServerDocumentState(LegendServerGlobalState globalState, String uri)
         {
-            super(globalState);
             this.globalState = globalState;
             this.uri = uri;
         }
@@ -194,195 +174,144 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         }
 
         @Override
-        public String getText()
+        public synchronized String getText()
         {
-            synchronized (this.lock)
-            {
-                return (this.sectionIndex == null) ? null : this.sectionIndex.getText();
-            }
+            return (this.sectionIndex == null) ? null : this.sectionIndex.getText();
         }
 
         @Override
-        public int getLineCount()
+        public synchronized int getLineCount()
         {
-            synchronized (this.lock)
-            {
-                return (this.sectionIndex == null) ? 0 : this.sectionIndex.getLineCount();
-            }
+            return (this.sectionIndex == null) ? 0 : this.sectionIndex.getLineCount();
         }
 
         @Override
-        public String getLine(int line)
+        public synchronized String getLine(int line)
         {
-            synchronized (this.lock)
-            {
-                return (this.sectionIndex == null) ? null : this.sectionIndex.getLine(line);
-            }
+            return (this.sectionIndex == null) ? null : this.sectionIndex.getLine(line);
         }
 
         @Override
-        public String getLines(int start, int end)
+        public synchronized String getLines(int start, int end)
         {
-            synchronized (this.lock)
-            {
-                return (this.sectionIndex == null) ? null : this.sectionIndex.getLines(start, end);
-            }
+            return (this.sectionIndex == null) ? null : this.sectionIndex.getLines(start, end);
         }
 
         @Override
-        public int getSectionCount()
+        public synchronized int getSectionCount()
         {
-            synchronized (this.lock)
-            {
-                return this.sectionStates.size();
-            }
+            return this.sectionStates.size();
         }
 
         @Override
-        public SectionState getSectionState(int n)
+        public synchronized SectionState getSectionState(int n)
         {
-            synchronized (this.lock)
-            {
-                return this.sectionStates.get(n);
-            }
+            return this.sectionStates.get(n);
         }
 
         @Override
-        public SectionState getSectionStateAtLine(int line)
+        public synchronized SectionState getSectionStateAtLine(int line)
         {
-            synchronized (this.lock)
+            if (this.sectionIndex != null)
             {
-                if (this.sectionIndex != null)
+                int n = this.sectionIndex.getSectionNumberAtLine(line);
+                if (n != -1)
                 {
-                    int n = this.sectionIndex.getSectionNumberAtLine(line);
-                    if (n != -1)
-                    {
-                        return this.sectionStates.get(n);
-                    }
+                    return this.sectionStates.get(n);
                 }
-                return null;
             }
+            return null;
         }
 
         @Override
-        public void forEachSectionState(Consumer<? super SectionState> consumer)
+        public synchronized void forEachSectionState(Consumer<? super SectionState> consumer)
         {
-            synchronized (this.lock)
-            {
-                this.sectionStates.forEach(consumer);
-            }
+            this.sectionStates.forEach(consumer);
         }
 
-        boolean isInitialized()
+        synchronized boolean isInitialized()
         {
-            synchronized (this.lock)
-            {
-                return this.sectionStates != null;
-            }
+            return this.sectionStates != null;
         }
 
-        boolean isOpen()
+        synchronized boolean isOpen()
         {
-            synchronized (this.lock)
-            {
-                return this.version != null;
-            }
+            return this.version != null;
         }
 
-        void open(int version, String text)
+        synchronized void open(int version, String text)
         {
-            synchronized (this.lock)
+            if (this.version != null)
             {
-                if (this.version != null)
-                {
-                    LOGGER.warn("{} already opened at version {}: overwriting with version {}", this.uri, this.version, version);
-                }
-                this.version = version;
-                setText(text);
+                LOGGER.warn("{} already opened at version {}: overwriting with version {}", this.uri, this.version, version);
             }
+            this.version = version;
+            setText(text);
         }
 
-        void close()
+        synchronized void close()
         {
-            synchronized (this.lock)
-            {
-                this.version = null;
-            }
+            this.version = null;
         }
 
-        void change(int newVersion)
+        synchronized void change(int newVersion)
         {
-            synchronized (this.lock)
+            if ((this.version != null) && (newVersion < this.version))
             {
-                if ((this.version != null) && (newVersion < this.version))
-                {
-                    LOGGER.warn("Changing {} from version {} to {}", this.uri, this.version, newVersion);
-                }
-                this.version = newVersion;
+                LOGGER.warn("Changing {} from version {} to {}", this.uri, this.version, newVersion);
             }
+            this.version = newVersion;
         }
 
-        void change(int newVersion, String newText)
+        synchronized void change(int newVersion, String newText)
         {
-            synchronized (this.lock)
+            if ((this.version != null) && (newVersion <= this.version))
             {
-                if ((this.version != null) && (newVersion <= this.version))
-                {
-                    LOGGER.warn("Changing {} from version {} to {}", this.uri, this.version, newVersion);
-                }
-                this.version = newVersion;
-                setText(newText);
+                LOGGER.warn("Changing {} from version {} to {}", this.uri, this.version, newVersion);
             }
+            this.version = newVersion;
+            setText(newText);
         }
 
-        void save(String text)
+        synchronized void save(String text)
         {
             if (text != null)
             {
-                synchronized (this.lock)
-                {
-                    setText(text);
-                }
-            }
-        }
-
-        void initialize()
-        {
-            synchronized (this.lock)
-            {
-                if (!isInitialized())
-                {
-                    String message = "Initializing file: " + this.uri;
-                    this.globalState.server.logInfoToClient(message);
-                    LOGGER.debug(message);
-                    loadText();
-                }
-            }
-        }
-
-        void loadText()
-        {
-            synchronized (this.lock)
-            {
-                String text;
-                try
-                {
-                    Path path = Paths.get(URI.create(this.uri));
-                    text = Files.readString(path);
-                }
-                catch (Exception e)
-                {
-                    LOGGER.warn("Error loading text for {}", this.uri, e);
-                    this.globalState.server.logWarningToClient("Error loading text for " + this.uri + ((e.getMessage() == null) ? "" : (": " + e.getMessage())));
-                    return;
-                }
-
-                this.version = null;
                 setText(text);
             }
         }
 
-        private void setText(String newText)
+        synchronized void initialize()
+        {
+            if (!isInitialized())
+            {
+                String message = "Initializing file: " + this.uri;
+                this.globalState.server.logInfoToClient(message);
+                LOGGER.debug(message);
+                loadText();
+            }
+        }
+
+        synchronized void loadText()
+        {
+            String text;
+            try
+            {
+                Path path = Paths.get(URI.create(this.uri));
+                text = Files.readString(path);
+            }
+            catch (Exception e)
+            {
+                LOGGER.warn("Error loading text for {}", this.uri, e);
+                this.globalState.server.logWarningToClient("Error loading text for " + this.uri + ((e.getMessage() == null) ? "" : (": " + e.getMessage())));
+                return;
+            }
+
+            this.version = null;
+            setText(text);
+        }
+
+        private synchronized void setText(String newText)
         {
             if ((this.sectionIndex == null) ? (newText == null) : this.sectionIndex.getText().equals(newText))
             {
@@ -391,22 +320,25 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             }
 
             logInfo("Clearing global and " + this.uri + " properties");
-            clearProperties();
-            this.globalState.clearProperties();
             this.sectionIndex = (newText == null) ? null : GrammarSectionIndex.parse(newText);
             this.sectionStates = createSectionStates(this.sectionIndex);
+            this.clearProperties();
         }
 
-        public void recreateSectionStates()
+        public synchronized void recreateSectionStates()
         {
-            synchronized (this.lock)
-            {
-                this.globalState.clearProperties();
-                this.sectionStates = createSectionStates(this.sectionIndex);
-            }
+            this.sectionStates = createSectionStates(this.sectionIndex);
+            this.clearProperties();
         }
 
-        private List<LegendServerSectionState> createSectionStates(GrammarSectionIndex index)
+        @Override
+        public synchronized void clearProperties()
+        {
+            super.clearProperties();
+            this.globalState.clearProperties();
+        }
+
+        private synchronized List<LegendServerSectionState> createSectionStates(GrammarSectionIndex index)
         {
             if (index == null)
             {
@@ -449,7 +381,6 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
 
         private LegendServerSectionState(LegendServerDocumentState docState, int n, GrammarSection grammarSection, LegendLSPGrammarExtension extension)
         {
-            super(docState.lock);
             this.docState = docState;
             this.n = n;
             this.grammarSection = grammarSection;

@@ -86,73 +86,70 @@ class LegendWorkspaceService implements WorkspaceService
                 this.server.notifyBegin(progressToken, entity);
 
                 LegendServerGlobalState globalState = this.server.getGlobalState();
-                synchronized (globalState)
+                DocumentState docState = globalState.getDocumentState(uri);
+                if (docState == null)
                 {
-                    DocumentState docState = globalState.getDocumentState(uri);
-                    if (docState == null)
-                    {
-                        throw new RuntimeException("Unknown document: " + uri);
-                    }
-
-                    SectionState sectionState = docState.getSectionState(sectionNum);
-                    LegendLSPGrammarExtension extension = sectionState.getExtension();
-                    if (extension == null)
-                    {
-                        throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
-                    }
-                    Iterable<? extends LegendExecutionResult> results;
-
-                    try
-                    {
-                        results = extension.execute(sectionState, entity, id, executableArgs);
-                    }
-                    catch (Throwable e)
-                    {
-                        String message = "Command execution " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
-                        results = Collections.singletonList(LegendExecutionResult.errorResult(new Exception(message, e), message, entity));
-                    }
-                    this.server.notifyResults(progressToken, results);
-                    results.forEach(result ->
-                    {
-                        switch (result.getType())
-                        {
-                            case SUCCESS:
-                            {
-                                String message = result.getMessage();
-                                String logMessage = result.getLogMessage();
-                                if ((logMessage == null) || logMessage.equals(message))
-                                {
-                                    this.server.logInfoToClient(message);
-                                }
-                                else
-                                {
-                                    this.server.showInfoToClient(message);
-                                    this.server.logInfoToClient(logMessage);
-                                }
-                                break;
-                            }
-                            case FAILURE:
-                            case WARNING:
-                            {
-                                this.server.showWarningToClient(result.getMessage());
-                                this.server.logWarningToClient(result.getLogMessage(true));
-                                break;
-                            }
-                            case ERROR:
-                            {
-                                this.server.showErrorToClient(result.getMessage());
-                                this.server.logErrorToClient(result.getLogMessage(true));
-                                break;
-                            }
-                            default:
-                            {
-                                LOGGER.warn("Unhandled result type: {}", result.getType());
-                                this.server.showInfoToClient(result.getMessage());
-                                this.server.logInfoToClient(result.getLogMessage(true));
-                            }
-                        }
-                    });
+                    throw new RuntimeException("Unknown document: " + uri);
                 }
+
+                SectionState sectionState = docState.getSectionState(sectionNum);
+                LegendLSPGrammarExtension extension = sectionState.getExtension();
+                if (extension == null)
+                {
+                    throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
+                }
+                Iterable<? extends LegendExecutionResult> results;
+
+                try
+                {
+                    results = extension.execute(sectionState, entity, id, executableArgs);
+                }
+                catch (Throwable e)
+                {
+                    String message = "Command execution " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
+                    results = Collections.singletonList(LegendExecutionResult.errorResult(new Exception(message, e), message, entity));
+                }
+                this.server.notifyResults(progressToken, results);
+                results.forEach(result ->
+                {
+                    switch (result.getType())
+                    {
+                        case SUCCESS:
+                        {
+                            String message = result.getMessage();
+                            String logMessage = result.getLogMessage();
+                            if ((logMessage == null) || logMessage.equals(message))
+                            {
+                                this.server.logInfoToClient(message);
+                            }
+                            else
+                            {
+                                this.server.showInfoToClient(message);
+                                this.server.logInfoToClient(logMessage);
+                            }
+                            break;
+                        }
+                        case FAILURE:
+                        case WARNING:
+                        {
+                            this.server.showWarningToClient(result.getMessage());
+                            this.server.logWarningToClient(result.getLogMessage(true));
+                            break;
+                        }
+                        case ERROR:
+                        {
+                            this.server.showErrorToClient(result.getMessage());
+                            this.server.logErrorToClient(result.getLogMessage(true));
+                            break;
+                        }
+                        default:
+                        {
+                            LOGGER.warn("Unhandled result type: {}", result.getType());
+                            this.server.showInfoToClient(result.getMessage());
+                            this.server.logInfoToClient(result.getLogMessage(true));
+                        }
+                    }
+                });
             }
             else
             {
@@ -191,35 +188,32 @@ class LegendWorkspaceService implements WorkspaceService
         this.server.runPossiblyAsync(() ->
         {
             LegendServerGlobalState globalState = this.server.getGlobalState();
-            synchronized (globalState)
+            params.getChanges().forEach(fileEvent ->
             {
-                params.getChanges().forEach(fileEvent ->
+                String uri = fileEvent.getUri();
+                switch (fileEvent.getType())
                 {
-                    String uri = fileEvent.getUri();
-                    switch (fileEvent.getType())
+                    case Changed:
                     {
-                        case Changed:
-                        {
-                            fileChanged(globalState, uri);
-                            break;
-                        }
-                        case Created:
-                        {
-                            fileCreated(globalState, uri);
-                            break;
-                        }
-                        case Deleted:
-                        {
-                            fileDeleted(globalState, uri);
-                            break;
-                        }
-                        default:
-                        {
-                            LOGGER.warn("Unhandled change type for {}: {}", uri, fileEvent.getType());
-                        }
+                        fileChanged(globalState, uri);
+                        break;
                     }
-                });
-            }
+                    case Created:
+                    {
+                        fileCreated(globalState, uri);
+                        break;
+                    }
+                    case Deleted:
+                    {
+                        fileDeleted(globalState, uri);
+                        break;
+                    }
+                    default:
+                    {
+                        LOGGER.warn("Unhandled change type for {}: {}", uri, fileEvent.getType());
+                    }
+                }
+            });
         });
     }
 
@@ -229,11 +223,8 @@ class LegendWorkspaceService implements WorkspaceService
         // todo - retrigger classpath / classloader init?
 
         LOGGER.debug("Did change workspace folders: {}", params);
-        synchronized (this.server.getGlobalState())
-        {
-            WorkspaceFoldersChangeEvent event = params.getEvent();
-            this.server.updateWorkspaceFolders(event.getAdded(), event.getRemoved());
-        }
+        WorkspaceFoldersChangeEvent event = params.getEvent();
+        this.server.updateWorkspaceFolders(event.getAdded(), event.getRemoved());
     }
 
     @Override
@@ -245,10 +236,7 @@ class LegendWorkspaceService implements WorkspaceService
         this.server.runPossiblyAsync(() ->
         {
             LegendServerGlobalState globalState = this.server.getGlobalState();
-            synchronized (globalState)
-            {
-                params.getFiles().forEach(f -> fileCreated(globalState, f.getUri()));
-            }
+            params.getFiles().forEach(f -> fileCreated(globalState, f.getUri()));
         });
     }
 
@@ -259,10 +247,7 @@ class LegendWorkspaceService implements WorkspaceService
         this.server.runPossiblyAsync(() ->
         {
             LegendServerGlobalState globalState = this.server.getGlobalState();
-            synchronized (globalState)
-            {
-                params.getFiles().forEach(f -> fileRenamed(globalState, f.getOldUri(), f.getNewUri()));
-            }
+            params.getFiles().forEach(f -> fileRenamed(globalState, f.getOldUri(), f.getNewUri()));
         });
     }
 
@@ -273,10 +258,7 @@ class LegendWorkspaceService implements WorkspaceService
         this.server.runPossiblyAsync(() ->
         {
             LegendServerGlobalState globalState = this.server.getGlobalState();
-            synchronized (globalState)
-            {
-                params.getFiles().forEach(f -> fileDeleted(globalState, f.getUri()));
-            }
+            params.getFiles().forEach(f -> fileDeleted(globalState, f.getUri()));
         });
     }
 
@@ -310,7 +292,6 @@ class LegendWorkspaceService implements WorkspaceService
     private void fileDeleted(LegendServerGlobalState globalState, String uri)
     {
         LOGGER.debug("Deleted {}", uri);
-        globalState.clearProperties();
         globalState.deleteDocState(uri);
     }
 

@@ -105,8 +105,16 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     private final Map<Class<? extends PackageableElement>, String> classToClassifier = ProtocolToClassifierPathLoader.getProtocolClassToClassifierMap();
     private final LegendEngineServerClient engineServerClient = newEngineServerClient();
 
-    private JsonMapper protocolMapper;
-    private PureGrammarComposer composer;
+    private final JsonMapper protocolMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
+            .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
+            .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
+            .build());
+
+    private final PureGrammarComposer composer = PureGrammarComposer.newInstance(
+            PureGrammarComposerContext.Builder.newInstance()
+                    .withRenderStyle(RenderStyle.PRETTY)
+                    .build()
+    );
 
     @Override
     public void initialize(SectionState section)
@@ -506,17 +514,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private JsonMapper getProtocolMapper()
     {
-        synchronized (this)
-        {
-            if (this.protocolMapper == null)
-            {
-                this.protocolMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
-                        .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
-                        .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
-                        .build());
-            }
-            return this.protocolMapper;
-        }
+        return this.protocolMapper;
     }
 
     protected boolean isEngineServerConfigured()
@@ -565,14 +563,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private PureGrammarComposer getComposer()
     {
-        synchronized (this)
-        {
-            if (this.composer == null)
-            {
-                this.composer = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().withRenderStyle(RenderStyle.PRETTY).build());
-            }
-            return this.composer;
-        }
+        return this.composer;
     }
 
     protected LegendDeclaration getDeclaration(PackageableElement element)

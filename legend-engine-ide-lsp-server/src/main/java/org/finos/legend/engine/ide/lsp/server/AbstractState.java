@@ -14,79 +14,44 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.finos.legend.engine.ide.lsp.extension.state.State;
-
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Supplier;
+import org.finos.legend.engine.ide.lsp.extension.state.State;
 
 abstract class AbstractState implements State
 {
     private final Map<String, Object> properties = new HashMap<>();
-    protected final Object lock;
 
-    AbstractState()
+    @Override
+    @SuppressWarnings("unchecked")
+    public synchronized <T> T getProperty(String key)
     {
-        this.lock = this;
-    }
-
-    AbstractState(Object lock)
-    {
-        this.lock = Objects.requireNonNull(lock, "lock is required");
+        return (T) this.properties.get(key);
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> T getProperty(String key)
+    public synchronized <T> T getProperty(String key, Supplier<? extends T> supplier)
     {
-        synchronized (this.lock)
-        {
-            return (T) this.properties.get(key);
-        }
+        return (T) this.properties.computeIfAbsent(key, k -> supplier.get());
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public <T> T getProperty(String key, Supplier<? extends T> supplier)
+    public synchronized void setProperty(String key, Object value)
     {
-        synchronized (this.lock)
-        {
-            return (T) this.properties.computeIfAbsent(key, k -> supplier.get());
-        }
+        this.properties.compute(key, (x, y) -> value);
     }
 
     @Override
-    public void setProperty(String key, Object value)
+    public synchronized void removeProperty(String key)
     {
-        synchronized (this.lock)
-        {
-            if (value == null)
-            {
-                this.properties.remove(key);
-            }
-            else
-            {
-                this.properties.put(key, value);
-            }
-        }
+        this.properties.remove(key);
     }
 
     @Override
-    public void removeProperty(String key)
+    public synchronized void clearProperties()
     {
-        synchronized (this.lock)
-        {
-            this.properties.remove(key);
-        }
-    }
-
-    @Override
-    public void clearProperties()
-    {
-        synchronized (this.lock)
-        {
-            this.properties.clear();
-        }
+        this.properties.clear();
     }
 }
