@@ -104,6 +104,20 @@ public class TestTextInterval
                 "should not be included as column is after interval end line");
     }
 
+    @Test
+    void testCompare()
+    {
+        TextInterval start = TextInterval.newInterval(0, 0, 0, 1);
+        TextInterval firstLine = TextInterval.newInterval(1, 0, 1, 1);
+        TextInterval other = TextInterval.newInterval(1, 0, 2, 1);
+
+        Assertions.assertEquals(0, start.compareTo(start));
+        Assertions.assertEquals(1, firstLine.compareTo(start));
+        Assertions.assertEquals(-1, start.compareTo(firstLine));
+        Assertions.assertEquals(1, other.compareTo(firstLine));
+        Assertions.assertEquals(-1, firstLine.compareTo(other));
+    }
+
     private void assertSubsumes(TextInterval interval1, TextInterval interval2)
     {
         assertSubsumes(interval1, interval2, false);

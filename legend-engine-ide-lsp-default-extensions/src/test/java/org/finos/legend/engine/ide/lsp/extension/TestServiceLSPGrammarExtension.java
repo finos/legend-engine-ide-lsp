@@ -15,15 +15,14 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import java.util.Set;
-
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
-import org.junit.jupiter.api.Assertions;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<ServiceLSPGrammarExtension>
@@ -57,7 +56,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        asserts : [];\n" +
                         "    }\r\n" +
                         "}\n",
-                LegendDeclaration.builder().withIdentifier("test::services::TestService").withClassifier("meta::legend::service::metamodel::Service").withLocation(3, 0, 17, 0).build()
+                LegendDeclaration.builder().withIdentifier("test::services::TestService").withClassifier("meta::legend::service::metamodel::Service").withLocation(DOC_ID_FOR_TEXT,3, 0, 17, 0).build()
         );
     }
 
@@ -85,7 +84,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        asserts : [];\n" +
                         "    }\r\n" +
                         "}\n",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 12, 5, 17), "Unexpected token", Kind.Error, Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT,5, 12, 5, 17), "Unexpected token", Kind.Error, Source.Parser)
         );
     }
 
@@ -112,7 +111,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        asserts : [];\n" +
                         "    }\r\n" +
                         "}\n",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(10, 18, 10, 44), "Can't find mapping 'test::mappings::TestMapping'", Kind.Error, Source.Compiler)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT,10, 18, 10, 44), "Can't find mapping 'test::mappings::TestMapping'", Kind.Error, Source.Compiler)
         );
     }
 

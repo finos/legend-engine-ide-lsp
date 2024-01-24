@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Set;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.utility.Iterate;
@@ -23,13 +24,11 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.Set;
 
 import static org.finos.legend.engine.ide.lsp.extension.RelationalLSPGrammarExtension.GENERATE_MODEL_MAPPING_COMMAND_ID;
 
@@ -64,17 +63,17 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                         "        )\n" +
                         "    )\n" +
                         ")\n",
-                LegendDeclaration.builder().withIdentifier("test::store::TestDatabase").withClassifier(M2RelationalPaths.Database).withLocation(3, 0, 18, 0)
-                        .withChild(LegendDeclaration.builder().withIdentifier("S1").withClassifier(M2RelationalPaths.Schema).withLocation(10, 4, 17, 4)
-                                .withChild(LegendDeclaration.builder().withIdentifier("T2").withClassifier(M2RelationalPaths.Table).withLocation(12, 8, 16, 8)
-                                        .withChild(LegendDeclaration.builder().withIdentifier("ID").withClassifier(M2RelationalPaths.Column).withLocation(14, 12, 14, 17).build())
-                                        .withChild(LegendDeclaration.builder().withIdentifier("NAME").withClassifier(M2RelationalPaths.Column).withLocation(15, 12, 15, 28).build())
+                LegendDeclaration.builder().withIdentifier("test::store::TestDatabase").withClassifier(M2RelationalPaths.Database).withLocation(DOC_ID_FOR_TEXT,3, 0, 18, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("S1").withClassifier(M2RelationalPaths.Schema).withLocation(DOC_ID_FOR_TEXT,10, 4, 17, 4)
+                                .withChild(LegendDeclaration.builder().withIdentifier("T2").withClassifier(M2RelationalPaths.Table).withLocation(DOC_ID_FOR_TEXT,12, 8, 16, 8)
+                                        .withChild(LegendDeclaration.builder().withIdentifier("ID").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,14, 12, 14, 17).build())
+                                        .withChild(LegendDeclaration.builder().withIdentifier("NAME").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,15, 12, 15, 28).build())
                                         .build())
                                 .build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("default").withClassifier(M2RelationalPaths.Schema).withLocation(3, 0, 18, 0)
-                                .withChild(LegendDeclaration.builder().withIdentifier("T1").withClassifier(M2RelationalPaths.Table).withLocation(5, 4, 8, 4)
-                                        .withChild(LegendDeclaration.builder().withIdentifier("ID").withClassifier(M2RelationalPaths.Column).withLocation(7, 8, 7, 13).build())
-                                        .withChild(LegendDeclaration.builder().withIdentifier("NAME").withClassifier(M2RelationalPaths.Column).withLocation(7, 16, 7, 32).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("default").withClassifier(M2RelationalPaths.Schema).withLocation(DOC_ID_FOR_TEXT,3, 0, 18, 0)
+                                .withChild(LegendDeclaration.builder().withIdentifier("T1").withClassifier(M2RelationalPaths.Table).withLocation(DOC_ID_FOR_TEXT,5, 4, 8, 4)
+                                        .withChild(LegendDeclaration.builder().withIdentifier("ID").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,7, 8, 7, 13).build())
+                                        .withChild(LegendDeclaration.builder().withIdentifier("NAME").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,7, 16, 7, 32).build())
                                         .build())
                                 .build())
                         .build()
@@ -95,7 +94,7 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                         "   Join JoinEmployeeToFirm(EmployeeTable.id = FirmTable.employeeId)\n" +
                         "   Join JoinEmployeeToemployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
                         ")",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(4, 3, 4, 7), "Unexpected token", Kind.Error, Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT,4, 3, 4, 7), "Unexpected token", Kind.Error, Source.Parser)
         );
     }
 
@@ -114,7 +113,7 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                         "   Join JoinEmployeeToEmployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
                         "   Join JoinEmployeeToNowhere(EmployeeTable.id = UnknownTable.id)\n" +
                         ")",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(9, 49, 9, 60), "Can't find table 'UnknownTable' in schema 'default' and database 'EmployeeDatabase'", Kind.Error, Source.Compiler)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT,9, 49, 9, 60), "Can't find table 'UnknownTable' in schema 'default' and database 'EmployeeDatabase'", Kind.Error, Source.Compiler)
         );
     }
 
@@ -137,7 +136,7 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 "Database vscodelsp::test::StudentDatabase\n" +
                 "(\n" +
                 ")");
-        testDiagnostics(codeFiles, "vscodelsp::test::EmployeeDatabase", LegendDiagnostic.newDiagnostic(TextInterval.newInterval(9, 49, 9, 60), "Can't find table 'UnknownTable' in schema 'default' and database 'EmployeeDatabase'", Kind.Error, Source.Compiler));
+        testDiagnostics(codeFiles, "vscodelsp::test::EmployeeDatabase", LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase",9, 49, 9, 60), "Can't find table 'UnknownTable' in schema 'default' and database 'EmployeeDatabase'", Kind.Error, Source.Compiler));
     }
 
     @Test

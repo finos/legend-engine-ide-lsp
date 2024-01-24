@@ -14,12 +14,11 @@
 
 package org.finos.legend.engine.ide.lsp.extension.execution;
 
-import org.finos.legend.engine.ide.lsp.extension.text.Locatable;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
-
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import org.finos.legend.engine.ide.lsp.extension.text.Locatable;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 
 /**
  * A Legend command which can be executed.
@@ -29,10 +28,10 @@ public class LegendCommand implements Locatable
     private final String entity;
     private final String id;
     private final String title;
-    private final TextInterval location;
+    private final TextLocation location;
     private final Map<String, String> executableArgs;
 
-    private LegendCommand(String entity, String id, String title, TextInterval location, Map<String, String> executableArgs)
+    private LegendCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs)
     {
         this.entity = Objects.requireNonNull(entity, "entity is required");
         this.id = Objects.requireNonNull(id, "commandId is required");
@@ -81,7 +80,7 @@ public class LegendCommand implements Locatable
     }
 
     @Override
-    public TextInterval getLocation()
+    public TextLocation getLocation()
     {
         return this.location;
     }
@@ -135,7 +134,7 @@ public class LegendCommand implements Locatable
      * @param location command location
      * @return new command
      */
-    public static LegendCommand newCommand(String entity, String id, String title, TextInterval location)
+    public static LegendCommand newCommand(String entity, String id, String title, TextLocation location)
     {
         return newCommand(entity, id, title, location, null);
     }
@@ -150,7 +149,7 @@ public class LegendCommand implements Locatable
      * @param executableArgs command executableArgs
      * @return new command
      */
-    public static LegendCommand newCommand(String entity, String id, String title, TextInterval location, Map<String, String> executableArgs)
+    public static LegendCommand newCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs)
     {
         return new LegendCommand(entity, id, title, location, executableArgs);
     }

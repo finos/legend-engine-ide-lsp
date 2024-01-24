@@ -23,8 +23,8 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -74,7 +74,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "Mapping test::mapping::TestMapping\n" +
                         "(\r\n" +
                         "   )\n",
-                LegendDeclaration.builder().withIdentifier("test::mapping::TestMapping").withClassifier("meta::pure::mapping::Mapping").withLocation(3, 0, 5, 3).build()
+                LegendDeclaration.builder().withIdentifier("test::mapping::TestMapping").withClassifier("meta::pure::mapping::Mapping").withLocation(DOC_ID_FOR_TEXT,3, 0, 5, 3).build()
         );
     }
 
@@ -92,7 +92,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                         "   }\n" +
                         ")",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 35, 5, 47), "Unexpected token 'EmployeeTable'. Valid alternatives: ['(', ':']", Kind.Error, Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping", 5, 35, 5, 47), "Unexpected token 'EmployeeTable'. Valid alternatives: ['(', ':']", Kind.Error, Source.Parser)
         );
     }
 
@@ -109,7 +109,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                         "   }\n" +
                         ")",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler)
         );
     }
 
@@ -133,7 +133,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                 "   }\n" +
                 ")");
-        testDiagnostics(codeFiles, "vscodelsp::test::EmployeeMapping", LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler));
+        testDiagnostics(codeFiles, "vscodelsp::test::EmployeeMapping", LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping", 3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler));
     }
 
     @Override

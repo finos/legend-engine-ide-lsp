@@ -14,13 +14,12 @@
 
 package org.finos.legend.engine.ide.lsp.extension.declaration;
 
-import org.finos.legend.engine.ide.lsp.extension.text.LegendTextObject;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.finos.legend.engine.ide.lsp.extension.text.LegendTextObject;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 
 /**
  * Legend declaration. This could be a class, enumeration, service, or any other type of model entity. It could also be
@@ -32,7 +31,7 @@ public class LegendDeclaration extends LegendTextObject
     private final String classifier;
     private final List<LegendDeclaration> children;
 
-    private LegendDeclaration(String identifier, String classifier, TextInterval location, TextInterval coreLocation, List<LegendDeclaration> children)
+    private LegendDeclaration(String identifier, String classifier, TextLocation location, TextLocation coreLocation, List<LegendDeclaration> children)
     {
         super(location, coreLocation);
         this.identifier = Objects.requireNonNull(identifier, "identifier is required");
@@ -40,7 +39,7 @@ public class LegendDeclaration extends LegendTextObject
         this.children = children;
         children.forEach(c ->
         {
-            if (!getLocation().subsumes(c.getLocation(), false))
+            if (!getLocation().subsumes(c.getLocation()))
             {
                 throw new IllegalArgumentException("Location of declaration (" + getLocation() + ") must subsume the location of all children: " + c);
             }
@@ -88,10 +87,10 @@ public class LegendDeclaration extends LegendTextObject
     private StringBuilder appendString(StringBuilder builder)
     {
         builder.append("{id=").append(this.identifier).append(" classifier=").append(this.classifier)
-                .append(" location=").append(getLocation().toCompactString());
+                .append(" location=").append(getLocation());
         if (hasCoreLocation())
         {
-            builder.append(" coreLocation=").append(getCoreLocation().toCompactString());
+            builder.append(" coreLocation=").append(getCoreLocation());
         }
         if (hasChildren())
         {
@@ -151,7 +150,7 @@ public class LegendDeclaration extends LegendTextObject
      * @param location   full location of the declaration
      * @return Legend declaration
      */
-    public static LegendDeclaration newDeclaration(String identifier, String classifier, TextInterval location)
+    public static LegendDeclaration newDeclaration(String identifier, String classifier, TextLocation location)
     {
         return builder().withIdentifier(identifier).withClassifier(classifier).withLocation(location).build();
     }
@@ -166,7 +165,7 @@ public class LegendDeclaration extends LegendTextObject
      * @param coreLocation core location of the declaration (optional)
      * @return Legend declaration
      */
-    public static LegendDeclaration newDeclaration(String identifier, String classifier, TextInterval location, TextInterval coreLocation)
+    public static LegendDeclaration newDeclaration(String identifier, String classifier, TextLocation location, TextLocation coreLocation)
     {
         return builder().withIdentifier(identifier).withClassifier(classifier).withLocation(location).withCoreLocation(coreLocation).build();
     }
@@ -186,8 +185,8 @@ public class LegendDeclaration extends LegendTextObject
      */
     public static class Builder
     {
-        private TextInterval location;
-        private TextInterval coreLocation;
+        private TextLocation location;
+        private TextLocation coreLocation;
         private String identifier;
         private String classifier;
         private final List<LegendDeclaration> children = new ArrayList<>();
@@ -201,9 +200,9 @@ public class LegendDeclaration extends LegendTextObject
          * @param endColumn   end column
          * @return this builder
          */
-        public Builder withLocation(int startLine, int startColumn, int endLine, int endColumn)
+        public Builder withLocation(String sourceUri, int startLine, int startColumn, int endLine, int endColumn)
         {
-            return withLocation(TextInterval.newInterval(startLine, startColumn, endLine, endColumn));
+            return withLocation(TextLocation.newTextSource(sourceUri, startLine, startColumn, endLine, endColumn));
         }
 
         /**
@@ -212,7 +211,7 @@ public class LegendDeclaration extends LegendTextObject
          * @param location declaration location
          * @return this builder
          */
-        public Builder withLocation(TextInterval location)
+        public Builder withLocation(TextLocation location)
         {
             this.location = location;
             return this;
@@ -227,9 +226,9 @@ public class LegendDeclaration extends LegendTextObject
          * @param endColumn   end column
          * @return this builder
          */
-        public Builder withCoreLocation(int startLine, int startColumn, int endLine, int endColumn)
+        public Builder withCoreLocation(String sourceUri, int startLine, int startColumn, int endLine, int endColumn)
         {
-            return withCoreLocation(TextInterval.newInterval(startLine, startColumn, endLine, endColumn));
+            return withCoreLocation(TextLocation.newTextSource(sourceUri, startLine, startColumn, endLine, endColumn));
         }
 
         /**
@@ -238,7 +237,7 @@ public class LegendDeclaration extends LegendTextObject
          * @param coreLocation core location
          * @return this builder
          */
-        public Builder withCoreLocation(TextInterval coreLocation)
+        public Builder withCoreLocation(TextLocation coreLocation)
         {
             this.coreLocation = coreLocation;
             return this;

@@ -14,10 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp.extension.diagnostic;
 
-import org.finos.legend.engine.ide.lsp.extension.text.Locatable;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
-
 import java.util.Objects;
+import org.finos.legend.engine.ide.lsp.extension.text.Locatable;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 
 /**
  * Diagnostic from a Legend tool, such as a parser or compiler. This is information about text at a specific location.
@@ -25,12 +24,12 @@ import java.util.Objects;
  */
 public class LegendDiagnostic implements Locatable
 {
-    private final TextInterval location;
+    private final TextLocation location;
     private final String message;
     private final Kind kind;
     private final Source source;
 
-    private LegendDiagnostic(TextInterval location, String message, Kind kind, Source source)
+    private LegendDiagnostic(TextLocation location, String message, Kind kind, Source source)
     {
         this.location = Objects.requireNonNull(location, "location is required");
         this.message = Objects.requireNonNull(message, "message is required");
@@ -39,7 +38,7 @@ public class LegendDiagnostic implements Locatable
     }
 
     @Override
-    public TextInterval getLocation()
+    public TextLocation getLocation()
     {
         return this.location;
     }
@@ -106,7 +105,7 @@ public class LegendDiagnostic implements Locatable
     @Override
     public String toString()
     {
-        return getClass().getSimpleName() + "{location = " + this.location.toCompactString() +
+        return getClass().getSimpleName() + "{location = " + this.location +
                 ", type = " + this.source +
                 ", severity = " + this.kind +
                 ", message=\"" + this.message + "\"}";
@@ -163,7 +162,7 @@ public class LegendDiagnostic implements Locatable
      * @param source   diagnostic source
      * @return Legend diagnostic
      */
-    public static LegendDiagnostic newDiagnostic(TextInterval location, String message, Kind kind, Source source)
+    public static LegendDiagnostic newDiagnostic(TextLocation location, String message, Kind kind, Source source)
     {
         return new LegendDiagnostic(location, message, kind, source);
     }

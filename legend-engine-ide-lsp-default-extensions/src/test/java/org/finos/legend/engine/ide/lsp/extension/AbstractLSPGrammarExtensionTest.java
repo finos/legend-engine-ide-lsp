@@ -30,6 +30,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.state.State;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
+import org.finos.legend.engine.ide.lsp.extension.text.LegendTextObject;
 import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.Test;
 abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtension>
 {
     private static final Pattern GRAMMAR_LINE_PATTERN = Pattern.compile("^\\h*+###(?<parser>\\w++)\\h*+$\\R?", Pattern.MULTILINE);
+    public static final String DOC_ID_FOR_TEXT = "file.pure";
 
     protected T extension = newExtension();
 
@@ -60,23 +62,23 @@ abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtensi
 
     protected void testGetDeclarations(String code, LegendDeclaration... expectedDeclarations)
     {
-        Comparator<LegendDeclaration> cmp = Comparator.comparing(d -> d.getLocation().getStart());
+        Comparator<LegendDeclaration> cmp = Comparator.comparing(LegendTextObject::getLocation);
         MutableList<LegendDeclaration> expected = Lists.mutable.with(expectedDeclarations).sortThis(cmp);
-        MutableList<LegendDeclaration> actual = Lists.mutable.<LegendDeclaration>withAll(this.extension.getDeclarations(newSectionState("", code))).sortThis(cmp);
+        MutableList<LegendDeclaration> actual = Lists.mutable.<LegendDeclaration>withAll(this.extension.getDeclarations(newSectionState(DOC_ID_FOR_TEXT, code))).sortThis(cmp);
         Assertions.assertEquals(expected, actual);
     }
 
     protected void testDiagnostics(String code, LegendDiagnostic... expectedDiagnostics)
     {
-        Comparator<LegendDiagnostic> cmp = Comparator.comparing(d -> d.getLocation().getStart());
+        Comparator<LegendDiagnostic> cmp = Comparator.comparing(LegendDiagnostic::getLocation);
         MutableList<LegendDiagnostic> expected = Lists.mutable.with(expectedDiagnostics).sortThis(cmp);
-        MutableList<LegendDiagnostic> actual = Lists.mutable.<LegendDiagnostic>withAll(this.extension.getDiagnostics(newSectionState("", code))).sortThis(cmp);
+        MutableList<LegendDiagnostic> actual = Lists.mutable.<LegendDiagnostic>withAll(this.extension.getDiagnostics(newSectionState(DOC_ID_FOR_TEXT, code))).sortThis(cmp);
         Assertions.assertEquals(expected, actual);
     }
 
     protected void testDiagnostics(MutableMap<String, String> files, String expectedDocId, LegendDiagnostic... expectedDiagnostics)
     {
-        Comparator<LegendDiagnostic> cmp = Comparator.comparing(d -> d.getLocation().getStart());
+        Comparator<LegendDiagnostic> cmp = Comparator.comparing(LegendDiagnostic::getLocation);
         MutableList<LegendDiagnostic> expected = Lists.mutable.with(expectedDiagnostics).sortThis(cmp);
         MutableList<SectionState> sectionStates = newSectionStates(files);
         SectionState inputSectionState = sectionStates.detect(s -> expectedDocId.equals(s.getDocumentState().getDocumentId()));
@@ -86,7 +88,7 @@ abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtensi
 
     protected Iterable<? extends LegendExecutionResult> testCommand(String code, String entityPath, String command)
     {
-        SectionState sectionState = newSectionState("", code);
+        SectionState sectionState = newSectionState(DOC_ID_FOR_TEXT, code);
         return this.extension.execute(sectionState, entityPath, command, Maps.fixedSize.empty());
     }
 

@@ -21,8 +21,8 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -67,21 +67,21 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         "   oneToTwo : test::model::TestClass2[*];\n" +
                         "   twoToOne : test::model::TestClass1[*];\n" +
                         "}\n",
-                LegendDeclaration.builder().withIdentifier("test::model::TestClass1").withClassifier(M3Paths.Class).withLocation(0, 0, 2, 0).build(),
-                LegendDeclaration.builder().withIdentifier("test::model::TestEnumeration").withClassifier(M3Paths.Enumeration).withLocation(5, 0, 9, 0)
-                        .withChild(LegendDeclaration.builder().withIdentifier("VAL1").withClassifier("test::model::TestEnumeration").withLocation(7, 2, 7, 5).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("VAL2").withClassifier("test::model::TestEnumeration").withLocation(7, 8, 7, 11).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("VAL3").withClassifier("test::model::TestEnumeration").withLocation(8, 2, 8, 5).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("VAL4").withClassifier("test::model::TestEnumeration").withLocation(8, 8, 8, 11).build())
+                LegendDeclaration.builder().withIdentifier("test::model::TestClass1").withClassifier(M3Paths.Class).withLocation(DOC_ID_FOR_TEXT, 0, 0, 2, 0).build(),
+                LegendDeclaration.builder().withIdentifier("test::model::TestEnumeration").withClassifier(M3Paths.Enumeration).withLocation(DOC_ID_FOR_TEXT,5, 0, 9, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL1").withClassifier("test::model::TestEnumeration").withLocation(DOC_ID_FOR_TEXT,7, 2, 7, 5).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL2").withClassifier("test::model::TestEnumeration").withLocation(DOC_ID_FOR_TEXT,7, 8, 7, 11).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL3").withClassifier("test::model::TestEnumeration").withLocation(DOC_ID_FOR_TEXT,8, 2, 8, 5).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL4").withClassifier("test::model::TestEnumeration").withLocation(DOC_ID_FOR_TEXT,8, 8, 8, 11).build())
                         .build(),
-                LegendDeclaration.builder().withIdentifier("test::model::TestProfile").withClassifier(M3Paths.Profile).withLocation(11, 0, 15, 0).build(),
-                LegendDeclaration.builder().withIdentifier("test::model::TestClass2").withClassifier(M3Paths.Class).withLocation(17, 0, 21, 0)
-                        .withChild(LegendDeclaration.builder().withIdentifier("name").withClassifier(M3Paths.Property).withLocation(19, 3, 19, 19).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("type").withClassifier(M3Paths.Property).withLocation(20, 3, 20, 41).build())
+                LegendDeclaration.builder().withIdentifier("test::model::TestProfile").withClassifier(M3Paths.Profile).withLocation(DOC_ID_FOR_TEXT,11, 0, 15, 0).build(),
+                LegendDeclaration.builder().withIdentifier("test::model::TestClass2").withClassifier(M3Paths.Class).withLocation(DOC_ID_FOR_TEXT,17, 0, 21, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("name").withClassifier(M3Paths.Property).withLocation(DOC_ID_FOR_TEXT,19, 3, 19, 19).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("type").withClassifier(M3Paths.Property).withLocation(DOC_ID_FOR_TEXT,20, 3, 20, 41).build())
                         .build(),
-                LegendDeclaration.builder().withIdentifier("test::model::TestAssociation").withClassifier(M3Paths.Association).withLocation(23, 0, 27, 0)
-                        .withChild(LegendDeclaration.builder().withIdentifier("oneToTwo").withClassifier(M3Paths.Property).withLocation(25, 3, 25, 40).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("twoToOne").withClassifier(M3Paths.Property).withLocation(26, 3, 26, 40).build())
+                LegendDeclaration.builder().withIdentifier("test::model::TestAssociation").withClassifier(M3Paths.Association).withLocation(DOC_ID_FOR_TEXT,23, 0, 27, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("oneToTwo").withClassifier(M3Paths.Property).withLocation(DOC_ID_FOR_TEXT,25, 3, 25, 40).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("twoToOne").withClassifier(M3Paths.Property).withLocation(DOC_ID_FOR_TEXT,26, 3, 26, 40).build())
                         .build()
         );
 
@@ -116,21 +116,21 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         "   oneToTwo : test::model::TestClass2[*];\n" +
                         "   twoToOne : test::model::TestClass1[*];\n" +
                         "}\n",
-                LegendDeclaration.builder().withIdentifier("test::model::TestClass1").withClassifier(M3Paths.Class).withLocation(2, 0, 4, 0).build(),
-                LegendDeclaration.builder().withIdentifier("test::model::TestEnumeration").withClassifier(M3Paths.Enumeration).withLocation(7, 0, 11, 0)
-                        .withChild(LegendDeclaration.builder().withIdentifier("VAL1").withClassifier("test::model::TestEnumeration").withLocation(9, 2, 9, 5).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("VAL2").withClassifier("test::model::TestEnumeration").withLocation(9, 8, 9, 11).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("VAL3").withClassifier("test::model::TestEnumeration").withLocation(10, 2, 10, 5).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("VAL4").withClassifier("test::model::TestEnumeration").withLocation(10, 8, 10, 11).build())
+                LegendDeclaration.builder().withIdentifier("test::model::TestClass1").withClassifier(M3Paths.Class).withLocation(DOC_ID_FOR_TEXT,2, 0, 4, 0).build(),
+                LegendDeclaration.builder().withIdentifier("test::model::TestEnumeration").withClassifier(M3Paths.Enumeration).withLocation(DOC_ID_FOR_TEXT,7, 0, 11, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL1").withClassifier("test::model::TestEnumeration").withLocation(DOC_ID_FOR_TEXT,9, 2, 9, 5).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL2").withClassifier("test::model::TestEnumeration").withLocation(DOC_ID_FOR_TEXT,9, 8, 9, 11).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL3").withClassifier("test::model::TestEnumeration").withLocation(DOC_ID_FOR_TEXT,10, 2, 10, 5).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("VAL4").withClassifier("test::model::TestEnumeration").withLocation(DOC_ID_FOR_TEXT,10, 8, 10, 11).build())
                         .build(),
-                LegendDeclaration.builder().withIdentifier("test::model::TestProfile").withClassifier(M3Paths.Profile).withLocation(13, 0, 17, 0).build(),
-                LegendDeclaration.builder().withIdentifier("test::model::TestClass2").withClassifier(M3Paths.Class).withLocation(19, 0, 23, 0)
-                        .withChild(LegendDeclaration.builder().withIdentifier("name").withClassifier(M3Paths.Property).withLocation(21, 3, 21, 19).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("type").withClassifier(M3Paths.Property).withLocation(22, 3, 22, 41).build())
+                LegendDeclaration.builder().withIdentifier("test::model::TestProfile").withClassifier(M3Paths.Profile).withLocation(DOC_ID_FOR_TEXT,13, 0, 17, 0).build(),
+                LegendDeclaration.builder().withIdentifier("test::model::TestClass2").withClassifier(M3Paths.Class).withLocation(DOC_ID_FOR_TEXT,19, 0, 23, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("name").withClassifier(M3Paths.Property).withLocation(DOC_ID_FOR_TEXT,21, 3, 21, 19).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("type").withClassifier(M3Paths.Property).withLocation(DOC_ID_FOR_TEXT,22, 3, 22, 41).build())
                         .build(),
-                LegendDeclaration.builder().withIdentifier("test::model::TestAssociation").withClassifier(M3Paths.Association).withLocation(25, 0, 29, 0)
-                        .withChild(LegendDeclaration.builder().withIdentifier("oneToTwo").withClassifier(M3Paths.Property).withLocation(27, 3, 27, 40).build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("twoToOne").withClassifier(M3Paths.Property).withLocation(28, 3, 28, 40).build())
+                LegendDeclaration.builder().withIdentifier("test::model::TestAssociation").withClassifier(M3Paths.Association).withLocation(DOC_ID_FOR_TEXT,25, 0, 29, 0)
+                        .withChild(LegendDeclaration.builder().withIdentifier("oneToTwo").withClassifier(M3Paths.Property).withLocation(DOC_ID_FOR_TEXT,27, 3, 27, 40).build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("twoToOne").withClassifier(M3Paths.Property).withLocation(DOC_ID_FOR_TEXT,28, 3, 28, 40).build())
                         .build()
         );
     }
@@ -146,7 +146,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         "    hireDate : Date[1];\n" +
                         "    hireType : String[1];\n" +
                         "}",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 20, 3, 24), "no viable alternative at input 'foobarFloat'", Kind.Error, Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 3, 20, 3, 24), "no viable alternative at input 'foobarFloat'", Kind.Error, Source.Parser)
         );
     }
 
@@ -161,7 +161,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         "    hireDate : Date[1];\n" +
                         "    hireType : vscodelsp::test::HireType[1];\n" +
                         "}",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 15, 5, 39), "Can't find type 'vscodelsp::test::HireType'", Kind.Error, Source.Compiler)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT,5, 15, 5, 39), "Can't find type 'vscodelsp::test::HireType'", Kind.Error, Source.Compiler)
         );
     }
 
@@ -175,7 +175,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         "    foobar: Float[1];\n" +
                         "    foobar: Float[1];\n" +
                         "}",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(3, 4, 3, 20), "Found duplicated property 'foobar' in class 'vscodelsp::test::Employee'", Kind.Warning, Source.Compiler)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT,3, 4, 3, 20), "Found duplicated property 'foobar' in class 'vscodelsp::test::Employee'", Kind.Warning, Source.Compiler)
         );
     }
 
@@ -211,7 +211,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
                 "}");
-        testDiagnostics(codeFiles, "vscodelsp::test::Employee1", LegendDiagnostic.newDiagnostic(TextInterval.newInterval(1, 0, 6, 0), "Can't find type 'vscodelsp::test::Employee2'", Kind.Error, Source.Compiler));
+        testDiagnostics(codeFiles, "vscodelsp::test::Employee1", LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::Employee1",1, 0, 6, 0), "Can't find type 'vscodelsp::test::Employee2'", Kind.Error, Source.Compiler));
     }
 
     @Test
