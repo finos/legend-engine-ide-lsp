@@ -218,8 +218,8 @@ class LegendTextDocumentService implements TextDocumentService
             LOGGER.debug("Getting symbols for section {} ({}) of {}", sectionState.getSectionNumber(), grammar, uri);
             extension.getDeclarations(sectionState).forEach(declaration ->
             {
-                Range range = toRange(declaration.getLocation());
-                Range selectionRange = declaration.hasCoreLocation() ? toRange(declaration.getCoreLocation()) : range;
+                Range range = toRange(declaration.getLocation().getTextInterval());
+                Range selectionRange = declaration.hasCoreLocation() ? toRange(declaration.getCoreLocation().getTextInterval()) : range;
                 DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
                 results.add(Either.forRight(symbol));
             });
@@ -381,7 +381,7 @@ class LegendTextDocumentService implements TextDocumentService
 
     private Diagnostic toDiagnostic(LegendDiagnostic diagnostic)
     {
-        return new Diagnostic(toRange(diagnostic.getLocation()), diagnostic.getMessage(), toDiagnosticSeverity(diagnostic.getKind()), diagnostic.getSource().toString());
+        return new Diagnostic(toRange(diagnostic.getLocation().getTextInterval()), diagnostic.getMessage(), toDiagnosticSeverity(diagnostic.getKind()), diagnostic.getSource().toString());
     }
 
     private DiagnosticSeverity toDiagnosticSeverity(LegendDiagnostic.Kind kind)
@@ -511,7 +511,7 @@ class LegendTextDocumentService implements TextDocumentService
             extension.getCommands(sectionState).forEach(c ->
             {
                 Command command = new Command(c.getTitle(), LegendLanguageServer.LEGEND_COMMAND_ID, List.of(uri, sectionState.getSectionNumber(), c.getEntity(), c.getId(), c.getExecutableArgs()));
-                codeLenses.add(new CodeLens(toRange(c.getLocation()), command, null));
+                codeLenses.add(new CodeLens(toRange(c.getLocation().getTextInterval()), command, null));
             });
         });
         return codeLenses;

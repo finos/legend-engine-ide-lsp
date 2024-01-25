@@ -26,8 +26,8 @@ import java.util.Objects;
  */
 public abstract class LegendTextObject implements Locatable
 {
-    private final TextInterval location;
-    private final TextInterval coreLocation;
+    private final TextLocation location;
+    private final TextLocation coreLocation;
 
     /**
      * Construct a Legend text object with a location and optional "core" location. If present, the core location must
@@ -36,13 +36,13 @@ public abstract class LegendTextObject implements Locatable
      * @param location     object location (required)
      * @param coreLocation "core" location (optional)
      */
-    protected LegendTextObject(TextInterval location, TextInterval coreLocation)
+    protected LegendTextObject(TextLocation location, TextLocation coreLocation)
     {
         this.location = Objects.requireNonNull(location, "location is required");
         this.coreLocation = coreLocation;
         if ((coreLocation != null) && !location.subsumes(coreLocation))
         {
-            throw new IllegalArgumentException("Full location " + location.toCompactString() + " must subsume core location " + coreLocation.toCompactString());
+            throw new IllegalArgumentException("Full location " + location + " must subsume core location " + coreLocation);
         }
     }
 
@@ -51,7 +51,7 @@ public abstract class LegendTextObject implements Locatable
      *
      * @param location object location
      */
-    protected LegendTextObject(TextInterval location)
+    protected LegendTextObject(TextLocation location)
     {
         this(location, null);
     }
@@ -62,7 +62,7 @@ public abstract class LegendTextObject implements Locatable
      * @return location
      */
     @Override
-    public TextInterval getLocation()
+    public TextLocation getLocation()
     {
         return this.location;
     }
@@ -88,7 +88,7 @@ public abstract class LegendTextObject implements Locatable
      * @see #hasCoreLocation
      * @see #getLocation
      */
-    public TextInterval getCoreLocation()
+    public TextLocation getCoreLocation()
     {
         return this.coreLocation;
     }

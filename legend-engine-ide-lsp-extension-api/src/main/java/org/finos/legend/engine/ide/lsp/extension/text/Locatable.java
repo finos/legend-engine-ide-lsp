@@ -24,5 +24,5 @@ public interface Locatable
      *
      * @return location
      */
-    TextInterval getLocation();
+    TextLocation getLocation();
 }

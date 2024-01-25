@@ -49,6 +49,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.Warning;
@@ -459,7 +460,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             SourceInformation sourceInfo = e.getSourceInformation();
             if (isValidSourceInfo(sourceInfo))
             {
-                globalState.logInfo("Compilation completed with error " + "(" + sourceInfo.sourceId + " " + toLocation(sourceInfo).toCompactString() + "): " + e.getMessage());
+                globalState.logInfo("Compilation completed with error " + "(" + sourceInfo.sourceId + " " + toLocation(sourceInfo) + "): " + e.getMessage());
             }
             else
             {
@@ -635,7 +636,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private boolean isPositionIncludedOnSourceInfo(TextPosition position, SourceInformation sourceInformation)
     {
-        return isValidSourceInfo(sourceInformation) && toLocation(sourceInformation).includes(position);
+        return isValidSourceInfo(sourceInformation) && toLocation(sourceInformation).getTextInterval().includes(position);
     }
 
     /**
@@ -659,9 +660,9 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
      * @param sourceInfo source information
      * @return location
      */
-    protected static TextInterval toLocation(SourceInformation sourceInfo)
+    protected static TextLocation toLocation(SourceInformation sourceInfo)
     {
-        return TextInterval.newInterval(sourceInfo.startLine - 1, sourceInfo.startColumn - 1, sourceInfo.endLine - 1, sourceInfo.endColumn - 1);
+        return TextLocation.newTextSource(sourceInfo.sourceId, sourceInfo.startLine - 1, sourceInfo.startColumn - 1, sourceInfo.endLine - 1, sourceInfo.endColumn - 1);
     }
 
     protected Iterable<LegendCompletion> computeCompletionsForSupportedTypes(SectionState section, TextPosition location, Set<String> supportedTypes)

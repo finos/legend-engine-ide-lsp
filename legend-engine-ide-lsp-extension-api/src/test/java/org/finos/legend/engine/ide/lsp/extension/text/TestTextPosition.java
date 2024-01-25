@@ -152,7 +152,7 @@ public class TestTextPosition
     private void assertCompare(int expected, TextPosition pos1, TextPosition pos2)
     {
         Assertions.assertEquals(expected, TextPosition.compare(pos1, pos2), () -> "TextPosition.compare(" + pos1 + ", " + pos2 + ") == " + expected);
-        Assertions.assertEquals(expected, pos1.compareTo(pos2), () -> pos1 + ".compareTp(" + pos2 + ") == " + expected);
+        Assertions.assertEquals(expected, pos1.compareTo(pos2), () -> pos1 + ".compareTo(" + pos2 + ") == " + expected);
     }
 
     @Test

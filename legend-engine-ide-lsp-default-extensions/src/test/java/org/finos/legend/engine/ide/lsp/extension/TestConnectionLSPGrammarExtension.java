@@ -26,7 +26,7 @@ import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.junit.jupiter.api.Assertions;
@@ -62,7 +62,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
                         "    class: test::model::Person;\r\n" +
                         "    url: 'test_url';\n" +
                         " }\n",
-                LegendDeclaration.builder().withIdentifier("test::connection::TestConnection").withClassifier("meta::pure::runtime::PackageableConnection").withLocation(2, 0, 6, 1).build()
+                LegendDeclaration.builder().withIdentifier("test::connection::TestConnection").withClassifier("meta::pure::runtime::PackageableConnection").withLocation(DOC_ID_FOR_TEXT,2, 0, 6, 1).build()
         );
     }
 
@@ -78,7 +78,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
                         "    class: test::model::Person;\r\n" +
                         "    url: ;\n" +
                         " }\n",
-                LegendDiagnostic.newDiagnostic(TextInterval.newInterval(5, 9, 5, 9), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 5, 9, 5, 9), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)
         );
     }
 
@@ -95,7 +95,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 {
                     String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                     Assertions.assertEquals(
-                            "{\"config\":{\"enrichTables\":true,\"enrichPrimaryKeys\":true,\"enrichColumns\":true,\"patterns\":[{\"catalog\":\"%\",\"schemaPattern\":\"%\",\"tablePattern\":\"%\"}]},\"connection\":{\"_type\":\"RelationalDatabaseConnection\",\"element\":\"model::MyStore\",\"elementSourceInformation\":{\"sourceId\":\"\",\"startLine\":4,\"startColumn\":10,\"endLine\":4,\"endColumn\":23},\"sourceInformation\":{\"sourceId\":\"\",\"startLine\":2,\"startColumn\":1,\"endLine\":12,\"endColumn\":1},\"type\":\"H2\",\"timeZone\":null,\"quoteIdentifiers\":null,\"postProcessorWithParameter\":[],\"datasourceSpecification\":{\"_type\":\"h2Local\",\"sourceInformation\":{\"sourceId\":\"\",\"startLine\":6,\"startColumn\":3,\"endLine\":10,\"endColumn\":4},\"testDataSetupCsv\":null,\"testDataSetupSqls\":[]},\"authenticationStrategy\":{\"_type\":\"h2Default\",\"sourceInformation\":{\"sourceId\":\"\",\"startLine\":11,\"startColumn\":3,\"endLine\":11,\"endColumn\":18}},\"databaseType\":\"H2\",\"postProcessors\":null,\"localMode\":null},\"targetDatabase\":{\"name\":\"MyConnectionDatabase\",\"package\":\"model\"}}",
+                            "{\"config\":{\"enrichTables\":true,\"enrichPrimaryKeys\":true,\"enrichColumns\":true,\"patterns\":[{\"catalog\":\"%\",\"schemaPattern\":\"%\",\"tablePattern\":\"%\"}]},\"connection\":{\"_type\":\"RelationalDatabaseConnection\",\"element\":\"model::MyStore\",\"elementSourceInformation\":{\"sourceId\":\"file.pure\",\"startLine\":4,\"startColumn\":10,\"endLine\":4,\"endColumn\":23},\"sourceInformation\":{\"sourceId\":\"file.pure\",\"startLine\":2,\"startColumn\":1,\"endLine\":12,\"endColumn\":1},\"type\":\"H2\",\"timeZone\":null,\"quoteIdentifiers\":null,\"postProcessorWithParameter\":[],\"datasourceSpecification\":{\"_type\":\"h2Local\",\"sourceInformation\":{\"sourceId\":\"file.pure\",\"startLine\":6,\"startColumn\":3,\"endLine\":10,\"endColumn\":4},\"testDataSetupCsv\":null,\"testDataSetupSqls\":[]},\"authenticationStrategy\":{\"_type\":\"h2Default\",\"sourceInformation\":{\"sourceId\":\"file.pure\",\"startLine\":11,\"startColumn\":3,\"endLine\":11,\"endColumn\":18}},\"databaseType\":\"H2\",\"postProcessors\":null,\"localMode\":null},\"targetDatabase\":{\"name\":\"MyConnectionDatabase\",\"package\":\"model\"}}",
                             requestBody
                     );
                     ConnectionLSPGrammarExtension.DatabaseBuilderInput body = objectMapper.readValue(requestBody, ConnectionLSPGrammarExtension.DatabaseBuilderInput.class);
