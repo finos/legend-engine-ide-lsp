@@ -21,7 +21,7 @@ import java.util.Objects;
 /**
  * A text source location, including the source URI and the text interval on that source URI
  */
-public class TextLocation implements Comparable<TextLocation>
+public class TextLocation
 {
     private final String sourceUri;
     private final TextInterval textInterval;
@@ -112,21 +112,6 @@ public class TextLocation implements Comparable<TextLocation>
         return this.sourceUri.equals(other.sourceUri) && this.textInterval.subsumes(other.textInterval, strict);
     }
 
-    /**
-     * Compares two text sources, first comparing the source URI, and then if these are equal, comparing the {@link TextInterval}
-     * @param that the object to be compared.
-     * @return compare result
-     */
-    @Override
-    public int compareTo(TextLocation that)
-    {
-        int result = this.sourceUri.compareTo(that.sourceUri);
-        if (result == 0)
-        {
-            result = this.textInterval.compareTo(that.textInterval);
-        }
-        return result;
-    }
 
     /**
      * Creates a new text source with the given source URI, and the {@link TextInterval}

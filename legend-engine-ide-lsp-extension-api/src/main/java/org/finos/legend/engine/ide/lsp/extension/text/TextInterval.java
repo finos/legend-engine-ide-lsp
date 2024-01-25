@@ -20,7 +20,7 @@ import java.util.Objects;
  * A (continuous) interval of text between two {@link TextPosition}s. Both the start and end positions are inclusive. As
  * such, there is no empty text interval.
  */
-public class TextInterval implements Comparable<TextInterval>
+public class TextInterval
 {
     private final TextPosition start;
     private final TextPosition end;
@@ -171,17 +171,6 @@ public class TextInterval implements Comparable<TextInterval>
 
         // start == end
         return (this.start.getLine() + lineOffset) + ":" + (this.start.getColumn() + columnOffset);
-    }
-
-    @Override
-    public int compareTo(TextInterval that)
-    {
-        int result = this.start.compareTo(that.start);
-        if (result == 0)
-        {
-            result = this.end.compareTo(that.end);
-        }
-        return result;
     }
 
     /**

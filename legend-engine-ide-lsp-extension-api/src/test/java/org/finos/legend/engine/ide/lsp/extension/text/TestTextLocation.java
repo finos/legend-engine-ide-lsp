@@ -40,23 +40,6 @@ public class TestTextLocation
     }
 
     @Test
-    void testCompare()
-    {
-        TextLocation start = TextLocation.newTextSource("hello.pure", TextInterval.newInterval(0, 0, 0, 1));
-        TextLocation start2 = TextLocation.newTextSource("hello2.pure", TextInterval.newInterval(0, 0, 0, 1));
-        TextLocation firstLine = TextLocation.newTextSource("hello.pure", TextInterval.newInterval(1, 0, 1, 1));
-        TextLocation other = TextLocation.newTextSource("hello.pure", TextInterval.newInterval(1, 0, 2, 1));
-
-        Assertions.assertEquals(0, start.compareTo(start));
-        Assertions.assertEquals(4, start2.compareTo(start));
-        Assertions.assertEquals(-4, start.compareTo(start2));
-        Assertions.assertEquals(1, firstLine.compareTo(start));
-        Assertions.assertEquals(-1, start.compareTo(firstLine));
-        Assertions.assertEquals(1, other.compareTo(firstLine));
-        Assertions.assertEquals(-1, firstLine.compareTo(other));
-    }
-
-    @Test
     public void testToString()
     {
         Assertions.assertEquals("TextSource{sourceUri='hello.pure', textInterval=0:0-75:0}", TextLocation.newTextSource("hello.pure", 0, 0, 75, 0).toString());

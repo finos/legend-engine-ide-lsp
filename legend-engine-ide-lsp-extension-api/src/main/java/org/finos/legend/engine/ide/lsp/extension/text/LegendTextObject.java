@@ -40,7 +40,7 @@ public abstract class LegendTextObject implements Locatable
     {
         this.location = Objects.requireNonNull(location, "location is required");
         this.coreLocation = coreLocation;
-        if ((coreLocation != null) && !location.getTextInterval().subsumes(coreLocation.getTextInterval()))
+        if ((coreLocation != null) && !location.subsumes(coreLocation))
         {
             throw new IllegalArgumentException("Full location " + location + " must subsume core location " + coreLocation);
         }
