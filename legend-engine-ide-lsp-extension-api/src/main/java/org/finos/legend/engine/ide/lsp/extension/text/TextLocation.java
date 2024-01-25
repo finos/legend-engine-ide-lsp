@@ -19,26 +19,26 @@ package org.finos.legend.engine.ide.lsp.extension.text;
 import java.util.Objects;
 
 /**
- * A text source location, including the source URI and the text interval on that source URI
+ * A text source location, including the document id where the source is defined and the text interval on such document
  */
 public class TextLocation
 {
-    private final String sourceUri;
+    private final String documentId;
     private final TextInterval textInterval;
 
-    private TextLocation(String sourceUri, TextInterval textInterval)
+    private TextLocation(String documentId, TextInterval textInterval)
     {
-        this.sourceUri = Objects.requireNonNull(sourceUri, "Source URI is required");
+        this.documentId = Objects.requireNonNull(documentId, "Document ID is required");
         this.textInterval = Objects.requireNonNull(textInterval, "Text interval is required");
     }
 
     /**
-     * The source URI for this source
-     * @return source URI
+     * The document ID where the source is defined
+     * @return document id
      */
-    public String getSourceUri()
+    public String getDocumentId()
     {
-        return sourceUri;
+        return documentId;
     }
 
     /**
@@ -64,26 +64,26 @@ public class TextLocation
         }
 
         TextLocation that = (TextLocation) other;
-        return this.textInterval.equals(that.textInterval) && this.sourceUri.equals(that.sourceUri);
+        return this.textInterval.equals(that.textInterval) && this.documentId.equals(that.documentId);
     }
 
     @Override
     public int hashCode()
     {
-        return this.textInterval.hashCode() + (11 * this.sourceUri.hashCode());
+        return this.textInterval.hashCode() + (11 * this.documentId.hashCode());
     }
 
     @Override
     public String toString()
     {
         return "TextSource{" +
-                "sourceUri='" + sourceUri + '\'' +
+                "documentId='" + documentId + '\'' +
                 ", textInterval=" + textInterval.toCompactString() +
                 '}';
     }
 
     /**
-     * Return whether this source subsumes {@code other}. This is true if the source URI are equal and
+     * Return whether this source subsumes {@code other}. This is true if the document id are equal and
      * if this text interval subsumes {@code other} text interval.
      * <br>
      * See {@link TextInterval#subsumes(TextInterval)} for more on interval subsumes
@@ -98,7 +98,7 @@ public class TextLocation
     }
 
     /**
-     * Return whether this source subsumes {@code other}. This is true if the source URI are equal and
+     * Return whether this source subsumes {@code other}. This is true if the document id are equal and
      * if this text interval subsumes {@code other} text interval.
      * <br>
      * See {@link TextInterval#subsumes(TextInterval, boolean)} for more on interval subsumes
@@ -109,32 +109,32 @@ public class TextLocation
      */
     public boolean subsumes(TextLocation other, boolean strict)
     {
-        return this.sourceUri.equals(other.sourceUri) && this.textInterval.subsumes(other.textInterval, strict);
+        return this.documentId.equals(other.documentId) && this.textInterval.subsumes(other.textInterval, strict);
     }
 
 
     /**
-     * Creates a new text source with the given source URI, and the {@link TextInterval}
-     * @param sourceURI source URI, where the source is defined
+     * Creates a new text source with the given document id, and the {@link TextInterval}
+     * @param documentId document id, where the source is defined
      * @param startLine   start line
      * @param startColumn start column
      * @param endLine     end line
      * @param endColumn   end column
      * @return new text source
      */
-    public static TextLocation newTextSource(String sourceURI, int startLine, int startColumn, int endLine, int endColumn)
+    public static TextLocation newTextSource(String documentId, int startLine, int startColumn, int endLine, int endColumn)
     {
-        return newTextSource(sourceURI, TextInterval.newInterval(startLine, startColumn, endLine, endColumn));
+        return newTextSource(documentId, TextInterval.newInterval(startLine, startColumn, endLine, endColumn));
     }
 
     /**
-     * Creates a new text source with the given source URI, and the {@link TextInterval}
-     * @param sourceURI source URI, where the source is defined
+     * Creates a new text source with the given document id, and the {@link TextInterval}
+     * @param documentId document id, where the source is defined
      * @param textInterval text interval {@link TextInterval}
      * @return new text source
      */
-    public static TextLocation newTextSource(String sourceURI, TextInterval textInterval)
+    public static TextLocation newTextSource(String documentId, TextInterval textInterval)
     {
-        return new TextLocation(sourceURI, textInterval);
+        return new TextLocation(documentId, textInterval);
     }
 }

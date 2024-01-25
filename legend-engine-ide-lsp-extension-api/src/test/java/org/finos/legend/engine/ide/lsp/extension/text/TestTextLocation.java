@@ -23,7 +23,7 @@ public class TestTextLocation
     public void testValidation()
     {
         NullPointerException e1 = Assertions.assertThrows(NullPointerException.class, () -> TextLocation.newTextSource(null, TextInterval.newInterval(0, 0, 0, 1)));
-        Assertions.assertEquals("Source URI is required", e1.getMessage());
+        Assertions.assertEquals("Document ID is required", e1.getMessage());
 
         NullPointerException e2 = Assertions.assertThrows(NullPointerException.class, () -> TextLocation.newTextSource("uri.pure", null));
         Assertions.assertEquals("Text interval is required", e2.getMessage());
@@ -42,6 +42,6 @@ public class TestTextLocation
     @Test
     public void testToString()
     {
-        Assertions.assertEquals("TextSource{sourceUri='hello.pure', textInterval=0:0-75:0}", TextLocation.newTextSource("hello.pure", 0, 0, 75, 0).toString());
+        Assertions.assertEquals("TextSource{documentId='hello.pure', textInterval=0:0-75:0}", TextLocation.newTextSource("hello.pure", 0, 0, 75, 0).toString());
     }
 }
