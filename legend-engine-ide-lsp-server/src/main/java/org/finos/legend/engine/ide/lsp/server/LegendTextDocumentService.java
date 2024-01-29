@@ -17,6 +17,7 @@ package org.finos.legend.engine.ide.lsp.server;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,6 +33,7 @@ import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemLabelDetails;
 import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.CompletionParams;
+import org.eclipse.lsp4j.DefinitionParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
@@ -42,6 +44,8 @@ import org.eclipse.lsp4j.DocumentDiagnosticParams;
 import org.eclipse.lsp4j.DocumentDiagnosticReport;
 import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
+import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.LocationLink;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
@@ -59,10 +63,12 @@ import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.server.LegendServerGlobalState.LegendServerDocumentState;
 import org.finos.legend.engine.ide.lsp.text.TextTools;
@@ -515,6 +521,55 @@ class LegendTextDocumentService implements TextDocumentService
             });
         });
         return codeLenses;
+    }
+
+    @Override
+    public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> definition(DefinitionParams params)
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            String uri = params.getTextDocument().getUri();
+            LegendServerDocumentState documentState = this.server.getGlobalState().getDocumentState(uri);
+            if (documentState == null)
+            {
+                LOGGER.warn("No state for {}: cannot go to definition", uri);
+                return Either.forRight(List.of());
+            }
+
+            TextPosition textPosition = TextPosition.newPosition(params.getPosition().getLine(), params.getPosition().getCharacter());
+
+            SectionState sectionState = documentState.getSectionStateAtLine(textPosition.getLine());
+
+            if (sectionState == null)
+            {
+                LOGGER.warn("Cannot find section state for line {} of {}: cannot go to definition", textPosition.getLine(), uri);
+                return Either.forRight(List.of());
+            }
+
+            LegendLSPGrammarExtension extension = sectionState.getExtension();
+
+            if (extension == null)
+            {
+                LOGGER.warn("No extension available for section state on line {} of {}: cannot go to definition", textPosition.getLine(), uri);
+                return Either.forRight(List.of());
+            }
+
+            Optional<LegendReference> reference = extension.getLegendReference(sectionState, textPosition);
+
+            return Either.forRight(reference.map(x ->
+                            {
+                                TextLocation referencedLocation = x.getReferencedLocation();
+                                Range range = toRange(referencedLocation.getTextInterval());
+                                return List.of(new LocationLink(
+                                        referencedLocation.getDocumentId(),
+                                        range,
+                                        range,
+                                        x.hasCoreLocation() ? toRange(x.getCoreLocation().getTextInterval()) : toRange(x.getLocation().getTextInterval())
+                                ));
+                            }
+                    ).orElse(List.of())
+            );
+        });
     }
 
     private static Range toRange(TextInterval interval)

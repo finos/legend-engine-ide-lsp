@@ -92,4 +92,74 @@ public abstract class LegendTextObject implements Locatable
     {
         return this.coreLocation;
     }
+
+    protected abstract static class AbstractBuilder<T extends AbstractBuilder<?>>
+    {
+        private TextLocation location;
+        private TextLocation coreLocation;
+
+        protected abstract T self();
+
+        /**
+         * Set the location and return this builder.
+         *
+         * @param startLine   start line
+         * @param startColumn start column
+         * @param endLine     end line
+         * @param endColumn   end column
+         * @return this builder
+         */
+        public T withLocation(String sourceUri, int startLine, int startColumn, int endLine, int endColumn)
+        {
+            return withLocation(TextLocation.newTextSource(sourceUri, startLine, startColumn, endLine, endColumn));
+        }
+
+        /**
+         * Set the location and return this builder.
+         *
+         * @param location declaration location
+         * @return this builder
+         */
+        public T withLocation(TextLocation location)
+        {
+            this.location = location;
+            return self();
+        }
+
+        /**
+         * Set the core location and return this builder.
+         *
+         * @param startLine   start line
+         * @param startColumn start column
+         * @param endLine     end line
+         * @param endColumn   end column
+         * @return this builder
+         */
+        public T withCoreLocation(String sourceUri, int startLine, int startColumn, int endLine, int endColumn)
+        {
+            return withCoreLocation(TextLocation.newTextSource(sourceUri, startLine, startColumn, endLine, endColumn));
+        }
+
+        /**
+         * Set the core location and return this builder.
+         *
+         * @param coreLocation core location
+         * @return this builder
+         */
+        public T withCoreLocation(TextLocation coreLocation)
+        {
+            this.coreLocation = coreLocation;
+            return self();
+        }
+
+        protected TextLocation getLocation()
+        {
+            return this.location;
+        }
+
+        protected TextLocation getCoreLocation()
+        {
+            return this.coreLocation;
+        }
+    }
 }

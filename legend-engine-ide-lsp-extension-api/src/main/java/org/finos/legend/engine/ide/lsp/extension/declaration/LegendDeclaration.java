@@ -183,63 +183,20 @@ public class LegendDeclaration extends LegendTextObject
     /**
      * Builder for {@link LegendDeclaration}.
      */
-    public static class Builder
+    public static class Builder extends AbstractBuilder<Builder>
     {
-        private TextLocation location;
-        private TextLocation coreLocation;
         private String identifier;
         private String classifier;
         private final List<LegendDeclaration> children = new ArrayList<>();
 
-        /**
-         * Set the location and return this builder.
-         *
-         * @param startLine   start line
-         * @param startColumn start column
-         * @param endLine     end line
-         * @param endColumn   end column
-         * @return this builder
-         */
-        public Builder withLocation(String sourceUri, int startLine, int startColumn, int endLine, int endColumn)
+        private Builder()
         {
-            return withLocation(TextLocation.newTextSource(sourceUri, startLine, startColumn, endLine, endColumn));
+
         }
 
-        /**
-         * Set the location and return this builder.
-         *
-         * @param location declaration location
-         * @return this builder
-         */
-        public Builder withLocation(TextLocation location)
+        @Override
+        protected Builder self()
         {
-            this.location = location;
-            return this;
-        }
-
-        /**
-         * Set the core location and return this builder.
-         *
-         * @param startLine   start line
-         * @param startColumn start column
-         * @param endLine     end line
-         * @param endColumn   end column
-         * @return this builder
-         */
-        public Builder withCoreLocation(String sourceUri, int startLine, int startColumn, int endLine, int endColumn)
-        {
-            return withCoreLocation(TextLocation.newTextSource(sourceUri, startLine, startColumn, endLine, endColumn));
-        }
-
-        /**
-         * Set the core location and return this builder.
-         *
-         * @param coreLocation core location
-         * @return this builder
-         */
-        public Builder withCoreLocation(TextLocation coreLocation)
-        {
-            this.coreLocation = coreLocation;
             return this;
         }
 
@@ -298,7 +255,7 @@ public class LegendDeclaration extends LegendTextObject
          */
         public LegendDeclaration build()
         {
-            return new LegendDeclaration(this.identifier, this.classifier, this.location, this.coreLocation, this.children.isEmpty() ? Collections.emptyList() : List.copyOf(this.children));
+            return new LegendDeclaration(this.identifier, this.classifier, this.getLocation(), this.getCoreLocation(), this.children.isEmpty() ? Collections.emptyList() : List.copyOf(this.children));
         }
     }
 }

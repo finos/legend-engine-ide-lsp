@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -145,6 +146,12 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
     {
         this.docs.keySet().removeIf(uri -> uri.startsWith(folderUri));
         this.clearProperties();
+    }
+
+    @Override
+    public Collection<LegendLSPGrammarExtension> getAvailableGrammarExtensions()
+    {
+        return this.server.getGrammarLibrary().getExtensions();
     }
 
     static class LegendServerDocumentState extends AbstractState implements DocumentState

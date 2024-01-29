@@ -786,6 +786,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         capabilities.setCompletionProvider(new CompletionOptions(false, List.of()));
         capabilities.setCodeLensProvider(getCodeLensOptions());
         capabilities.setExecuteCommandProvider(getExecuteCommandOptions());
+        capabilities.setDefinitionProvider(true);
         return capabilities;
     }
 

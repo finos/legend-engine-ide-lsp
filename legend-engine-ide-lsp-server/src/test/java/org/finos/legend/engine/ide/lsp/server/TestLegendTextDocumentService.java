@@ -18,27 +18,33 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
-
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionParams;
+import org.eclipse.lsp4j.DefinitionParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
+import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.LocationLink;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.SemanticTokens;
 import org.eclipse.lsp4j.SemanticTokensRangeParams;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
-import org.junit.jupiter.api.Assertions;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class TestLegendTextDocumentService
@@ -123,9 +129,9 @@ public class TestLegendTextDocumentService
         List<String> labels = completions.stream().map(CompletionItem::getLabel).collect(Collectors.toList());
         List<String> descriptions = completions.stream().map(r -> r.getLabelDetails().getDescription()).collect(Collectors.toList());
 
-        Assertions.assertEquals(Arrays.asList("completionSuggestion1","completionSuggestion2"), suggestions);
-        Assertions.assertEquals(Arrays.asList("completionSuggestion1","completionSuggestion2"), labels);
-        Assertions.assertEquals(Arrays.asList("Test completion","Test completion"), descriptions);
+        Assertions.assertEquals(Arrays.asList("completionSuggestion1", "completionSuggestion2"), suggestions);
+        Assertions.assertEquals(Arrays.asList("completionSuggestion1", "completionSuggestion2"), labels);
+        Assertions.assertEquals(Arrays.asList("Test completion", "Test completion"), descriptions);
     }
 
     @Test
@@ -151,7 +157,7 @@ public class TestLegendTextDocumentService
         service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
 
         Integer completionsSize =
-                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(0, 1))).get().getLeft().size() +
+                service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(0, 1))).get().getLeft().size() +
                         service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(4, 2))).get().getLeft().size() +
                         service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(4, 3))).get().getLeft().size() +
                         service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(4, 22))).get().getLeft().size();
@@ -186,9 +192,9 @@ public class TestLegendTextDocumentService
         List<String> labels = completions.stream().map(CompletionItem::getLabel).collect(Collectors.toList());
         List<String> descriptions = completions.stream().map(r -> r.getLabelDetails().getDescription()).collect(Collectors.toList());
 
-        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2", "###TestGrammar"), suggestions);
-        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1","boilerplateSuggestion2", "###TestGrammar"), labels);
-        Assertions.assertEquals(Arrays.asList("Test boilerplate","Test boilerplate","Section - TestGrammar"), descriptions);
+        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1", "boilerplateSuggestion2", "###TestGrammar"), suggestions);
+        Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1", "boilerplateSuggestion2", "###TestGrammar"), labels);
+        Assertions.assertEquals(Arrays.asList("Test boilerplate", "Test boilerplate", "Section - TestGrammar"), descriptions);
     }
 
 
@@ -215,7 +221,7 @@ public class TestLegendTextDocumentService
         service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
 
         Integer completionsSize =
-                        service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(2, 1))).get().getLeft().size() +
+                service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(2, 1))).get().getLeft().size() +
                         service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(2, 2))).get().getLeft().size() +
                         service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(2, 3))).get().getLeft().size() +
                         service.completion(new CompletionParams(new TextDocumentIdentifier(uri), new Position(3, 1))).get().getLeft().size() +
@@ -270,6 +276,55 @@ public class TestLegendTextDocumentService
         asserter.accept(new Position(9, 4), Set.of("TestGrammar", "EmptyGrammar"));
     }
 
+    @Test
+    void testReferenceComputed() throws ExecutionException, InterruptedException
+    {
+        String uri = "file:///testReference.pure";
+        String code = "\n" +
+                "###TestGrammar\n" +
+                "Class vscodelsp::test::Employee\r\n" +
+                "{\n" +
+                "    id       : Integer[1];\n" +
+                "    hireDate : Date[1];\r\n" +
+                "    hireType : String[1];\n" +
+                "    employeeDetails : vscodelsp::test::EmployeeDetails[1];\n" +
+                "}\n" +
+                "\n" +
+                "Class vscodelsp::test::EmployeeDetails\r\n" +
+                "{\n" +
+                "    id       : Integer[1];\n" +
+                "}\n" +
+                "\n";
+
+        LegendReference reference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(uri, 8, 23, 8, 55))
+                .withReferencedLocation(TextLocation.newTextSource(uri, 11, 1, 14, 2))
+                .build();
+
+        LegendLSPGrammarExtension extWithKeywords = newExtension(
+                "TestGrammar",
+                Arrays.asList("Date", "Integer", "String", "Float", "StrictDate", "Boolean", "let", "true", "false"),
+                List.of(reference));
+        LegendLanguageServer server = newServer(extWithKeywords);
+
+        TextDocumentService service = server.getTextDocumentService();
+        service.didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(uri, "", 0, code)));
+
+        Either<List<? extends Location>, List<? extends LocationLink>> noDefinition = service.definition(new DefinitionParams(new TextDocumentIdentifier(uri), new Position(6, 2))).join();
+        Assertions.assertTrue(noDefinition.isRight());
+        Assertions.assertTrue(noDefinition.getRight().isEmpty());
+
+        Either<List<? extends Location>, List<? extends LocationLink>> definition = service.definition(new DefinitionParams(new TextDocumentIdentifier(uri), new Position(8, 27))).join();
+        Assertions.assertTrue(definition.isRight());
+        Assertions.assertEquals(1, definition.getRight().size());
+        Assertions.assertEquals(
+                new LocationLink(uri,
+                        newRange(11, 1, 14, 3),
+                        newRange(11, 1, 14, 3),
+                        newRange(8, 23, 8, 56)
+                ), definition.getRight().get(0));
+    }
+
     private static LegendLanguageServer newServer(LegendLSPGrammarExtension... extensions) throws ExecutionException, InterruptedException
     {
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withGrammars(extensions).build();
@@ -278,6 +333,11 @@ public class TestLegendTextDocumentService
     }
 
     private static LegendLSPGrammarExtension newExtension(String name, Iterable<String> keywords)
+    {
+        return newExtension(name, keywords, List.of());
+    }
+
+    private static LegendLSPGrammarExtension newExtension(String name, Iterable<String> keywords, List<LegendReference> references)
     {
         return new LegendLSPGrammarExtension()
         {
@@ -316,6 +376,12 @@ public class TestLegendTextDocumentService
                 }
 
                 return legendCompletions;
+            }
+
+            @Override
+            public Optional<LegendReference> getLegendReference(SectionState sectionState, TextPosition textPosition)
+            {
+                return references.stream().filter(x -> x.getLocation().getTextInterval().includes(textPosition)).findAny();
             }
         };
     }

@@ -14,11 +14,13 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Optional;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 
@@ -94,5 +96,18 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
         return Collections.emptyList();
+    }
+
+    /**
+     * If the given text position refers to another element, this returns the location where the reference (needs to include the text position),
+     * and the location where the referenced is defined, enabling navigation from one to the other. If a reference cannot be resolved, an empty optional should be returned.
+     *
+     * @param sectionState grammar section state
+     * @param textPosition the position to evaluate if a reference exists
+     * @return Optional with the reference, if one exists, empty otherwise
+     */
+    default Optional<LegendReference> getLegendReference(SectionState sectionState, TextPosition textPosition)
+    {
+        return Optional.empty();
     }
 }
