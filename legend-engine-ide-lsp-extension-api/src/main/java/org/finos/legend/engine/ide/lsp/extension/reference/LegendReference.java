@@ -73,6 +73,23 @@ public class LegendReference extends LegendTextObject
         return Objects.hash(this.getLocation(), this.getCoreLocation(), this.referencedLocation);
     }
 
+    @Override
+    public String toString()
+    {
+        return appendString(new StringBuilder(getClass().getSimpleName())).toString();
+    }
+
+    private StringBuilder appendString(StringBuilder builder)
+    {
+        builder.append("{location=").append(getLocation());
+        if (hasCoreLocation())
+        {
+            builder.append(" coreLocation=").append(getCoreLocation());
+        }
+        builder.append(" referencedLocation=").append(this.referencedLocation);
+        return builder.append("}");
+    }
+
     /**
      * Builder for {@link LegendReference}.
      */
