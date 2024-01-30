@@ -37,7 +37,7 @@ import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtension>
+public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtension>
 {
     private static final Pattern GRAMMAR_LINE_PATTERN = Pattern.compile("^\\h*+###(?<parser>\\w++)\\h*+$\\R?", Pattern.MULTILINE);
     public static final String DOC_ID_FOR_TEXT = "file.pure";

@@ -20,6 +20,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.relational.RelationalLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.service.ServiceLSPGrammarExtension;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 

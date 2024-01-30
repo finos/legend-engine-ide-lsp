@@ -21,7 +21,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.Package
 
 import java.util.function.Consumer;
 
-abstract class AbstractLegacyParserLSPGrammarExtension extends AbstractLSPGrammarExtension
+public abstract class AbstractLegacyParserLSPGrammarExtension extends AbstractLSPGrammarExtension
 {
     protected final DEPRECATED_SectionGrammarParser parser;
 

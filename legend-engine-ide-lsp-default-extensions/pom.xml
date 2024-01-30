@@ -27,7 +27,7 @@
     <name>Legend Engine IDE LSP Default Extensions</name>
 
     <properties>
-        <legend.engine.version>4.37.0</legend.engine.version>
+        <legend.engine.version>4.37.7</legend.engine.version>
     </properties>
 
     <build>
