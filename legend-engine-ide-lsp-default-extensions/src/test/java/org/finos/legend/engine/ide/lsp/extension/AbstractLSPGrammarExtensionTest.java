@@ -14,7 +14,10 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -251,6 +254,22 @@ abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtensi
         public void forEachDocumentState(Consumer<? super DocumentState> consumer)
         {
             this.docStates.forEachValue(consumer::accept);
+        }
+
+        @Override
+        public Collection<LegendLSPGrammarExtension> getAvailableGrammarExtensions()
+        {
+            List<LegendLSPGrammarExtension> extensionList = new ArrayList<>();
+
+            this.forEachDocumentState(documentState ->
+            {
+                documentState.forEachSectionState(sectionState ->
+                {
+                    extensionList.add(sectionState.getExtension());
+                });
+            });
+
+            return extensionList;
         }
     }
 

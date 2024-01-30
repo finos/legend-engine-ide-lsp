@@ -14,7 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp.extension.state;
 
+import java.util.Collection;
 import java.util.function.Consumer;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 
 /**
  * Global state, allowing access to the state for all documents.
@@ -36,4 +38,11 @@ public interface GlobalState extends State
      * @param consumer document state consumer
      */
     void forEachDocumentState(Consumer<? super DocumentState> consumer);
+
+    /**
+     * List of available grammar extensions.  This is useful for extensions that need to dispatch to other extensions
+     * for further processing
+     * @return Collection of available extensions
+     */
+    Collection<LegendLSPGrammarExtension> getAvailableGrammarExtensions();
 }
