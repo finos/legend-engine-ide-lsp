@@ -48,6 +48,31 @@ public class LegendReference extends LegendTextObject
         return new Builder();
     }
 
+    @Override
+    public boolean equals(Object other)
+    {
+        if (this == other)
+        {
+            return true;
+        }
+
+        if (!(other instanceof LegendReference))
+        {
+            return false;
+        }
+
+        LegendReference that = (LegendReference) other;
+        return getLocation().equals(that.getLocation()) &&
+                Objects.equals(getCoreLocation(), that.getCoreLocation()) &&
+                this.referencedLocation.equals(that.referencedLocation);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(this.getLocation(), this.getCoreLocation(), this.referencedLocation);
+    }
+
     /**
      * Builder for {@link LegendReference}.
      */
