@@ -1,30 +1,48 @@
-// Copyright 2023 Goldman Sachs
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Copyright 2024 Goldman Sachs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package org.finos.legend.engine.ide.lsp.extension;
+package org.finos.legend.engine.ide.lsp.extension.relational;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
+import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
+import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarProvider;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRelationalBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.RelationalGrammarParserExtension;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RelationalPropertyMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RootRelationalClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.TablePtr;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Column;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.ColumnMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
@@ -33,20 +51,20 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.r
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Schema;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.View;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.DynaFunc;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.ElementWithJoins;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.JoinPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.RelationalOperationElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.TableAliasColumn;
 import org.finos.legend.pure.generated.core_relational_relational_autogeneration_relationalToPure;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
 /**
  * Extension for the Relational grammar.
  */
-public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension
+public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension implements MappingLSPGrammarProvider
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalLSPGrammarExtension.class);
 
@@ -59,10 +77,10 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private static final ImmutableList<String> SCHEMA_SUGGESTIONS = Lists.immutable.with(
             "schemaName\n" +
-                "(\n" +
-                " Table TableName1(column1 INT PRIMARY KEY, column2 DATE)\n" +
-                " Table TableName2(column3 VARCHAR(10) PRIMARY KEY)\n" +
-                ")\n"
+                    "(\n" +
+                    " Table TableName1(column1 INT PRIMARY KEY, column2 DATE)\n" +
+                    " Table TableName2(column3 VARCHAR(10) PRIMARY KEY)\n" +
+                    ")\n"
     );
 
     private static final ImmutableList<String> TABLE_TRIGGERS = Lists.immutable.with("Table ");
@@ -75,11 +93,11 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private static final ImmutableList<String> VIEW_SUGGESTIONS = Lists.immutable.with(
             "viewName\n" +
-                "(\n" +
-                "  field1: table1.column1, \n" +
-                "  field2: table2.column2,\n" +
-                "  field3: table1.column1 + table2.column2\n" +
-                ")\n"
+                    "(\n" +
+                    "  field1: table1.column1, \n" +
+                    "  field2: table2.column2,\n" +
+                    "  field3: table1.column1 + table2.column2\n" +
+                    ")\n"
     );
 
     private static final ImmutableList<String> JOIN_TRIGGERS = Lists.immutable.with("Join ");
@@ -96,13 +114,13 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private static final ImmutableList<String> BOILERPLATE_SUGGESTIONS = Lists.immutable.with(
             "Database package::path::storeName\n" +
-            "(\n" +
-            "  Schema schemaName\n" +
-            "  (\n" +
-            "   Table TableName1(column1 INT PRIMARY KEY, column2 DATE)\n" +
-            "   Table TableName2(column3 VARCHAR(10) PRIMARY KEY)\n" +
-            "  )\n" +
-            ")\n"
+                    "(\n" +
+                    "  Schema schemaName\n" +
+                    "  (\n" +
+                    "   Table TableName1(column1 INT PRIMARY KEY, column2 DATE)\n" +
+                    "   Table TableName2(column3 VARCHAR(10) PRIMARY KEY)\n" +
+                    "  )\n" +
+                    ")\n"
     );
 
     @Override
@@ -113,7 +131,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
         if (codeLine.isEmpty())
         {
-            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Relational boilerplate", s.replaceAll("\n",System.lineSeparator())));
+            return BOILERPLATE_SUGGESTIONS.collect(s -> new LegendCompletion("Relational boilerplate", s.replaceAll("\n", System.lineSeparator())));
         }
 
         if (SCHEMA_TRIGGERS.anySatisfy(codeLine::endsWith))
@@ -171,8 +189,8 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
         return GENERATE_MODEL_MAPPING_COMMAND_ID.equals(commandId) ?
-               generateModelsFromDatabaseSpecification(section, entityPath) :
-               super.execute(section, entityPath, commandId, executableArgs);
+                generateModelsFromDatabaseSpecification(section, entityPath) :
+                super.execute(section, entityPath, commandId, executableArgs);
     }
 
     private Iterable<? extends LegendExecutionResult> generateModelsFromDatabaseSpecification(SectionState section, String entityPath)
@@ -233,7 +251,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         LegendDeclaration.Builder builder = LegendDeclaration.builder()
                 .withIdentifier(schema.name)
                 .withClassifier(M2RelationalPaths.Schema)
-                .withLocation(toLocation(schema.sourceInformation));
+                .withLocation(SourceInformationUtil.toLocation(schema.sourceInformation));
         schema.tables.forEach(t -> addChildIfNonNull(builder, getDeclaration(t)));
         schema.views.forEach(v -> addChildIfNonNull(builder, getDeclaration(v)));
         return builder.build();
@@ -250,7 +268,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         LegendDeclaration.Builder builder = LegendDeclaration.builder()
                 .withIdentifier(table.name)
                 .withClassifier(M2RelationalPaths.Table)
-                .withLocation(toLocation(table.sourceInformation));
+                .withLocation(SourceInformationUtil.toLocation(table.sourceInformation));
         table.columns.forEach(c -> addChildIfNonNull(builder, getDeclaration(c)));
         return builder.build();
     }
@@ -265,7 +283,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         return LegendDeclaration.builder()
                 .withIdentifier(column.name)
                 .withClassifier(M2RelationalPaths.Column)
-                .withLocation(toLocation(column.sourceInformation))
+                .withLocation(SourceInformationUtil.toLocation(column.sourceInformation))
                 .build();
     }
 
@@ -280,7 +298,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         LegendDeclaration.Builder builder = LegendDeclaration.builder()
                 .withIdentifier(view.name)
                 .withClassifier(M2RelationalPaths.Table)
-                .withLocation(toLocation(view.sourceInformation));
+                .withLocation(SourceInformationUtil.toLocation(view.sourceInformation));
         view.columnMappings.forEach(c -> addChildIfNonNull(builder, getDeclaration(c)));
         return builder.build();
     }
@@ -295,7 +313,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         return LegendDeclaration.builder()
                 .withIdentifier(columnMapping.name)
                 .withClassifier("meta::relational::mapping::ColumnMapping")
-                .withLocation(toLocation(columnMapping.sourceInformation))
+                .withLocation(SourceInformationUtil.toLocation(columnMapping.sourceInformation))
                 .build();
     }
 
@@ -309,7 +327,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         return LegendDeclaration.builder()
                 .withIdentifier(join.name)
                 .withClassifier(M2RelationalPaths.Join)
-                .withLocation(toLocation(join.sourceInformation))
+                .withLocation(SourceInformationUtil.toLocation(join.sourceInformation))
                 .build();
     }
 
@@ -323,7 +341,118 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         return LegendDeclaration.builder()
                 .withIdentifier(filter.name)
                 .withClassifier(M2RelationalPaths.Filter)
-                .withLocation(toLocation(filter.sourceInformation))
+                .withLocation(SourceInformationUtil.toLocation(filter.sourceInformation))
                 .build();
+    }
+
+    @Override
+    public Stream<LegendReferenceResolver> getClassMappingReferences(ClassMapping mapping, GlobalState state)
+    {
+        if (mapping instanceof RootRelationalClassMapping)
+        {
+            return toReferences((RootRelationalClassMapping) mapping);
+        }
+        return Stream.empty();
+    }
+
+
+    private Stream<LegendReferenceResolver> toReferences(RootRelationalClassMapping relationalClassMapping)
+    {
+        Stream<LegendReferenceResolver> properties = relationalClassMapping.propertyMappings.stream().flatMap(propertyMapping ->
+        {
+            LegendReferenceResolver propRef = MappingLSPGrammarExtension.propertyMappingToReference(propertyMapping);
+
+            Stream<LegendReferenceResolver> propertyReference = Stream.of(propRef);
+
+            if (propertyMapping instanceof RelationalPropertyMapping)
+            {
+                RelationalPropertyMapping relMap = (RelationalPropertyMapping) propertyMapping;
+                return Stream.concat(propertyReference, this.toReferences(relMap.relationalOperation));
+            }
+
+            return propertyReference;
+        });
+
+        Stream<LegendReferenceResolver> filterReferences = Stream.empty();
+
+        if (relationalClassMapping.filter != null)
+        {
+            LegendReferenceResolver filterReference = LegendReferenceResolver.newReferenceResolver(
+                    relationalClassMapping.filter.sourceInformation,
+                    x ->
+                    {
+                        return null;
+                        // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
+//                         org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(relationalClassMapping.filter.filter.db, relationalClassMapping.filter.sourceInformation, x);
+//                         return HelperRelationalBuilder.getFilter(database, relationalClassMapping.filter.filter.name, relationalClassMapping.filter.sourceInformation);
+                    }
+            );
+
+            filterReferences = Stream.concat(
+                    Stream.of(filterReference),
+                    relationalClassMapping.filter.joins.stream().map(this::toReferences)
+            );
+        }
+
+        Stream<LegendReferenceResolver> pkRef = relationalClassMapping.primaryKey.stream().flatMap(this::toReferences);
+
+        Stream<LegendReferenceResolver> mainTableRef = Stream.of(
+                this.toReference(relationalClassMapping.mainTable)
+        );
+
+        return Stream.concat(Stream.concat(mainTableRef, Stream.concat(properties, filterReferences)), pkRef);
+    }
+
+    private LegendReferenceResolver toReference(TablePtr tablePtr)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                tablePtr.sourceInformation,
+                x -> HelperRelationalBuilder.getRelation(tablePtr, x)
+        );
+    }
+
+    private LegendReferenceResolver toReferences(JoinPointer joinPointer)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                joinPointer.sourceInformation,
+                x -> null
+                // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
+//                x -> HelperRelationalBuilder.getJoin(joinPointer, x)
+        );
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(RelationalOperationElement element)
+    {
+        // todo ideally we should have a visitor
+        if (element instanceof TableAliasColumn)
+        {
+            TableAliasColumn tableAliasColumn = (TableAliasColumn) element;
+            LegendReferenceResolver tableRef = toReference(tableAliasColumn.table);
+
+            LegendReferenceResolver colRef = LegendReferenceResolver.newReferenceResolver(tableAliasColumn.sourceInformation,
+                    x -> null
+// todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
+//                    x -> HelperRelationalBuilder.getColumn(
+//                            HelperRelationalBuilder.getRelation(tableAliasColumn.table, x),
+//                            tableAliasColumn.column,
+//                            tableAliasColumn.sourceInformation
+//                    )
+            );
+
+            return Stream.of(tableRef, colRef);
+        }
+        else if (element instanceof ElementWithJoins)
+        {
+            ElementWithJoins joins = (ElementWithJoins) element;
+            Stream<LegendReferenceResolver> joinReferences = joins.joins.stream().map(this::toReferences);
+            return Stream.concat(this.toReferences(joins.relationalElement), joinReferences);
+        }
+        else if (element instanceof DynaFunc)
+        {
+            DynaFunc dynaFunc = (DynaFunc) element;
+            return dynaFunc.parameters.stream().flatMap(this::toReferences);
+        }
+
+        return Stream.empty();
     }
 }

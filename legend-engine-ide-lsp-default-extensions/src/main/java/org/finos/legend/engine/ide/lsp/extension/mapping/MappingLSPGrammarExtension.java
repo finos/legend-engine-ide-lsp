@@ -1,40 +1,50 @@
-// Copyright 2023 Goldman Sachs
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Copyright 2024 Goldman Sachs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package org.finos.legend.engine.ide.lsp.extension;
+package org.finos.legend.engine.ide.lsp.extension.mapping;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.ListIterable;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.impl.block.factory.Functions;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
+import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperMappingBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
@@ -43,9 +53,15 @@ import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMappingVisitor;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.Mapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.OperationClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.PropertyMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.aggregationAware.AggregationAwareClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.mappingTest.MappingTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.mappingTest.MappingTest_Legacy;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.mapping.PureInstanceClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.test.runner.mapping.MappingTestRunner;
@@ -261,5 +277,69 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         }
 
         return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, Set.of("Mapping")));
+    }
+
+    @Override
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    {
+        Mapping mapping = (Mapping) packageableElement;
+        return mapping.classMappings
+                .stream()
+                .flatMap(Functions.bind(this::toReferences, section.getDocumentState().getGlobalState()))
+                .collect(Collectors.toList());
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(ClassMapping classMapping, GlobalState state)
+    {
+        LegendReferenceResolver legendReferenceResolver = LegendReferenceResolver.newReferenceResolver(classMapping.classSourceInformation, c -> c.resolveClass(classMapping._class, classMapping.classSourceInformation));
+
+        Stream<LegendReferenceResolver> otherReferences = classMapping.accept(new ClassMappingVisitor<>()
+        {
+            @Override
+            public Stream<LegendReferenceResolver> visit(ClassMapping classMapping)
+            {
+                return findExtensionThatImplements(state, MappingLSPGrammarProvider.class)
+                        .flatMap(x -> x.getClassMappingReferences(classMapping, state));
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(OperationClassMapping operationClassMapping)
+            {
+                return Stream.empty();
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(PureInstanceClassMapping pureInstanceClassMapping)
+            {
+                // todo navigate references for filter lambda, and for property mapping "right side"
+
+                LegendReferenceResolver srcReference = LegendReferenceResolver.newReferenceResolver(
+                        pureInstanceClassMapping.sourceClassSourceInformation,
+                        x -> x.resolveClass(pureInstanceClassMapping.srcClass, pureInstanceClassMapping.sourceClassSourceInformation)
+                );
+
+                Stream<LegendReferenceResolver> propReferences = pureInstanceClassMapping.propertyMappings
+                        .stream()
+                        .map(MappingLSPGrammarExtension::propertyMappingToReference);
+
+                return Stream.concat(propReferences, Stream.of(srcReference));
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(AggregationAwareClassMapping aggregationAwareClassMapping)
+            {
+                return Stream.empty();
+            }
+        });
+
+        return Stream.concat(Stream.of(legendReferenceResolver), otherReferences);
+    }
+
+    public static LegendReferenceResolver propertyMappingToReference(PropertyMapping propertyMapping)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                propertyMapping.property.sourceInformation,
+                x -> HelperMappingBuilder.getMappedProperty(propertyMapping, x)
+        );
     }
 }

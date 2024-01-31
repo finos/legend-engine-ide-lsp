@@ -39,7 +39,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 
-abstract class AbstractSectionParserLSPGrammarExtension extends AbstractLSPGrammarExtension
+public abstract class AbstractSectionParserLSPGrammarExtension extends AbstractLSPGrammarExtension
 {
     protected final SectionParser parser;
     private final Set<String> grammarSupportedTypes;
@@ -101,7 +101,7 @@ abstract class AbstractSectionParserLSPGrammarExtension extends AbstractLSPGramm
         return this.computeCompletionsForSupportedTypes(section, location, this.grammarSupportedTypes);
     }
 
-    protected Set<String> getAntlrExpectedTokens()
+    public Set<String> getAntlrExpectedTokens()
     {
         Set<String> expectedTokens = Collections.emptySet();
 

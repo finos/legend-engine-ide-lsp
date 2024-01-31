@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -44,15 +46,16 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
+import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
-import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.SourceInformationHelper;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.Warning;
 import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceInformation;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
@@ -60,7 +63,6 @@ import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
-import org.finos.legend.engine.language.pure.modelManager.ModelManager;
 import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
@@ -101,6 +103,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     private static final String TEST_ID = "legend.testable.testId";
 
     private static final String PARSE_RESULT = "parse";
+    private static final String REFERENCE_RESULT = "reference";
     private static final String COMPILE_RESULT = "compile";
 
     private final Map<String, ? extends TestableRunnerExtension> testableRunners = TestableRunnerExtensionLoader.getClassifierPathToTestableRunnerMap();
@@ -157,7 +160,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             SourceInformation sourceInfo = e.getSourceInformation();
             if (isValidSourceInfo(sourceInfo))
             {
-                consumer.accept(LegendDiagnostic.newDiagnostic(toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser));
+                consumer.accept(LegendDiagnostic.newDiagnostic(SourceInformationUtil.toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser));
             }
             else
             {
@@ -183,7 +186,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             }
             else if (docId.equals(sourceInfo.sourceId))
             {
-                consumer.accept(LegendDiagnostic.newDiagnostic(toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler));
+                consumer.accept(LegendDiagnostic.newDiagnostic(SourceInformationUtil.toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler));
             }
         }
         if (compileResult.getPureModel() != null)
@@ -202,7 +205,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 }
                 else if (docId.equals(sourceInfo.sourceId))
                 {
-                    consumer.accept(LegendDiagnostic.newDiagnostic(toLocation(sourceInfo), warning.message, LegendDiagnostic.Kind.Warning, LegendDiagnostic.Source.Compiler));
+                    consumer.accept(LegendDiagnostic.newDiagnostic(SourceInformationUtil.toLocation(sourceInfo), warning.message, LegendDiagnostic.Kind.Warning, LegendDiagnostic.Source.Compiler));
                 }
             });
         }
@@ -225,7 +228,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             {
                 if (isValidSourceInfo(sourceInfo))
                 {
-                    commands.add(LegendCommand.newCommand(path, id, title, toLocation(sourceInfo), args, inputParameters));
+                    commands.add(LegendCommand.newCommand(path, id, title, SourceInformationUtil.toLocation(sourceInfo), args, inputParameters));
                 }
             });
         });
@@ -336,7 +339,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
         try
         {
-            TestableRunner runner = new TestableRunner(new ModelManager(DeploymentMode.PROD));
+            TestableRunner runner = new TestableRunner();
             RunTestsTestableInput runTestsTestableInput = new RunTestsTestableInput();
             runTestsTestableInput.testable = entityPath;
             runTestsTestableInput.unitTestIds = unitTestIds;
@@ -455,9 +458,10 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected CompileResult tryCompile(GlobalState globalState, DocumentState documentState, SectionState sectionState)
     {
         globalState.logInfo("Starting compilation");
+        PureModelContextData pureModelContextData = null;
         try
         {
-            PureModelContextData pureModelContextData = buildPureModelContextData(globalState);
+            pureModelContextData = buildPureModelContextData(globalState);
             PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, Collections.emptyList());
             globalState.logInfo("Compilation completed successfully");
             return new CompileResult(pureModel, pureModelContextData);
@@ -467,7 +471,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             SourceInformation sourceInfo = e.getSourceInformation();
             if (isValidSourceInfo(sourceInfo))
             {
-                globalState.logInfo("Compilation completed with error " + "(" + sourceInfo.sourceId + " " + toLocation(sourceInfo) + "): " + e.getMessage());
+                globalState.logInfo("Compilation completed with error " + "(" + sourceInfo.sourceId + " " + SourceInformationUtil.toLocation(sourceInfo) + "): " + e.getMessage());
             }
             else
             {
@@ -475,13 +479,13 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 globalState.logWarning("Invalid source information for compilation error");
                 LOGGER.warn("Invalid source information in exception during compilation requested for section {} of {}: {}", sectionState.getSectionNumber(), documentState.getDocumentId(), (sourceInfo == null) ? null : sourceInfo.getMessage(), e);
             }
-            return new CompileResult(e);
+            return new CompileResult(e, pureModelContextData);
         }
         catch (Exception e)
         {
             LOGGER.error("Unexpected exception during compilation requested for section {} of {}", sectionState.getSectionNumber(), documentState.getDocumentId(), e);
             globalState.logWarning("Unexpected error during compilation");
-            return new CompileResult(e);
+            return new CompileResult(e, pureModelContextData);
         }
     }
 
@@ -593,7 +597,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         LegendDeclaration.Builder builder = LegendDeclaration.builder()
                 .withIdentifier(path)
                 .withClassifier(classifier)
-                .withLocation(toLocation(element.sourceInformation));
+                .withLocation(SourceInformationUtil.toLocation(element.sourceInformation));
         forEachChild(element, c -> addChildIfNonNull(builder, c));
         return builder.build();
     }
@@ -643,7 +647,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private boolean isPositionIncludedOnSourceInfo(TextPosition position, SourceInformation sourceInformation)
     {
-        return isValidSourceInfo(sourceInformation) && toLocation(sourceInformation).getTextInterval().includes(position);
+        return isValidSourceInfo(sourceInformation) && SourceInformationUtil.toLocation(sourceInformation).getTextInterval().includes(position);
     }
 
     /**
@@ -659,17 +663,6 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 (sourceInfo.startColumn > 0) &&
                 (sourceInfo.startLine <= sourceInfo.endLine) &&
                 ((sourceInfo.startLine == sourceInfo.endLine) ? (sourceInfo.startColumn <= sourceInfo.endColumn) : (sourceInfo.endColumn > 0));
-    }
-
-    /**
-     * Transform a (valid) {@link SourceInformation} to a {@link TextInterval} location.
-     *
-     * @param sourceInfo source information
-     * @return location
-     */
-    protected static TextLocation toLocation(SourceInformation sourceInfo)
-    {
-        return TextLocation.newTextSource(sourceInfo.sourceId, sourceInfo.startLine - 1, sourceInfo.startColumn - 1, sourceInfo.endLine - 1, sourceInfo.endColumn - 1);
     }
 
     protected Iterable<LegendCompletion> computeCompletionsForSupportedTypes(SectionState section, TextPosition location, Set<String> supportedTypes)
@@ -688,6 +681,50 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         return List.of();
     }
 
+    @Override
+    public Optional<LegendReference> getLegendReference(SectionState section, TextPosition textPosition)
+    {
+        Optional<PackageableElement> elementAtPosition = this.getElementAtPosition(section, textPosition);
+
+        return elementAtPosition.flatMap(pe ->
+                        this.geReferenceResolversResult(section, pe)
+                                .stream()
+                                .filter(ref -> ref.getLocation().getTextInterval().includes(textPosition))
+                                .findAny()
+                )
+                .flatMap(reference ->
+                        Optional.of(this.getCompileResult(section))
+                                .map(CompileResult::getPureModel)
+                                .map(x -> x.getContext(elementAtPosition.get()))
+                                .flatMap(reference::goToReferenced)
+                                .map(coreInstance ->
+                                {
+                                    SourceInformation sourceInfo = SourceInformationHelper.fromM3SourceInformation(coreInstance.getSourceInformation());
+                                    if (isValidSourceInfo(sourceInfo))
+                                    {
+                                        TextLocation declarationLocation = SourceInformationUtil.toLocation(sourceInfo);
+                                        return LegendReference.builder()
+                                                .withLocation(reference.getLocation())
+                                                .withReferencedLocation(declarationLocation)
+                                                .build();
+                                    }
+
+                                    LOGGER.warn("Reference points to an element without source information");
+
+                                    return null;
+                                }));
+    }
+
+    private Collection<LegendReferenceResolver> geReferenceResolversResult(SectionState section, PackageableElement packageableElement)
+    {
+        return section.getProperty(REFERENCE_RESULT + ":" + packageableElement.getPath(), () -> getReferenceResolvers(section, packageableElement));
+    }
+
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    {
+        return List.of();
+    }
+
     private static LegendEngineServerClient newEngineServerClient()
     {
         for (LegendEngineServerClient client : ServiceLoader.load(LegendEngineServerClient.class))
@@ -700,6 +737,14 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
         LOGGER.debug("Using default Legend Engine server client");
         return new DefaultLegendEngineServerClient();
+    }
+
+    public <T> Stream<? extends T> findExtensionThatImplements(GlobalState state, Class<T> _interface)
+    {
+        return state.getAvailableGrammarExtensions()
+                .stream()
+                .filter(_interface::isInstance)
+                .map(_interface::cast);
     }
 
     protected static class Result<T>
@@ -774,7 +819,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected static class CompileResult extends Result<PureModel>
     {
-        private PureModelContextData pureModelContextData;
+        private final PureModelContextData pureModelContextData;
 
         private CompileResult(PureModel pureModel, PureModelContextData pureModelContextData)
         {
@@ -782,9 +827,10 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             this.pureModelContextData = pureModelContextData;
         }
 
-        private CompileResult(Exception e)
+        private CompileResult(Exception e, PureModelContextData pureModelContextData)
         {
             super(null, e);
+            this.pureModelContextData = pureModelContextData;
         }
 
         public PureModel getPureModel()
