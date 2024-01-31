@@ -14,13 +14,17 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -28,21 +32,40 @@ import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.state.State;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtension>
 {
     private static final Pattern GRAMMAR_LINE_PATTERN = Pattern.compile("^\\h*+###(?<parser>\\w++)\\h*+$\\R?", Pattern.MULTILINE);
     public static final String DOC_ID_FOR_TEXT = "file.pure";
+    private static List<LegendLSPGrammarExtension> legendLSPGrammarExtensions;
+    protected T extension;
 
-    protected T extension = newExtension();
+    @BeforeEach
+    public void loadExtensionToUse()
+    {
+        Class<? extends LegendLSPGrammarExtension> tType = (Class<? extends LegendLSPGrammarExtension>) ((ParameterizedType) this.getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+        List<LegendLSPGrammarExtension> extensions = legendLSPGrammarExtensions.stream().filter(tType::isInstance).collect(Collectors.toList());
+        Assertions.assertEquals(1, extensions.size(), "Expect single extension for given DSL");
+        this.extension = (T) extensions.get(0);
+    }
+
+    @BeforeAll
+    static void beforeAll()
+    {
+        legendLSPGrammarExtensions = loadAvailableExtensions();
+    }
 
     @Test
     public void testDiagnostics_emptySection()
@@ -88,20 +111,26 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         Assertions.assertEquals(expected, actual);
     }
 
+    protected void testReferenceLookup(MutableMap<String, String> files, String docId, TextPosition position, LegendReference expected, String assertMessage)
+    {
+        MutableList<SectionState> sectionStates = newSectionStates(files);
+        SectionState inputSectionState = sectionStates.detect(s -> docId.equals(s.getDocumentState().getDocumentId()));
+        Optional<LegendReference> actual = inputSectionState.getExtension().getLegendReference(inputSectionState, position);
+        Assertions.assertEquals(Optional.ofNullable(expected), actual, assertMessage);
+    }
+
     protected Iterable<? extends LegendExecutionResult> testCommand(String code, String entityPath, String command)
     {
         SectionState sectionState = newSectionState(DOC_ID_FOR_TEXT, code);
         return this.extension.execute(sectionState, entityPath, command, Maps.fixedSize.empty());
     }
 
-    protected abstract T newExtension();
-
     protected SectionState newSectionState(String docId, String text)
     {
         LineIndexedText indexedText = LineIndexedText.index(text);
         TestGlobalState globalState = new TestGlobalState();
         TestDocumentState docState = new TestDocumentState(globalState, docId, indexedText);
-        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText), this.extension);
+        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText));
 
         globalState.docStates.put(docId, docState);
         docState.sectionStates.add(sectionState);
@@ -117,7 +146,7 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         {
             LineIndexedText indexedText = LineIndexedText.index(text);
             TestDocumentState docState = new TestDocumentState(globalState, docId, indexedText);
-            TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText), this.extension);
+            TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText));
 
             globalState.docStates.put(docId, docState);
             docState.sectionStates.add(sectionState);
@@ -343,12 +372,12 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         private final GrammarSection section;
         private final LegendLSPGrammarExtension extension;
 
-        private TestSectionState(DocumentState docState, int n, GrammarSection section, LegendLSPGrammarExtension extension)
+        private TestSectionState(DocumentState docState, int n, GrammarSection section)
         {
             this.docState = docState;
             this.n = n;
             this.section = section;
-            this.extension = extension;
+            this.extension = legendLSPGrammarExtensions.stream().filter(x -> x.getName().equals(section.getGrammar())).findAny().orElse(null);
         }
 
         @Override
@@ -374,5 +403,21 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         {
             return this.extension;
         }
+    }
+
+    private static List<LegendLSPGrammarExtension> loadAvailableExtensions()
+    {
+        List<LegendLSPGrammarExtension> grammars = new ArrayList<>();
+
+        ClassLoader threadClassLoader = Thread.currentThread().getContextClassLoader();
+        ClassLoader classLoader = threadClassLoader == null ? AbstractLSPGrammarExtensionTest.class.getClassLoader() : threadClassLoader;
+
+        ServiceLoader.load(LegendLSPExtensionLoader.class, classLoader)
+                .forEach(
+                        x -> x.loadLegendLSPGrammarExtension(classLoader)
+                                .forEach(grammars::add)
+                );
+
+        return grammars;
     }
 }

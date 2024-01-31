@@ -20,9 +20,8 @@ import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
-import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -91,11 +90,5 @@ public class TestRuntimeLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         String boilerPlate = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(2, 0)).iterator().next().getDescription();
         Assertions.assertEquals("Runtime boilerplate", boilerPlate);
-    }
-
-    @Override
-    protected RuntimeLSPGrammarExtension newExtension()
-    {
-        return new RuntimeLSPGrammarExtension();
     }
 }

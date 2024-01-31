@@ -23,9 +23,8 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
-import org.finos.legend.engine.ide.lsp.extension.service.ServiceLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -138,11 +137,5 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     {
         Set<String> antlrExpectedTokens = this.extension.getAntlrExpectedTokens();
         Assertions.assertEquals(Set.of("Service", "ExecutionEnvironment"), antlrExpectedTokens);
-    }
-
-    @Override
-    protected ServiceLSPGrammarExtension newExtension()
-    {
-        return new ServiceLSPGrammarExtension();
     }
 }

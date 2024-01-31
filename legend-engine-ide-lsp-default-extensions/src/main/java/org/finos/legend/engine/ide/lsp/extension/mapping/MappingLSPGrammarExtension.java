@@ -44,6 +44,7 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperMappingBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
@@ -56,6 +57,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMappingVisitor;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.Mapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.OperationClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.PropertyMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.aggregationAware.AggregationAwareClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.mappingTest.MappingTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.mappingTest.MappingTest_Legacy;
@@ -309,7 +311,18 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             @Override
             public Stream<LegendReferenceResolver> visit(PureInstanceClassMapping pureInstanceClassMapping)
             {
-                return Stream.empty();
+                // todo navigate references for filter lambda, and for property mapping "right side"
+
+                LegendReferenceResolver srcReference = LegendReferenceResolver.newReferenceResolver(
+                        pureInstanceClassMapping.sourceClassSourceInformation,
+                        x -> x.resolveClass(pureInstanceClassMapping.srcClass, pureInstanceClassMapping.sourceClassSourceInformation)
+                );
+
+                Stream<LegendReferenceResolver> propReferences = pureInstanceClassMapping.propertyMappings
+                        .stream()
+                        .map(MappingLSPGrammarExtension::propertyMappingToReference);
+
+                return Stream.concat(propReferences, Stream.of(srcReference));
             }
 
             @Override
@@ -320,5 +333,13 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         });
 
         return Stream.concat(Stream.of(legendReferenceResolver), otherReferences);
+    }
+
+    public static LegendReferenceResolver propertyMappingToReference(PropertyMapping propertyMapping)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                propertyMapping.property.sourceInformation,
+                x -> HelperMappingBuilder.getMappedProperty(propertyMapping, x)
+        );
     }
 }

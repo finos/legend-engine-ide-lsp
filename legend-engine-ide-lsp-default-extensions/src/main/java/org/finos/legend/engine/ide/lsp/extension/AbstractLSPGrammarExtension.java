@@ -458,9 +458,10 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected CompileResult tryCompile(GlobalState globalState, DocumentState documentState, SectionState sectionState)
     {
         globalState.logInfo("Starting compilation");
+        PureModelContextData pureModelContextData = null;
         try
         {
-            PureModelContextData pureModelContextData = buildPureModelContextData(globalState);
+            pureModelContextData = buildPureModelContextData(globalState);
             PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, Collections.emptyList());
             globalState.logInfo("Compilation completed successfully");
             return new CompileResult(pureModel, pureModelContextData);
@@ -478,13 +479,13 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 globalState.logWarning("Invalid source information for compilation error");
                 LOGGER.warn("Invalid source information in exception during compilation requested for section {} of {}: {}", sectionState.getSectionNumber(), documentState.getDocumentId(), (sourceInfo == null) ? null : sourceInfo.getMessage(), e);
             }
-            return new CompileResult(e);
+            return new CompileResult(e, pureModelContextData);
         }
         catch (Exception e)
         {
             LOGGER.error("Unexpected exception during compilation requested for section {} of {}", sectionState.getSectionNumber(), documentState.getDocumentId(), e);
             globalState.logWarning("Unexpected error during compilation");
-            return new CompileResult(e);
+            return new CompileResult(e, pureModelContextData);
         }
     }
 
@@ -685,10 +686,11 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     {
         Optional<PackageableElement> elementAtPosition = this.getElementAtPosition(section, textPosition);
 
-        return elementAtPosition.flatMap(pe -> this.geReferenceResolversResult(section, pe)
-                        .stream()
-                        .filter(ref -> ref.getLocation().getTextInterval().includes(textPosition))
-                        .findAny()
+        return elementAtPosition.flatMap(pe ->
+                        this.geReferenceResolversResult(section, pe)
+                                .stream()
+                                .filter(ref -> ref.getLocation().getTextInterval().includes(textPosition))
+                                .findAny()
                 )
                 .flatMap(reference ->
                         Optional.of(this.getCompileResult(section))
@@ -817,7 +819,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected static class CompileResult extends Result<PureModel>
     {
-        private PureModelContextData pureModelContextData;
+        private final PureModelContextData pureModelContextData;
 
         private CompileResult(PureModel pureModel, PureModelContextData pureModelContextData)
         {
@@ -825,9 +827,10 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             this.pureModelContextData = pureModelContextData;
         }
 
-        private CompileResult(Exception e)
+        private CompileResult(Exception e, PureModelContextData pureModelContextData)
         {
             super(null, e);
+            this.pureModelContextData = pureModelContextData;
         }
 
         public PureModel getPureModel()

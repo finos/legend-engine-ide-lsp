@@ -26,7 +26,6 @@ import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
-import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -149,11 +148,5 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
             System.clearProperty("legend.engine.server.url");
             httpServer.stop(0);
         }
-    }
-
-    @Override
-    protected ConnectionLSPGrammarExtension newExtension()
-    {
-        return new ConnectionLSPGrammarExtension();
     }
 }

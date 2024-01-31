@@ -24,4 +24,5 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping
 public interface MappingLSPGrammarProvider
 {
     Stream<LegendReferenceResolver> getClassMappingReferences(ClassMapping mapping, GlobalState state);
+
 }

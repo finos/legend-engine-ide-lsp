@@ -29,15 +29,20 @@ import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarProvider;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRelationalBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.RelationalGrammarParserExtension;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RelationalPropertyMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RootRelationalClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.TablePtr;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Column;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.ColumnMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
@@ -46,6 +51,11 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.r
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Schema;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.View;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.DynaFunc;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.ElementWithJoins;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.JoinPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.RelationalOperationElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.TableAliasColumn;
 import org.finos.legend.pure.generated.core_relational_relational_autogeneration_relationalToPure;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.slf4j.Logger;
@@ -338,7 +348,111 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     @Override
     public Stream<LegendReferenceResolver> getClassMappingReferences(ClassMapping mapping, GlobalState state)
     {
-        // todo
+        if (mapping instanceof RootRelationalClassMapping)
+        {
+            return toReferences((RootRelationalClassMapping) mapping);
+        }
+        return Stream.empty();
+    }
+
+
+    private Stream<LegendReferenceResolver> toReferences(RootRelationalClassMapping relationalClassMapping)
+    {
+        Stream<LegendReferenceResolver> properties = relationalClassMapping.propertyMappings.stream().flatMap(propertyMapping ->
+        {
+            LegendReferenceResolver propRef = MappingLSPGrammarExtension.propertyMappingToReference(propertyMapping);
+
+            Stream<LegendReferenceResolver> propertyReference = Stream.of(propRef);
+
+            if (propertyMapping instanceof RelationalPropertyMapping)
+            {
+                RelationalPropertyMapping relMap = (RelationalPropertyMapping) propertyMapping;
+                return Stream.concat(propertyReference, this.toReferences(relMap.relationalOperation));
+            }
+
+            return propertyReference;
+        });
+
+        Stream<LegendReferenceResolver> filterReferences = Stream.empty();
+
+        if (relationalClassMapping.filter != null)
+        {
+            LegendReferenceResolver filterReference = LegendReferenceResolver.newReferenceResolver(
+                    relationalClassMapping.filter.sourceInformation,
+                    x ->
+                    {
+                        return null;
+                        // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
+//                         org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(relationalClassMapping.filter.filter.db, relationalClassMapping.filter.sourceInformation, x);
+//                         return HelperRelationalBuilder.getFilter(database, relationalClassMapping.filter.filter.name, relationalClassMapping.filter.sourceInformation);
+                    }
+            );
+
+            filterReferences = Stream.concat(
+                    Stream.of(filterReference),
+                    relationalClassMapping.filter.joins.stream().map(this::toReferences)
+            );
+        }
+
+        Stream<LegendReferenceResolver> pkRef = relationalClassMapping.primaryKey.stream().flatMap(this::toReferences);
+
+        Stream<LegendReferenceResolver> mainTableRef = Stream.of(
+                this.toReference(relationalClassMapping.mainTable)
+        );
+
+        return Stream.concat(Stream.concat(mainTableRef, Stream.concat(properties, filterReferences)), pkRef);
+    }
+
+    private LegendReferenceResolver toReference(TablePtr tablePtr)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                tablePtr.sourceInformation,
+                x -> HelperRelationalBuilder.getRelation(tablePtr, x)
+        );
+    }
+
+    private LegendReferenceResolver toReferences(JoinPointer joinPointer)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                joinPointer.sourceInformation,
+                x -> null
+                // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
+//                x -> HelperRelationalBuilder.getJoin(joinPointer, x)
+        );
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(RelationalOperationElement element)
+    {
+        // todo ideally we should have a visitor
+        if (element instanceof TableAliasColumn)
+        {
+            TableAliasColumn tableAliasColumn = (TableAliasColumn) element;
+            LegendReferenceResolver tableRef = toReference(tableAliasColumn.table);
+
+            LegendReferenceResolver colRef = LegendReferenceResolver.newReferenceResolver(tableAliasColumn.sourceInformation,
+                    x -> null
+// todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
+//                    x -> HelperRelationalBuilder.getColumn(
+//                            HelperRelationalBuilder.getRelation(tableAliasColumn.table, x),
+//                            tableAliasColumn.column,
+//                            tableAliasColumn.sourceInformation
+//                    )
+            );
+
+            return Stream.of(tableRef, colRef);
+        }
+        else if (element instanceof ElementWithJoins)
+        {
+            ElementWithJoins joins = (ElementWithJoins) element;
+            Stream<LegendReferenceResolver> joinReferences = joins.joins.stream().map(this::toReferences);
+            return Stream.concat(this.toReferences(joins.relationalElement), joinReferences);
+        }
+        else if (element instanceof DynaFunc)
+        {
+            DynaFunc dynaFunc = (DynaFunc) element;
+            return dynaFunc.parameters.stream().flatMap(this::toReferences);
+        }
+
         return Stream.empty();
     }
 }

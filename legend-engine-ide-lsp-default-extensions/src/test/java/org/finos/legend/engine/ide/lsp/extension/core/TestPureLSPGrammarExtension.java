@@ -239,10 +239,4 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         String attributeMultiplicitiesSuggestion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(3, 15)).iterator().next().getDescription();
         Assertions.assertEquals("Attribute multiplicity", attributeMultiplicitiesSuggestion);
     }
-
-    @Override
-    protected PureLSPGrammarExtension newExtension()
-    {
-        return new PureLSPGrammarExtension();
-    }
 }

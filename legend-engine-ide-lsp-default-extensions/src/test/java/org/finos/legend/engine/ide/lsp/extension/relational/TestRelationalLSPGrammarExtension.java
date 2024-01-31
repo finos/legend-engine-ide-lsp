@@ -27,6 +27,7 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
@@ -322,9 +323,61 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
         Assertions.assertEquals(Set.of("Database"), antlrExpectedTokens);
     }
 
-    @Override
-    protected RelationalLSPGrammarExtension newExtension()
+    @Test
+    public void testMappingLegendReference()
     {
-        return new RelationalLSPGrammarExtension();
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::Employee",
+                "###Pure\n" +
+                        "Class vscodelsp::test::Employee\n" +
+                        "{\n" +
+                        "    foobar: Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::EmployeeDatabase",
+                "###Relational\n" +
+                        "Database vscodelsp::test::EmployeeDatabase\n" +
+                        "(\n" +
+                        "   Table EmployeeTable(id INT PRIMARY KEY, hireDate DATE, hireType VARCHAR(10), fteFactor DOUBLE)\n" +
+                        "   Table EmployeeDetailsTable(id INT PRIMARY KEY, birthDate DATE, yearsOfExperience DOUBLE)\n" +
+                        "   Table FirmTable(firmName VARCHAR(100) PRIMARY KEY, employeeId INT PRIMARY KEY)\n" +
+                        "\n" +
+                        "   Join JoinEmployeeToFirm(EmployeeTable.id = FirmTable.employeeId)\n" +
+                        "   Join JoinEmployeeToemployeeDetails(EmployeeTable.id = EmployeeDetailsTable.id)\n" +
+                        "   Filter EmployeeFilter(EmployeeTable.hireType != sqlNull())\n" +
+                        ")");
+
+        codeFiles.put("vscodelsp::test::EmployeeMapping",
+                "###Mapping\n" +
+                        "Mapping vscodelsp::test::EmployeeMapping\n" +
+                        "(\n" +
+                        "   vscodelsp::test::Employee[emp] : Relational\n" +
+                        "   {\n" +
+                        "      ~mainTable [vscodelsp::test::EmployeeDatabase]EmployeeTable\n" +
+                        "      hireDate : [vscodelsp::test::EmployeeDatabase]EmployeeTable.hireDate,\n" +
+                        "      hireType : [vscodelsp::test::EmployeeDatabase]EmployeeTable.hireType\n" +
+                        "   }\n" +
+                        ")");
+
+
+        LegendReference mainTableReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",5,  52, 5, 64))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase", 3, 3, 3, 96))
+                .build();
+
+        // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
+//        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(5, 60), mainTableReference, "main table reference");
+        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(5, 60), null, "main table reference");
+
+        LegendReference columnReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",6,   17, 6, 73))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase", 3, 43, 3, 55))
+                .build();
+
+        // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
+//        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 21), columnReference, "Property mapped reference");
+        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 21), null, "Property mapped reference");
     }
 }
