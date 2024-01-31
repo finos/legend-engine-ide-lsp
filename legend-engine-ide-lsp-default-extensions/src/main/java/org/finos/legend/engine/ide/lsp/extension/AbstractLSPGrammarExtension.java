@@ -43,6 +43,7 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -220,11 +221,11 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         result.getElements().forEach(element ->
         {
             String path = element.getPath();
-            collectCommands(section, element, (id, title, sourceInfo, args) ->
+            collectCommands(section, element, (id, title, sourceInfo, args, inputParameters) ->
             {
                 if (isValidSourceInfo(sourceInfo))
                 {
-                    commands.add(LegendCommand.newCommand(path, id, title, toLocation(sourceInfo), args));
+                    commands.add(LegendCommand.newCommand(path, id, title, toLocation(sourceInfo), args, inputParameters));
                 }
             });
         });
@@ -251,6 +252,12 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
+    {
+        return execute(section, entityPath, commandId, executableArgs, Maps.mutable.empty());
+    }
+
+    @Override
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         switch (commandId)
         {
@@ -798,6 +805,11 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             accept(id, title, sourceInfo, Collections.emptyMap());
         }
 
-        void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments);
+        default void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments)
+        {
+            accept(id, title, sourceInfo, arguments, Collections.emptyMap());
+        }
+
+        void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments, Map<String, LegendInputParamter> inputParameters);
     }
 }

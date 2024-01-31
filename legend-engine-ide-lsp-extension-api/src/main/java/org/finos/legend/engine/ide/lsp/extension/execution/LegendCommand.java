@@ -30,14 +30,16 @@ public class LegendCommand implements Locatable
     private final String title;
     private final TextLocation location;
     private final Map<String, String> executableArgs;
+    private final Map<String, LegendInputParamter> inputParameters;
 
-    private LegendCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs)
+    private LegendCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParamter> inputParameters)
     {
         this.entity = Objects.requireNonNull(entity, "entity is required");
         this.id = Objects.requireNonNull(id, "commandId is required");
         this.title = Objects.requireNonNull(title, "title is required");
         this.location = Objects.requireNonNull(location, "location is required");
         this.executableArgs = (executableArgs == null) ? Collections.emptyMap() : Collections.unmodifiableMap(executableArgs);
+        this.inputParameters = (inputParameters == null) ? Collections.emptyMap() : Collections.unmodifiableMap(inputParameters);
     }
 
     @Override
@@ -58,7 +60,8 @@ public class LegendCommand implements Locatable
                 this.id.equals(that.id) &&
                 this.title.equals(that.title) &&
                 this.location.equals(that.location) &&
-                this.executableArgs.equals(that.executableArgs);
+                this.executableArgs.equals(that.executableArgs) &&
+                this.inputParameters.equals(that.inputParameters);
     }
 
     @Override
@@ -76,6 +79,7 @@ public class LegendCommand implements Locatable
                 "\", title=\"" + this.title +
                 ", location=" + this.location +
                 ", executableArgs=" + this.executableArgs +
+                ", inputParameters=" + this.inputParameters +
                 "\"}";
     }
 
@@ -126,6 +130,16 @@ public class LegendCommand implements Locatable
     }
 
     /**
+     * Return the list of input parameters of the command, which should be human understandable.
+     *
+     * @return command inputParameters
+     */
+    public Map<String, LegendInputParamter> getInputParameters()
+    {
+        return this.inputParameters;
+    }
+
+    /**
      * Construct a new Legend command.
      *
      * @param entity   command entity path
@@ -151,6 +165,22 @@ public class LegendCommand implements Locatable
      */
     public static LegendCommand newCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs)
     {
-        return new LegendCommand(entity, id, title, location, executableArgs);
+        return newCommand(entity, id, title, location, executableArgs, null);
+    }
+
+    /**
+     * Construct a new Legend command.
+     *
+     * @param entity         command entity path
+     * @param id             command id
+     * @param title          command title
+     * @param location       command location
+     * @param executableArgs command executableArgs
+     * @param inputParameters command inputParameters
+     * @return new command
+     */
+    public static LegendCommand newCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParamter> inputParameters)
+    {
+        return new LegendCommand(entity, id, title, location, executableArgs, inputParameters);
     }
 }

@@ -91,6 +91,7 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
      * @param section    grammar section state
      * @param entityPath entity path
      * @param commandId  command id
+     * @param executableArgs executable Arguments
      * @return execution results
      */
     default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
@@ -109,5 +110,20 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Optional<LegendReference> getLegendReference(SectionState sectionState, TextPosition textPosition)
     {
         return Optional.empty();
+    }
+    
+    /**
+     * Execute a Legend command on an entity in a section.
+     *
+     * @param section    grammar section state
+     * @param entityPath entity path
+     * @param commandId  command id
+     * @param executableArgs executable Arguments
+     * @param inputParameters input Parameters
+     * @return execution results
+     */
+    default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        return Collections.emptyList();
     }
 }
