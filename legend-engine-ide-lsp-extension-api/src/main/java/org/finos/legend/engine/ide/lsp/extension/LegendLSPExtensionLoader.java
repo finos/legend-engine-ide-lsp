@@ -14,12 +14,17 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.ServiceLoader;
+
 /**
  *  Loader for LSP grammar and DSL extensions
  */
 public interface LegendLSPExtensionLoader
 {
-    Iterable<LegendLSPGrammarExtension> loadLegendLSPGrammarExtension(ClassLoader classLoader);
+    Iterable<LegendLSPGrammarExtension> loadLegendLSPGrammarExtensions(ClassLoader classLoader);
 
-    Iterable<LegendLSPInlineDSLExtension> loadLegendLSPInlineDSLExtension(ClassLoader classLoader);
+    default Iterable<LegendLSPFeature> loadLegendLSPFeatureExtensions(ClassLoader classLoader)
+    {
+        return ServiceLoader.load(LegendLSPFeature.class, classLoader);
+    }
 }

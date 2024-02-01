@@ -31,7 +31,6 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -497,6 +496,11 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected PureModelContextData.Builder pureModelContextDataBuilder(GlobalState globalState)
     {
         PureModelContextData.Builder builder = PureModelContextData.newBuilder();
+
+        globalState.findFeatureThatImplements(LegendDependencyManagement.class)
+                .map(LegendDependencyManagement::getDependenciesPMCD)
+                .forEach(builder::addPureModelContextData);
+
         globalState.forEachDocumentState(docState -> docState.forEachSectionState(secState ->
         {
             ParseResult parseResult = secState.getProperty(PARSE_RESULT);
@@ -737,14 +741,6 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
         LOGGER.debug("Using default Legend Engine server client");
         return new DefaultLegendEngineServerClient();
-    }
-
-    public <T> Stream<? extends T> findExtensionThatImplements(GlobalState state, Class<T> _interface)
-    {
-        return state.getAvailableGrammarExtensions()
-                .stream()
-                .filter(_interface::isInstance)
-                .map(_interface::cast);
     }
 
     protected static class Result<T>

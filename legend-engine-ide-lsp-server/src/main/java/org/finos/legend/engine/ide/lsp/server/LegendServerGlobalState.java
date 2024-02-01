@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
@@ -152,6 +153,12 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
     public Collection<LegendLSPGrammarExtension> getAvailableGrammarExtensions()
     {
         return this.server.getGrammarLibrary().getExtensions();
+    }
+
+    @Override
+    public Collection<LegendLSPFeature> getAvailableLegendLSPFeatures()
+    {
+        return this.server.getFeatures();
     }
 
     static class LegendServerDocumentState extends AbstractState implements DocumentState

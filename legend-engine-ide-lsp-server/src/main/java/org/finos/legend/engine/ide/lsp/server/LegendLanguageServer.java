@@ -74,10 +74,9 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,11 +110,11 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private final Gson gson = new Gson();
     private final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
 
-    private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, LegendLSPInlineDSLLibrary inlineDSLs)
+    private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars)
     {
         this.textDocumentService = new LegendTextDocumentService(this);
         this.workspaceService = new LegendWorkspaceService(this);
-        this.extensionGuard = new ExtensionsGuard(this, grammars, inlineDSLs);
+        this.extensionGuard = new ExtensionsGuard(this, grammars);
         this.async = async;
         this.executor = executor;
         this.classpathFactory = Objects.requireNonNull(classpathFactory, "missing classpath factory");
@@ -457,16 +456,16 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return this.extensionGuard.getGrammars();
     }
 
+    Collection<LegendLSPFeature> getFeatures()
+    {
+        checkNotShutDown();
+        return this.extensionGuard.getFeatures();
+    }
+
     LegendLSPGrammarExtension getGrammarExtension(String grammar)
     {
         checkNotShutDown();
         return this.extensionGuard.getGrammars().getExtension(grammar);
-    }
-
-    LegendLSPInlineDSLLibrary getInlineDSLLibrary()
-    {
-        checkNotShutDown();
-        return this.extensionGuard.getInlineDSLs();
     }
 
     CompletableFuture<?> setWorkspaceFolders(Iterable<? extends WorkspaceFolder> folders)
@@ -930,7 +929,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         private Executor executor;
         private ClasspathFactory classpathFactory = new EmbeddedClasspathFactory();
         private final LegendLSPGrammarLibrary.Builder grammars = LegendLSPGrammarLibrary.builder();
-        private final LegendLSPInlineDSLLibrary.Builder inlineDSLs = LegendLSPInlineDSLLibrary.builder();
 
         private Builder()
         {
@@ -1018,52 +1016,13 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
 
         /**
-         * Add the inline DSL extension to the builder.
-         *
-         * @param inlineDSL inline DSL extension to add
-         * @return this builder
-         * @see LegendLSPInlineDSLLibrary.Builder#addExtension
-         */
-        public Builder withInlineDSL(LegendLSPInlineDSLExtension inlineDSL)
-        {
-            this.inlineDSLs.addExtension(inlineDSL);
-            return this;
-        }
-
-        /**
-         * Add all the given inline DSL extensions to the builder.
-         *
-         * @param inlineDSLs inline DSL extensions to add
-         * @return this builder
-         * @see LegendLSPInlineDSLLibrary.Builder#addExtensions
-         */
-        public Builder withInlineDSLs(LegendLSPInlineDSLExtension... inlineDSLs)
-        {
-            this.inlineDSLs.addExtensions(inlineDSLs);
-            return this;
-        }
-
-        /**
-         * Add all the given inline DSL extensions to the builder.
-         *
-         * @param inlineDSLs inline DSL extensions to add
-         * @return this builder
-         * @see LegendLSPInlineDSLLibrary.Builder#addExtensions
-         */
-        public Builder withInlineDSLs(Iterable<? extends LegendLSPInlineDSLExtension> inlineDSLs)
-        {
-            this.inlineDSLs.addExtensions(inlineDSLs);
-            return this;
-        }
-
-        /**
          * Builder the Legend language server.
          *
          * @return server
          */
         public LegendLanguageServer build()
         {
-            return new LegendLanguageServer(this.async, this.executor, this.classpathFactory, this.grammars.build(), this.inlineDSLs.build());
+            return new LegendLanguageServer(this.async, this.executor, this.classpathFactory, this.grammars.build());
         }
 
     }

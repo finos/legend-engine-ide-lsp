@@ -35,7 +35,7 @@ import org.finos.legend.engine.language.pure.grammar.from.extension.SectionParse
 public class DefaultLegendLSPExtensionLoader implements LegendLSPExtensionLoader
 {
     @Override
-    public Iterable<LegendLSPGrammarExtension> loadLegendLSPGrammarExtension(ClassLoader classLoader)
+    public Iterable<LegendLSPGrammarExtension> loadLegendLSPGrammarExtensions(ClassLoader classLoader)
     {
         ServiceLoader<LegendLSPGrammarExtension> extensions = ServiceLoader.load(LegendLSPGrammarExtension.class, classLoader);
 
@@ -54,12 +54,6 @@ public class DefaultLegendLSPExtensionLoader implements LegendLSPExtensionLoader
                 .forEach(extensionList::add);
 
         return extensionList;
-    }
-
-    @Override
-    public Iterable<LegendLSPInlineDSLExtension> loadLegendLSPInlineDSLExtension(ClassLoader classLoader)
-    {
-        return ServiceLoader.load(LegendLSPInlineDSLExtension.class, classLoader);
     }
 
     static class CatchAllSectionParserLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension

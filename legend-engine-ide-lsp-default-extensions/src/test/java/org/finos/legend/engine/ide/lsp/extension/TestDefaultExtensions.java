@@ -33,4 +33,14 @@ public class TestDefaultExtensions
                 extensions.collect(LegendLSPExtension::getName, Sets.mutable.empty())
         );
     }
+
+    @Test
+    void testGetFeatures()
+    {
+        MutableList<LegendLSPFeature> extensions = Lists.mutable.withAll(ServiceLoader.load(LegendLSPFeature.class));
+        Assertions.assertEquals(
+                Sets.mutable.with("Handles Legend SDLC features"),
+                extensions.collect(LegendLSPFeature::description, Sets.mutable.empty())
+        );
+    }
 }

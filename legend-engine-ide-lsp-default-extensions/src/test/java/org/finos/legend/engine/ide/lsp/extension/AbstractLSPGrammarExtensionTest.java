@@ -52,6 +52,8 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
     private static List<LegendLSPGrammarExtension> legendLSPGrammarExtensions;
     protected T extension;
 
+    private final List<LegendLSPFeature> features = new ArrayList<>();
+
     @BeforeEach
     public void loadExtensionToUse()
     {
@@ -65,6 +67,11 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
     static void beforeAll()
     {
         legendLSPGrammarExtensions = loadAvailableExtensions();
+    }
+
+    protected void registerFeature(LegendLSPFeature feature)
+    {
+        this.features.add(feature);
     }
 
     @Test
@@ -269,7 +276,7 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         }
     }
 
-    private static class TestGlobalState extends AbstractState implements GlobalState
+    private class TestGlobalState extends AbstractState implements GlobalState
     {
         private final MutableMap<String, DocumentState> docStates = Maps.mutable.empty();
 
@@ -299,6 +306,12 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
             });
 
             return extensionList;
+        }
+
+        @Override
+        public Collection<LegendLSPFeature> getAvailableLegendLSPFeatures()
+        {
+            return AbstractLSPGrammarExtensionTest.this.features;
         }
     }
 
@@ -414,7 +427,7 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
 
         ServiceLoader.load(LegendLSPExtensionLoader.class, classLoader)
                 .forEach(
-                        x -> x.loadLegendLSPGrammarExtension(classLoader)
+                        x -> x.loadLegendLSPGrammarExtensions(classLoader)
                                 .forEach(grammars::add)
                 );
 
