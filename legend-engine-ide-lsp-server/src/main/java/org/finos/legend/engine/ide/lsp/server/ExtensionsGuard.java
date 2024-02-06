@@ -18,31 +18,30 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.function.Supplier;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtensionLoader;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLLibrary;
 
 class ExtensionsGuard
 {
     private final Iterable<LegendLSPGrammarExtension> providedGrammarExtensions;
-    private final Iterable<LegendLSPInlineDSLExtension> providedInlineDSLs;
     private final LegendLanguageServer server;
     private volatile ClassLoader classLoader;
     private volatile LegendLSPGrammarLibrary grammars;
-    private volatile LegendLSPInlineDSLLibrary inlineDSLs;
 
-    public ExtensionsGuard(LegendLanguageServer server, LegendLSPGrammarLibrary providedGrammarExtensions, LegendLSPInlineDSLLibrary providedInlineDSLs)
+    private volatile Collection<LegendLSPFeature> features;
+
+    public ExtensionsGuard(LegendLanguageServer server, LegendLSPGrammarLibrary providedGrammarExtensions)
     {
         this.server = server;
         this.grammars = providedGrammarExtensions;
-        this.inlineDSLs = providedInlineDSLs;
         this.providedGrammarExtensions = providedGrammarExtensions.getExtensions();
-        this.providedInlineDSLs = providedInlineDSLs.getExtensions();
     }
 
     public synchronized void initialize(ClassLoader classLoader)
@@ -60,20 +59,18 @@ class ExtensionsGuard
 
             Thread.currentThread().setContextClassLoader(classLoader);
 
+            List<LegendLSPFeature> features = new ArrayList<>();
             List<LegendLSPGrammarExtension> grammars = new ArrayList<>();
-            List<LegendLSPInlineDSLExtension> inlineDSL = new ArrayList<>();
 
             ServiceLoader.load(LegendLSPExtensionLoader.class, classLoader).forEach(x ->
             {
-                x.loadLegendLSPGrammarExtension(classLoader).forEach(grammars::add);
-                x.loadLegendLSPInlineDSLExtension(classLoader).forEach(inlineDSL::add);
+                x.loadLegendLSPGrammarExtensions(classLoader).forEach(grammars::add);
+                x.loadLegendLSPFeatureExtensions(classLoader).forEach(features::add);
             });
 
             this.grammars = LegendLSPGrammarLibrary.builder().withExtensions(this.providedGrammarExtensions).withExtensions(grammars).build();
-            this.inlineDSLs = LegendLSPInlineDSLLibrary.builder().withExtensions(this.providedInlineDSLs).withExtensions(inlineDSL).build();
-
+            this.features = Collections.unmodifiableList(features);
             this.server.logInfoToClient("Grammar extensions available: " + String.join(", ", this.grammars.getExtensionNames()));
-            this.server.logInfoToClient("Inline DSL extensions available: " + String.join(", ", this.inlineDSLs.getExtensionNames()));
 
             this.classLoader = classLoader;
         }
@@ -90,11 +87,6 @@ class ExtensionsGuard
     public LegendLSPGrammarLibrary getGrammars()
     {
         return this.grammars;
-    }
-
-    public LegendLSPInlineDSLLibrary getInlineDSLs()
-    {
-        return this.inlineDSLs;
     }
 
     Runnable wrapOnClasspath(Runnable command)
@@ -129,5 +121,10 @@ class ExtensionsGuard
                 Thread.currentThread().setContextClassLoader(contextClassLoader);
             }
         };
+    }
+
+    public Collection<LegendLSPFeature> getFeatures()
+    {
+        return this.features;
     }
 }

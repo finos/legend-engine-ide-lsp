@@ -28,6 +28,7 @@
 
     <properties>
         <legend.engine.version>4.37.7</legend.engine.version>
+        <legend.sdlc.version>0.154.1</legend.sdlc.version>
     </properties>
 
     <build>
@@ -256,6 +257,19 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.finos.legend.sdlc</groupId>
+            <artifactId>legend-sdlc-entity-serialization</artifactId>
+            <version>${legend.sdlc.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.sdlc</groupId>
+            <artifactId>legend-sdlc-protocol-pure</artifactId>
+            <version>${legend.sdlc.version}</version>
             <scope>provided</scope>
         </dependency>
 

@@ -37,7 +37,7 @@ class TestDefaultLegendLSPExtensionLoader
         ClassLoader classLoader = this.getClass().getClassLoader();
         DefaultLegendLSPExtensionLoader loader = new DefaultLegendLSPExtensionLoader();
 
-        Iterable<LegendLSPGrammarExtension> grammarExtensions = loader.loadLegendLSPGrammarExtension(classLoader);
+        Iterable<LegendLSPGrammarExtension> grammarExtensions = loader.loadLegendLSPGrammarExtensions(classLoader);
 
         Map<String, Class<? extends LegendLSPGrammarExtension>> grammarsMap = StreamSupport.stream(grammarExtensions.spliterator(), false).collect(Collectors.toMap(LegendLSPGrammarExtension::getName, LegendLSPGrammarExtension::getClass));
 

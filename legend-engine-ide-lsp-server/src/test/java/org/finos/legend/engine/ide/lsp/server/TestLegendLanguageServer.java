@@ -26,7 +26,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPInlineDSLExtension;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -119,34 +118,6 @@ public class TestLegendLanguageServer
         IllegalArgumentException e = Assertions.assertThrows(
                 IllegalArgumentException.class,
                 () -> LegendLanguageServer.builder().withGrammars(ext1, ext2, () -> "ext1", ext3));
-        Assertions.assertEquals("Multiple extensions named: \"ext1\"", e.getMessage());
-    }
-
-    @Test
-    public void testInlineDSLs()
-    {
-        LegendLSPInlineDSLExtension ext1 = () -> "ext1";
-        LegendLSPInlineDSLExtension ext2 = () -> "ext2";
-        LegendLSPInlineDSLExtension ext3 = () -> "ext3";
-
-        LegendLanguageServer noDSLs = LegendLanguageServer.builder().synchronous().build();
-        noDSLs.initialize(new InitializeParams());
-        Assertions.assertEquals(Set.of(), noDSLs.getInlineDSLLibrary().getInlineDSLs());
-        Assertions.assertEquals(Set.of(), Set.copyOf(noDSLs.getInlineDSLLibrary().getExtensions()));
-
-        LegendLanguageServer oneDSL = LegendLanguageServer.builder().synchronous().withInlineDSL(ext1).build();
-        oneDSL.initialize(new InitializeParams());
-        Assertions.assertEquals(Set.of("ext1"), oneDSL.getInlineDSLLibrary().getInlineDSLs());
-        Assertions.assertEquals(Set.of(ext1), Set.copyOf(oneDSL.getInlineDSLLibrary().getExtensions()));
-
-        LegendLanguageServer threeDSLs = LegendLanguageServer.builder().synchronous().withInlineDSLs(ext1, ext2, ext3).build();
-        threeDSLs.initialize(new InitializeParams());
-        Assertions.assertEquals(Set.of("ext1", "ext2", "ext3"), threeDSLs.getInlineDSLLibrary().getInlineDSLs());
-        Assertions.assertEquals(Set.of(ext1, ext2, ext3), Set.copyOf(threeDSLs.getInlineDSLLibrary().getExtensions()));
-
-        IllegalArgumentException e = Assertions.assertThrows(
-                IllegalArgumentException.class,
-                () -> LegendLanguageServer.builder().withInlineDSLs(ext1, ext2, () -> "ext1", ext3));
         Assertions.assertEquals("Multiple extensions named: \"ext1\"", e.getMessage());
     }
 

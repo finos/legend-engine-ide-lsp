@@ -298,7 +298,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             @Override
             public Stream<LegendReferenceResolver> visit(ClassMapping classMapping)
             {
-                return findExtensionThatImplements(state, MappingLSPGrammarProvider.class)
+                return state.findGrammarExtensionThatImplements(MappingLSPGrammarProvider.class)
                         .flatMap(x -> x.getClassMappingReferences(classMapping, state));
             }
 
