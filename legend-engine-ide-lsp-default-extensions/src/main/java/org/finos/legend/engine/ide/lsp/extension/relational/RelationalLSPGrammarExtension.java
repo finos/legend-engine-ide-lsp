@@ -381,10 +381,8 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
                     relationalClassMapping.filter.sourceInformation,
                     x ->
                     {
-                        return null;
-                        // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
-//                         org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(relationalClassMapping.filter.filter.db, relationalClassMapping.filter.sourceInformation, x);
-//                         return HelperRelationalBuilder.getFilter(database, relationalClassMapping.filter.filter.name, relationalClassMapping.filter.sourceInformation);
+                         org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(relationalClassMapping.filter.filter.db, relationalClassMapping.filter.sourceInformation, x);
+                         return HelperRelationalBuilder.getFilter(database, relationalClassMapping.filter.filter.name, relationalClassMapping.filter.sourceInformation);
                     }
             );
 
@@ -415,9 +413,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     {
         return LegendReferenceResolver.newReferenceResolver(
                 joinPointer.sourceInformation,
-                x -> null
-                // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
-//                x -> HelperRelationalBuilder.getJoin(joinPointer, x)
+                x -> HelperRelationalBuilder.getJoin(joinPointer, x)
         );
     }
 
@@ -430,13 +426,11 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
             LegendReferenceResolver tableRef = toReference(tableAliasColumn.table);
 
             LegendReferenceResolver colRef = LegendReferenceResolver.newReferenceResolver(tableAliasColumn.sourceInformation,
-                    x -> null
-// todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
-//                    x -> HelperRelationalBuilder.getColumn(
-//                            HelperRelationalBuilder.getRelation(tableAliasColumn.table, x),
-//                            tableAliasColumn.column,
-//                            tableAliasColumn.sourceInformation
-//                    )
+                    x -> HelperRelationalBuilder.getColumn(
+                            HelperRelationalBuilder.getRelation(tableAliasColumn.table, x),
+                            tableAliasColumn.column,
+                            tableAliasColumn.sourceInformation
+                    )
             );
 
             return Stream.of(tableRef, colRef);

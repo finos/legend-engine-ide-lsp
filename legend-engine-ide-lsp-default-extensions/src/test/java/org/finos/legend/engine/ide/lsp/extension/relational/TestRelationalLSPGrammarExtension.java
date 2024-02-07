@@ -367,17 +367,13 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase", 3, 3, 3, 96))
                 .build();
 
-        // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
-//        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(5, 60), mainTableReference, "main table reference");
-        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(5, 60), null, "main table reference");
+        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(5, 60), mainTableReference, "main table reference");
 
         LegendReference columnReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",6,   17, 6, 73))
                 .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase", 3, 43, 3, 55))
                 .build();
 
-        // todo this would work once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
-//        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 21), columnReference, "Property mapped reference");
-        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 21), null, "Property mapped reference");
+        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 21), columnReference, "Property mapped reference");
     }
 }
