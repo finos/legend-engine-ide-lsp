@@ -195,12 +195,10 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(5, 12), srcMappedClassReference, "Source class reference");
 
         LegendReference propertyReference = LegendReference.builder()
-                .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",3,  3, 3, 27))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::Employee", 1, 0, 6, 0))
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",6,  6, 6, 13))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::Employee", 4, 4, 4, 22))
                 .build();
 
-        // todo this would pass once engine is released with the change on MR https://github.com/finos/legend-engine/pull/2563
-        // testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 10), propertyReference, "Property mapped reference");
-        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 10), null, "Property mapped reference");
+        testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 10), propertyReference, "Property mapped reference");
     }
 }

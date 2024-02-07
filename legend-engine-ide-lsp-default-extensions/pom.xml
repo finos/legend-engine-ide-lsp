@@ -27,8 +27,8 @@
     <name>Legend Engine IDE LSP Default Extensions</name>
 
     <properties>
-        <legend.engine.version>4.37.7</legend.engine.version>
-        <legend.sdlc.version>0.154.1</legend.sdlc.version>
+        <legend.engine.version>4.38.1</legend.engine.version>
+        <legend.sdlc.version>0.155.1</legend.sdlc.version>
     </properties>
 
     <build>
@@ -83,6 +83,11 @@
         <dependency>
             <groupId>org.finos.legend.pure</groupId>
             <artifactId>legend-pure-m2-dsl-mapping-pure</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.pure</groupId>
+            <artifactId>legend-pure-m2-dsl-store-pure</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
