@@ -61,6 +61,7 @@ import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
+import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Association;
@@ -322,7 +323,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
             if (this.isEngineServerConfigured())
             {
-                LegendExecutionResult legendExecutionResult = this.postEngineServer("/executionPlan/v1/execution/executePlan?serializationFormat=DEFAULT", executionPlan, is ->
+                ExecutionRequest executionRequest = new ExecutionRequest(executionPlan, inputParameters);
+                LegendExecutionResult legendExecutionResult = this.postEngineServer("/executionPlan/v1/execution/executeRequest?serializationFormat=DEFAULT", executionRequest, is ->
                 {
                     ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
                     is.transferTo(os);
@@ -436,4 +438,25 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, SUGGESTABLE_KEYWORDS));
     }
 
+    private static class ExecutionRequest
+    {
+        private final ExecutionPlan executionPlan;
+        private final Map<String, Object> executionParameters;
+
+        public ExecutionRequest(ExecutionPlan executionPlan, Map<String, Object> executionParameters)
+        {
+            this.executionPlan = executionPlan;
+            this.executionParameters = executionParameters == null ? Collections.emptyMap() : executionParameters;
+        }
+
+        public ExecutionPlan getExecutionPlan()
+        {
+            return this.executionPlan;
+        }
+
+        public Map<String, Object> getExecutionParameters()
+        {
+            return this.executionParameters;
+        }
+    }
 }
