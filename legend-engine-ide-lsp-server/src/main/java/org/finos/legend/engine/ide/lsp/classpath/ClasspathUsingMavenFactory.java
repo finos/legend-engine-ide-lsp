@@ -42,9 +42,12 @@ import org.apache.maven.shared.utils.cli.Commandline;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClasspathUsingMavenFactory implements ClasspathFactory
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClasspathUsingMavenFactory.class);
     private final Invoker invoker;
     private final File defaultPom;
     private final ByteArrayOutputStream outputStream;
@@ -151,6 +154,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 // todo last, use a default pom...
 
                 this.server.logInfoToClient("Dependencies loaded from POM: " + pom);
+                LOGGER.info("Dependencies loaded from POM: " + pom);
 
                 File legendLspClasspath = File.createTempFile("legend_lsp_classpath", ".txt");
                 legendLspClasspath.deleteOnExit();
@@ -175,12 +179,13 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 {
                     String output = this.outputStream.toString(StandardCharsets.UTF_8);
                     this.server.logErrorToClient("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
+                    LOGGER.error("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
                     return null;
                 }
 
                 String classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8);
 
-                this.server.logInfoToClient("Classpath used: " + classpath);
+                LOGGER.info("Classpath used: " + classpath);
 
                 String[] classpathEntries = classpath.split(";");
                 URL[] urls = new URL[classpathEntries.length];
@@ -195,6 +200,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             }
             catch (Exception e)
             {
+                LOGGER.error("Unable to initialize Legend extensions", e);
                 this.server.logErrorToClient("Unable to initialize Legend extensions - " + e.getMessage());
                 return null;
             }
