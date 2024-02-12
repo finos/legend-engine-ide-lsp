@@ -18,6 +18,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -142,6 +143,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
 
         logInfoToClient("Initializing server");
+        logInfoToClient("Server logs can be found at: " + Path.of(System.getProperty("java.io.tmpdir") + "/engine-lsp/").toUri());
         List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
 
         InitializeResult result = new InitializeResult(getServerCapabilities());
