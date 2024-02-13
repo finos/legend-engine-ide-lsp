@@ -185,7 +185,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
                 String classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8);
 
-                LOGGER.info("Classpath used: " + classpath);
+                LOGGER.info("Classpath used:  {}", classpath);
 
                 String[] classpathEntries = classpath.split(";");
                 URL[] urls = new URL[classpathEntries.length];
