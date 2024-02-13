@@ -179,7 +179,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 {
                     String output = this.outputStream.toString(StandardCharsets.UTF_8);
                     this.server.logErrorToClient("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
-                    LOGGER.error("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
+                    LOGGER.error("Unable to initialize Legend extensions.  Maven output:\n\n{}", output);
                     return null;
                 }
 
