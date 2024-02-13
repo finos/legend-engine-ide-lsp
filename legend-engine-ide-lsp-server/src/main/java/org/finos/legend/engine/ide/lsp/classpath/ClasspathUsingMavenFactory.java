@@ -154,7 +154,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 // todo last, use a default pom...
 
                 this.server.logInfoToClient("Dependencies loaded from POM: " + pom);
-                LOGGER.info("Dependencies loaded from POM: " + pom);
+                LOGGER.info("Dependencies loaded from POM: {}", pom);
 
                 File legendLspClasspath = File.createTempFile("legend_lsp_classpath", ".txt");
                 legendLspClasspath.deleteOnExit();
