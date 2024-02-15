@@ -16,6 +16,7 @@ package org.finos.legend.engine.ide.lsp.classpath;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -33,6 +34,7 @@ import org.apache.maven.shared.invoker.InvocationRequest;
 import org.apache.maven.shared.invoker.InvocationResult;
 import org.apache.maven.shared.invoker.Invoker;
 import org.apache.maven.shared.invoker.InvokerLogger;
+import org.apache.maven.shared.invoker.MavenInvocationException;
 import org.apache.maven.shared.invoker.PrintStreamHandler;
 import org.apache.maven.shared.invoker.PrintStreamLogger;
 import org.apache.maven.shared.utils.Os;
@@ -61,7 +63,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         this.invoker.setLogger(new PrintStreamLogger(new PrintStream(this.outputStream, true), InvokerLogger.INFO));
     }
 
-    private File getMavenExecLocation(String mavenHome)
+    public File getMavenExecLocation(String mavenHome)
     {
         if (mavenHome == null || mavenHome.isEmpty())
         {
@@ -156,47 +158,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 this.server.logInfoToClient("Dependencies loaded from POM: " + pom);
                 LOGGER.info("Dependencies loaded from POM: {}", pom);
 
-                File legendLspClasspath = File.createTempFile("legend_lsp_classpath", ".txt");
-                legendLspClasspath.deleteOnExit();
-
-                Properties properties = new Properties();
-                properties.setProperty("mdep.outputFile", legendLspClasspath.getAbsolutePath());
-
-                InvocationRequest request = new DefaultInvocationRequest();
-                request.setPomFile(pom);
-                request.setOutputHandler(new PrintStreamHandler(new PrintStream(this.outputStream, true), true));
-                request.setGoals(Collections.singletonList("dependency:build-classpath"));
-                request.setProperties(properties);
-                request.setTimeoutInSeconds((int) TimeUnit.MINUTES.toSeconds(15));
-                request.setJavaHome(Optional.ofNullable(System.getProperty("java.home")).map(File::new).orElse(null));
-                request.setMavenHome(maven);
-                request.setShowErrors(true);
-                request.setShowVersion(true);
-                request.setUpdateSnapshots(true);
-
-                InvocationResult result = this.invoker.execute(request);
-                if (result.getExitCode() != 0)
-                {
-                    String output = this.outputStream.toString(StandardCharsets.UTF_8);
-                    this.server.logErrorToClient("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
-                    LOGGER.error("Unable to initialize Legend extensions.  Maven output:\n\n{}", output);
-                    return null;
-                }
-
-                String classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8);
-
-                LOGGER.info("Classpath used:  {}", classpath);
-
-                String[] classpathEntries = classpath.split(";");
-                URL[] urls = new URL[classpathEntries.length];
-
-                for (int i = 0; i < urls.length; i++)
-                {
-                    urls[i] = new File(classpathEntries[i]).toURI().toURL();
-                }
-
-                ClassLoader parentClassloader = ClasspathUsingMavenFactory.class.getClassLoader();
-                return new URLClassLoader("legend-lsp", urls, parentClassloader);
+                return this.createClassloader(maven, pom);
             }
             catch (Exception e)
             {
@@ -209,5 +171,53 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 this.outputStream.reset();
             }
         });
+    }
+
+    public URLClassLoader createClassloader(File maven, File pom) throws IOException, MavenInvocationException
+    {
+        File legendLspClasspath = File.createTempFile("legend_lsp_classpath", ".txt");
+        legendLspClasspath.deleteOnExit();
+
+        Properties properties = new Properties();
+        properties.setProperty("mdep.outputFile", legendLspClasspath.getAbsolutePath());
+
+        InvocationRequest request = new DefaultInvocationRequest();
+        request.setPomFile(pom);
+        request.setOutputHandler(new PrintStreamHandler(new PrintStream(this.outputStream, true), true));
+        request.setGoals(Collections.singletonList("dependency:build-classpath"));
+        request.setProperties(properties);
+        request.setTimeoutInSeconds((int) TimeUnit.MINUTES.toSeconds(15));
+        request.setJavaHome(Optional.ofNullable(System.getProperty("java.home")).map(File::new).orElse(null));
+        request.setMavenHome(maven);
+        request.setShowErrors(true);
+        request.setShowVersion(true);
+        request.setUpdateSnapshots(true);
+
+        InvocationResult result = this.invoker.execute(request);
+        if (result.getExitCode() != 0)
+        {
+            String output = this.outputStream.toString(StandardCharsets.UTF_8);
+            if (this.server != null)
+            {
+                this.server.logErrorToClient("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
+            }
+            LOGGER.error("Unable to initialize Legend extensions.  Maven output:\n\n{}", output);
+            return null;
+        }
+
+        String classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8);
+
+                LOGGER.info("Classpath used:  {}", classpath);
+
+        String[] classpathEntries = classpath.split(";");
+        URL[] urls = new URL[classpathEntries.length];
+
+        for (int i = 0; i < urls.length; i++)
+        {
+            urls[i] = new File(classpathEntries[i]).toURI().toURL();
+        }
+
+        ClassLoader parentClassloader = ClasspathUsingMavenFactory.class.getClassLoader();
+        return new URLClassLoader("legend-lsp", urls, parentClassloader);
     }
 }
