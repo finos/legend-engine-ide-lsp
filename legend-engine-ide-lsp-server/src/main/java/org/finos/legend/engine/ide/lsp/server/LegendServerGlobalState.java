@@ -333,7 +333,7 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
                 return;
             }
 
-            LOGGER.info("Clearing global and " + this.uri + " properties");
+            LOGGER.info("Clearing global and {} properties", this.uri);
             this.sectionIndex = (newText == null) ? null : GrammarSectionIndex.parse(newText);
             this.sectionStates = createSectionStates(this.sectionIndex);
             this.clearProperties();
