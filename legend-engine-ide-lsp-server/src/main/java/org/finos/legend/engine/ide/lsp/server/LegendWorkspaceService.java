@@ -71,11 +71,13 @@ class LegendWorkspaceService implements WorkspaceService
     private void doExecuteCommand(ExecuteCommandParams params)
     {
         Either<String, Integer> progressToken = this.server.possiblyNewProgressToken(params.getWorkDoneToken());
+        Iterable<? extends LegendExecutionResult> results;
         try
         {
             this.server.logInfoToClient("Execute command: " + params.getCommand());
             String command = params.getCommand();
             List<Object> args = params.getArguments();
+
             if (LegendLanguageServer.LEGEND_COMMAND_ID.equals(command))
             {
                 String uri = this.server.extractValueAs(args.get(0), String.class);
@@ -99,7 +101,6 @@ class LegendWorkspaceService implements WorkspaceService
                 {
                     throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
                 }
-                Iterable<? extends LegendExecutionResult> results;
 
                 try
                 {
