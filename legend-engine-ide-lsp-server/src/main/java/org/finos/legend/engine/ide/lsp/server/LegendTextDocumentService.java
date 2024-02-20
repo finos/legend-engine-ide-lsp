@@ -58,11 +58,14 @@ import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.agGrid.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -80,6 +83,8 @@ class LegendTextDocumentService implements TextDocumentService
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendTextDocumentService.class);
 
     private final LegendLanguageServer server;
+
+    private final String LEGEND_TDS_REQUEST = "textDocument/TDSRequest";
 
     LegendTextDocumentService(LegendLanguageServer server)
     {
@@ -491,6 +496,47 @@ class LegendTextDocumentService implements TextDocumentService
     public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params)
     {
         return this.server.supplyPossiblyAsync(() -> getCodeLenses(params));
+    }
+
+    @JsonRequest(
+            value = LEGEND_TDS_REQUEST,
+            useSegment = false
+    )
+    public CompletableFuture<Object> legendTDSRequest(Object rq)
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            LegendExecutionResult result = null;
+            FunctionTDSRequest request = this.server.extractValueAs(rq, FunctionTDSRequest.class);
+            LegendServerGlobalState globalState = this.server.getGlobalState();
+            String uri = request.getUri();
+            int sectionNum = request.getSectionNum();
+            String entity = request.getEntity();
+            DocumentState docState = globalState.getDocumentState(uri);
+            if (docState == null)
+            {
+                LOGGER.warn("No state for {}: cannot get tds request result", uri);
+                this.server.logWarningToClient("Cannot get TDS request result for " + uri + ": not open in language server");
+                return Collections.emptyList();
+            }
+            SectionState sectionState = docState.getSectionState(sectionNum);
+            LegendLSPGrammarExtension extension = sectionState.getExtension();
+            if (extension == null)
+            {
+                throw new RuntimeException("Could not execute legend TDS request for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
+            }
+            try
+            {
+                result = extension.executeLegendTDSRequest(sectionState, request);
+            }
+            catch (Throwable e)
+            {
+                this.server.logInfoToClient(e.getMessage());
+                String message = "TDS request execution for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
+                result = LegendExecutionResult.errorResult(new Exception(message, e), message, entity);
+            }
+            return result;
+        });
     }
 
     private List<? extends CodeLens> getCodeLenses(CodeLensParams params)

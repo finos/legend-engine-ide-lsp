@@ -30,7 +30,7 @@ public class LegendExecutionResult
     private final String message;
     private final String logMessage;
 
-    private LegendExecutionResult(List<String> ids, Type type, String message, String logMessage)
+    protected LegendExecutionResult(List<String> ids, Type type, String message, String logMessage)
     {
         Objects.requireNonNull(ids, "ids may not be null").forEach(id -> Objects.requireNonNull(id, "id may not be null"));
         if (ids.isEmpty())

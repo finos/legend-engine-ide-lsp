@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import java.util.Optional;
+
+import org.finos.legend.engine.ide.lsp.extension.agGrid.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
@@ -83,6 +85,11 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Iterable<? extends LegendCommand> getCommands(SectionState section)
     {
         return Collections.emptyList();
+    }
+
+    default LegendExecutionResult executeLegendTDSRequest(SectionState section, FunctionTDSRequest request)
+    {
+        return null;
     }
 
     /**

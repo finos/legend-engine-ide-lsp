@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.HashMap;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
@@ -41,6 +42,7 @@ import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
+import org.finos.legend.engine.ide.lsp.extension.agGrid.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -121,6 +123,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
     private static final String EXEC_FUNCTION_WITH_PARAMETERS_ID = "legend.pure.executeFunctionWithParameters";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
+    private static final String EXEC_FUNCTION_RETURN_TYPE_ID = "legend.pure.executeFunction.returnType";
 
     private final JsonMapper functionResultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
             .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
@@ -145,9 +148,11 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
         super.collectCommands(sectionState, element, consumer);
+        Map<String, String> execArguments = new HashMap<>();
         if (element instanceof Function)
         {
             Function function = (Function) element;
+            execArguments.put(EXEC_FUNCTION_RETURN_TYPE_ID, function.returnType);
             if ((function.parameters == null) || function.parameters.isEmpty())
             {
                 consumer.accept(EXEC_FUNCTION_ID, EXEC_FUNCTION_TITLE, function.sourceInformation);
@@ -172,6 +177,48 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             }
         }
     }
+
+    private static class  FunctionLegendExecutionResult extends LegendExecutionResult
+    {
+        private final String uri;
+        private final int sectionNum;
+        private final Map<String, Object> inputParameters;
+
+        private FunctionLegendExecutionResult(List<String> ids, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters)
+        {
+            super(ids, type, message, logMessage);
+            this.uri = uri;
+            this.sectionNum = sectionNum;
+            this.inputParameters = inputParameters;
+        }
+
+        public String getUri()
+        {
+            return uri;
+        }
+
+        public int getSectionNum()
+        {
+            return sectionNum;
+        }
+
+        public Map<String, Object> getInputParameters()
+        {
+            return inputParameters;
+        }
+
+        public static FunctionLegendExecutionResult newResult(String id, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters)
+        {
+            return new FunctionLegendExecutionResult(Collections.singletonList(id), type, message, logMessage, uri, sectionNum, inputParameters);
+        }
+    }
+
+    @Override
+    public LegendExecutionResult executeLegendTDSRequest(SectionState sectionState, FunctionTDSRequest request)
+    {
+        return (executeFunction(sectionState, request.getEntity(), request.getInputParameters())).iterator().next();
+    }
+
 
     private static class LegendFunctionInputParameter extends LegendInputParamter
     {
@@ -326,7 +373,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 {
                     ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
                     is.transferTo(os);
-                    return LegendExecutionResult.newResult(entityPath, Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server");
+                    return FunctionLegendExecutionResult.newResult(entityPath, Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server", section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters);
                 });
                 results.add(legendExecutionResult);
             }
@@ -335,7 +382,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
                 MutableMap<String, org.finos.legend.engine.plan.execution.result.Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
-                collectResults(entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Lists.mutable.empty()), results::add);
+                collectResults(entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Lists.mutable.empty()), section, inputParameters, results::add);
             }
         }
         catch (Exception e)
@@ -345,18 +392,18 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return results;
     }
 
-    private void collectResults(String entityPath, org.finos.legend.engine.plan.execution.result.Result result, Consumer<? super LegendExecutionResult> consumer)
+    private void collectResults(String entityPath, org.finos.legend.engine.plan.execution.result.Result result, SectionState section, Map<String, Object> inputParameters, Consumer<? super LegendExecutionResult> consumer)
     {
         // TODO also collect results from activities
         if (result instanceof ErrorResult)
         {
             ErrorResult errorResult = (ErrorResult) result;
-            consumer.accept(LegendExecutionResult.newResult(entityPath, Type.ERROR, errorResult.getMessage(), errorResult.getTrace()));
+            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, Type.ERROR, errorResult.getMessage(), errorResult.getTrace(), section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
             return;
         }
         if (result instanceof ConstantResult)
         {
-            consumer.accept(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, getConstantResult((ConstantResult) result)));
+            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, Type.SUCCESS, getConstantResult((ConstantResult) result), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
             return;
         }
         if (result instanceof StreamingResult)
@@ -371,10 +418,10 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 consumer.accept(errorResult(e, entityPath));
                 return;
             }
-            consumer.accept(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8)));
+            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
             return;
         }
-        consumer.accept(LegendExecutionResult.newResult(entityPath, Type.WARNING, "Unhandled result type: " + result.getClass().getName()));
+        consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, Type.WARNING, "Unhandled result type: " + result.getClass().getName(), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
     }
 
     private String getConstantResult(ConstantResult constantResult)
