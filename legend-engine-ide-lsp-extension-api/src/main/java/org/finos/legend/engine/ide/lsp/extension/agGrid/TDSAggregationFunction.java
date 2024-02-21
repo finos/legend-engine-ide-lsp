@@ -16,12 +16,39 @@ package org.finos.legend.engine.ide.lsp.extension.agGrid;
 
 public enum TDSAggregationFunction
 {
+    /**
+     * Sum aggregation operation on a query column.
+     */
     SUM("sum"),
+
+    /**
+     * Minimum aggregation operation on a query column.
+     */
     MIN("min"),
+
+    /**
+     * Maximum aggregation operation on a query column.
+     */
     MAX("max"),
+
+    /**
+     * Count aggregation operation on a query column.
+     */
     COUNT("count"),
+
+    /**
+     * Average aggregation operation on a query column.
+     */
     AVG("avg"),
+
+    /**
+     * First aggregation operation on a query column.
+     */
     FIRST("first"),
+
+    /**
+     * Last aggregation operation on a query column.
+     */
     LAST("last");
 
     private final String value;
