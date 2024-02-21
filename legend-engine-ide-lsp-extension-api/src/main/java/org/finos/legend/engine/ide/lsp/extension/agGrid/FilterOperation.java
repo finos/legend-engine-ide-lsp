@@ -16,13 +16,44 @@ package org.finos.legend.engine.ide.lsp.extension.agGrid;
 
 public enum FilterOperation
 {
+    /**
+     * Equals filter on a query column.
+     */
     EQUALS("equals"),
+
+    /**
+     * Not equal filter on a query column.
+     */
     NOT_EQUAL("notEqual"),
+
+    /**
+     * Greater than filter on a query column.
+     */
     GREATER_THAN("greaterThan"),
+
+    /**
+     * Greater than or equal filter on a query column.
+     */
     GREATER_THAN_OR_EQUAL("greaterThanOrEqual"),
+
+    /**
+     * Less than filter on a query column.
+     */
     LESS_THAN("lessThan"),
+
+    /**
+     * Less than or equal filter on a query column.
+     */
     LESS_THAN_OR_EQUAL("lessThanOrEqual"),
+
+    /**
+     * Blank(is empty) filter on a query column.
+     */
     BLANK("blank"),
+
+    /**
+     * Not blank(is not empty) filter on a query column.
+     */
     NOT_BLANK("notBlank");
 
     private final String value;

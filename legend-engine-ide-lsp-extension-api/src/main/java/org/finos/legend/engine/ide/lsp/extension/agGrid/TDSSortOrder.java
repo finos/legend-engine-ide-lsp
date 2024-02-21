@@ -16,7 +16,14 @@ package org.finos.legend.engine.ide.lsp.extension.agGrid;
 
 public enum TDSSortOrder
 {
+    /**
+     * Ascending sort operation on a query column.
+     */
     ASCENDING("asc"),
+
+    /**
+     * Descending sort operation on a query column.
+     */
     DESCENDING("desc");
 
     private final String value;

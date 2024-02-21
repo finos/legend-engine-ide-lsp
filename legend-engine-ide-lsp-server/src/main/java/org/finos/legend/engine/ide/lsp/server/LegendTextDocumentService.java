@@ -62,6 +62,7 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestHandler;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
@@ -527,7 +528,14 @@ class LegendTextDocumentService implements TextDocumentService
             }
             try
             {
-                result = extension.executeLegendTDSRequest(sectionState, request);
+                if (extension instanceof LegendTDSRequestHandler)
+                {
+                    result = ((LegendTDSRequestHandler) extension).executeLegendTDSRequest(sectionState, request);
+                }
+                else
+                {
+                    throw new RuntimeException("Could not execute legend TDS request for entity " + entity + " in section " + sectionNum + " of " + uri + ": extension does not support executing tds request");
+                }
             }
             catch (Throwable e)
             {

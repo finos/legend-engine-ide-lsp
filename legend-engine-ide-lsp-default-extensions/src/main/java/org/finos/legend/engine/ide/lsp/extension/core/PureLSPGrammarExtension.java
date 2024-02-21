@@ -41,6 +41,7 @@ import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestHandler;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
@@ -87,7 +88,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Extension for the Pure grammar.
  */
-public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
+public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension implements LegendTDSRequestHandler
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
 
