@@ -14,25 +14,39 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 import org.eclipse.lsp4j.CreateFilesParams;
 import org.eclipse.lsp4j.DeleteFilesParams;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidChangeWatchedFilesParams;
 import org.eclipse.lsp4j.DidChangeWorkspaceFoldersParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.RenameFilesParams;
+import org.eclipse.lsp4j.SymbolInformation;
+import org.eclipse.lsp4j.SymbolKind;
+import org.eclipse.lsp4j.WorkspaceDiagnosticParams;
+import org.eclipse.lsp4j.WorkspaceDiagnosticReport;
+import org.eclipse.lsp4j.WorkspaceDocumentDiagnosticReport;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
+import org.eclipse.lsp4j.WorkspaceFullDocumentDiagnosticReport;
+import org.eclipse.lsp4j.WorkspaceSymbol;
+import org.eclipse.lsp4j.WorkspaceSymbolParams;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -267,7 +281,6 @@ class LegendWorkspaceService implements WorkspaceService
     private void fileChanged(LegendServerGlobalState globalState, String uri)
     {
         LOGGER.debug("Changed {}", uri);
-        globalState.clearProperties();
         LegendServerGlobalState.LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
         if (docState.isOpen())
         {
@@ -280,28 +293,91 @@ class LegendWorkspaceService implements WorkspaceService
             docState.loadText();
         }
         this.server.addRootFolderFromFile(uri);
+        globalState.clearProperties();
     }
 
     private void fileCreated(LegendServerGlobalState globalState, String uri)
     {
         LOGGER.debug("Created {}", uri);
-        globalState.clearProperties();
         LegendServerGlobalState.LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
         docState.initialize();
         this.server.addRootFolderFromFile(uri);
+        globalState.clearProperties();
     }
 
     private void fileDeleted(LegendServerGlobalState globalState, String uri)
     {
-        LOGGER.debug("Deleted {}", uri);
+        this.server.logToClient("Deleted " + uri);
         globalState.deleteDocState(uri);
     }
 
     private void fileRenamed(LegendServerGlobalState globalState, String oldUri, String newUri)
     {
         LOGGER.debug("Renamed {} to {}", oldUri, newUri);
-        globalState.clearProperties();
         globalState.renameDoc(oldUri, newUri);
         this.server.addRootFolderFromFile(newUri);
+        globalState.clearProperties();
+    }
+
+    @Override
+    public CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>> symbol(WorkspaceSymbolParams params)
+    {
+        return this.server.supplyPossiblyAsync(() -> getWorkspaceSymbols(params));
+    }
+
+    private Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>> getWorkspaceSymbols(WorkspaceSymbolParams params)
+    {
+        List<WorkspaceSymbol> symbols = new ArrayList<>();
+
+        this.server.getGlobalState().forEachDocumentState(doc ->
+        {
+            doc.forEachSectionState(sec ->
+            {
+                if (sec.getExtension() != null)
+                {
+                    sec.getExtension().getDeclarations(sec).forEach(declaration ->
+                    {
+                        if (params.getQuery().isEmpty() || declaration.getIdentifier().toLowerCase().contains(params.getQuery().toLowerCase()))
+                        {
+                            Range range = LegendToLSPUtilities.toRange(declaration.getLocation().getTextInterval());
+                            Range selectionRange = declaration.hasCoreLocation() ? LegendToLSPUtilities.toRange(declaration.getCoreLocation().getTextInterval()) : range;
+
+                            WorkspaceSymbol workspaceSymbol = new WorkspaceSymbol(
+                                    declaration.getIdentifier(),
+                                    SymbolKind.Object,
+                                    Either.forLeft(new Location(doc.getDocumentId(), selectionRange))
+                            );
+
+                            symbols.add(workspaceSymbol);
+                        }
+                    });
+                }
+            });
+        });
+
+        return Either.forRight(symbols);
+    }
+
+    @Override
+    public CompletableFuture<WorkspaceDiagnosticReport> diagnostic(WorkspaceDiagnosticParams params)
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            List<WorkspaceDocumentDiagnosticReport> items = new ArrayList<>();
+
+            this.server.getGlobalState().forEachDocumentState(d ->
+            {
+                // todo handle previous result so we send WorkspaceUnchangedDocumentDiagnosticReport if nothing changed?
+                LegendServerGlobalState.LegendServerDocumentState doc = (LegendServerGlobalState.LegendServerDocumentState) d;
+                List<LegendDiagnostic> diagnostics = this.server.getTextDocumentService().getLegendDiagnostics(doc);
+                if (!diagnostics.isEmpty())
+                {
+                    WorkspaceFullDocumentDiagnosticReport fullReport = new WorkspaceFullDocumentDiagnosticReport(diagnostics.stream().map(LegendToLSPUtilities::toDiagnostic).collect(Collectors.toList()), doc.getDocumentId(), doc.getVersion());
+                    items.add(new WorkspaceDocumentDiagnosticReport(fullReport));
+                }
+            });
+
+            return new WorkspaceDiagnosticReport(items);
+        });
     }
 }

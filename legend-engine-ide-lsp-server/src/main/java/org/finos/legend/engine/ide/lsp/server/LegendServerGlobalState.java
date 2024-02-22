@@ -24,9 +24,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
@@ -43,7 +43,7 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendServerGlobalState.class);
 
-    private final Map<String, LegendServerDocumentState> docs = new HashMap<>();
+    private final Map<String, LegendServerDocumentState> docs = new ConcurrentHashMap<>();
     private final LegendLanguageServer server;
 
     LegendServerGlobalState(LegendLanguageServer server)
@@ -53,13 +53,13 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
     }
 
     @Override
-    public synchronized LegendServerDocumentState getDocumentState(String id)
+    public LegendServerDocumentState getDocumentState(String id)
     {
         return this.docs.get(id);
     }
 
     @Override
-    public synchronized void forEachDocumentState(Consumer<? super DocumentState> consumer)
+    public void forEachDocumentState(Consumer<? super DocumentState> consumer)
     {
         this.docs.values().forEach(consumer);
     }
@@ -167,7 +167,7 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         private final String uri;
         private Integer version;
         private GrammarSectionIndex sectionIndex;
-        private List<LegendServerSectionState> sectionStates;
+        private volatile List<LegendServerSectionState> sectionStates;
 
         private LegendServerDocumentState(LegendServerGlobalState globalState, String uri)
         {
@@ -238,9 +238,17 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         }
 
         @Override
-        public synchronized void forEachSectionState(Consumer<? super SectionState> consumer)
+        public void forEachSectionState(Consumer<? super SectionState> consumer)
         {
-            this.sectionStates.forEach(consumer);
+            if (this.isInitialized())
+            {
+                this.sectionStates.forEach(consumer);
+            }
+        }
+
+        Integer getVersion()
+        {
+            return version;
         }
 
         synchronized boolean isInitialized()
@@ -253,14 +261,14 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             return this.version != null;
         }
 
-        synchronized void open(int version, String text)
+        synchronized boolean open(int version, String text)
         {
             if (this.version != null)
             {
                 LOGGER.warn("{} already opened at version {}: overwriting with version {}", this.uri, this.version, version);
             }
             this.version = version;
-            setText(text);
+            return setText(text);
         }
 
         synchronized void close()
@@ -277,36 +285,37 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             this.version = newVersion;
         }
 
-        synchronized void change(int newVersion, String newText)
+        synchronized boolean change(int newVersion, String newText)
         {
             if ((this.version != null) && (newVersion <= this.version))
             {
                 LOGGER.warn("Changing {} from version {} to {}", this.uri, this.version, newVersion);
             }
             this.version = newVersion;
-            setText(newText);
+            return setText(newText);
         }
 
-        synchronized void save(String text)
+        synchronized boolean save(String text)
         {
-            if (text != null)
-            {
-                setText(text);
-            }
+            return text != null && setText(text);
         }
 
-        synchronized void initialize()
+        synchronized boolean initialize()
         {
             if (!isInitialized())
             {
                 String message = "Initializing file: " + this.uri;
                 this.globalState.server.logInfoToClient(message);
                 LOGGER.debug(message);
-                loadText();
+                return loadText();
+            }
+            else
+            {
+                return false;
             }
         }
 
-        synchronized void loadText()
+        synchronized boolean loadText()
         {
             String text;
             try
@@ -318,38 +327,32 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
             {
                 LOGGER.warn("Error loading text for {}", this.uri, e);
                 this.globalState.server.logWarningToClient("Error loading text for " + this.uri + ((e.getMessage() == null) ? "" : (": " + e.getMessage())));
-                return;
+                return false;
             }
 
             this.version = null;
-            setText(text);
+            return setText(text);
         }
 
-        private synchronized void setText(String newText)
+        private synchronized boolean setText(String newText)
         {
             if ((this.sectionIndex == null) ? (newText == null) : this.sectionIndex.getText().equals(newText))
             {
                 // text is unchanged
-                return;
+                return false;
             }
 
             LOGGER.info("Clearing global and {} properties", this.uri);
             this.sectionIndex = (newText == null) ? null : GrammarSectionIndex.parse(newText);
             this.sectionStates = createSectionStates(this.sectionIndex);
             this.clearProperties();
+            return true;
         }
 
         public synchronized void recreateSectionStates()
         {
             this.sectionStates = createSectionStates(this.sectionIndex);
             this.clearProperties();
-        }
-
-        @Override
-        public synchronized void clearProperties()
-        {
-            super.clearProperties();
-            this.globalState.clearProperties();
         }
 
         private synchronized List<LegendServerSectionState> createSectionStates(GrammarSectionIndex index)

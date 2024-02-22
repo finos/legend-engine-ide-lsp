@@ -26,10 +26,6 @@
     <artifactId>legend-engine-ide-lsp-server-shaded</artifactId>
     <name>Legend Engine IDE LSP Server Shaded</name>
 
-    <properties>
-        <logback.version>1.4.14</logback.version>
-    </properties>
-
     <build>
         <plugins>
             <plugin>

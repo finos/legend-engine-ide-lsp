@@ -56,6 +56,9 @@ jobs:
       - name: Check Java version
         run: java -version
 
+      - name: Check Maven version
+        run: mvn --version
+
       - name: Configure git
         run: |
           git config --global committer.email "infra@finos.org"
@@ -73,7 +76,7 @@ jobs:
 
       - name: Build + Test
         if: (github.repository != 'finos/legend-engine-ide-lsp') || (github.ref != 'refs/heads/main')
-        run: mvn install javadoc:javadoc -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
+        run: mvn clean install javadoc:javadoc -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
 
       - name: Build + Test + Maven Deploy + Sonar + Docker Snapshot
         if: (github.repository == 'finos/legend-engine-ide-lsp') && (github.ref == 'refs/heads/main')
@@ -81,7 +84,7 @@ jobs:
           DOCKER_USERNAME: finos
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn javadoc:javadoc deploy -P attach-sources -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
+        run: mvn clean javadoc:javadoc deploy -P attach-sources -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
 
       - name: Upload Test Results
         if: always()

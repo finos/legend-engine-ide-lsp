@@ -32,13 +32,18 @@
     <modules>
         <module>legend-engine-ide-lsp-text-tools</module>
         <module>legend-engine-ide-lsp-extension-api</module>
-        <module>legend-engine-ide-lsp-server</module>
         <module>legend-engine-ide-lsp-default-extensions</module>
-        <module>legend-engine-ide-lsp-test-reports</module>
+        <module>legend-engine-ide-lsp-server</module>
         <module>legend-engine-ide-lsp-server-shaded</module>
+        <module>legend-engine-ide-lsp-test-reports</module>
     </modules>
 
     <properties>
+
+        <legend.engine.version>4.38.3</legend.engine.version>
+        <legend.sdlc.version>0.155.2</legend.sdlc.version>
+        <logback.version>1.4.14</logback.version>
+
         <!-- Build Variables -->
         <encoding>UTF-8</encoding>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

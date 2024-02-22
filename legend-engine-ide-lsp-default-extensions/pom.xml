@@ -26,11 +26,6 @@
     <artifactId>legend-engine-ide-lsp-default-extensions</artifactId>
     <name>Legend Engine IDE LSP Default Extensions</name>
 
-    <properties>
-        <legend.engine.version>4.38.1</legend.engine.version>
-        <legend.sdlc.version>0.155.1</legend.sdlc.version>
-    </properties>
-
     <build>
         <plugins>
             <plugin>
