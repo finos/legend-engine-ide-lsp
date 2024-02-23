@@ -16,17 +16,32 @@
 
 package org.finos.legend.engine.ide.lsp.extension.runtime;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.runtime.RuntimeParser;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.ConnectionStores;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.EngineRuntime;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.PackageableRuntime;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.RuntimePointer;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.StoreConnections;
 
 /**
  * Extension for the Runtime grammar.
@@ -76,5 +91,101 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         }
 
         return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, Set.of("Runtime")));
+    }
+
+    @Override
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    {
+        if (!(packageableElement instanceof PackageableRuntime))
+        {
+            return List.of();
+        }
+
+        return this.getRuntimeReferences(((PackageableRuntime) packageableElement).runtimeValue, section.getDocumentState().getGlobalState()).collect(Collectors.toList());
+    }
+
+    public Stream<LegendReferenceResolver> getRuntimeReferences(Runtime runtime, GlobalState state)
+    {
+        if (runtime instanceof EngineRuntime)
+        {
+            return this.toEngineRuntimeReferences((EngineRuntime) runtime, state);
+        }
+
+        if (runtime instanceof RuntimePointer)
+        {
+            return Stream.of(this.toRuntimePointerReference((RuntimePointer) runtime));
+        }
+
+        return Stream.empty();
+    }
+
+    private Stream<LegendReferenceResolver> toEngineRuntimeReferences(EngineRuntime engineRuntime, GlobalState state)
+    {
+        return Stream.concat(this.toMappingReferences(engineRuntime.mappings),
+                        Stream.concat(this.toStoreConnectionReferences(engineRuntime.connections, state),
+                                this.toConnectionStoreReferences(engineRuntime.connectionStores, state)));
+    }
+
+    private LegendReferenceResolver toRuntimePointerReference(RuntimePointer runtimePointer)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                runtimePointer.sourceInformation,
+                x -> x.resolveRuntime(runtimePointer.runtime, runtimePointer.sourceInformation)
+        );
+    }
+
+    private Stream<LegendReferenceResolver> toMappingReferences(List<PackageableElementPointer> mappings)
+    {
+        return mappings.stream()
+                .map(this::toMappingReference);
+    }
+
+    private LegendReferenceResolver toMappingReference(PackageableElementPointer packageableElementPointer)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                packageableElementPointer.sourceInformation,
+                x -> x.resolveMapping(packageableElementPointer.path, packageableElementPointer.sourceInformation)
+        );
+    }
+
+    private Stream<LegendReferenceResolver> toStoreConnectionReferences(List<StoreConnections> storeConnections, GlobalState state)
+    {
+        return storeConnections.stream()
+                .flatMap(storeConnection ->
+                {
+                    LegendReferenceResolver storeReference = this.toStoreReference(storeConnection.store);
+                    Stream<LegendReferenceResolver> connectionReferences = storeConnection.storeConnections
+                            .stream()
+                            .flatMap(identifiedConnection -> this.toConnectionReferences(identifiedConnection.connection, state));
+                    return Stream.concat(Stream.of(storeReference), connectionReferences);
+                });
+    }
+
+    private Stream<LegendReferenceResolver> toConnectionStoreReferences(List<ConnectionStores> connectionStores, GlobalState state)
+    {
+        return connectionStores.stream()
+                .flatMap(connectionStore ->
+                {
+                    Stream<LegendReferenceResolver> connectionReferences = this.toConnectionReferences(connectionStore.connectionPointer, state);
+                    Stream<LegendReferenceResolver> storeReferences = connectionStore.storePointers
+                            .stream()
+                            .map(packageableElementPointer -> this.toStoreReference(packageableElementPointer));
+                    return Stream.concat(connectionReferences, storeReferences);
+                });
+
+    }
+
+    private LegendReferenceResolver toStoreReference(PackageableElementPointer packageableElementPointer)
+    {
+        return LegendReferenceResolver.newReferenceResolver(
+                packageableElementPointer.sourceInformation,
+                x -> x.resolveStore(packageableElementPointer.path, packageableElementPointer.sourceInformation)
+        );
+    }
+
+    private Stream<LegendReferenceResolver> toConnectionReferences(Connection connection, GlobalState state)
+    {
+        return state.findGrammarExtensionThatImplements(ConnectionLSPGrammarExtension.class)
+                .flatMap(x -> x.getConnectionReferences(connection, state));
     }
 }

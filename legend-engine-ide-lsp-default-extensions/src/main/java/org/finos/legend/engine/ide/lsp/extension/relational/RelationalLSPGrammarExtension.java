@@ -27,6 +27,7 @@ import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammar
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarProvider;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtension;
@@ -39,7 +40,9 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.RelationalGrammarParserExtension;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RelationalPropertyMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RootRelationalClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.TablePtr;
@@ -64,7 +67,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Extension for the Relational grammar.
  */
-public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension implements MappingLSPGrammarProvider
+public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension implements MappingLSPGrammarProvider, ConnectionLSPGrammarProvider
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalLSPGrammarExtension.class);
 
@@ -448,5 +451,21 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         }
 
         return Stream.empty();
+    }
+
+    @Override
+    public Stream<LegendReferenceResolver> getConnectionReferences(Connection connection, GlobalState state)
+    {
+        if (connection instanceof RelationalDatabaseConnection)
+        {
+            return Stream.of(toReference((RelationalDatabaseConnection) connection));
+        }
+
+        return Stream.empty();
+    }
+
+    private LegendReferenceResolver toReference(RelationalDatabaseConnection relationalDatabaseConnection)
+    {
+        return LegendReferenceResolver.newReferenceResolver(relationalDatabaseConnection.elementSourceInformation, s -> s.resolveStore(relationalDatabaseConnection.element, relationalDatabaseConnection.elementSourceInformation));
     }
 }

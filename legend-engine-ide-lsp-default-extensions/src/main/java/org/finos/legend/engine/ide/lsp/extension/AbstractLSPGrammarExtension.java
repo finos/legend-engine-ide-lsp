@@ -691,7 +691,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         Optional<PackageableElement> elementAtPosition = this.getElementAtPosition(section, textPosition);
 
         return elementAtPosition.flatMap(pe ->
-                        this.geReferenceResolversResult(section, pe)
+                        this.getReferenceResolversResult(section, pe)
                                 .stream()
                                 .filter(ref -> ref.getLocation().getTextInterval().includes(textPosition))
                                 .findAny()
@@ -719,7 +719,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                                 }));
     }
 
-    private Collection<LegendReferenceResolver> geReferenceResolversResult(SectionState section, PackageableElement packageableElement)
+    private Collection<LegendReferenceResolver> getReferenceResolversResult(SectionState section, PackageableElement packageableElement)
     {
         return section.getProperty(REFERENCE_RESULT + ":" + packageableElement.getPath(), () -> getReferenceResolvers(section, packageableElement));
     }

@@ -17,17 +17,22 @@
 package org.finos.legend.engine.ide.lsp.extension.connection;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ListIterable;
 import org.eclipse.collections.api.set.MutableSet;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.connection.ConnectionParser;
@@ -35,7 +40,14 @@ import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarP
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.ConnectionPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.ConnectionVisitor;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.connection.JsonModelConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.connection.ModelChainConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.connection.ModelConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.connection.XmlModelConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
 
 /**
@@ -133,6 +145,63 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
         MutableSet<String> keywords = Sets.mutable.empty();
         PureGrammarParserExtensionLoader.extensions().forEach(ext -> ext.getExtraConnectionParsers().forEach(p -> keywords.add(p.getConnectionTypeName())));
         return Lists.immutable.withAll(keywords);
+    }
+
+    @Override
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    {
+        if (!(packageableElement instanceof PackageableConnection))
+        {
+            return List.of();
+        }
+
+        return this.getConnectionReferences(((PackageableConnection) packageableElement).connectionValue, section.getDocumentState().getGlobalState()).collect(Collectors.toList());
+    }
+
+    public Stream<LegendReferenceResolver> getConnectionReferences(Connection connection, GlobalState state)
+    {
+        Stream<LegendReferenceResolver> connectionReferences = connection.accept(new ConnectionVisitor<>()
+        {
+            @Override
+            public Stream<LegendReferenceResolver> visit(Connection connection)
+            {
+                return state.findGrammarExtensionThatImplements(ConnectionLSPGrammarProvider.class)
+                        .flatMap(x -> x.getConnectionReferences(connection, state));
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(ConnectionPointer connectionPointer)
+            {
+                return Stream.of(LegendReferenceResolver.newReferenceResolver(connectionPointer.sourceInformation, c -> c.resolveConnection(connectionPointer.connection, connectionPointer.sourceInformation)));
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(ModelConnection modelConnection)
+            {
+                return Stream.empty();
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(JsonModelConnection jsonModelConnection)
+            {
+                return Stream.of(LegendReferenceResolver.newReferenceResolver(jsonModelConnection.classSourceInformation, c -> c.resolveClass(jsonModelConnection._class, jsonModelConnection.classSourceInformation)));
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(XmlModelConnection xmlModelConnection)
+            {
+                return Stream.of(LegendReferenceResolver.newReferenceResolver(xmlModelConnection.classSourceInformation, c -> c.resolveClass(xmlModelConnection._class, xmlModelConnection.classSourceInformation)));
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(ModelChainConnection modelChainConnection)
+            {
+                // TODO: Refactor ModelChainConnection to contain List<PackageableElementPointer> in order to reference the mappings
+                return Stream.empty();
+            }
+        });
+
+        return connectionReferences;
     }
 
     static class DatabaseBuilderInput
