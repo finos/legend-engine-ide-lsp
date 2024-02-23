@@ -19,11 +19,13 @@ import java.util.Objects;
 public class TDSAggregation
 {
     private String column;
+    private final ColumnType columnType;
     private TDSAggregationFunction function;
 
-    public TDSAggregation(String column, TDSAggregationFunction function)
+    public TDSAggregation(String column, ColumnType columnType, TDSAggregationFunction function)
     {
         this.column = Objects.requireNonNull(column, "column is required");
+        this.columnType = Objects.requireNonNull(columnType, "columnType is required");
         this.function = Objects.requireNonNull(function, "function is required");
     }
 
@@ -35,6 +37,16 @@ public class TDSAggregation
     public String getColumn()
     {
         return this.column;
+    }
+
+    /**
+     * Return the column type of filter condition.
+     *
+     * @return value
+     */
+    public ColumnType getColumnType()
+    {
+        return columnType;
     }
 
     /**

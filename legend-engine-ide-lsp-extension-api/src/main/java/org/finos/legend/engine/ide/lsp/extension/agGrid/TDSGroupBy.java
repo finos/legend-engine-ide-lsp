@@ -19,23 +19,29 @@ import java.util.List;
 public class TDSGroupBy
 {
     private final List<String> columns;
-
+    private final List<String> groupKeys;
     private final List<TDSAggregation> aggregations;
 
-    public TDSGroupBy(List<String> columns, List<TDSAggregation> aggregations)
+    public TDSGroupBy(List<String> columns, List<String> groupKeys, List<TDSAggregation> aggregations)
     {
         this.aggregations = aggregations;
+        this.groupKeys = groupKeys;
         this.columns = columns;
     }
 
     /**
-     * Return the list of columns on which aggregation is performed.
+     * Return the list of columns on which groupBy is performed.
      *
      * @return columns
      */
     public List<String> getColumns()
     {
         return columns;
+    }
+
+    public List<String> getGroupKeys()
+    {
+        return groupKeys;
     }
 
     /**

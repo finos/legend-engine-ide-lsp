@@ -19,7 +19,7 @@ public enum FilterOperation
     /**
      * Equals filter on a query column.
      */
-    EQUALS("equals"),
+    EQUALS("equal"),
 
     /**
      * Not equal filter on a query column.
@@ -34,7 +34,7 @@ public enum FilterOperation
     /**
      * Greater than or equal filter on a query column.
      */
-    GREATER_THAN_OR_EQUAL("greaterThanOrEqual"),
+    GREATER_THAN_OR_EQUAL("greaterThanEqual"),
 
     /**
      * Less than filter on a query column.
@@ -44,12 +44,12 @@ public enum FilterOperation
     /**
      * Less than or equal filter on a query column.
      */
-    LESS_THAN_OR_EQUAL("lessThanOrEqual"),
+    LESS_THAN_OR_EQUAL("lessThanEqual"),
 
     /**
      * Blank(is empty) filter on a query column.
      */
-    BLANK("blank"),
+    BLANK("isEmpty"),
 
     /**
      * Not blank(is not empty) filter on a query column.
