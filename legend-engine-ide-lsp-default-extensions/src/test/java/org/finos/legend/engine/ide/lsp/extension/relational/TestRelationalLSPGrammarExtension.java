@@ -376,4 +376,112 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 21), columnReference, "Property mapped reference");
     }
+
+    @Test
+    public void testLegendReferenceStoreConnectionsWithRelationalDatabaseConnection()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_RUNTIME_DOC_ID = "vscodelsp::test::H2Runtime";
+        final String TEST_MAPPING_DOC_ID = "vscodelsp::test::EmployeeMapping";
+        final String TEST_STORE_DOC_ID = "vscodelsp::test::TestDB1";
+        codeFiles.put("vscodelsp::test::Employee",
+                "###Pure\n" +
+                "Class vscodelsp::test::Employee\n" +
+                "{\n" +
+                "    foobar: Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}");
+
+        codeFiles.put("vscodelsp::test::EmployeeSrc",
+                "###Pure\n" +
+                "Class vscodelsp::test::EmployeeSrc\n" +
+                "{\n" +
+                "    foobar: Float[1];\n" +
+                "    hireDate : Date[1];\n" +
+                "    hireType : String[1];\n" +
+                "}");
+
+        codeFiles.put(TEST_MAPPING_DOC_ID,
+                "###Mapping\n" +
+                "Mapping vscodelsp::test::EmployeeMapping\n" +
+                "(\n" +
+                "   vscodelsp::test::Employee[emp] : Pure\n" +
+                "   {\n" +
+                "      ~src vscodelsp::test::EmployeeSrc\n" +
+                "      hireDate : today(),\n" +
+                "      hireType : 'FullTime'\n" +
+                "   }\n" +
+                ")");
+
+        codeFiles.put(TEST_STORE_DOC_ID,
+                "###Relational\n" +
+                "Database vscodelsp::test::TestDB1\n" +
+                "(\n" +
+                "   Table PersonTable\n" +
+                "   (\n" +
+                "       id INTEGER PRIMARY KEY,\n" +
+                "       firm_id INTEGER,\n" +
+                "       firstName VARCHAR(200),\n" +
+                "       lastName VARCHAR(200)\n" +
+                "   )\n" +
+                ")");
+
+        codeFiles.put(TEST_RUNTIME_DOC_ID,
+                "###Runtime\n" +
+                "Runtime vscodelsp::test::H2Runtime\n" +
+                "{\n" +
+                "   mappings:\n" +
+                "   [\n" +
+                "       vscodelsp::test::EmployeeMapping\n" +
+                "   ];\n" +
+                "   connections:\n" +
+                "   [\n" +
+                "       vscodelsp::test::TestDB1:\n" +
+                "       [\n" +
+                "           connection_1:\n" +
+                "           #{\n" +
+                "               RelationalDatabaseConnection\n" +
+                "               {\n" +
+                "                   store: vscodelsp::test::TestDB1;\n" +
+                "                   type: H2;\n" +
+                "                   specification: LocalH2\n" +
+                "                   {\n" +
+                "                       testDataSetupSqls: [\n" +
+                "                           'Drop table if exists FirmTable;\\nDrop table if exists PersonTable;\\nCreate Table FirmTable(id INT, Type VARCHAR(200), Legal_Name VARCHAR(200));\\nCreate Table PersonTable(id INT, firm_id INT, lastName VARCHAR(200), firstName VARCHAR(200));\\nInsert into FirmTable (id, Type, Legal_Name) values (1,\\'LLC\\',\\'FirmA\\');\\nInsert into FirmTable (id, Type, Legal_Name) values (2,\\'CORP\\',\\'Apple\\');\\nInsert into PersonTable (id, firm_id, lastName, firstName) values (1, 1, \\'John\\', \\'Doe\\');\\n\\n\\n'\n" +
+                "                           ];\n" +
+                "                   };\n" +
+                "                   auth: DefaultH2;\n" +
+                "               }\n" +
+                "           }#\n" +
+                "       ]\n" +
+                "   ];\n" +
+                "}");
+
+        LegendReference mappedMappingReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 5, 7, 5, 38))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
+                .build();
+
+        testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(4, 2), null, "Outside of mappedMappingReference-able element should yield nothing");
+        testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(5, 6), null, "Outside of mappedMappingReference-able element (before mapping name) should yield nothing");
+        testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(5, 7), mappedMappingReference, "Start of mapping name has been mapped, referring to mapping definition");
+        testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(5, 25), mappedMappingReference, "Within the mapping name has been mapped, referring to mapping definition");
+        testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(5, 38), mappedMappingReference, "End of mapping name has been mapped, referring to mapping definition");
+        testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(6, 3), null, "Outside of mappedMappingReference-able element should yield nothing");
+
+        LegendReference mappedStoreReference1 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 9, 7, 9, 30))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID, 1, 0, 10, 0))
+                .build();
+
+        testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(9, 20), mappedStoreReference1, "Within the store name has been mapped, referring to store definition");
+
+        LegendReference mappedStoreReference2 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 15, 26, 15, 49))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID, 1, 0, 10, 0))
+                .build();
+
+        testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(15, 31), mappedStoreReference2, "Within the store name has been mapped, referring to store definition");
+    }
 }

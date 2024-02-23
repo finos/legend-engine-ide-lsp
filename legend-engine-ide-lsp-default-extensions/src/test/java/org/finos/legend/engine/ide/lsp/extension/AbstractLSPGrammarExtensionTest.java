@@ -295,17 +295,7 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         @Override
         public Collection<LegendLSPGrammarExtension> getAvailableGrammarExtensions()
         {
-            List<LegendLSPGrammarExtension> extensionList = new ArrayList<>();
-
-            this.forEachDocumentState(documentState ->
-            {
-                documentState.forEachSectionState(sectionState ->
-                {
-                    extensionList.add(sectionState.getExtension());
-                });
-            });
-
-            return extensionList;
+            return legendLSPGrammarExtensions;
         }
 
         @Override

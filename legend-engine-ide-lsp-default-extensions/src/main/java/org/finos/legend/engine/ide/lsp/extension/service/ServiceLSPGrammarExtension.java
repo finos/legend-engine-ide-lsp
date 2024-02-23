@@ -24,19 +24,25 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
+import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
@@ -53,6 +59,10 @@ import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElement
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Execution;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.PureMultiExecution;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.PureSingleExecution;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
@@ -313,5 +323,63 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
 
         return CompositeIterable.with(legendCompletions, (Iterable<LegendCompletion>) super.getCompletions(section, location));
+    }
+
+    @Override
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    {
+        if (!(packageableElement instanceof Service))
+        {
+            return List.of();
+        }
+
+        // TODO: Handle references in ServiceTest_Legacy
+        return this.getExecutionReferences(((Service) packageableElement).execution, section.getDocumentState().getGlobalState()).collect(Collectors.toList());
+    }
+
+    private Stream<LegendReferenceResolver> getExecutionReferences(Execution execution, GlobalState state)
+    {
+        // TODO: Handle references in Lambda expressions
+        if (execution instanceof PureSingleExecution)
+        {
+            return this.toPureSingleExecutionReferences((PureSingleExecution) execution, state);
+        }
+
+        if (execution instanceof PureMultiExecution)
+        {
+            return this.toPureMultiExecutionReferences((PureMultiExecution) execution, state);
+        }
+
+        return Stream.empty();
+    }
+
+    private Stream<LegendReferenceResolver> toPureSingleExecutionReferences(PureSingleExecution pureSingleExecution, GlobalState state)
+    {
+        LegendReferenceResolver mappingReference = LegendReferenceResolver.newReferenceResolver(
+                pureSingleExecution.mappingSourceInformation,
+                x -> x.resolveMapping(pureSingleExecution.mapping, pureSingleExecution.mappingSourceInformation));
+        Stream<LegendReferenceResolver> runtimeReferences = this.toRuntimeReferences(pureSingleExecution.runtime, state);
+        return Stream.concat(Stream.of(mappingReference), runtimeReferences);
+    }
+
+    private Stream<LegendReferenceResolver> toPureMultiExecutionReferences(PureMultiExecution pureMultiExecution, GlobalState state)
+    {
+        return pureMultiExecution.executionParameters
+                .stream()
+                .flatMap(executionParameter ->
+                {
+                    LegendReferenceResolver mappingReference = LegendReferenceResolver.newReferenceResolver(
+                            executionParameter.mappingSourceInformation,
+                            x -> x.resolveMapping(executionParameter.mapping, executionParameter.mappingSourceInformation)
+                    );
+                    Stream<LegendReferenceResolver> runtimeReferences = this.toRuntimeReferences(executionParameter.runtime, state);
+                    return Stream.concat(Stream.of(mappingReference), runtimeReferences);
+                });
+    }
+
+    private Stream<LegendReferenceResolver> toRuntimeReferences(Runtime runtime, GlobalState state)
+    {
+        return state.findGrammarExtensionThatImplements(RuntimeLSPGrammarExtension.class)
+                .flatMap(x -> x.getRuntimeReferences(runtime, state));
     }
 }
