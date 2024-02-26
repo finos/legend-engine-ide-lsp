@@ -24,9 +24,12 @@ on: [push, pull_request]
 jobs:
   build:
     name: Build
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     # Skip this build for release commits
     if: "!contains(github.event.head_commit.message, '[maven-release-plugin]')"
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -70,31 +73,32 @@ jobs:
         run: mvn de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 
       - name: Collect Workflow Telemetry
+        if: (matrix.os == 'ubuntu-latest')
         uses: runforesight/workflow-telemetry-action@v1
         with:
           theme: dark
 
       - name: Build + Test
         if: (github.repository != 'finos/legend-engine-ide-lsp') || (github.ref != 'refs/heads/main')
-        run: mvn clean install javadoc:javadoc -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
+        run: mvn clean install javadoc:javadoc
 
       - name: Build + Test + Maven Deploy + Sonar + Docker Snapshot
-        if: (github.repository == 'finos/legend-engine-ide-lsp') && (github.ref == 'refs/heads/main')
+        if: (matrix.os == 'ubuntu-latest') && (github.repository == 'finos/legend-engine-ide-lsp') && (github.ref == 'refs/heads/main')
         env:
           DOCKER_USERNAME: finos
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn clean javadoc:javadoc deploy -P attach-sources -Dorg.slf4j.simpleLogger.showDateTime=true -Dorg.slf4j.simpleLogger.dateTimeFormat=HH:mm:ss.SSSZ
+        run: mvn clean javadoc:javadoc deploy -P attach-sources
 
       - name: Upload Test Results
-        if: always()
+        if: (matrix.os == 'ubuntu-latest')
         uses: actions/upload-artifact@v3
         with:
           name: test-results
           path: ${{ github.workspace }}/legend-engine-ide-lsp-test-reports/surefire-reports-aggregate/*.xml
 
       - name: Upload CI Event
-        if: always()
+        if: (matrix.os == 'ubuntu-latest')
         uses: actions/upload-artifact@v3
         with:
           name: event-file
