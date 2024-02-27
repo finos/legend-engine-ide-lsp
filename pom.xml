@@ -33,9 +33,18 @@
         <module>legend-engine-ide-lsp-text-tools</module>
         <module>legend-engine-ide-lsp-extension-api</module>
         <module>legend-engine-ide-lsp-default-extensions</module>
+        <!--
+            this module needs to be after the default-extension, as it is used for integration testing, implicitly.
+            This is not ideal dependency, and we will explore other options to see how we can have the extensions
+            as actually provide dependency for test cases...
+        -->
         <module>legend-engine-ide-lsp-server</module>
-        <module>legend-engine-ide-lsp-server-shaded</module>
         <module>legend-engine-ide-lsp-test-reports</module>
+        <!--
+            this module needs to be last to avoid a maven deploy bug, where the last module needs to publish a jar
+            and the test-reports does not publish anything
+        -->
+        <module>legend-engine-ide-lsp-server-shaded</module>
     </modules>
 
     <properties>
