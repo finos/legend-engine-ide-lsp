@@ -96,7 +96,6 @@ class LegendTextDocumentService implements TextDocumentService
     public void didOpen(DidOpenTextDocumentParams params)
     {
         LegendServerGlobalState globalState = this.server.getGlobalState();
-        this.server.checkReady();
         TextDocumentItem doc = params.getTextDocument();
         String uri = doc.getUri();
         LOGGER.debug("Opening {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
@@ -116,7 +115,6 @@ class LegendTextDocumentService implements TextDocumentService
     public void didChange(DidChangeTextDocumentParams params)
     {
         LegendServerGlobalState globalState = this.server.getGlobalState();
-        this.server.checkReady();
         VersionedTextDocumentIdentifier doc = params.getTextDocument();
         String uri = doc.getUri();
         LOGGER.debug("Changing {} (version {})", uri, doc.getVersion());

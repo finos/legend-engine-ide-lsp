@@ -307,7 +307,7 @@ class LegendWorkspaceService implements WorkspaceService
 
     private void fileDeleted(LegendServerGlobalState globalState, String uri)
     {
-        this.server.logToClient("Deleted " + uri);
+        LOGGER.debug("Deleted {}", uri);
         globalState.deleteDocState(uri);
     }
 
