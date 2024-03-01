@@ -90,7 +90,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageServer.class);
 
     static final String LEGEND_COMMAND_ID = "legend.command";
-    static final String LEGEND_COMMAND_WITH_INPUTS_ID = "legend.command.withInputs";
+    static final String LEGEND_CLIENT_COMMAND_ID = "legend.client.command";
 
     private static final int UNINITIALIZED = 0;
     private static final int INITIALIZING = 1;

@@ -55,8 +55,7 @@ class LegendWorkspaceService implements WorkspaceService
         {
             try
             {
-                doExecuteCommand(params);
-                return "";
+                return doExecuteCommand(params);
             }
             catch (Exception e)
             {
@@ -68,7 +67,7 @@ class LegendWorkspaceService implements WorkspaceService
         });
     }
 
-    private void doExecuteCommand(ExecuteCommandParams params)
+    private Object doExecuteCommand(ExecuteCommandParams params)
     {
         Either<String, Integer> progressToken = this.server.possiblyNewProgressToken(params.getWorkDoneToken());
         Iterable<? extends LegendExecutionResult> results;
@@ -168,6 +167,7 @@ class LegendWorkspaceService implements WorkspaceService
             this.server.logInfoToClient("Execute command finished: " + params.getCommand());
             this.server.notifyEnd(progressToken);
         }
+        return results;
     }
 
     @Override
