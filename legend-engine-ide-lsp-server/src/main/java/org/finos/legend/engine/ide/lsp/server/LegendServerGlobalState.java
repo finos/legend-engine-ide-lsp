@@ -240,9 +240,10 @@ class LegendServerGlobalState extends AbstractState implements GlobalState
         @Override
         public void forEachSectionState(Consumer<? super SectionState> consumer)
         {
-            if (this.isInitialized())
+            List<LegendServerSectionState> currentSectionsStates = this.sectionStates;
+            if (currentSectionsStates != null)
             {
-                this.sectionStates.forEach(consumer);
+                currentSectionsStates.forEach(consumer);
             }
         }
 
