@@ -35,7 +35,7 @@ public class TDSSort
      */
     public String getColumn()
     {
-        return column;
+        return this.column;
     }
 
     /**
@@ -45,6 +45,13 @@ public class TDSSort
      */
     public TDSSortOrder getOrder()
     {
-        return order;
+        return this.order;
+    }
+
+    @Override
+    public String toString()
+    {
+        return getClass().getSimpleName() + "{column = " + this.column +
+                ", order = " + this.order + "\"}";
     }
 }

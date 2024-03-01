@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import java.util.Set;
+
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;

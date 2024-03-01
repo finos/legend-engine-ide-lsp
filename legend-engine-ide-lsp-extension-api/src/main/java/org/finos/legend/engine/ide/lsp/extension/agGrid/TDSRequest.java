@@ -28,9 +28,9 @@ public class TDSRequest
 
     private final List<TDSSort> sort;
 
-    private final List<TDSGroupBy> groupBy;
+    private final TDSGroupBy groupBy;
 
-    public TDSRequest(Integer startRow, Integer endRow, List<String> columns, List<Filter> filter, List<TDSSort> sort, List<TDSGroupBy> groupBy)
+    public TDSRequest(Integer startRow, Integer endRow, List<String> columns, List<Filter> filter, List<TDSSort> sort, TDSGroupBy groupBy)
     {
         this.columns = columns;
         this.startRow = startRow;
@@ -91,11 +91,11 @@ public class TDSRequest
     }
 
     /**
-     * Return the list of groupBy operations performed on tds.
+     * Return the groupBy operations performed on tds.
      *
      * @return groupBy
      */
-    public List<TDSGroupBy> getGroupBy()
+    public TDSGroupBy getGroupBy()
     {
         return groupBy;
     }

@@ -543,6 +543,7 @@ class LegendTextDocumentService implements TextDocumentService
                 String message = "TDS request execution for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
                 result = LegendExecutionResult.errorResult(new Exception(message, e), message, entity);
             }
+            this.server.logInfoToClient(result.getMessage());
             return result;
         });
     }

@@ -27,7 +27,7 @@ public class FunctionTDSRequest
     private TDSRequest request;
     private Map<String, Object> inputParameters;
 
-    private FunctionTDSRequest(String uri, int sectionNum, String entity, TDSRequest request, Map<String, Object> inputParameters)
+    public FunctionTDSRequest(String uri, int sectionNum, String entity, TDSRequest request, Map<String, Object> inputParameters)
     {
         this.uri = Objects.requireNonNull(uri);
         this.sectionNum = Objects.requireNonNull(sectionNum);

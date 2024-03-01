@@ -19,12 +19,14 @@ import java.util.Objects;
 public class Filter
 {
     private final String column;
+    private final ColumnType columnType;
     private final FilterOperation operation;
     private final Object value;
 
-    public Filter(String column, FilterOperation operation, Object value)
+    public Filter(String column, ColumnType columnType, FilterOperation operation, Object value)
     {
         this.column = Objects.requireNonNull(column, "column is required");
+        this.columnType = Objects.requireNonNull(columnType, "columnType is required");
         this.operation = Objects.requireNonNull(operation, "operation is required");
         this.value = Objects.requireNonNull(value, "value is required");
     }
@@ -37,6 +39,16 @@ public class Filter
     public String getColumn()
     {
         return this.column;
+    }
+
+    /**
+     * Return the column type of filter condition.
+     *
+     * @return value
+     */
+    public ColumnType getColumnType()
+    {
+        return columnType;
     }
 
     /**
