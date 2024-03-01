@@ -229,6 +229,14 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
             }
 
             @Override
+            public String getInterval(int startLine, int startColumn, int endLine, int endColumn)
+            {
+                checkLine(startLine);
+                checkLine(endLine);
+                return indexedText.getInterval(startLine, startColumn, endLine, endColumn);
+            }
+
+            @Override
             public int getLineLength(int line)
             {
                 checkLine(line);

@@ -367,6 +367,14 @@ public class GrammarSectionIndex
         }
 
         @Override
+        public String getInterval(int startLine, int startColumn, int endLine, int endColumn)
+        {
+            checkLineNumber(startLine);
+            checkLineNumber(endLine);
+            return this.fullText.getInterval(startLine, startColumn, endLine, endColumn);
+        }
+
+        @Override
         public int getLineLength(int line)
         {
             checkLineNumber(line);
