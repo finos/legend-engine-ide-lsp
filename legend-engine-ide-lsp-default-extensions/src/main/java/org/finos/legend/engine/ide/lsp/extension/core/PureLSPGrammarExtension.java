@@ -52,6 +52,7 @@ import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FilterOperation;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
@@ -166,7 +167,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             execArguments.put(EXEC_FUNCTION_RETURN_TYPE_ID, function.returnType);
             if ((function.parameters == null) || function.parameters.isEmpty())
             {
-                consumer.accept(EXEC_FUNCTION_ID, EXEC_FUNCTION_TITLE, function.sourceInformation);
+                consumer.accept(EXEC_FUNCTION_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, LegendCommandType.CLIENT);
             }
             else
             {
@@ -184,7 +185,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                         parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p));
                     }
                 });
-                consumer.accept(EXEC_FUNCTION_WITH_PARAMETERS_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, Collections.emptyMap(), parameters);
+                consumer.accept(EXEC_FUNCTION_WITH_PARAMETERS_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, Collections.emptyMap(), parameters, LegendCommandType.CLIENT);
             }
         }
     }

@@ -32,7 +32,7 @@ public class LegendCommand implements Locatable
     private final Map<String, String> executableArgs;
     private final Map<String, LegendInputParamter> inputParameters;
 
-    private LegendCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParamter> inputParameters)
+    protected LegendCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParamter> inputParameters)
     {
         this.entity = Objects.requireNonNull(entity, "entity is required");
         this.id = Objects.requireNonNull(id, "commandId is required");

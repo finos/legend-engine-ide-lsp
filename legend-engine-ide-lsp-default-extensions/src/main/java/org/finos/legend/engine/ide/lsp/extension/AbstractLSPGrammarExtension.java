@@ -44,7 +44,9 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendClientCommand;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
@@ -223,11 +225,11 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         result.getElements().forEach(element ->
         {
             String path = element.getPath();
-            collectCommands(section, element, (id, title, sourceInfo, args, inputParameters) ->
+            collectCommands(section, element, (id, title, sourceInfo, args, inputParameters, type) ->
             {
                 if (isValidSourceInfo(sourceInfo))
                 {
-                    commands.add(LegendCommand.newCommand(path, id, title, SourceInformationUtil.toLocation(sourceInfo), args, inputParameters));
+                    commands.add(LegendCommandFactory.newCommand(type, path, id, title, SourceInformationUtil.toLocation(sourceInfo), args, inputParameters));
                 }
             });
         });
@@ -840,6 +842,18 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
+    private static class LegendCommandFactory
+    {
+        public static LegendCommand newCommand(LegendCommandType type, String path, String id, String title, TextLocation textLocation, Map<String, String> arguments, Map<String, LegendInputParamter> inputParameters)
+        {
+            if (type.equals(LegendCommandType.CLIENT))
+            {
+                return LegendClientCommand.newCommand(path, id, title, textLocation, arguments, inputParameters);
+            }
+            return LegendCommand.newCommand(path, id, title, textLocation, arguments, inputParameters);
+        }
+    }
+
     protected interface CommandConsumer
     {
         default void accept(String id, String title, SourceInformation sourceInfo)
@@ -847,11 +861,16 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             accept(id, title, sourceInfo, Collections.emptyMap());
         }
 
-        default void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments)
+        default void accept(String id, String title, SourceInformation sourceInfo, LegendCommandType type)
         {
-            accept(id, title, sourceInfo, arguments, Collections.emptyMap());
+            accept(id, title, sourceInfo, Collections.emptyMap(), Collections.emptyMap(), type);
         }
 
-        void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments, Map<String, LegendInputParamter> inputParameters);
+        default void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments)
+        {
+            accept(id, title, sourceInfo, arguments, Collections.emptyMap(), LegendCommandType.SERVER);
+        }
+
+        void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments, Map<String, LegendInputParamter> inputParameters, LegendCommandType type);
     }
 }
