@@ -99,7 +99,7 @@ class LegendTextDocumentService implements TextDocumentService
         this.server.checkReady();
         TextDocumentItem doc = params.getTextDocument();
         String uri = doc.getUri();
-        LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
+        LOGGER.debug("Opening {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
         LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
 
         this.server.runPossiblyAsync(() ->
@@ -108,8 +108,7 @@ class LegendTextDocumentService implements TextDocumentService
             {
                 globalState.clearProperties();
             }
-
-            globalState.logInfo("Opened document: " + uri);
+            globalState.logInfo("Opened %s (language id: %s, version: %d)".formatted(uri, doc.getLanguageId(), doc.getVersion()));
         });
     }
 
@@ -120,7 +119,7 @@ class LegendTextDocumentService implements TextDocumentService
         this.server.checkReady();
         VersionedTextDocumentIdentifier doc = params.getTextDocument();
         String uri = doc.getUri();
-        LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
+        LOGGER.debug("Changing {} (version {})", uri, doc.getVersion());
 
         LegendServerDocumentState docState = globalState.getDocumentState(uri);
         if (docState == null)
@@ -153,6 +152,9 @@ class LegendTextDocumentService implements TextDocumentService
             {
                 globalState.clearProperties();
             }
+
+            LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
+
             try
             {
                 publishDiagnosticsToClient(finalDocState);
@@ -169,9 +171,7 @@ class LegendTextDocumentService implements TextDocumentService
     public void didClose(DidCloseTextDocumentParams params)
     {
         LegendServerGlobalState globalState = this.server.getGlobalState();
-        this.server.checkReady();
         String uri = params.getTextDocument().getUri();
-        LOGGER.debug("Closed {}", uri);
         LegendServerDocumentState docState = globalState.getDocumentState(uri);
         if (docState == null)
         {
@@ -180,6 +180,7 @@ class LegendTextDocumentService implements TextDocumentService
         else
         {
             docState.close();
+            LOGGER.debug("Closed {}", uri);
         }
     }
 
@@ -187,9 +188,8 @@ class LegendTextDocumentService implements TextDocumentService
     public void didSave(DidSaveTextDocumentParams params)
     {
         LegendServerGlobalState globalState = this.server.getGlobalState();
-        this.server.checkReady();
         String uri = params.getTextDocument().getUri();
-        LOGGER.debug("Saved {}", uri);
+        LOGGER.debug("Saving {}", uri);
         LegendServerDocumentState docState = globalState.getDocumentState(uri);
 
         if (docState == null)
@@ -204,6 +204,7 @@ class LegendTextDocumentService implements TextDocumentService
             {
                 globalState.clearProperties();
             }
+            LOGGER.debug("Saved {}", uri);
         });
     }
 
