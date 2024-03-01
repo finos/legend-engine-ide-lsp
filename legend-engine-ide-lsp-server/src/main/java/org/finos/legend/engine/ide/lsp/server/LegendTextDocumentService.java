@@ -107,7 +107,7 @@ class LegendTextDocumentService implements TextDocumentService
             {
                 globalState.clearProperties();
             }
-            globalState.logInfo("Opened %s (language id: %s, version: %d)".formatted(uri, doc.getLanguageId(), doc.getVersion()));
+            globalState.logInfo(String.format("Opened %s (language id: %s, version: %d)", uri, doc.getLanguageId(), doc.getVersion()));
         });
     }
 
