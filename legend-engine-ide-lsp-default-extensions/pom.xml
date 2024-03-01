@@ -208,6 +208,11 @@
             <artifactId>legend-engine-configuration</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-repl-client</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- LEGEND ENGINE -->
 
         <dependency>

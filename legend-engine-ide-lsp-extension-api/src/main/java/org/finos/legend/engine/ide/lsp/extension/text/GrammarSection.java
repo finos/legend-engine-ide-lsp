@@ -140,6 +140,19 @@ public interface GrammarSection
     String getLines(int start, int end);
 
     /**
+     * Get an interval of the text between two line:column positions as a {@link String}. Note that both the start and
+     * end positions are inclusive.
+     *
+     * @param startLine   start line (inclusive)
+     * @param startColumn start column (inclusive)
+     * @param endLine     end line (inclusive)
+     * @param endColumn   end column (inclusive)
+     * @return text interval
+     * @throws IndexOutOfBoundsException if the start or end position is invalid, or if end is before start
+     */
+    String getInterval(int startLine, int startColumn, int endLine, int endColumn);
+
+    /**
      * Get the length of a line of the section.
      *
      * @param line line number

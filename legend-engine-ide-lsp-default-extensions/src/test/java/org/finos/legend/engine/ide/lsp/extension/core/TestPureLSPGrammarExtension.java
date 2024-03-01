@@ -17,6 +17,7 @@
 package org.finos.legend.engine.ide.lsp.extension.core;
 
 import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
@@ -24,11 +25,13 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import java.util.Iterator;
 
 public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<PureLSPGrammarExtension>
 {
@@ -238,5 +241,124 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         String attributeMultiplicitiesSuggestion = this.extension.getCompletions(newSectionState("", code), TextPosition.newPosition(3, 15)).iterator().next().getDescription();
         Assertions.assertEquals("Attribute multiplicity", attributeMultiplicitiesSuggestion);
+    }
+
+    @Test
+    public void testAutoCompletionDotInFilter()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::TestClass",
+                "###Pure\n" +
+                "Class vscodelsp::test::TestClass\n" +
+                "{\n" +
+                "   name: String[1];\n" +
+                "   other: Integer[1];\n" +
+                "}");
+
+        codeFiles.put("vscodelsp::test::TestFunction",
+                "###Pure\n" +
+                "function vscodelsp::test::func(): Any[*] {\n" +
+                "   vscodelsp::test::TestClass.all()->filter(c|$c.\n");
+
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        Iterator<? extends LegendCompletion> completionIterator = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 48)).iterator();
+        Assertions.assertEquals("name", completionIterator.next().getDescription());
+        Assertions.assertEquals("other", completionIterator.next().getDescription());
+        Assertions.assertFalse(completionIterator.hasNext());
+    }
+
+    @Test
+    public void testAutoCompletionArrowOnType()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::TestClass",
+                "###Pure\n" +
+                "Class vscodelsp::test::TestClass\n" +
+                "{\n" +
+                "   name: String[1];\n" +
+                "   other: Integer[1];\n" +
+                "}");
+
+        codeFiles.put("vscodelsp::test::TestFunction1",
+                "###Pure\n" +
+                "function vscodelsp::test::func1(): Any[*] {\n" +
+                "   vscodelsp::test::TestClass.all()->\n");
+
+        codeFiles.put("vscodelsp::test::TestFunction2",
+                "###Pure\n" +
+                "function vscodelsp::test::func2(): Any[*] {\n" +
+                "   vscodelsp::test::TestClass.all()->fu\n");
+
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        Iterator<? extends LegendCompletion> completionIterator = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 36)).iterator();
+        Assertions.assertEquals("project", completionIterator.next().getDescription());
+        Assertions.assertFalse(completionIterator.hasNext());
+
+        Iterator<? extends LegendCompletion> noCompletionIterator = this.extension.getCompletions(sectionStates.get(2), TextPosition.newPosition(2, 38)).iterator();
+        Assertions.assertFalse(noCompletionIterator.hasNext());
+    }
+
+    @Test
+    public void testAutoCompletionArrowOnRelation()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::TestDatabase",
+                "###Relational\n" +
+                "Database vscodelsp::test::TestDatabase\n" +
+                "(\n" +
+                "   Table FirmTable\n" +
+                "   (\n" +
+                "       id INTEGER PRIMARY KEY,\n" +
+                "       Type VARCHAR(200),\n" +
+                "       Legal_name VARCHAR(200)\n" +
+                "   )\n" +
+                ")");
+
+        codeFiles.put("vscodelsp::test::TestFunction",
+                "###Pure\n" +
+                "function vscodelsp::test::func(): Any[*] {\n" +
+                "   #>{vscodelsp::test::TestDatabase.FirmTable}#->s");
+
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        Iterator<? extends LegendCompletion> completionIterator = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 49)).iterator();
+        Assertions.assertEquals("select", completionIterator.next().getDescription());
+        Assertions.assertEquals("size", completionIterator.next().getDescription());
+        Assertions.assertEquals("slice", completionIterator.next().getDescription());
+        Assertions.assertEquals("sort", completionIterator.next().getDescription());
+        Assertions.assertFalse(completionIterator.hasNext());
+    }
+
+    @Test
+    public void testAutoCompletionMultipleFunctionsInSingularSection()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::TestDatabase",
+                "###Relational\n" +
+                "Database vscodelsp::test::TestDatabase\n" +
+                "(\n" +
+                "   Table FirmTable\n" +
+                "   (\n" +
+                "       id INTEGER PRIMARY KEY,\n" +
+                "       Type VARCHAR(200),\n" +
+                "       Legal_name VARCHAR(200)\n" +
+                "   )\n" +
+                ")");
+
+        codeFiles.put("vscodelsp::test::TestFunction",
+                "###Pure\n" +
+                "function vscodelsp::test::func1(): Any[*]\n" +
+                "{  #>{vscodelsp::test::TestDatabase.FirmTable}#->s\n" +
+                "}\n" +
+                "\n" +
+                "function vscodelsp::test::func2(): Any[*] {\n" +
+                "   #>{vscodelsp::test::TestDatabase.FirmTable}#->");
+
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        Iterator<? extends LegendCompletion> completionIterator = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 49)).iterator();
+        Assertions.assertEquals("select", completionIterator.next().getDescription());
+        Assertions.assertEquals("size", completionIterator.next().getDescription());
+        Assertions.assertEquals("slice", completionIterator.next().getDescription());
+        Assertions.assertEquals("sort", completionIterator.next().getDescription());
+        Assertions.assertFalse(completionIterator.hasNext());
     }
 }

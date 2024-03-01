@@ -623,7 +623,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         // Do nothing by default
     }
 
-    private SectionSourceCode toSectionSourceCode(SectionState sectionState)
+    protected SectionSourceCode toSectionSourceCode(SectionState sectionState)
     {
         String sourceId = sectionState.getDocumentState().getDocumentId();
         GrammarSection section = sectionState.getSection();
