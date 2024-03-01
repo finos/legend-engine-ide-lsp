@@ -35,7 +35,6 @@ import org.eclipse.lsp4j.CompletionList;
 import org.eclipse.lsp4j.CompletionParams;
 import org.eclipse.lsp4j.DefinitionParams;
 import org.eclipse.lsp4j.Diagnostic;
-import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
@@ -46,7 +45,6 @@ import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.LocationLink;
-import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.RelatedFullDocumentDiagnosticReport;
@@ -65,6 +63,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestHandler;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendClientCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -72,11 +71,11 @@ import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
-import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.server.LegendServerGlobalState.LegendServerDocumentState;
 import org.finos.legend.engine.ide.lsp.text.TextTools;
+import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,56 +95,67 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didOpen(DidOpenTextDocumentParams params)
     {
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+        TextDocumentItem doc = params.getTextDocument();
+        String uri = doc.getUri();
+        LOGGER.debug("Opening {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
+        LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
+
         this.server.runPossiblyAsync(() ->
         {
-            LegendServerGlobalState globalState = this.server.getGlobalState();
-            this.server.checkReady();
-            TextDocumentItem doc = params.getTextDocument();
-            String uri = doc.getUri();
-            LOGGER.debug("Opened {} (language id: {}, version: {})", uri, doc.getLanguageId(), doc.getVersion());
-            LegendServerDocumentState docState = globalState.getOrCreateDocState(uri);
-            docState.open(doc.getVersion(), doc.getText());
+            if (docState.open(doc.getVersion(), doc.getText()))
+            {
+                globalState.clearProperties();
+            }
+            globalState.logInfo(String.format("Opened %s (language id: %s, version: %d)", uri, doc.getLanguageId(), doc.getVersion()));
         });
     }
 
     @Override
     public void didChange(DidChangeTextDocumentParams params)
     {
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+        VersionedTextDocumentIdentifier doc = params.getTextDocument();
+        String uri = doc.getUri();
+        LOGGER.debug("Changing {} (version {})", uri, doc.getVersion());
+
+        LegendServerDocumentState docState = globalState.getDocumentState(uri);
+        if (docState == null)
+        {
+            LOGGER.warn("Change to {} (version {}) before it was opened", uri, doc.getVersion());
+            docState = globalState.getOrCreateDocState(uri);
+        }
+
+        List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
+
+        if (changes.size() > 1)
+        {
+            String message = "Expected at most one change to " + uri + ", got " + changes.size() + "; processing only the first";
+            LOGGER.warn(message);
+            this.server.logWarningToClient(message);
+        }
+
+        if (changes.isEmpty())
+        {
+            LOGGER.debug("No changes to {}", uri);
+            docState.change(doc.getVersion());
+            return;
+        }
+
+        LegendServerDocumentState finalDocState = docState;
+
         this.server.runPossiblyAsync(() ->
         {
-            LegendServerGlobalState globalState = this.server.getGlobalState();
-            this.server.checkReady();
-            VersionedTextDocumentIdentifier doc = params.getTextDocument();
-            String uri = doc.getUri();
+            if (finalDocState.change(doc.getVersion(), changes.get(0).getText()))
+            {
+                globalState.clearProperties();
+            }
+
             LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
 
-            LegendServerDocumentState docState = globalState.getDocumentState(uri);
-            if (docState == null)
-            {
-                LOGGER.warn("Change to {} (version {}) before it was opened", uri, doc.getVersion());
-                docState = globalState.getOrCreateDocState(uri);
-            }
-
-            List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
-
-            if (changes.size() > 1)
-            {
-                String message = "Expected at most one change to " + uri + ", got " + changes.size() + "; processing only the first";
-                LOGGER.warn(message);
-                this.server.logWarningToClient(message);
-            }
-
-            if (changes.isEmpty())
-            {
-                LOGGER.debug("No changes to {}", uri);
-                docState.change(doc.getVersion());
-                return;
-            }
-
-            docState.change(doc.getVersion(), changes.get(0).getText());
             try
             {
-                publishDiagnosticsToClient(docState);
+                publishDiagnosticsToClient(finalDocState);
             }
             catch (Exception e)
             {
@@ -158,43 +168,41 @@ class LegendTextDocumentService implements TextDocumentService
     @Override
     public void didClose(DidCloseTextDocumentParams params)
     {
-        this.server.runPossiblyAsync(() ->
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+        String uri = params.getTextDocument().getUri();
+        LegendServerDocumentState docState = globalState.getDocumentState(uri);
+        if (docState == null)
         {
-            LegendServerGlobalState globalState = this.server.getGlobalState();
-            this.server.checkReady();
-            String uri = params.getTextDocument().getUri();
+            LOGGER.warn("Closed notification for a document that is not open: {}", uri);
+        }
+        else
+        {
+            docState.close();
             LOGGER.debug("Closed {}", uri);
-            LegendServerDocumentState docState = globalState.getDocumentState(uri);
-            if (docState == null)
-            {
-                LOGGER.warn("Closed notification for a document that is not open: {}", uri);
-            }
-            else
-            {
-                docState.close();
-            }
-        });
+        }
     }
 
     @Override
     public void didSave(DidSaveTextDocumentParams params)
     {
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+        String uri = params.getTextDocument().getUri();
+        LOGGER.debug("Saving {}", uri);
+        LegendServerDocumentState docState = globalState.getDocumentState(uri);
+
+        if (docState == null)
+        {
+            LOGGER.warn("Saved notification for a document that is not open: {}", uri);
+            return;
+        }
+
         this.server.runPossiblyAsync(() ->
         {
-            LegendServerGlobalState globalState = this.server.getGlobalState();
-            this.server.checkReady();
-            String uri = params.getTextDocument().getUri();
+            if (docState.save(params.getText()))
+            {
+                globalState.clearProperties();
+            }
             LOGGER.debug("Saved {}", uri);
-            LegendServerDocumentState docState = globalState.getDocumentState(uri);
-
-            if (docState == null)
-            {
-                LOGGER.warn("Saved notification for a document that is not open: {}", uri);
-            }
-            else
-            {
-                docState.save(params.getText());
-            }
         });
     }
 
@@ -229,15 +237,18 @@ class LegendTextDocumentService implements TextDocumentService
             }
 
             LOGGER.debug("Getting symbols for section {} ({}) of {}", sectionState.getSectionNumber(), grammar, uri);
-            extension.getDeclarations(sectionState).forEach(declaration ->
-            {
-                Range range = toRange(declaration.getLocation().getTextInterval());
-                Range selectionRange = declaration.hasCoreLocation() ? toRange(declaration.getCoreLocation().getTextInterval()) : range;
-                DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
-                results.add(Either.forRight(symbol));
-            });
+            extension.getDeclarations(sectionState).forEach(declaration -> results.add(Either.forRight(toDocumentSymbol(declaration))));
         });
         return results;
+    }
+
+    public DocumentSymbol toDocumentSymbol(LegendDeclaration declaration)
+    {
+        Range range = LegendToLSPUtilities.toRange(declaration.getLocation().getTextInterval());
+        Range selectionRange = declaration.hasCoreLocation() ? LegendToLSPUtilities.toRange(declaration.getCoreLocation().getTextInterval()) : range;
+        DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
+        symbol.setChildren(declaration.getChildren().stream().map(this::toDocumentSymbol).peek(x -> x.setName(symbol.getName() + "." + x.getName())).collect(Collectors.toList()));
+        return symbol;
     }
 
     @Override
@@ -360,6 +371,19 @@ class LegendTextDocumentService implements TextDocumentService
     private List<Diagnostic> getDiagnostics(DocumentState docState)
     {
         List<Diagnostic> diagnostics = new ArrayList<>();
+        this.getLegendDiagnostics(docState).forEach(d ->
+        {
+            if (d.getLocation().getDocumentId().equals(docState.getDocumentId()))
+            {
+                diagnostics.add(LegendToLSPUtilities.toDiagnostic(d));
+            }
+        });
+        return diagnostics;
+    }
+
+    protected List<LegendDiagnostic> getLegendDiagnostics(DocumentState docState)
+    {
+        List<LegendDiagnostic> diagnostics = new ArrayList<>();
         docState.forEachSectionState(sectionState ->
         {
             LegendLSPGrammarExtension extension = sectionState.getExtension();
@@ -378,51 +402,21 @@ class LegendTextDocumentService implements TextDocumentService
                     {
                         message.append(grammars.stream().sorted().collect(Collectors.joining(", ", "\nAvailable grammars: ", "")));
                     }
-                    diagnostics.add(new Diagnostic(
-                            newRange(lineNum, start, lineNum, (end == -1) ? line.length() : end),
-                            message.toString(),
-                            DiagnosticSeverity.Error,
-                            LegendDiagnostic.Source.Parser.toString()));
+                    diagnostics.add(
+                            LegendDiagnostic.newDiagnostic(
+                                    TextLocation.newTextSource(docState.getDocumentId(), lineNum, start, lineNum, ((end == -1) ? line.length() : end) - 1),
+                                    message.toString(),
+                                    LegendDiagnostic.Kind.Error,
+                                    LegendDiagnostic.Source.Parser
+                            )
+                    );
                 }
                 LOGGER.warn("Could not get diagnostics for section of {}: no extension for grammar {}", docState.getDocumentId(), section.getGrammar());
                 return;
             }
-            extension.getDiagnostics(sectionState).forEach(d -> diagnostics.add(toDiagnostic(d)));
+            extension.getDiagnostics(sectionState).forEach(diagnostics::add);
         });
         return diagnostics;
-    }
-
-    private Diagnostic toDiagnostic(LegendDiagnostic diagnostic)
-    {
-        return new Diagnostic(toRange(diagnostic.getLocation().getTextInterval()), diagnostic.getMessage(), toDiagnosticSeverity(diagnostic.getKind()), diagnostic.getSource().toString());
-    }
-
-    private DiagnosticSeverity toDiagnosticSeverity(LegendDiagnostic.Kind kind)
-    {
-        switch (kind)
-        {
-            case Warning:
-            {
-                return DiagnosticSeverity.Warning;
-            }
-            case Information:
-            {
-                return DiagnosticSeverity.Information;
-            }
-            case Hint:
-            {
-                return DiagnosticSeverity.Hint;
-            }
-            case Error:
-            {
-                return DiagnosticSeverity.Error;
-            }
-            default:
-            {
-                LOGGER.warn("Unknown diagnostic severity {}, defaulting to Error.", kind);
-                return DiagnosticSeverity.Error;
-            }
-        }
     }
 
     @Override
@@ -573,7 +567,7 @@ class LegendTextDocumentService implements TextDocumentService
             extension.getCommands(sectionState).forEach(c ->
             {
                 Command command = new Command(c.getTitle(), c instanceof LegendClientCommand ? LegendLanguageServer.LEGEND_CLIENT_COMMAND_ID : LegendLanguageServer.LEGEND_COMMAND_ID, List.of(uri, sectionState.getSectionNumber(), c.getEntity(), c.getId(), c.getExecutableArgs(), c.getInputParameters()));
-                codeLenses.add(new CodeLens(toRange(c.getLocation().getTextInterval()), command, null));
+                codeLenses.add(new CodeLens(LegendToLSPUtilities.toRange(c.getLocation().getTextInterval()), command, null));
             });
         });
         return codeLenses;
@@ -615,12 +609,12 @@ class LegendTextDocumentService implements TextDocumentService
             return Either.forRight(reference.map(x ->
                             {
                                 TextLocation referencedLocation = x.getReferencedLocation();
-                                Range range = toRange(referencedLocation.getTextInterval());
+                                Range range = LegendToLSPUtilities.toRange(referencedLocation.getTextInterval());
                                 return List.of(new LocationLink(
                                         referencedLocation.getDocumentId(),
                                         range,
                                         range,
-                                        x.hasCoreLocation() ? toRange(x.getCoreLocation().getTextInterval()) : toRange(x.getLocation().getTextInterval())
+                                        x.hasCoreLocation() ? LegendToLSPUtilities.toRange(x.getCoreLocation().getTextInterval()) : LegendToLSPUtilities.toRange(x.getLocation().getTextInterval())
                                 ));
                             }
                     ).orElse(List.of())
@@ -628,15 +622,4 @@ class LegendTextDocumentService implements TextDocumentService
         });
     }
 
-    private static Range toRange(TextInterval interval)
-    {
-        // Range end position is exclusive, whereas TextInterval end is inclusive
-        return newRange(interval.getStart().getLine(), interval.getStart().getColumn(),
-                interval.getEnd().getLine(), interval.getEnd().getColumn() + 1);
-    }
-
-    private static Range newRange(int startLine, int startCol, int endLine, int endCol)
-    {
-        return new Range(new Position(startLine, startCol), new Position(endLine, endCol));
-    }
 }

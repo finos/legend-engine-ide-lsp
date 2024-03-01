@@ -23,13 +23,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtensionLoader;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class ExtensionsGuard
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ExtensionsGuard.class);
     private final Iterable<LegendLSPGrammarExtension> providedGrammarExtensions;
     private final LegendLanguageServer server;
     private volatile ClassLoader classLoader;
@@ -64,6 +68,7 @@ class ExtensionsGuard
 
             ServiceLoader.load(LegendLSPExtensionLoader.class, classLoader).forEach(x ->
             {
+                LOGGER.debug("Loading extensions using: {}", x.getClass());
                 x.loadLegendLSPGrammarExtensions(classLoader).forEach(grammars::add);
                 x.loadLegendLSPFeatureExtensions(classLoader).forEach(features::add);
             });
@@ -71,6 +76,7 @@ class ExtensionsGuard
             this.grammars = LegendLSPGrammarLibrary.builder().withExtensions(this.providedGrammarExtensions).withExtensions(grammars).build();
             this.features = Collections.unmodifiableList(features);
             this.server.logInfoToClient("Grammar extensions available: " + String.join(", ", this.grammars.getExtensionNames()));
+            this.server.logInfoToClient("Feature extensions available: " + String.join(", ", this.features.stream().map(LegendLSPFeature::description).collect(Collectors.joining())));
 
             this.classLoader = classLoader;
         }

@@ -14,9 +14,9 @@
 
 package org.finos.legend.engine.ide.lsp;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
@@ -28,7 +28,7 @@ import org.eclipse.lsp4j.services.LanguageClient;
 
 public class DummyLanguageClient implements LanguageClient
 {
-    public final List<String> clientLog = new ArrayList<>();
+    public final LinkedBlockingQueue<String> clientLog = new LinkedBlockingQueue();
 
     @Override
     public void telemetryEvent(Object object)
@@ -64,7 +64,7 @@ public class DummyLanguageClient implements LanguageClient
     public CompletableFuture<List<Object>> configuration(ConfigurationParams configurationParams)
     {
         clientLog.add(String.format("configuration - %s", configurationParams.getItems().stream().map(ConfigurationItem::getSection).collect(Collectors.joining())));
-        return CompletableFuture.completedFuture(configurationParams.getItems().stream().map(x -> null).collect(Collectors.toList()));
+        return CompletableFuture.completedFuture(configurationParams.getItems().stream().map(x -> "").collect(Collectors.toList()));
     }
 
     @Override

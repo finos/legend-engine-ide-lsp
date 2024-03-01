@@ -18,7 +18,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,6 +36,7 @@ import org.eclipse.lsp4j.CodeLensOptions;
 import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
+import org.eclipse.lsp4j.DiagnosticRegistrationOptions;
 import org.eclipse.lsp4j.ExecuteCommandOptions;
 import org.eclipse.lsp4j.FileOperationFilter;
 import org.eclipse.lsp4j.FileOperationOptions;
@@ -70,8 +70,6 @@ import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
-import org.eclipse.lsp4j.services.TextDocumentService;
-import org.eclipse.lsp4j.services.WorkspaceService;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
@@ -88,6 +86,7 @@ import org.slf4j.LoggerFactory;
 public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageServer.class);
+    private static final Logger LOGGER_CLIENT = LoggerFactory.getLogger(LegendLanguageServer.class.getName() + ".client");
 
     static final String LEGEND_COMMAND_ID = "legend.command";
     static final String LEGEND_CLIENT_COMMAND_ID = "legend.client.command";
@@ -143,7 +142,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         }
 
         logInfoToClient("Initializing server");
-        logInfoToClient("Server logs can be found at: " + Path.of(System.getProperty("java.io.tmpdir") + "/engine-lsp/").toUri());
         List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
 
         InitializeResult result = new InitializeResult(getServerCapabilities());
@@ -252,6 +250,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private void reprocessDocuments()
     {
         this.globalState.forEachDocumentState(x -> ((LegendServerGlobalState.LegendServerDocumentState) x).recreateSectionStates());
+        this.globalState.clearProperties();
     }
 
     @Override
@@ -279,13 +278,13 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     }
 
     @Override
-    public TextDocumentService getTextDocumentService()
+    public LegendTextDocumentService getTextDocumentService()
     {
         return this.textDocumentService;
     }
 
     @Override
-    public WorkspaceService getWorkspaceService()
+    public LegendWorkspaceService getWorkspaceService()
     {
         return this.workspaceService;
     }
@@ -440,7 +439,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return CompletableFuture.completedFuture(work.get());
     }
 
-    LegendServerGlobalState getGlobalState()
+    public LegendServerGlobalState getGlobalState()
     {
         checkReady();
         return this.globalState;
@@ -551,13 +550,11 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         if ((addedFolders != null) && !addedFolders.isEmpty())
         {
             String message = "Added root folders: " + addedFolders;
-            LOGGER.info(message);
             logInfoToClient(message);
         }
         if ((removedFolders != null) && !removedFolders.isEmpty())
         {
             String message = "Removed root folders: " + removedFolders;
-            LOGGER.info(message);
             logInfoToClient(message);
         }
         return this.runPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(() ->
@@ -575,21 +572,25 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     void logToClient(String message)
     {
+        LOGGER_CLIENT.debug(message);
         logToClient(MessageType.Log, message);
     }
 
     public void logInfoToClient(String message)
     {
+        LOGGER_CLIENT.info(message);
         logToClient(MessageType.Info, message);
     }
 
     void logWarningToClient(String message)
     {
+        LOGGER_CLIENT.warn(message);
         logToClient(MessageType.Warning, message);
     }
 
     public void logErrorToClient(String message)
     {
+        LOGGER_CLIENT.error(message);
         logToClient(MessageType.Error, message);
     }
 
@@ -789,6 +790,9 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         capabilities.setCodeLensProvider(getCodeLensOptions());
         capabilities.setExecuteCommandProvider(getExecuteCommandOptions());
         capabilities.setDefinitionProvider(true);
+        capabilities.setDiagnosticProvider(new DiagnosticRegistrationOptions(true, true));
+        capabilities.setDocumentSymbolProvider(true);
+        capabilities.setWorkspaceSymbolProvider(true);
         return capabilities;
     }
 
@@ -861,7 +865,6 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
                 LOGGER.info("Shutting down from state: {}", getStateDescription(currentState));
                 logInfoToClient("Server shutting down");
                 this.state.set(SHUT_DOWN);
-                LOGGER.info("Server shut down");
                 logInfoToClient("Server shut down");
                 return;
             }

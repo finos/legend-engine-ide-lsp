@@ -180,6 +180,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
         Properties properties = new Properties();
         properties.setProperty("mdep.outputFile", legendLspClasspath.getAbsolutePath());
+        properties.setProperty("mdep.pathSeparator", ";");
 
         InvocationRequest request = new DefaultInvocationRequest();
         request.setPomFile(pom);
@@ -206,15 +207,19 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         }
 
         String classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8);
-
-                LOGGER.info("Classpath used:  {}", classpath);
-
         String[] classpathEntries = classpath.split(";");
         URL[] urls = new URL[classpathEntries.length];
+        LOGGER.info("Classpath of {} URLs used:  {}", classpathEntries.length, classpath);
 
         for (int i = 0; i < urls.length; i++)
         {
-            urls[i] = new File(classpathEntries[i]).toURI().toURL();
+            File file = new File(classpathEntries[i]);
+            if (!file.canRead())
+            {
+                this.server.logErrorToClient("Cannot read classpath file: " + file);
+                return null;
+            }
+            urls[i] = file.toURI().toURL();
         }
 
         ClassLoader parentClassloader = ClasspathUsingMavenFactory.class.getClassLoader();
