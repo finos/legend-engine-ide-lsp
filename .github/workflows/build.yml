@@ -59,9 +59,6 @@ jobs:
       - name: Check Java version
         run: java -version
 
-      - name: Check Maven version
-        run: mvn --version
-
       - name: Configure git
         run: |
           git config --global committer.email "infra@finos.org"
@@ -73,14 +70,13 @@ jobs:
         run: mvn de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 
       - name: Collect Workflow Telemetry
-        if: (matrix.os == 'ubuntu-latest')
         uses: runforesight/workflow-telemetry-action@v1
         with:
           theme: dark
 
       - name: Build + Test
-        if: (github.repository != 'finos/legend-engine-ide-lsp') || (github.ref != 'refs/heads/main')
-        run: mvn clean install javadoc:javadoc
+        if: ((matrix.os == 'ubuntu-latest') && (github.repository == 'finos/legend-engine-ide-lsp') && (github.ref == 'refs/heads/main')) != true
+        run: mvn install javadoc:javadoc
 
       - name: Build + Test + Maven Deploy + Sonar + Docker Snapshot
         if: (matrix.os == 'ubuntu-latest') && (github.repository == 'finos/legend-engine-ide-lsp') && (github.ref == 'refs/heads/main')
@@ -88,18 +84,18 @@ jobs:
           DOCKER_USERNAME: finos
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn clean javadoc:javadoc deploy -P attach-sources
+        run: mvn javadoc:javadoc deploy -P attach-sources
 
       - name: Upload Test Results
-        if: (matrix.os == 'ubuntu-latest')
+        if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: test-results
+          name: test-results-${{ matrix.os }}
           path: ${{ github.workspace }}/legend-engine-ide-lsp-test-reports/surefire-reports-aggregate/*.xml
 
       - name: Upload CI Event
-        if: (matrix.os == 'ubuntu-latest')
+        if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: event-file
+          name: event-file-${{ matrix.os }}
           path: ${{ github.event_path }}
