@@ -45,7 +45,6 @@ import org.eclipse.lsp4j.DocumentSymbol;
 import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.LocationLink;
-import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.RelatedFullDocumentDiagnosticReport;
 import org.eclipse.lsp4j.SemanticTokens;
@@ -57,7 +56,6 @@ import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestHandler;
@@ -149,19 +147,10 @@ class LegendTextDocumentService implements TextDocumentService
             if (finalDocState.change(doc.getVersion(), changes.get(0).getText()))
             {
                 globalState.clearProperties();
+                this.server.getLanguageClient().refreshDiagnostics();
             }
 
             LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
-
-            try
-            {
-                publishDiagnosticsToClient(finalDocState);
-            }
-            catch (Exception e)
-            {
-                LOGGER.error("Error publishing diagnostics for {} to client", uri, e);
-                this.server.logErrorToClient("Error publishing diagnostics for " + uri + " to client: see server log for more details");
-            }
         });
     }
 
@@ -341,16 +330,6 @@ class LegendTextDocumentService implements TextDocumentService
         this.server.checkReady();
         List<Diagnostic> diagnostics = getDiagnostics(params);
         return new DocumentDiagnosticReport(new RelatedFullDocumentDiagnosticReport(diagnostics));
-    }
-
-    void publishDiagnosticsToClient(DocumentState docState)
-    {
-        LanguageClient client = this.server.getLanguageClient();
-        if (client != null)
-        {
-            List<Diagnostic> diagnostics = getDiagnostics(docState);
-            client.publishDiagnostics(new PublishDiagnosticsParams(docState.getDocumentId(), diagnostics));
-        }
     }
 
     private List<Diagnostic> getDiagnostics(DocumentDiagnosticParams params)
