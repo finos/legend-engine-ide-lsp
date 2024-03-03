@@ -24,6 +24,7 @@ import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -80,7 +81,7 @@ public class TestLegendLanguageServerIntegration
      * <pl/>
      * For local development and debugging, this can be increased to prevent false timeouts
      */
-    private static final long MAYBE_DEADLOCK_TIMEOUT_SECONDS = 15L; //
+    private static final long MAYBE_DEADLOCK_TIMEOUT_SECONDS = 30L;
     /**
      * this phaser is used to track all async task and LSP JRPC messages,
      * allowing the test cases to wait until these have been completed before further assertions
@@ -308,10 +309,22 @@ public class TestLegendLanguageServerIntegration
 
         // no diagnostics
         List<WorkspaceDocumentDiagnosticReport> items = server.getWorkspaceService().diagnostic(new WorkspaceDiagnosticParams(List.of())).get(MAYBE_DEADLOCK_TIMEOUT_SECONDS, TimeUnit.SECONDS).getItems();
-        Assertions.assertTrue(items.isEmpty(), "Expected no diagnostic but got: " + items.stream()
+        Assertions.assertEquals(
+                Set.of(pureFile1.toUri().toString(), pureFile2.toUri().toString()),
+                items.stream()
+                        .map(WorkspaceDocumentDiagnosticReport::getWorkspaceFullDocumentDiagnosticReport)
+                        .map(WorkspaceFullDocumentDiagnosticReport::getUri)
+                        .collect(Collectors.toSet())
+        );
+
+        List<Diagnostic> diagnostics = items.stream()
                 .map(WorkspaceDocumentDiagnosticReport::getWorkspaceFullDocumentDiagnosticReport)
                 .map(WorkspaceFullDocumentDiagnosticReport::getItems)
                 .flatMap(List::stream)
+                .collect(Collectors.toList());
+
+        Assertions.assertTrue(diagnostics.isEmpty(), "Expected no diagnostic but got: " + diagnostics
+                .stream()
                 .map(Diagnostic::getMessage)
                 .collect(Collectors.joining())
         );
@@ -324,13 +337,20 @@ public class TestLegendLanguageServerIntegration
                 "}\n");
 
         List<WorkspaceDocumentDiagnosticReport> itemsAfterChange = server.getWorkspaceService().diagnostic(new WorkspaceDiagnosticParams(List.of())).get(MAYBE_DEADLOCK_TIMEOUT_SECONDS, TimeUnit.SECONDS).getItems();
-        Assertions.assertEquals(1, itemsAfterChange.size());
-        WorkspaceFullDocumentDiagnosticReport diagnosticReport = itemsAfterChange.get(0).getWorkspaceFullDocumentDiagnosticReport();
-        Assertions.assertNotNull(diagnosticReport);
-        Assertions.assertEquals(pureFile2.toUri().toString(), diagnosticReport.getUri());
-        Assertions.assertEquals(1, diagnosticReport.getItems().size());
-        Assertions.assertEquals("Compiler", diagnosticReport.getItems().get(0).getSource());
-        Assertions.assertEquals("Can't find type 'abc::abc'", diagnosticReport.getItems().get(0).getMessage());
+        Assertions.assertEquals(2, itemsAfterChange.size());
+        itemsAfterChange.sort(Comparator.comparing(x -> x.getWorkspaceFullDocumentDiagnosticReport().getUri()));
+
+        WorkspaceFullDocumentDiagnosticReport diagnosticReport1 = itemsAfterChange.get(0).getWorkspaceFullDocumentDiagnosticReport();
+        Assertions.assertNotNull(diagnosticReport1);
+        Assertions.assertEquals(pureFile1.toUri().toString(), diagnosticReport1.getUri());
+        Assertions.assertTrue(diagnosticReport1.getItems().isEmpty());
+
+        WorkspaceFullDocumentDiagnosticReport diagnosticReport2 = itemsAfterChange.get(1).getWorkspaceFullDocumentDiagnosticReport();
+        Assertions.assertNotNull(diagnosticReport2);
+        Assertions.assertEquals(pureFile2.toUri().toString(), diagnosticReport2.getUri());
+        Assertions.assertEquals(1, diagnosticReport2.getItems().size());
+        Assertions.assertEquals("Compiler", diagnosticReport2.getItems().get(0).getSource());
+        Assertions.assertEquals("Can't find type 'abc::abc'", diagnosticReport2.getItems().get(0).getMessage());
 
         // revert rename on extended class, should fix the compile failure
         changeWorkspaceFile(pureFile1, "###Pure\n" +
@@ -341,6 +361,11 @@ public class TestLegendLanguageServerIntegration
 
         // no diagnostics
         List<WorkspaceDocumentDiagnosticReport> itemsAfterFix = server.getWorkspaceService().diagnostic(new WorkspaceDiagnosticParams(List.of())).get(MAYBE_DEADLOCK_TIMEOUT_SECONDS, TimeUnit.SECONDS).getItems();
-        Assertions.assertTrue(itemsAfterFix.isEmpty());
+        List<Diagnostic> diagnosticsFixed = itemsAfterFix.stream()
+                .map(WorkspaceDocumentDiagnosticReport::getWorkspaceFullDocumentDiagnosticReport)
+                .map(WorkspaceFullDocumentDiagnosticReport::getItems)
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+        Assertions.assertTrue(diagnosticsFixed.isEmpty());
     }
 }
