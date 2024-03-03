@@ -38,8 +38,9 @@ public class LegendREPLTerminal
         try
         {
             ClasspathUsingMavenFactory factory = new ClasspathUsingMavenFactory(new File(pomPath));
+            File maven = factory.getMavenExecLocation(mavenPath);
             URLClassLoader classloader = Objects.requireNonNull(
-                    factory.createClassloader(mavenPath.isBlank() ? null : new File(mavenPath), new File(pomPath)),
+                    factory.createClassloader(maven, new File(pomPath)),
                     "Failed to load classpath from pom");
 
             Thread.currentThread().setContextClassLoader(classloader);
