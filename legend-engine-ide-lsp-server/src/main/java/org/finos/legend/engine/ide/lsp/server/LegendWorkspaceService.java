@@ -367,14 +367,10 @@ class LegendWorkspaceService implements WorkspaceService
 
             this.server.getGlobalState().forEachDocumentState(d ->
             {
-                // todo handle previous result so we send WorkspaceUnchangedDocumentDiagnosticReport if nothing changed?
                 LegendServerGlobalState.LegendServerDocumentState doc = (LegendServerGlobalState.LegendServerDocumentState) d;
                 List<LegendDiagnostic> diagnostics = this.server.getTextDocumentService().getLegendDiagnostics(doc);
-                if (!diagnostics.isEmpty())
-                {
-                    WorkspaceFullDocumentDiagnosticReport fullReport = new WorkspaceFullDocumentDiagnosticReport(diagnostics.stream().map(LegendToLSPUtilities::toDiagnostic).collect(Collectors.toList()), doc.getDocumentId(), doc.getVersion());
-                    items.add(new WorkspaceDocumentDiagnosticReport(fullReport));
-                }
+                WorkspaceFullDocumentDiagnosticReport fullReport = new WorkspaceFullDocumentDiagnosticReport(diagnostics.stream().map(LegendToLSPUtilities::toDiagnostic).collect(Collectors.toList()), doc.getDocumentId(), doc.getVersion());
+                items.add(new WorkspaceDocumentDiagnosticReport(fullReport));
             });
 
             return new WorkspaceDiagnosticReport(items);

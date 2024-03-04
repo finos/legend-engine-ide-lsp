@@ -230,7 +230,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
                 .thenAccept(this.extensionGuard::initialize)
                 .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
                 // trigger compilation
-                .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::publishDiagnosticsToClient)))
+                .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::getLegendDiagnostics)))
                 .thenRun(() ->
                 {
                     LanguageClient languageClient = this.getLanguageClient();
@@ -790,10 +790,19 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         capabilities.setCodeLensProvider(getCodeLensOptions());
         capabilities.setExecuteCommandProvider(getExecuteCommandOptions());
         capabilities.setDefinitionProvider(true);
-        capabilities.setDiagnosticProvider(new DiagnosticRegistrationOptions(true, true));
+        capabilities.setDiagnosticProvider(getDiagnosticRegistrationOptions());
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);
         return capabilities;
+    }
+
+    private DiagnosticRegistrationOptions getDiagnosticRegistrationOptions()
+    {
+        DiagnosticRegistrationOptions diagnosticProvider = new DiagnosticRegistrationOptions();
+        diagnosticProvider.setId("legend_diagnostic");
+        diagnosticProvider.setWorkspaceDiagnostics(true);
+        diagnosticProvider.setInterFileDependencies(true);
+        return diagnosticProvider;
     }
 
     private WorkspaceServerCapabilities getWorkspaceServerCapabilities()
