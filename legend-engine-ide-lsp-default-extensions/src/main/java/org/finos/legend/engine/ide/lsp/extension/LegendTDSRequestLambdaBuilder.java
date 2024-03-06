@@ -22,7 +22,7 @@ import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FilterOperation;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Function;
+import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
@@ -49,6 +49,7 @@ public class LegendTDSRequestLambdaBuilder
     private static final String SORT_FUNCTION_NAME = "sort";
     private static final String GROUPBY_FUNCTION_NAME = "groupBy";
     private static final String AND_FILTER_OPERATION_NAME = "and";
+    private static final String NOT_FUNCTION_NAME = "not";
 
     private static final String DEFAULT_VARIABLE_NAME = "x";
 
@@ -104,16 +105,17 @@ public class LegendTDSRequestLambdaBuilder
         }
     }
 
-    public static void updateParentFunction(Function parent, String functionName, List<ValueSpecification> child)
+    public static void updateParentFunction(List<ValueSpecification> expressions, String functionName, List<ValueSpecification> child)
     {
-        parent.body.addAll(child);
+        List<ValueSpecification> newExpressions = Lists.mutable.of(expressions.get(0));
+        newExpressions.addAll(child);
         AppliedFunction childFunc = new AppliedFunction();
         childFunc.function = functionName;
-        childFunc.parameters = parent.body;
-        parent.body = Lists.mutable.of(childFunc);
+        childFunc.parameters = newExpressions;
+        expressions.set(0, childFunc);
     }
 
-    public static void processFilterOperations(Function function, List<Filter> filters)
+    public static void processFilterOperations(List<ValueSpecification> expressions, List<Filter> filters)
     {
         if (filters.size() == 0)
         {
@@ -124,13 +126,8 @@ public class LegendTDSRequestLambdaBuilder
         filterLambda.multiplicity = filters.size() == 1 ? Multiplicity.PURE_ONE : Multiplicity.PURE_MANY;
         filters.forEach(filterValue ->
         {
-            if (filterValue.getOperation().equals(FilterOperation.NOT_EQUAL) || filterValue.getOperation().equals(FilterOperation.NOT_BLANK))
-            {
-                throw new RuntimeException("Unsupported filter operation " + filterValue.getOperation());
-            }
             AppliedFunction filterCondition = new AppliedFunction();
             filterCondition.parameters = Lists.mutable.empty();
-            filterCondition.function = filterValue.getOperation().getValue();
             filterCondition.multiplicity = Multiplicity.PURE_ONE;
 
             AppliedProperty property = new AppliedProperty();
@@ -140,8 +137,51 @@ public class LegendTDSRequestLambdaBuilder
             x.name = DEFAULT_VARIABLE_NAME;
             property.parameters = Lists.mutable.of(x, new CString(filterValue.getColumn()));
 
-            filterCondition.parameters.add(property);
-            filterCondition.parameters.add(getPrimitiveValueSpecification(filterValue.getColumnType(), filterValue.getValue()));
+            switch (filterValue.getOperation())
+            {
+                case EQUALS:
+                case GREATER_THAN:
+                case GREATER_THAN_OR_EQUAL:
+                case LESS_THAN:
+                case LESS_THAN_OR_EQUAL:
+                case BLANK:
+                {
+                    filterCondition.function = filterValue.getOperation().getValue();
+                    filterCondition.parameters.add(property);
+                    filterCondition.parameters.add(getPrimitiveValueSpecification(filterValue.getColumnType(), filterValue.getValue()));
+                    break;
+                }
+                case NOT_EQUAL:
+                {
+                    filterCondition.function = NOT_FUNCTION_NAME;
+
+                    AppliedFunction filterConditionFunc = new AppliedFunction();
+                    filterConditionFunc.parameters = Lists.mutable.empty();
+                    filterConditionFunc.function = FilterOperation.EQUALS.getValue();
+                    filterConditionFunc.multiplicity = Multiplicity.PURE_ONE;
+                    filterConditionFunc.parameters.add(getPrimitiveValueSpecification(filterValue.getColumnType(), filterValue.getValue()));
+                    filterConditionFunc.parameters.add(property);
+
+                    filterCondition.parameters.add(filterConditionFunc);
+                    break;
+                }
+                case NOT_BLANK:
+                {
+                    filterCondition.function = NOT_FUNCTION_NAME;
+
+                    AppliedFunction filterConditionFunc = new AppliedFunction();
+                    filterConditionFunc.parameters = Lists.mutable.empty();
+                    filterConditionFunc.function = FilterOperation.BLANK.getValue();
+                    filterConditionFunc.multiplicity = Multiplicity.PURE_ONE;
+                    filterCondition.parameters.add(getPrimitiveValueSpecification(filterValue.getColumnType(), filterValue.getValue()));
+                    filterConditionFunc.parameters.add(property);
+
+                    filterCondition.parameters.add(filterConditionFunc);
+                    break;
+                }
+                default:
+                    throw new RuntimeException("Unsupported filter operation " + filterValue.getOperation());
+            }
 
             filterLambda.body.add(filterCondition);
             if (filterLambda.body.size() > 1)
@@ -154,10 +194,10 @@ public class LegendTDSRequestLambdaBuilder
             }
             filterLambda.parameters = Lists.mutable.of(x);
         });
-        updateParentFunction(function, FILTER_FUNCTION_NAME, Lists.mutable.of(filterLambda));
+        updateParentFunction(expressions, FILTER_FUNCTION_NAME, Lists.mutable.of(filterLambda));
     }
 
-    public static void processGroupByOperations(Function function, TDSGroupBy groupByOperation, List<String> columns)
+    public static void processGroupByOperations(List<ValueSpecification> expressions, TDSGroupBy groupByOperation, List<String> columns)
     {
         if (groupByOperation == null || (groupByOperation.getColumns().size() == 0))
         {
@@ -232,11 +272,11 @@ public class LegendTDSRequestLambdaBuilder
         });
         if (groupByCollection.values.size() != 0  || aggregationCollection.values.size() != 0)
         {
-            updateParentFunction(function, GROUPBY_FUNCTION_NAME, Lists.mutable.of(groupByCollection, aggregationCollection));
+            updateParentFunction(expressions, GROUPBY_FUNCTION_NAME, Lists.mutable.of(groupByCollection, aggregationCollection));
         }
     }
 
-    public static void processSortOperations(Function function, List<TDSSort> sortOperations)
+    public static void processSortOperations(List<ValueSpecification> expressions, List<TDSSort> sortOperations)
     {
         if (sortOperations.size() == 0)
         {
@@ -254,6 +294,15 @@ public class LegendTDSRequestLambdaBuilder
             sortFunc.parameters.add(var);
             sortCollection.values.add(sortFunc);
         });
-        updateParentFunction(function, SORT_FUNCTION_NAME, Lists.mutable.of(sortCollection));
+        updateParentFunction(expressions, SORT_FUNCTION_NAME, Lists.mutable.of(sortCollection));
+    }
+
+    public static List<ValueSpecification> buildLambdaExpressions(ValueSpecification funcBody, TDSRequest request)
+    {
+        List<ValueSpecification> expressions = Lists.mutable.of(funcBody);
+        processFilterOperations(expressions, request.getFilter());
+        processGroupByOperations(expressions, request.getGroupBy(), request.getColumns());
+        processSortOperations(expressions, request.getSort());
+        return expressions;
     }
 }
