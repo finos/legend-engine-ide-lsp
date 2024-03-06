@@ -77,7 +77,7 @@ import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class LegendTextDocumentService implements TextDocumentService
+public class LegendTextDocumentService implements TextDocumentService
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendTextDocumentService.class);
 
