@@ -34,6 +34,9 @@ import java.util.function.Consumer;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -57,10 +60,16 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
+import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainLexerGrammar;
+import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
+import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
+import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.execution.nodes.helpers.ExecuteNodeParameterTransformationHelper;
 import org.finos.legend.engine.plan.execution.result.ConstantResult;
@@ -72,6 +81,7 @@ import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
@@ -85,6 +95,8 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
+import org.finos.legend.engine.repl.autocomplete.Completer;
+import org.finos.legend.engine.repl.autocomplete.CompletionResult;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.LambdaFunction;
@@ -534,7 +546,41 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             ATTRIBUTE_MULTIPLICITIES_SUGGESTIONS.collect(s -> new LegendCompletion("Attribute multiplicity", s), legendCompletions);
         }
 
+        CompletionResult autocompletion = getFunctionAutocompletion(section, location);
+        if (autocompletion != null)
+        {
+            autocompletion.getCompletion().collect(c -> new LegendCompletion(c.getDisplay(), c.getCompletion()), legendCompletions);
+        }
+
         return CompositeIterable.with(legendCompletions, this.computeCompletionsForSupportedTypes(section, location, SUGGESTABLE_KEYWORDS));
+    }
+
+    private CompletionResult getFunctionAutocompletion(SectionState section, TextPosition location)
+    {
+        SectionSourceCode sectionSourceCode = toSectionSourceCode(section);
+        CharStream input = CharStreams.fromString(sectionSourceCode.code);
+        DomainLexerGrammar lexer = new DomainLexerGrammar(input);
+        lexer.removeErrorListeners();
+        DomainParserGrammar parser = new DomainParserGrammar(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+
+        DomainParserGrammar.DefinitionContext definition = parser.definition();
+        return definition.getRuleContexts(DomainParserGrammar.ElementDefinitionContext.class)
+                .stream()
+                .filter(elemDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(elemDefCtx)).getTextInterval().includes(location))
+                .findAny()
+                .flatMap(elemDefCtx -> elemDefCtx.getRuleContexts(DomainParserGrammar.FunctionDefinitionContext.class)
+                        .stream()
+                        .filter(funcDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcDefCtx)).getTextInterval().includes(location))
+                        .findAny())
+                .map(funcCtx ->
+                {
+                    TextLocation codeBlockLocation = SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcCtx.codeBlock()));
+                    String functionExpression = section.getSection().getInterval(codeBlockLocation.getTextInterval().getStart().getLine(), codeBlockLocation.getTextInterval().getStart().getColumn(), location.getLine(), location.getColumn());
+                    PureModelContextData pureModelContextData = this.getCompileResult(section).getPureModelContextData();
+                    String buildCodeContext = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().build()).renderPureModelContextData(pureModelContextData);
+                    return new Completer(buildCodeContext).complete(functionExpression);
+                }).orElse(null);
     }
 
     private static class ExecutionRequest
