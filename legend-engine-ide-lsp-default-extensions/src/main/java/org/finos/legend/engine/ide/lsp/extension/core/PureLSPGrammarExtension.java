@@ -249,7 +249,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         PureModel pureModel = compileResult.getPureModel();
         Function function = (Function) compileResult.getPureModelContextData().getElements().stream().filter(e -> e.getPath().equals(entityPath)).collect(Collectors.toList()).get(0);
-        ValueSpecification funcBody = function.body.get(0);
         try
         {
             TDSGroupBy groupBy = request.getRequest().getGroupBy();
@@ -258,11 +257,9 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 Filter groupFilter = new Filter(groupBy.getColumns().get(index), ColumnType.String, FilterOperation.EQUALS, groupBy.getGroupKeys().get(index));
                 request.getRequest().getFilter().add(groupFilter);
             }
-            LegendTDSRequestLambdaBuilder.processFilterOperations(function, request.getRequest().getFilter());
-            LegendTDSRequestLambdaBuilder.processGroupByOperations(function, request.getRequest().getGroupBy(), request.getRequest().getColumns());
-            LegendTDSRequestLambdaBuilder.processSortOperations(function, request.getRequest().getSort());
+            List<ValueSpecification> expressions = LegendTDSRequestLambdaBuilder.buildLambdaExpressions(function.body.get(0), request.getRequest());
 
-            LambdaFunction<?> queryLambda =  HelperValueSpecificationBuilder.buildLambda(function.body, function.parameters, pureModel.getContext());
+            LambdaFunction<?> queryLambda =  HelperValueSpecificationBuilder.buildLambda(expressions, function.parameters, pureModel.getContext());
             MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
             MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
             SingleExecutionPlan executionPlan = PlanGenerator.generateExecutionPlan(queryLambda, null, null, null, pureModel, null, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
@@ -272,7 +269,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         {
             results.add(errorResult(e, entityPath));
         }
-        function.body = Lists.mutable.of(funcBody);
         return results.get(0);
     }
 
