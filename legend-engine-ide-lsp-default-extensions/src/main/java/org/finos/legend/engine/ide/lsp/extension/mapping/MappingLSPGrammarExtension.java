@@ -38,11 +38,13 @@ import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
+import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperMappingBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
@@ -125,6 +127,19 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return super.getTestSuites(element);
     }
 
+    @Override
+    public Stream<? extends LegendExecutionResult> executeAllTestCases(SectionState section)
+    {
+        Stream<? extends LegendExecutionResult> superResults = super.executeAllTestCases(section);
+        Stream<? extends LegendExecutionResult> legacyResults = this.getParseResult(section)
+                .getElements()
+                .stream()
+                .filter(Mapping.class::isInstance)
+                .map(Mapping.class::cast)
+                .filter(x -> x.tests != null && !x.tests.isEmpty())
+                .flatMap(x -> this.runLegacyMappingTests(section, x.getPath(), null).stream());
+        return Stream.concat(superResults, legacyResults);
+    }
 
     @Override
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
@@ -161,12 +176,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         }
     }
 
-    private Iterable<? extends LegendExecutionResult> runLegacyMappingTests(SectionState section, String entityPath, String testName)
+    private List<? extends LegendExecutionResult> runLegacyMappingTests(SectionState section, String entityPath, String testName)
     {
         PackageableElement element = getParseResult(section).getElement(entityPath);
         if (!(element instanceof Mapping))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find mapping " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find mapping " + entityPath, SourceInformationUtil.toLocation(element.sourceInformation)));
         }
         Mapping mapping = (Mapping) element;
         List<MappingTest_Legacy> tests = getLegacyMappingTests(mapping, testName);
@@ -175,7 +190,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             String message = (testName == null) ?
                     ("Unable to find legacy tests for mapping " + entityPath) :
                     ("Unable to find legacy test " + testName + " for mapping " + entityPath);
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, message));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, message, SourceInformationUtil.toLocation(element.sourceInformation)));
         }
 
         CompileResult compileResult = getCompileResult(section);
@@ -195,11 +210,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             {
                 MappingTestRunner testRunner = new MappingTestRunner(pureModel, entityPath, test, planExecutor, routerExtensions, planTransformers);
                 RichMappingTestResult result = testRunner.setupAndRunTest();
+                TextLocation location = SourceInformationUtil.toLocation(test.sourceInformation);
                 switch (result.getResult())
                 {
                     case SUCCESS:
                     {
-                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.SUCCESS, entityPath + "." + result.getTestName() + ": SUCCESS"));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.SUCCESS, entityPath + "." + result.getTestName() + ": SUCCESS", location));
                         break;
                     }
                     case FAILURE:
@@ -210,7 +226,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                             builder.append("\nexpected: ").append(result.getExpected().get());
                             builder.append("\nactual:   ").append(result.getActual().get());
                         }
-                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.FAILURE, builder.toString()));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.FAILURE, builder.toString(), location));
                         break;
                     }
                     case ERROR:
@@ -223,12 +239,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                                 result.getException().printStackTrace(pw);
                             }
                         }
-                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.ERROR, writer.toString()));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.ERROR, writer.toString(), location));
                         break;
                     }
                     default:
                     {
-                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.SUCCESS, entityPath + "." + result.getTestName() + ": " + result.getResult().name() + " (unhandled result type)"));
+                        results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, test.name), Type.SUCCESS, entityPath + "." + result.getTestName() + ": " + result.getResult().name() + " (unhandled result type)", location));
                     }
                 }
             }

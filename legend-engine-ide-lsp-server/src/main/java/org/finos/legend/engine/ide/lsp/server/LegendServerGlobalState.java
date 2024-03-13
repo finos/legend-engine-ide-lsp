@@ -39,7 +39,7 @@ import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class LegendServerGlobalState extends AbstractState implements GlobalState
+public class LegendServerGlobalState extends AbstractState implements GlobalState
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendServerGlobalState.class);
 

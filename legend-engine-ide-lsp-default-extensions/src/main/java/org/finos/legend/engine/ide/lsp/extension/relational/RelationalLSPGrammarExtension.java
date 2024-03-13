@@ -34,6 +34,7 @@ import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtens
 import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarProvider;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRelationalBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
@@ -199,9 +200,10 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     private Iterable<? extends LegendExecutionResult> generateModelsFromDatabaseSpecification(SectionState section, String entityPath)
     {
         PackageableElement element = getParseResult(section).getElement(entityPath);
+        TextLocation location = SourceInformationUtil.toLocation(element.sourceInformation);
         if (!(element instanceof Database))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.ERROR, "Unable to find database " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.ERROR, "Unable to find database " + entityPath, location));
         }
 
         CompileResult compileResult = getCompileResult(section);
@@ -223,7 +225,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
                     "They should not be considered a replacement for thoughtful modeling.\n" +
                     "Please review carefully before making any use of them.\n" +
                     "***WARNING***\n\n\n";
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, warning + code));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, warning + code, location));
         }
         catch (Exception e)
         {

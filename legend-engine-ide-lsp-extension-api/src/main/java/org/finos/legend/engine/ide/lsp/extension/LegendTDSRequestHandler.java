@@ -14,21 +14,21 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import org.finos.legend.engine.ide.lsp.extension.agGrid.FunctionTDSRequest;
+import java.util.Map;
+import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 
-public interface LegendTDSRequestHandler
+public interface LegendTDSRequestHandler extends LegendLSPFeature
 {
     /**
      * Return the Legend execution result for the given tds request by client.
      *
      * @param section grammar section state
-     * @param request request made by ag-grid
+     * @param entityPath the function entity path
+     * @param request the ag-grid tds request
+     * @param inputParameters input parameters to the function
      * @return Legend execution result
      */
-    default LegendExecutionResult executeLegendTDSRequest(SectionState section, FunctionTDSRequest request)
-    {
-        return null;
-    }
+    LegendExecutionResult executeLegendTDSRequest(SectionState section, String entityPath, TDSRequest request, Map<String, Object> inputParameters);
 }

@@ -16,24 +16,32 @@
 
 package org.finos.legend.engine.ide.lsp.extension.core;
 
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
+import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<PureLSPGrammarExtension>
 {
@@ -366,5 +374,83 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 49));
         completions.forEach(completion -> actualCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedCompletions, actualCompletions);
+    }
+
+    @Test
+    void functionTestableCommand()
+    {
+        String code = "function model::Hello(name: String[1]): String[1]\n" +
+                        "{\n" +
+                        "  'Hello World! My name is ' + $name + '.';\n" +
+                        "}\n" +
+                        "{\n" +
+                        "  testSuite_1\n" +
+                        "  (\n" +
+                        "    testPass | Hello('John') => 'Hello World! My name is John.';\n" +
+                        "    testFail | Hello('John') => 'Hello World! My name is Johnx.';\n" +
+                        "  )\n" +
+                        "}\n";
+
+        SectionState sectionState = newSectionState("docId", code);
+        List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionState))
+                .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
+        Assertions.assertEquals(4, commands.size());
+
+        // todo missing the run test suite as source info is wrong on engine: https://github.com/finos/legend-engine/pull/2693
+
+        Assertions.assertEquals(PureLSPGrammarExtension.EXEC_FUNCTION_WITH_PARAMETERS_ID, commands.get(0).getId());
+        Assertions.assertEquals(AbstractLSPGrammarExtension.RUN_TEST_COMMAND_ID, commands.get(1).getId());
+        Assertions.assertEquals(TextInterval.newInterval(7, 4, 7, 63), commands.get(1).getLocation().getTextInterval());
+        Assertions.assertEquals(AbstractLSPGrammarExtension.RUN_TEST_COMMAND_ID, commands.get(2).getId());
+        Assertions.assertEquals(TextInterval.newInterval(8, 4, 8, 64), commands.get(2).getLocation().getTextInterval());
+        Assertions.assertEquals(AbstractLSPGrammarExtension.RUN_TESTS_COMMAND_ID, commands.get(3).getId());
+        Assertions.assertEquals(TextInterval.newInterval(0, 0, 10, 0), commands.get(3).getLocation().getTextInterval());
+    }
+
+    @Test
+    void runAllTests()
+    {
+        String code = "function model::Hello(name: String[1]): String[1]\n" +
+                "{\n" +
+                "  'Hello World! My name is ' + $name + '.';\n" +
+                "}\n" +
+                "{\n" +
+                "  testSuite_1\n" +
+                "  (\n" +
+                "    testPass | Hello('John') => 'Hello World! My name is John.';\n" +
+                "    testFail | Hello('John') => 'Hello World! My name is Johnx.';\n" +
+                "  )\n" +
+                "}\n" +
+                "function model::HelloNickName(name: String[1]): String[1]\n" +
+                "{\n" +
+                "  'Hello World! My nickname is ' + $name + '.';\n" +
+                "}\n" +
+                "{\n" +
+                "  testSuite_1\n" +
+                "  (\n" +
+                "    testPass | HelloNickName('John') => 'Hello World! My nickname is John.';\n" +
+                "    testFail | HelloNickName('John') => 'Hello World! My nickname is Johnx.';\n" +
+                "  )\n" +
+                "}\n";
+
+        SectionState sectionState = newSectionState("doc", code);
+        List<? extends LegendExecutionResult> results = this.extension.executeAllTestCases(sectionState).sorted(Comparator.comparing(x -> x.getLocation().getTextInterval().getStart())).collect(Collectors.toList());
+        Assertions.assertEquals(4, results.size());
+
+        Assertions.assertEquals(Lists.mutable.of("model::Hello_String_1__String_1_", "testSuite_1", "testPass", "default"), results.get(0).getIds());
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, results.get(0).getType());
+        Assertions.assertEquals(TextLocation.newTextSource("doc", 7, 4, 7, 63), results.get(0).getLocation());
+
+        Assertions.assertEquals(Lists.mutable.of("model::Hello_String_1__String_1_", "testSuite_1", "testFail", "default"), results.get(1).getIds());
+        Assertions.assertEquals(LegendExecutionResult.Type.FAILURE, results.get(1).getType());
+        Assertions.assertEquals(TextLocation.newTextSource("doc", 8, 4, 8, 64), results.get(1).getLocation());
+
+        Assertions.assertEquals(Lists.mutable.of("model::HelloNickName_String_1__String_1_", "testSuite_1", "testPass", "default"), results.get(2).getIds());
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, results.get(2).getType());
+        Assertions.assertEquals(TextLocation.newTextSource("doc", 18, 4, 18, 75), results.get(2).getLocation());
+
+        Assertions.assertEquals(Lists.mutable.of("model::HelloNickName_String_1__String_1_", "testSuite_1", "testFail", "default"), results.get(3).getIds());
+        Assertions.assertEquals(LegendExecutionResult.Type.FAILURE, results.get(3).getType());
+        Assertions.assertEquals(TextLocation.newTextSource("doc", 19, 4, 19, 76), results.get(3).getLocation());
     }
 }

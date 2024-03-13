@@ -79,6 +79,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-test-runner-function</artifactId>
+            <version>${legend.engine.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.finos.legend.sdlc</groupId>
             <artifactId>legend-sdlc-test-utils</artifactId>
             <version>${legend.sdlc.version}</version>

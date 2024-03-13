@@ -15,7 +15,7 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -41,24 +41,37 @@ import org.eclipse.lsp4j.WorkspaceSymbolParams;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.WorkspaceService;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.commands.CommandExecutionHandler;
+import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
+import org.finos.legend.engine.ide.lsp.commands.RunAllTestCasesCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
-import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
-import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class LegendWorkspaceService implements WorkspaceService
+public class LegendWorkspaceService implements WorkspaceService
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendWorkspaceService.class);
 
     private final LegendLanguageServer server;
+    private final Map<String, CommandExecutionHandler> commandExecutionHandlers = new HashMap<>();
 
     LegendWorkspaceService(LegendLanguageServer server)
     {
         this.server = server;
+        this.addCommandExecutionHandler(new LegendCommandExecutionHandler(server));
+        this.addCommandExecutionHandler(new RunAllTestCasesCommandExecutionHandler(server));
+    }
+
+    private void addCommandExecutionHandler(CommandExecutionHandler legendCommandExecutionHandler)
+    {
+        this.commandExecutionHandlers.put(legendCommandExecutionHandler.getCommandId(), legendCommandExecutionHandler);
+    }
+
+    List<String> getCommandIds()
+    {
+        return List.copyOf(this.commandExecutionHandlers.keySet());
     }
 
     @Override
@@ -83,47 +96,17 @@ class LegendWorkspaceService implements WorkspaceService
 
     private Object doExecuteCommand(ExecuteCommandParams params)
     {
+        String command = params.getCommand();
         Either<String, Integer> progressToken = this.server.possiblyNewProgressToken(params.getWorkDoneToken());
         Iterable<? extends LegendExecutionResult> results;
         try
         {
-            this.server.logInfoToClient("Execute command: " + params.getCommand());
-            String command = params.getCommand();
-            List<Object> args = params.getArguments();
+            this.server.logInfoToClient("Execute command: " + command);
 
-            if (LegendLanguageServer.LEGEND_COMMAND_ID.equals(command))
+            CommandExecutionHandler handler = this.commandExecutionHandlers.get(command);
+            if (handler != null)
             {
-                String uri = this.server.extractValueAs(args.get(0), String.class);
-                int sectionNum = this.server.extractValueAs(args.get(1), Integer.class);
-                String entity = this.server.extractValueAs(args.get(2), String.class);
-                String id = this.server.extractValueAs(args.get(3), String.class);
-                Map<String, String> executableArgs = ((args.size() < 5) || (args.get(4) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(4), String.class, String.class);
-                Map<String, Object> inputParameters = ((args.size() < 6) || (args.get(5) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(5), String.class, Object.class);
-                this.server.notifyBegin(progressToken, entity);
-
-                LegendServerGlobalState globalState = this.server.getGlobalState();
-                DocumentState docState = globalState.getDocumentState(uri);
-                if (docState == null)
-                {
-                    throw new RuntimeException("Unknown document: " + uri);
-                }
-
-                SectionState sectionState = docState.getSectionState(sectionNum);
-                LegendLSPGrammarExtension extension = sectionState.getExtension();
-                if (extension == null)
-                {
-                    throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
-                }
-
-                try
-                {
-                    results = inputParameters.isEmpty() ? extension.execute(sectionState, entity, id, executableArgs) : extension.execute(sectionState, entity, id, executableArgs, inputParameters);
-                }
-                catch (Throwable e)
-                {
-                    String message = "Command execution " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
-                    results = Collections.singletonList(LegendExecutionResult.errorResult(new Exception(message, e), message, entity));
-                }
+                results = handler.executeCommand(progressToken, params);
                 this.server.notifyResults(progressToken, results);
                 results.forEach(result ->
                 {
@@ -178,7 +161,7 @@ class LegendWorkspaceService implements WorkspaceService
         }
         finally
         {
-            this.server.logInfoToClient("Execute command finished: " + params.getCommand());
+            this.server.logInfoToClient("Execute command finished: " + command);
             this.server.notifyEnd(progressToken);
         }
         return results;
