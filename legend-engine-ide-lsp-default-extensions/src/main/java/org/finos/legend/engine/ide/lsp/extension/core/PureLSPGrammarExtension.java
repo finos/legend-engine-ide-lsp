@@ -82,6 +82,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Property;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.QualifiedProperty;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
@@ -305,7 +306,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     {
         if (element instanceof Function)
         {
-            return ((Function) element).tests;
+            List<FunctionTestSuite> testSuites = ((Function) element).tests;
+            return (testSuites == null) ? Lists.fixedSize.empty() : testSuites;
         }
         return super.getTestSuites(element);
     }
