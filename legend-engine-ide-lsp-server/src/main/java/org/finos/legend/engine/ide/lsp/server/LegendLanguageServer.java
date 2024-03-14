@@ -1083,7 +1083,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            LOGGER.error("Unable to load versions", e);
         }
         return properties;
     }
