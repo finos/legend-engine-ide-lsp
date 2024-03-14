@@ -29,11 +29,13 @@ import org.eclipse.collections.api.list.ListIterable;
 import org.eclipse.collections.api.set.MutableSet;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
+import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.grammar.from.connection.ConnectionParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
@@ -102,27 +104,29 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
 
     private Iterable<? extends LegendExecutionResult> generateDBFromConnection(SectionState section, String entityPath)
     {
+        PackageableElement element = getParseResult(section).getElement(entityPath);
+        TextLocation location = SourceInformationUtil.toLocation(element.sourceInformation);
+
         if (!isEngineServerConfigured())
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Engine server is not configured"));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Engine server is not configured", location));
         }
 
-        PackageableElement element = getParseResult(section).getElement(entityPath);
         if (!(element instanceof PackageableConnection))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find connection " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find connection " + entityPath, location));
         }
 
         PackageableConnection packageableConn = (PackageableConnection) element;
         if (!(packageableConn.connectionValue instanceof RelationalDatabaseConnection))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Not a " + RelationalDatabaseConnection.class.getSimpleName() + ": " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Not a " + RelationalDatabaseConnection.class.getSimpleName() + ": " + entityPath, location));
         }
 
         DatabaseBuilderInput input = buildInput(packageableConn);
         PureModelContextData result = postEngineServer("/pure/v1/utilities/database/schemaExploration", input, PureModelContextData.class);
         String code = toGrammar(result);
-        return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, code));
+        return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, code, location));
     }
 
     private DatabaseBuilderInput buildInput(PackageableConnection packageableConn)

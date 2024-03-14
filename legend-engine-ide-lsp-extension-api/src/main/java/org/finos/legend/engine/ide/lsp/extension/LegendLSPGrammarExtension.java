@@ -14,8 +14,10 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
-
+import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
@@ -24,9 +26,6 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
-
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * An LSP extension representing a Legend Engine top level grammar.
@@ -126,5 +125,10 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         return Collections.emptyList();
+    }
+
+    default Stream<? extends LegendExecutionResult> executeAllTestCases(SectionState section)
+    {
+        return Stream.empty();
     }
 }

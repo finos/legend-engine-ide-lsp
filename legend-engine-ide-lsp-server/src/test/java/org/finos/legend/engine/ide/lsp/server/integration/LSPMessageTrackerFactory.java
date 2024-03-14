@@ -101,6 +101,15 @@ class LSPMessageTrackerFactory
             {
                 this.delegateMc.consume(message);
             }
+            catch (Exception e)
+            {
+                if (this.originalMc instanceof StreamMessageConsumer)
+                {
+                    LSPMessageTrackerFactory.this.phaser.arriveAndDeregister();
+                }
+                e.printStackTrace();
+                throw e;
+            }
             finally
             {
                 // receiving a message, then arrive at phaser

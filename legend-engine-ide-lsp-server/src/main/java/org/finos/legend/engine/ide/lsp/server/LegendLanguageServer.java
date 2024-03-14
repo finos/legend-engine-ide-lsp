@@ -18,6 +18,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -25,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -53,6 +55,7 @@ import org.eclipse.lsp4j.SemanticTokenTypes;
 import org.eclipse.lsp4j.SemanticTokensLegend;
 import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
+import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.WorkDoneProgressBegin;
 import org.eclipse.lsp4j.WorkDoneProgressEnd;
@@ -68,7 +71,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
-import org.eclipse.lsp4j.services.LanguageClientAware;
 import org.eclipse.lsp4j.services.LanguageServer;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
@@ -77,18 +79,18 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * {@link LanguageServer} implementation for Legend.
  */
-public class LegendLanguageServer implements LanguageServer, LanguageClientAware
+public class LegendLanguageServer implements LegendLanguageServerContract
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageServer.class);
     private static final Logger LOGGER_CLIENT = LoggerFactory.getLogger(LegendLanguageServer.class.getName() + ".client");
 
-    static final String LEGEND_COMMAND_ID = "legend.command";
     static final String LEGEND_CLIENT_COMMAND_ID = "legend.client.command";
 
     private static final int UNINITIALIZED = 0;
@@ -97,8 +99,10 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     private static final int SHUTTING_DOWN = 3;
     private static final int SHUT_DOWN = 4;
 
+    private static final Properties VERSIONS = loadVersions();
     private final LegendTextDocumentService textDocumentService;
     private final LegendWorkspaceService workspaceService;
+    private final LegendLanguageService legendLanguageService;
     private final AtomicReference<LanguageClient> languageClient = new AtomicReference<>(null);
     private final AtomicInteger state = new AtomicInteger(UNINITIALIZED);
     private final ClasspathFactory classpathFactory;
@@ -114,6 +118,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     {
         this.textDocumentService = new LegendTextDocumentService(this);
         this.workspaceService = new LegendWorkspaceService(this);
+        this.legendLanguageService = new LegendLanguageService(this);
         this.extensionGuard = new ExtensionsGuard(this, grammars);
         this.async = async;
         this.executor = executor;
@@ -131,7 +136,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
             throw newResponseErrorException(ResponseErrorCode.RequestFailed, message);
         }
 
-        LOGGER.info("Initializing server");
+        LOGGER.info("Initializing server (versions {})", VERSIONS);
         LOGGER.debug("Initialize params: {}", initializeParams);
         if (!this.state.compareAndSet(UNINITIALIZED, INITIALIZING))
         {
@@ -144,7 +149,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         logInfoToClient("Initializing server");
         List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
 
-        InitializeResult result = new InitializeResult(getServerCapabilities());
+        InitializeResult result = new InitializeResult(getServerCapabilities(), new ServerInfo("Legend Language Server", VERSIONS.getProperty("project.version", "-1")));
         CompletableFuture<InitializeResult> completableFuture = CompletableFuture.completedFuture(result);
         CompletableFuture<InitializeResult> initFuture = completableFuture;
 
@@ -290,6 +295,12 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     }
 
     @Override
+    public LegendLanguageServiceContract getLegendLanguageService()
+    {
+        return this.legendLanguageService;
+    }
+
+    @Override
     public void connect(LanguageClient languageClient)
     {
         checkNotShutDown();
@@ -411,10 +422,10 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return this.supplyPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(supplier));
     }
 
-    CompletableFuture<?> runPossiblyAsync(Runnable runnable)
+    void runPossiblyAsync(Runnable runnable)
     {
         checkReady();
-        return this.runPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(runnable));
+        this.runPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(runnable));
     }
 
     private CompletableFuture<?> runPossiblyAsync_internal(Runnable work)
@@ -632,7 +643,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         return Either.forRight(this.progressId.getAndIncrement());
     }
 
-    Either<String, Integer> possiblyNewProgressToken(Either<String, Integer> token)
+    public Either<String, Integer> possiblyNewProgressToken(Either<String, Integer> token)
     {
         return (token == null) ? newProgressToken() : token;
     }
@@ -642,9 +653,9 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         notifyBegin(token, null);
     }
 
-    void notifyBegin(Either<String, Integer> token, String message)
+    public void notifyBegin(Either<String, Integer> token, String message)
     {
-        notifyBegin(token, message, null);
+        notifyBegin(token, message, message);
     }
 
     void notifyBegin(Either<String, Integer> token, String message, String title)
@@ -661,7 +672,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         notifyProgress(token, begin);
     }
 
-    void notifyProgress(Either<String, Integer> token, String message)
+    public void notifyProgress(Either<String, Integer> token, String message)
     {
         WorkDoneProgressReport report = new WorkDoneProgressReport();
         if (message != null)
@@ -732,7 +743,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
     }
 
     @SuppressWarnings("unchecked")
-    <K, V> Map<K, V> extractValueAsMap(Object value, Class<K> keyType, Class<V> valueType)
+    public <K, V> Map<K, V> extractValueAsMap(Object value, Class<K> keyType, Class<V> valueType)
     {
         if (value == null)
         {
@@ -858,7 +869,7 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
 
     private ExecuteCommandOptions getExecuteCommandOptions()
     {
-        ExecuteCommandOptions options = new ExecuteCommandOptions(Collections.singletonList(LEGEND_COMMAND_ID));
+        ExecuteCommandOptions options = new ExecuteCommandOptions(this.workspaceService.getCommandIds());
         options.setWorkDoneProgress(true);
         return options;
     }
@@ -1056,5 +1067,24 @@ public class LegendLanguageServer implements LanguageServer, LanguageClientAware
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
         LOGGER.debug("Server launched");
+    }
+
+    private static Properties loadVersions()
+    {
+        Properties properties = new Properties();
+
+        try (InputStream stream = LegendLanguageServer.class.getClassLoader().getResourceAsStream("versions.properties"))
+        {
+            if (stream != null)
+            {
+                properties.load(stream);
+                return properties;
+            }
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Unable to load versions", e);
+        }
+        return properties;
     }
 }

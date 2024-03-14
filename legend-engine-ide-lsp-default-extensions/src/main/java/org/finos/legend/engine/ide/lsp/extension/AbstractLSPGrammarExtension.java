@@ -31,6 +31,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -41,12 +42,12 @@ import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendClientCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendClientCommand;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
@@ -69,6 +70,7 @@ import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.test.AtomicTest;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.AssertFail;
 import org.finos.legend.engine.protocol.pure.v1.model.test.assertion.status.AssertPass;
@@ -88,18 +90,18 @@ import org.finos.legend.engine.testable.model.UniqueTestId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
+public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractLSPGrammarExtension.class);
 
-    private static final String RUN_TESTS_COMMAND_ID = "legend.testable.runTests";
+    public static final String RUN_TESTS_COMMAND_ID = "legend.testable.runTests";
     private static final String RUN_TESTS_COMMAND_TITLE = "Run tests";
 
     private static final String RUN_TEST_SUITE_COMMAND_ID = "legend.testable.runTestSuite";
-    private static final String RUN_TEST_SUITE_COMMAND_TITLE = "Run test suite";
+    public static final String RUN_TEST_SUITE_COMMAND_TITLE = "Run test suite";
     private static final String TEST_SUITE_ID = "legend.testable.testSuiteId";
 
-    private static final String RUN_TEST_COMMAND_ID = "legend.testable.runTest";
+    public static final String RUN_TEST_COMMAND_ID = "legend.testable.runTest";
     private static final String RUN_TEST_COMMAND_TITLE = "Run test";
     private static final String TEST_ID = "legend.testable.testId";
 
@@ -238,8 +240,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
-        String classifier = getClassifier(element);
-        if ((classifier != null) && this.testableRunners.containsKey(classifier) && !getTestSuites(element).isEmpty())
+        if (this.isTestable(element))
         {
             List<? extends TestSuite> testSuites = getTestSuites(element);
             if (!testSuites.isEmpty())
@@ -254,6 +255,12 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
+    private boolean isTestable(PackageableElement element)
+    {
+        String classifier = this.getClassifier(element);
+        return classifier != null && this.testableRunners.containsKey(classifier);
+    }
+
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
@@ -263,32 +270,36 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
+        ParseResult parseResult = getParseResult(section);
+        PackageableElement element = parseResult.getElement(entityPath);
+
+        if (element == null)
+        {
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find " + entityPath, null));
+        }
+
+        TextLocation location = SourceInformationUtil.toLocation(element.sourceInformation);
+
         switch (commandId)
         {
             case RUN_TESTS_COMMAND_ID:
             {
-                return runTests(section, entityPath, Collections.emptyList());
+                return runTests(section, element, Collections.emptyList());
             }
             case RUN_TEST_SUITE_COMMAND_ID:
             {
                 String testSuiteId = executableArgs.get(TEST_SUITE_ID);
                 if (testSuiteId == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite id to run tests for " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite id to run tests for " + entityPath, location));
                 }
 
-                ParseResult parseResult = getParseResult(section);
-                PackageableElement element = parseResult.getElement(entityPath);
-                if (element == null)
-                {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find " + entityPath));
-                }
                 TestSuite testSuite = Iterate.detect(getTestSuites(element), ts -> testSuiteId.equals(ts.id));
                 if (testSuite == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite " + testSuiteId + " for " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite " + testSuiteId + " for " + entityPath, location));
                 }
-                return runTests(section, entityPath, ListIterate.collect(testSuite.tests, test -> newTestId(testSuiteId, test.id)));
+                return runTests(section, element, ListIterate.collect(testSuite.tests, test -> newTestId(testSuiteId, test.id)));
             }
             case RUN_TEST_COMMAND_ID:
             {
@@ -296,13 +307,13 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 String testId = executableArgs.get(TEST_ID);
                 if (testSuiteId == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite id to run test for " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test suite id to run test for " + entityPath, location));
                 }
                 if (testId == null)
                 {
-                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test id to run test for " + entityPath));
+                    return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find test id to run test for " + entityPath, location));
                 }
-                return runTests(section, entityPath, Collections.singletonList(newTestId(testSuiteId, testId)));
+                return runTests(section, element, Collections.singletonList(newTestId(testSuiteId, testId)));
             }
             default:
             {
@@ -312,14 +323,19 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
-    protected LegendExecutionResult errorResult(Throwable t, String entityPath)
+    public LegendExecutionResult errorResult(Throwable t, String entityPath)
     {
-        return errorResult(t, null, entityPath);
+        return errorResult(t, null, entityPath, (t instanceof EngineException) ? SourceInformationUtil.toLocation(((EngineException) t).getSourceInformation()) : null);
     }
 
-    protected LegendExecutionResult errorResult(Throwable t, String message, String entityPath)
+    protected LegendExecutionResult errorResult(Throwable t, String entityPath, TextLocation location)
     {
-        return LegendExecutionResult.errorResult(t, message, entityPath);
+        return errorResult(t, null, entityPath, location);
+    }
+
+    protected LegendExecutionResult errorResult(Throwable t, String message, String entityPath, TextLocation location)
+    {
+        return LegendExecutionResult.errorResult(t, message, entityPath, location);
     }
 
     private UniqueTestId newTestId(String testSuiteId, String atomicTestId)
@@ -330,16 +346,18 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         return testId;
     }
 
-    private Iterable<? extends LegendExecutionResult> runTests(SectionState section, String entityPath, List<UniqueTestId> unitTestIds)
+    private List<? extends LegendExecutionResult> runTests(SectionState section, PackageableElement element, List<UniqueTestId> unitTestIds)
     {
+        String entityPath = element.getPath();
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, SourceInformationUtil.toLocation(element.sourceInformation)));
         }
 
         try
         {
+            List<? extends TestSuite> suites = this.getTestSuites(element);
             TestableRunner runner = new TestableRunner();
             RunTestsTestableInput runTestsTestableInput = new RunTestsTestableInput();
             runTestsTestableInput.testable = entityPath;
@@ -348,11 +366,15 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
             MutableList<LegendExecutionResult> results = Lists.mutable.empty();
             testsResult.results.forEach(res ->
             {
+                TestSuite testSuite = Iterate.detect(suites, ts -> res.testSuiteId.equals(ts.id));
+                AtomicTest test = Iterate.detect(testSuite.tests, at -> res.atomicTestId.equals(at.id));
+                TextLocation location = SourceInformationUtil.toLocation(test.sourceInformation);
+
                 if (res instanceof TestError)
                 {
                     TestError testError = (TestError) res;
                     StringBuilder builder = appendTestId(testError).append(": ERROR\n").append(testError.error);
-                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId), Type.ERROR, builder.toString()));
+                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId), Type.ERROR, builder.toString(), location));
                 }
                 else if (res instanceof TestExecuted)
                 {
@@ -362,7 +384,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                     {
                         if (assertStatus instanceof AssertPass)
                         {
-                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.SUCCESS, messagePrefix + "." + assertStatus.id + ": PASS"));
+                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.SUCCESS, messagePrefix + "." + assertStatus.id + ": PASS", location));
                         }
                         else if (assertStatus instanceof AssertFail)
                         {
@@ -373,13 +395,13 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                                 builder.append("\nexpected: ").append(fail.expected);
                                 builder.append("\nactual:   ").append(fail.actual);
                             }
-                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.FAILURE, builder.toString()));
+                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.FAILURE, builder.toString(), location));
                         }
                         else
                         {
                             String message = appendTestId(res).append(": WARNING\nUnknown assert status: ").append(assertStatus.getClass().getName()).toString();
                             LOGGER.warn(message);
-                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.WARNING, message));
+                            results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId, assertStatus.id), Type.WARNING, message, location));
                         }
                     });
                 }
@@ -387,14 +409,14 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
                 {
                     String message = "Unknown test result type: " + res.getClass().getName();
                     LOGGER.warn(message);
-                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId), Type.WARNING, message));
+                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, res.testSuiteId, res.atomicTestId), Type.WARNING, message, location));
                 }
             });
             return results;
         }
         catch (Exception e)
         {
-            return Collections.singletonList(errorResult(e, entityPath));
+            return Collections.singletonList(errorResult(e, entityPath, SourceInformationUtil.toLocation(element.sourceInformation)));
         }
     }
 
@@ -449,7 +471,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
 
     protected abstract void parse(SectionSourceCode section, Consumer<PackageableElement> elementConsumer, PureGrammarParserContext pureGrammarParserContext);
 
-    protected CompileResult getCompileResult(SectionState sectionState)
+    public CompileResult getCompileResult(SectionState sectionState)
     {
         DocumentState documentState = sectionState.getDocumentState();
         GlobalState globalState = documentState.getGlobalState();
@@ -463,7 +485,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         try
         {
             pureModelContextData = buildPureModelContextData(globalState);
-            PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, Collections.emptyList());
+            PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, "");
             globalState.logInfo("Compilation completed successfully");
             return new CompileResult(pureModel, pureModelContextData);
         }
@@ -616,6 +638,26 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
     protected List<? extends TestSuite> getTestSuites(PackageableElement element)
     {
         return Lists.fixedSize.empty();
+    }
+
+    @Override
+    public Stream<? extends LegendExecutionResult> executeAllTestCases(SectionState section)
+    {
+        return this.getParseResult(section)
+                .getElements()
+                .stream()
+                .flatMap(x ->
+                        {
+                            if (this.isTestable(x) && !this.getTestSuites(x).isEmpty())
+                            {
+                                return this.runTests(section, x, Collections.emptyList()).stream();
+                            }
+                            else
+                            {
+                                return Stream.empty();
+                            }
+                        }
+                );
     }
 
     protected void forEachChild(PackageableElement element, Consumer<LegendDeclaration> consumer)
@@ -815,7 +857,7 @@ abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
-    protected static class CompileResult extends Result<PureModel>
+    public static class CompileResult extends Result<PureModel>
     {
         private final PureModelContextData pureModelContextData;
 

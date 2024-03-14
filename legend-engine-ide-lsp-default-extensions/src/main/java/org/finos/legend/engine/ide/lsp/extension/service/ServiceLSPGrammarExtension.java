@@ -38,12 +38,14 @@ import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
+import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
@@ -146,6 +148,20 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
+    public Stream<? extends LegendExecutionResult> executeAllTestCases(SectionState section)
+    {
+        Stream<? extends LegendExecutionResult> superResults = super.executeAllTestCases(section);
+        Stream<? extends LegendExecutionResult> legacyResults = this.getParseResult(section)
+                .getElements()
+                .stream()
+                .filter(Service.class::isInstance)
+                .map(Service.class::cast)
+                .filter(x -> x.test != null)
+                .flatMap(x -> this.runLegacyServiceTest(section, x.getPath()).stream());
+        return Stream.concat(superResults, legacyResults);
+    }
+
+    @Override
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
         super.collectCommands(sectionState, element, consumer);
@@ -183,23 +199,24 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
     }
 
-    private Iterable<? extends LegendExecutionResult> runLegacyServiceTest(SectionState section, String entityPath)
+    private List<? extends LegendExecutionResult> runLegacyServiceTest(SectionState section, String entityPath)
     {
         PackageableElement element = getParseResult(section).getElement(entityPath);
         if (!(element instanceof Service))
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find service " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find service " + entityPath, null));
         }
         Service service = (Service) element;
+        TextLocation location = SourceInformationUtil.toLocation(service.sourceInformation);
         if (service.test == null)
         {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find legacy test for service " + entityPath));
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find legacy test for service " + entityPath, location));
         }
 
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, location));
         }
 
         PureModel pureModel = compileResult.getPureModel();
@@ -214,7 +231,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
         catch (Exception e)
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
+            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, location));
         }
 
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
@@ -235,7 +252,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                             e.printStackTrace(pw);
                         }
                     }
-                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, result.name()), toResultType(result), writer.toString()));
+                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, result.name()), toResultType(result), writer.toString(), location));
                 });
             }
         });
@@ -269,6 +286,8 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     {
         try
         {
+            Service service = (Service) getParseResult(section).getElement(entityPath);
+            TextLocation location = SourceInformationUtil.toLocation(service.sourceInformation);
             Protocol serializer = new Protocol("pure", PureClientVersions.production);
             PureModelContextPointer origin = new PureModelContextPointer();
             origin.serializer = serializer;
@@ -287,12 +306,12 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                 JsonMapper mapper = getResultMapper();
                 JsonNode node = mapper.readTree(response);
                 String formatted = mapper.writeValueAsString(node);
-                return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, formatted));
+                return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, formatted, location));
             }
             catch (Exception ignore)
             {
                 // Couldn't format as JSON
-                return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, response));
+                return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.SUCCESS, response, location));
             }
         }
         catch (Exception e)

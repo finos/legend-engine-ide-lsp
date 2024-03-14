@@ -26,14 +26,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.HashMap;
-import java.util.stream.Collectors;
-
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -41,18 +39,11 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
-import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestHandler;
-import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestLambdaBuilder;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
-import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;
-import org.finos.legend.engine.ide.lsp.extension.agGrid.FunctionTDSRequest;
-import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
-import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
-import org.finos.legend.engine.ide.lsp.extension.agGrid.FilterOperation;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
@@ -62,7 +53,6 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
-import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainLexerGrammar;
@@ -92,14 +82,15 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Property;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.QualifiedProperty;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
+import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
+import org.finos.legend.engine.shared.core.identity.factory.IdentityFactoryProvider;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.LambdaFunction;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
 import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
@@ -110,7 +101,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Extension for the Pure grammar.
  */
-public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension implements LegendTDSRequestHandler
+public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
 
@@ -144,8 +135,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                     "   attributeName: attributeType [attributeMultiplicity];\n" +
                     "}\n");
 
-    private static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
-    private static final String EXEC_FUNCTION_WITH_PARAMETERS_ID = "legend.pure.executeFunctionWithParameters";
+    protected static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
+    protected static final String EXEC_FUNCTION_WITH_PARAMETERS_ID = "legend.pure.executeFunctionWithParameters";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
     private static final String EXEC_FUNCTION_RETURN_TYPE_ID = "legend.pure.executeFunction.returnType";
 
@@ -202,15 +193,15 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
     }
 
-    private static class  FunctionLegendExecutionResult extends LegendExecutionResult
+    public static class FunctionLegendExecutionResult extends LegendExecutionResult
     {
         private final String uri;
         private final int sectionNum;
         private final Map<String, Object> inputParameters;
 
-        private FunctionLegendExecutionResult(List<String> ids, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters)
+        public FunctionLegendExecutionResult(List<String> ids, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters)
         {
-            super(ids, type, message, logMessage);
+            super(ids, type, message, logMessage, null);
             this.uri = uri;
             this.sectionNum = sectionNum;
             this.inputParameters = inputParameters;
@@ -236,42 +227,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             return new FunctionLegendExecutionResult(Collections.singletonList(id), type, message, logMessage, uri, sectionNum, inputParameters);
         }
     }
-
-    @Override
-    public LegendExecutionResult executeLegendTDSRequest(SectionState section, FunctionTDSRequest request)
-    {
-        CompileResult compileResult = getCompileResult(section);
-        String entityPath = request.getEntity();
-        if (compileResult.hasException())
-        {
-            return errorResult(compileResult.getException(), entityPath);
-        }
-        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        PureModel pureModel = compileResult.getPureModel();
-        Function function = (Function) compileResult.getPureModelContextData().getElements().stream().filter(e -> e.getPath().equals(entityPath)).collect(Collectors.toList()).get(0);
-        try
-        {
-            TDSGroupBy groupBy = request.getRequest().getGroupBy();
-            for (int index = 0; index < groupBy.getGroupKeys().size(); index++)
-            {
-                Filter groupFilter = new Filter(groupBy.getColumns().get(index), ColumnType.String, FilterOperation.EQUALS, groupBy.getGroupKeys().get(index));
-                request.getRequest().getFilter().add(groupFilter);
-            }
-            List<ValueSpecification> expressions = LegendTDSRequestLambdaBuilder.buildLambdaExpressions(function.body.get(0), request.getRequest());
-
-            LambdaFunction<?> queryLambda =  HelperValueSpecificationBuilder.buildLambda(expressions, function.parameters, pureModel.getContext());
-            MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
-            MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-            SingleExecutionPlan executionPlan = PlanGenerator.generateExecutionPlan(queryLambda, null, null, null, pureModel, null, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
-            executePlan(section, executionPlan, entityPath, request.getInputParameters(), results);
-        }
-        catch (Exception e)
-        {
-            results.add(errorResult(e, entityPath));
-        }
-        return results.get(0);
-    }
-
 
     private static class LegendFunctionInputParameter extends LegendInputParamter
     {
@@ -346,6 +301,17 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
     }
 
+    @Override
+    protected List<? extends TestSuite> getTestSuites(PackageableElement element)
+    {
+        if (element instanceof Function)
+        {
+            List<FunctionTestSuite> testSuites = ((Function) element).tests;
+            return (testSuites == null) ? Lists.fixedSize.empty() : testSuites;
+        }
+        return super.getTestSuites(element);
+    }
+
     private LegendDeclaration getDeclaration(Property property)
     {
         if (!isValidSourceInfo(property.sourceInformation))
@@ -403,7 +369,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 .build();
     }
 
-    private void executePlan(SectionState section, SingleExecutionPlan executionPlan, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
+    void executePlan(SectionState section, SingleExecutionPlan executionPlan, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
     {
         try
         {
@@ -423,7 +389,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
                 MutableMap<String, org.finos.legend.engine.plan.execution.result.Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
-                collectResults(entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Lists.mutable.empty()), section, inputParameters, results::add);
+                collectResults(entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", IdentityFactoryProvider.getInstance().getAnonymousIdentity()), section, inputParameters, results::add);
             }
         }
         catch (Exception e)

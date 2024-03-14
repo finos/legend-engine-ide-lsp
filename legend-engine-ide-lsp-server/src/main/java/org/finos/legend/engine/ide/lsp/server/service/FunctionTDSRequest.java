@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-package org.finos.legend.engine.ide.lsp.extension.agGrid;
+package org.finos.legend.engine.ide.lsp.server.service;
 
+import com.google.gson.annotations.JsonAdapter;
 import java.util.Map;
 import java.util.Objects;
+import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
+import org.finos.legend.engine.ide.lsp.server.gson.LegendTypeAdapterFactory;
 
 public class FunctionTDSRequest
 {
     private final String uri;
     private final int sectionNum;
     private final String entity;
+    @JsonAdapter(LegendTypeAdapterFactory.class)
     private TDSRequest request;
     private Map<String, Object> inputParameters;
 

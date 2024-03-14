@@ -22,6 +22,7 @@ import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.MessageActionItem;
 import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.PublishDiagnosticsParams;
 import org.eclipse.lsp4j.ShowMessageRequestParams;
 import org.eclipse.lsp4j.services.LanguageClient;
@@ -100,5 +101,11 @@ public class DummyLanguageClient implements LanguageClient
     {
         clientLog.add("refreshDiagnostics");
         return CompletableFuture.completedFuture(null);
+    }
+
+    @Override
+    public void notifyProgress(ProgressParams params)
+    {
+        clientLog.add("notifyProgress");
     }
 }

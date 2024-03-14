@@ -39,7 +39,7 @@ public class TestDefaultExtensions
     {
         MutableList<LegendLSPFeature> extensions = Lists.mutable.withAll(ServiceLoader.load(LegendLSPFeature.class));
         Assertions.assertEquals(
-                Sets.mutable.with("Handles Legend SDLC features"),
+                Sets.mutable.with("Handles Legend SDLC features", "Legend TDS Request Handler"),
                 extensions.collect(LegendLSPFeature::description, Sets.mutable.empty())
         );
     }
