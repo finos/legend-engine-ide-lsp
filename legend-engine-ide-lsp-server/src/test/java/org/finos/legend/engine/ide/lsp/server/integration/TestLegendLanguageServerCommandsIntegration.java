@@ -17,15 +17,19 @@
 package org.finos.legend.engine.ide.lsp.server.integration;
 
 import com.google.gson.reflect.TypeToken;
+import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.eclipse.lsp4j.CodeLens;
+import org.eclipse.lsp4j.CodeLensParams;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.finos.legend.engine.ide.lsp.commands.RunAllTestCasesCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -37,8 +41,7 @@ public class TestLegendLanguageServerCommandsIntegration
     @RegisterExtension
     static LegendLanguageServerIntegrationExtension extension = new LegendLanguageServerIntegrationExtension();
 
-    @BeforeAll
-    static void beforeAll() throws Exception
+    void workspaceForRunningAllTestCommand() throws Exception
     {
         String code1 = "function model::Hello(name: String[1]): String[1]\n" +
                 "{\n" +
@@ -209,6 +212,7 @@ public class TestLegendLanguageServerCommandsIntegration
     @Test
     void runAllTestCommand() throws Exception
     {
+        this.workspaceForRunningAllTestCommand();
         List<LegendExecutionResult> legendExecutionResults = extension.futureGet(extension.getServer().getWorkspaceService().executeCommand(new ExecuteCommandParams(RunAllTestCasesCommandExecutionHandler.RUN_ALL_TESTS_COMMAND, List.of())), new TypeToken<List<LegendExecutionResult>>()
         {
         });
@@ -223,5 +227,54 @@ public class TestLegendLanguageServerCommandsIntegration
         );
 
         Assertions.assertEquals(expected, resultMap);
+    }
+
+    @Test
+    void codeLensCommandsFunctionActivator() throws Exception
+    {
+        String code1 = "###Pure\n" +
+                "function model::Hello(name: String[1]): String[1]\n" +
+                "{\n" +
+                "  'Hello World! My name is ' + $name + '.';\n" +
+                "}\n" +
+                "{\n" +
+                "  testSuite_1\n" +
+                "  (\n" +
+                "    testPass | Hello('John') => 'Hello World! My name is John.';\n" +
+                "  )\n" +
+                "}\n";
+
+        String code2 = "###Snowflake\n" +
+                "SnowflakeApp app::pack::MyApp\n" +
+                "{" +
+                "   applicationName : 'name';\n" +
+                "   function : model::Hello(String[1]):String[1];\n" +
+                "   ownership : Deployment { identifier: 'MyAppOwnership'};\n" +
+                "}\n";
+
+        extension.addToWorkspace("file1.pure", code1);
+        Path path = extension.addToWorkspace("file2.pure", code2);
+        extension.assertWorkspaceParseAndCompiles();
+
+        String file = path.toUri().toString();
+        List<? extends CodeLens> codeLensWithoutServer = extension.futureGet(extension.getServer().getTextDocumentService().codeLens(new CodeLensParams(new TextDocumentIdentifier(file))));
+
+        Assertions.assertTrue(codeLensWithoutServer.isEmpty(), "Expect empty, got: " + codeLensWithoutServer);
+
+        try
+        {
+            System.setProperty("legend.engine.server.url", "http://localhost/hello");
+            List<? extends CodeLens> codeLensWithServer = extension.futureGet(extension.getServer().getTextDocumentService().codeLens(new CodeLensParams(new TextDocumentIdentifier(file))));
+
+            codeLensWithServer.sort(Comparator.comparing(x -> x.getCommand().getTitle()));
+
+            Assertions.assertEquals(2, codeLensWithServer.size(), "Expect 2 code lends, got: " + codeLensWithoutServer);
+            Assertions.assertEquals("Publish to Sandbox", codeLensWithServer.get(0).getCommand().getTitle());
+            Assertions.assertEquals("Validate", codeLensWithServer.get(1).getCommand().getTitle());
+        }
+        finally
+        {
+            System.clearProperty("legend.engine.server.url");
+        }
     }
 }

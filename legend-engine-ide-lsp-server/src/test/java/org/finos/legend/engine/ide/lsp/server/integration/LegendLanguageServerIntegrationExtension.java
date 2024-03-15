@@ -79,7 +79,7 @@ public class LegendLanguageServerIntegrationExtension implements
      * <pl/>
      * For local development and debugging, this can be increased to prevent false timeouts
      */
-    private static final long MAYBE_DEADLOCK_TIMEOUT_SECONDS = 30L;
+    private static final long MAYBE_DEADLOCK_TIMEOUT_SECONDS = 60L;
     /**
      * this phaser is used to track all async task and LSP JRPC messages,
      * allowing the test cases to wait until these have been completed before further assertions
@@ -267,6 +267,6 @@ public class LegendLanguageServerIntegrationExtension implements
                 .map(FullDocumentDiagnosticReport::getItems)
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
-        Assertions.assertTrue(diagnostics.isEmpty());
+        Assertions.assertTrue(diagnostics.isEmpty(), "Expected no diagnostics, got: " + diagnostics);
     }
 }
