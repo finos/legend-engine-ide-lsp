@@ -218,6 +218,11 @@
             <artifactId>legend-engine-repl-client</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-functionActivator-protocol</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- LEGEND ENGINE -->
 
         <dependency>

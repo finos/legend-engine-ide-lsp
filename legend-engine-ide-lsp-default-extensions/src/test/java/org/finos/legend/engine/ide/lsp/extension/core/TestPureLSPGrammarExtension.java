@@ -26,8 +26,8 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
-import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
+import org.finos.legend.engine.ide.lsp.extension.TestableCommandsSupport;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
@@ -399,11 +399,11 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         // todo missing the run test suite as source info is wrong on engine: https://github.com/finos/legend-engine/pull/2693
 
         Assertions.assertEquals(PureLSPGrammarExtension.EXEC_FUNCTION_WITH_PARAMETERS_ID, commands.get(0).getId());
-        Assertions.assertEquals(AbstractLSPGrammarExtension.RUN_TEST_COMMAND_ID, commands.get(1).getId());
+        Assertions.assertEquals(TestableCommandsSupport.RUN_TEST_COMMAND_ID, commands.get(1).getId());
         Assertions.assertEquals(TextInterval.newInterval(7, 4, 7, 63), commands.get(1).getLocation().getTextInterval());
-        Assertions.assertEquals(AbstractLSPGrammarExtension.RUN_TEST_COMMAND_ID, commands.get(2).getId());
+        Assertions.assertEquals(TestableCommandsSupport.RUN_TEST_COMMAND_ID, commands.get(2).getId());
         Assertions.assertEquals(TextInterval.newInterval(8, 4, 8, 64), commands.get(2).getLocation().getTextInterval());
-        Assertions.assertEquals(AbstractLSPGrammarExtension.RUN_TESTS_COMMAND_ID, commands.get(3).getId());
+        Assertions.assertEquals(TestableCommandsSupport.RUN_TESTS_COMMAND_ID, commands.get(3).getId());
         Assertions.assertEquals(TextInterval.newInterval(0, 0, 10, 0), commands.get(3).getLocation().getTextInterval());
     }
 

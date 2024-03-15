@@ -267,6 +267,6 @@ public class LegendLanguageServerIntegrationExtension implements
                 .map(FullDocumentDiagnosticReport::getItems)
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
-        Assertions.assertTrue(diagnostics.isEmpty());
+        Assertions.assertTrue(diagnostics.isEmpty(), "Expected no diagnostics, got: " + diagnostics);
     }
 }
