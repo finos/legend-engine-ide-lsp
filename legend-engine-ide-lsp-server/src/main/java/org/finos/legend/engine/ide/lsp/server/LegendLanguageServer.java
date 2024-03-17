@@ -78,6 +78,7 @@ import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
+import org.finos.legend.engine.ide.lsp.extension.LegendMessageTracer;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
@@ -113,9 +114,11 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new Gson();
     private final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
+    private final LegendMessageTracerHandler traceHandler;
 
-    private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars)
+    private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, LegendMessageTracerHandler traceHandler)
     {
+        this.traceHandler = traceHandler;
         this.textDocumentService = new LegendTextDocumentService(this);
         this.workspaceService = new LegendWorkspaceService(this);
         this.legendLanguageService = new LegendLanguageService(this);
@@ -233,6 +236,16 @@ public class LegendLanguageServer implements LegendLanguageServerContract
 
         return this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
+                .thenRun(this.extensionGuard.wrapOnClasspath(() ->
+                {
+                    if (this.traceHandler != null)
+                    {
+                        List<? extends LegendMessageTracer> tracers = this.getGlobalState()
+                                .findFeatureThatImplements(LegendMessageTracer.class)
+                                .collect(Collectors.toList());
+                        this.traceHandler.initialize(tracers);
+                    }
+                }))
                 .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
                 // trigger compilation
                 .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::getLegendDiagnostics)))
@@ -954,6 +967,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         private Executor executor;
         private ClasspathFactory classpathFactory = new EmbeddedClasspathFactory();
         private final LegendLSPGrammarLibrary.Builder grammars = LegendLSPGrammarLibrary.builder();
+        private LegendMessageTracerHandler traceHandler;
 
         private Builder()
         {
@@ -1047,9 +1061,14 @@ public class LegendLanguageServer implements LegendLanguageServerContract
          */
         public LegendLanguageServer build()
         {
-            return new LegendLanguageServer(this.async, this.executor, this.classpathFactory, this.grammars.build());
+            return new LegendLanguageServer(this.async, this.executor, this.classpathFactory, this.grammars.build(), this.traceHandler);
         }
 
+        public Builder messageTracer(LegendMessageTracerHandler legendMessageTracerHandler)
+        {
+            this.traceHandler = legendMessageTracerHandler;
+            return this;
+        }
     }
 
     /**
@@ -1060,10 +1079,12 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     public static void main(String[] args)
     {
         LOGGER.info("Launching server");
+        LegendMessageTracerHandler legendMessageTracerHandler = new LegendMessageTracerHandler();
         LegendLanguageServer server = LegendLanguageServer.builder()
                 .classpathFromMaven(new File(args[0]))
+                .messageTracer(legendMessageTracerHandler)
                 .build();
-        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
+        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out, null, legendMessageTracerHandler::wrap);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
         LOGGER.debug("Server launched");

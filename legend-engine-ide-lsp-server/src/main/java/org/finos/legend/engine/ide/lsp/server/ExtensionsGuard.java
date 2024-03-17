@@ -76,7 +76,7 @@ class ExtensionsGuard
             this.grammars = LegendLSPGrammarLibrary.builder().withExtensions(this.providedGrammarExtensions).withExtensions(grammars).build();
             this.features = Collections.unmodifiableList(features);
             this.server.logInfoToClient("Grammar extensions available: " + String.join(", ", this.grammars.getExtensionNames()));
-            this.server.logInfoToClient("Feature extensions available: " + String.join(", ", this.features.stream().map(LegendLSPFeature::description).collect(Collectors.joining())));
+            this.server.logInfoToClient("Feature extensions available: " + this.features.stream().map(LegendLSPFeature::description).collect(Collectors.joining(", ")));
 
             this.classLoader = classLoader;
         }
