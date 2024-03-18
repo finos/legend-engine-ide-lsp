@@ -307,11 +307,37 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         completions.forEach(completion -> actualCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedCompletions, actualCompletions);
 
-        Set<String> expectedNoCompletions = new HashSet<>();
+        Set<String> expectedNoCompletions = Set.of();
         Set<String> actualNoCompletions = new HashSet<>();
         Iterable<? extends LegendCompletion> noCompletions = this.extension.getCompletions(sectionStates.get(2), TextPosition.newPosition(2, 38));
         noCompletions.forEach(completion -> actualNoCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedNoCompletions, actualNoCompletions);
+    }
+
+    @Test
+    public void testAutoCompletionEmptyFunctionBody()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::TestClass",
+                "###Pure\n" +
+                "Class vscodelsp::test::TestClass\n" +
+                "{\n" +
+                "   name: String[1];\n" +
+                "   other: Integer[1];\n" +
+                "}");
+
+        codeFiles.put("vscodelsp::test::TestFunction1",
+                "###Pure\n" +
+                "function vscodelsp::test::func1(): Any[*] {\n" +
+                " \n" +
+                "}");
+
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        Set<String> expectedCompletions = Set.of();
+        Set<String> actualCompletions = new HashSet<>();
+        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 1));
+        completions.forEach(completion -> actualCompletions.add(completion.getDescription()));
+        Assertions.assertEquals(expectedCompletions, actualCompletions);
     }
 
     @Test
