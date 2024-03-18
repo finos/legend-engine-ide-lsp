@@ -523,30 +523,38 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
     private CompletionResult getFunctionAutocompletion(SectionState section, TextPosition location)
     {
-        SectionSourceCode sectionSourceCode = toSectionSourceCode(section);
-        CharStream input = CharStreams.fromString(sectionSourceCode.code);
-        DomainLexerGrammar lexer = new DomainLexerGrammar(input);
-        lexer.removeErrorListeners();
-        DomainParserGrammar parser = new DomainParserGrammar(new CommonTokenStream(lexer));
-        parser.removeErrorListeners();
+        try
+        {
+            SectionSourceCode sectionSourceCode = toSectionSourceCode(section);
+            CharStream input = CharStreams.fromString(sectionSourceCode.code);
+            DomainLexerGrammar lexer = new DomainLexerGrammar(input);
+            lexer.removeErrorListeners();
+            DomainParserGrammar parser = new DomainParserGrammar(new CommonTokenStream(lexer));
+            parser.removeErrorListeners();
 
-        DomainParserGrammar.DefinitionContext definition = parser.definition();
-        return definition.getRuleContexts(DomainParserGrammar.ElementDefinitionContext.class)
-                .stream()
-                .filter(elemDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(elemDefCtx)).getTextInterval().includes(location))
-                .findAny()
-                .flatMap(elemDefCtx -> elemDefCtx.getRuleContexts(DomainParserGrammar.FunctionDefinitionContext.class)
-                        .stream()
-                        .filter(funcDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcDefCtx)).getTextInterval().includes(location))
-                        .findAny())
-                .map(funcCtx ->
-                {
-                    TextLocation codeBlockLocation = SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcCtx.codeBlock()));
-                    String functionExpression = section.getSection().getInterval(codeBlockLocation.getTextInterval().getStart().getLine(), codeBlockLocation.getTextInterval().getStart().getColumn(), location.getLine(), location.getColumn());
-                    PureModelContextData pureModelContextData = this.getCompileResult(section).getPureModelContextData();
-                    String buildCodeContext = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().build()).renderPureModelContextData(pureModelContextData);
-                    return new Completer(buildCodeContext).complete(functionExpression);
-                }).orElse(null);
+            DomainParserGrammar.DefinitionContext definition = parser.definition();
+            return definition.getRuleContexts(DomainParserGrammar.ElementDefinitionContext.class)
+                    .stream()
+                    .filter(elemDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(elemDefCtx)).getTextInterval().includes(location))
+                    .findAny()
+                    .flatMap(elemDefCtx -> elemDefCtx.getRuleContexts(DomainParserGrammar.FunctionDefinitionContext.class)
+                            .stream()
+                            .filter(funcDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcDefCtx)).getTextInterval().includes(location))
+                            .findAny())
+                    .map(funcCtx ->
+                    {
+                        TextLocation codeBlockLocation = SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcCtx.codeBlock()));
+                        String functionExpression = section.getSection().getInterval(codeBlockLocation.getTextInterval().getStart().getLine(), codeBlockLocation.getTextInterval().getStart().getColumn(), location.getLine(), location.getColumn());
+                        PureModelContextData pureModelContextData = this.getCompileResult(section).getPureModelContextData();
+                        String buildCodeContext = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().build()).renderPureModelContextData(pureModelContextData);
+                        return new Completer(buildCodeContext).complete(functionExpression);
+                    }).orElse(null);
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Error fetching autocompletion results", e);
+            return null;
+        }
     }
 
     private static class ExecutionRequest
