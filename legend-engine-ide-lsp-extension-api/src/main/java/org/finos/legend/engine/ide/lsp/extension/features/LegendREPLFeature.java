@@ -14,26 +14,11 @@
  * limitations under the License.
  */
 
-package org.finos.legend.engine.ide.lsp.server;
+package org.finos.legend.engine.ide.lsp.extension.features;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 
-public class InMemoryEventConsumer implements LegendUsageEventConsumer
+public interface LegendREPLFeature extends LegendLSPFeature
 {
-    public final List<LegendUsageEvent> events = Collections.synchronizedList(new ArrayList<>());
-
-    @Override
-    public String description()
-    {
-        return "in memory consumer";
-    }
-
-    @Override
-    public void consume(LegendUsageEvent event)
-    {
-        this.events.add(event);
-    }
+    void startREPL();
 }

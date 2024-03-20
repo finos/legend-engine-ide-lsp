@@ -106,6 +106,12 @@
             <version>${legend.engine.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-repl-relational</artifactId>
+            <version>${legend.engine.version}</version>
+        </dependency>
+
     </dependencies>
 
 </project>

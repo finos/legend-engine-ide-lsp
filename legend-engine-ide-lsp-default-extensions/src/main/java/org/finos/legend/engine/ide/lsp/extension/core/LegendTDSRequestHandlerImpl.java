@@ -24,7 +24,7 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestHandler;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendTDSRequestHandler;
 import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestLambdaBuilder;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;

@@ -26,4 +26,7 @@ public interface LegendLanguageServiceContract
 {
     @JsonRequest("TDSRequest")
     CompletableFuture<LegendExecutionResult> legendTDSRequest(FunctionTDSRequest rq);
+
+    @JsonRequest("replClasspath")
+    CompletableFuture<String> replClasspath();
 }
