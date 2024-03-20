@@ -218,11 +218,13 @@ public class LegendLanguageServer implements LegendLanguageServerContract
             finalMetadata.put("errorMessage", throwable.getMessage());
         }
 
+        LegendUsageEventConsumer.LegendUsageEvent event = LegendUsageEventConsumer.event(eventType, start, Instant.now(), finalMetadata);
+
         this.globalState.findFeatureThatImplements(LegendUsageEventConsumer.class).forEach(x ->
         {
             try
             {
-                x.consume(LegendUsageEventConsumer.event(eventType, start, Instant.now(), finalMetadata));
+                x.consume(event);
             }
             catch (Exception e)
             {
