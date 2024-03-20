@@ -16,19 +16,24 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.finos.legend.engine.ide.lsp.extension.LegendMessageTracer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import org.finos.legend.engine.ide.lsp.extension.LegendUsageEventConsumer;
 
-public class InMemoryMessageTracer implements LegendMessageTracer
+public class InMemoryEventConsumer implements LegendUsageEventConsumer
 {
+    public final List<LegendUsageEvent> events = Collections.synchronizedList(new ArrayList<>());
+
     @Override
     public String description()
     {
-        return "hello";
+        return "in memory consumer";
     }
 
     @Override
-    public void trace(TraceEvent event)
+    public void consume(LegendUsageEvent event)
     {
-        return;
+        this.events.add(event);
     }
 }

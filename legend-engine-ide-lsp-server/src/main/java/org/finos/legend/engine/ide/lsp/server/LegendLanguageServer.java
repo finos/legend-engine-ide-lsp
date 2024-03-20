@@ -19,6 +19,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.io.InputStream;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -78,7 +79,7 @@ import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
-import org.finos.legend.engine.ide.lsp.extension.LegendMessageTracer;
+import org.finos.legend.engine.ide.lsp.extension.LegendUsageEventConsumer;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
@@ -114,15 +115,13 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new Gson();
     private final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
-    private final LegendMessageTracerHandler traceHandler;
 
-    private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, LegendMessageTracerHandler traceHandler)
+    private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, Collection<LegendLSPFeature> features)
     {
-        this.traceHandler = traceHandler;
         this.textDocumentService = new LegendTextDocumentService(this);
         this.workspaceService = new LegendWorkspaceService(this);
         this.legendLanguageService = new LegendLanguageService(this);
-        this.extensionGuard = new ExtensionsGuard(this, grammars);
+        this.extensionGuard = new ExtensionsGuard(this, grammars, features);
         this.async = async;
         this.executor = executor;
         this.classpathFactory = Objects.requireNonNull(classpathFactory, "missing classpath factory");
@@ -190,6 +189,48 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         return initFuture;
     }
 
+    public <T> T runAndFireEvent(String eventType, Supplier<T> action)
+    {
+        Instant start = Instant.now();
+        Exception exception = null;
+        try
+        {
+            return action.get();
+        }
+        catch (Exception e)
+        {
+            exception = e;
+            throw e;
+        }
+        finally
+        {
+            this.fireEvent(eventType, start, Collections.emptyMap(), exception);
+        }
+    }
+
+    public void fireEvent(String eventType, Instant start, Map<String, Object> metadata, Throwable throwable)
+    {
+        JsonElement metadataAsTree = this.gson.toJsonTree(metadata);
+        Map<String, Object> finalMetadata = (Map<String, Object>) this.gson.fromJson(metadataAsTree, TypeToken.getParameterized(Map.class, String.class, Object.class));
+        if (throwable != null)
+        {
+            finalMetadata.put("error", true);
+            finalMetadata.put("errorMessage", throwable.getMessage());
+        }
+
+        this.globalState.findFeatureThatImplements(LegendUsageEventConsumer.class).forEach(x ->
+        {
+            try
+            {
+                x.consume(LegendUsageEventConsumer.event(eventType, start, Instant.now(), finalMetadata));
+            }
+            catch (Exception e)
+            {
+                LOGGER.error("Failed to dispatch consume on {}", x.description(), e);
+            }
+        });
+    }
+
     @Override
     public void initialized(InitializedParams params)
     {
@@ -232,20 +273,11 @@ public class LegendLanguageServer implements LegendLanguageServerContract
 
     private CompletableFuture<Void> initializeExtensions()
     {
+        Instant start = Instant.now();
         logInfoToClient("Initializing extensions");
 
         return this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
-                .thenRun(this.extensionGuard.wrapOnClasspath(() ->
-                {
-                    if (this.traceHandler != null)
-                    {
-                        List<? extends LegendMessageTracer> tracers = this.getGlobalState()
-                                .findFeatureThatImplements(LegendMessageTracer.class)
-                                .collect(Collectors.toList());
-                        this.traceHandler.initialize(tracers);
-                    }
-                }))
                 .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
                 // trigger compilation
                 .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::getLegendDiagnostics)))
@@ -257,7 +289,9 @@ public class LegendLanguageServer implements LegendLanguageServerContract
                     languageClient.refreshInlayHints();
                     languageClient.refreshInlineValues();
                     languageClient.refreshSemanticTokens();
-                }).exceptionally(x ->
+                })
+                .whenComplete((v, t) -> this.fireEvent("initialize", start, Collections.emptyMap(), t))
+                .exceptionally(x ->
                 {
                     LOGGER.error("Failed during post-initialization", x);
                     logErrorToClient("Failed during post-initialization: " + x.getMessage());
@@ -967,7 +1001,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         private Executor executor;
         private ClasspathFactory classpathFactory = new EmbeddedClasspathFactory();
         private final LegendLSPGrammarLibrary.Builder grammars = LegendLSPGrammarLibrary.builder();
-        private LegendMessageTracerHandler traceHandler;
+        private final Collection<LegendLSPFeature> features = new ArrayList<>();
 
         private Builder()
         {
@@ -1028,6 +1062,12 @@ public class LegendLanguageServer implements LegendLanguageServerContract
             return this;
         }
 
+        public Builder withFeature(LegendLSPFeature feature)
+        {
+            this.features.add(feature);
+            return this;
+        }
+
         /**
          * Add all the given grammar extensions to the builder.
          *
@@ -1061,14 +1101,9 @@ public class LegendLanguageServer implements LegendLanguageServerContract
          */
         public LegendLanguageServer build()
         {
-            return new LegendLanguageServer(this.async, this.executor, this.classpathFactory, this.grammars.build(), this.traceHandler);
+            return new LegendLanguageServer(this.async, this.executor, this.classpathFactory, this.grammars.build(), this.features);
         }
 
-        public Builder messageTracer(LegendMessageTracerHandler legendMessageTracerHandler)
-        {
-            this.traceHandler = legendMessageTracerHandler;
-            return this;
-        }
     }
 
     /**
@@ -1079,12 +1114,10 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     public static void main(String[] args)
     {
         LOGGER.info("Launching server");
-        LegendMessageTracerHandler legendMessageTracerHandler = new LegendMessageTracerHandler();
         LegendLanguageServer server = LegendLanguageServer.builder()
                 .classpathFromMaven(new File(args[0]))
-                .messageTracer(legendMessageTracerHandler)
                 .build();
-        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out, null, legendMessageTracerHandler::wrap);
+        Launcher<LanguageClient> launcher = LSPLauncher.createServerLauncher(server, System.in, System.out);
         server.connect(launcher.getRemoteProxy());
         launcher.startListening();
         LOGGER.debug("Server launched");

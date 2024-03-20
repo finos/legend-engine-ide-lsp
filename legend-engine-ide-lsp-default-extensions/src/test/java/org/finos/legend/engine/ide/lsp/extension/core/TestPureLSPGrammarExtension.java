@@ -420,17 +420,17 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         SectionState sectionState = newSectionState("docId", code);
         List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionState))
                 .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
-        Assertions.assertEquals(4, commands.size());
-
-        // todo missing the run test suite as source info is wrong on engine: https://github.com/finos/legend-engine/pull/2693
+        Assertions.assertEquals(5, commands.size());
 
         Assertions.assertEquals(PureLSPGrammarExtension.EXEC_FUNCTION_WITH_PARAMETERS_ID, commands.get(0).getId());
         Assertions.assertEquals(TestableCommandsSupport.RUN_TEST_COMMAND_ID, commands.get(1).getId());
         Assertions.assertEquals(TextInterval.newInterval(7, 4, 7, 63), commands.get(1).getLocation().getTextInterval());
         Assertions.assertEquals(TestableCommandsSupport.RUN_TEST_COMMAND_ID, commands.get(2).getId());
         Assertions.assertEquals(TextInterval.newInterval(8, 4, 8, 64), commands.get(2).getLocation().getTextInterval());
-        Assertions.assertEquals(TestableCommandsSupport.RUN_TESTS_COMMAND_ID, commands.get(3).getId());
-        Assertions.assertEquals(TextInterval.newInterval(0, 0, 10, 0), commands.get(3).getLocation().getTextInterval());
+        Assertions.assertEquals(TestableCommandsSupport.RUN_TEST_SUITE_COMMAND_ID, commands.get(3).getId());
+        Assertions.assertEquals(TextInterval.newInterval(5, 2, 9, 2), commands.get(3).getLocation().getTextInterval());
+        Assertions.assertEquals(TestableCommandsSupport.RUN_TESTS_COMMAND_ID, commands.get(4).getId());
+        Assertions.assertEquals(TextInterval.newInterval(0, 0, 10, 0), commands.get(4).getLocation().getTextInterval());
     }
 
     @Test

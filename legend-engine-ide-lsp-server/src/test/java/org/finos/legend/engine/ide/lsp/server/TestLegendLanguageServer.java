@@ -15,7 +15,6 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import java.util.Set;
-
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
@@ -137,6 +136,22 @@ public class TestLegendLanguageServer
         Assertions.assertTrue(languageClient.clientLog.contains("refreshDiagnostics"));
         Assertions.assertTrue(languageClient.clientLog.contains("refreshInlayHints"));
         Assertions.assertTrue(languageClient.clientLog.contains("refreshSemanticTokens"));
+    }
+
+    @Test
+    void testEventConsumer() throws Exception
+    {
+        InMemoryEventConsumer feature = new InMemoryEventConsumer();
+        LegendLanguageServer server = LegendLanguageServer.builder().synchronous().withFeature(feature).build();
+        server.connect(newLanguageClient());
+
+        Assertions.assertTrue(feature.events.isEmpty());
+
+        server.initialize(new InitializeParams()).get();
+        server.initialized(new InitializedParams());
+        Assertions.assertEquals(1, feature.events.size());
+
+        Assertions.assertEquals("initialize", feature.events.get(0).getEventType());
     }
 
     private void assertThrowsResponseError(ResponseErrorCode code, String message, Executable executable)

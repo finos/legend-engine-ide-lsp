@@ -96,7 +96,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                         "   }\n" +
                         ")",
-                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping", 5, 35, 5, 47), "Unexpected token 'EmployeeTable'. Valid alternatives: ['(', ':']", Kind.Error, Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 5, 35, 5, 47), "Unexpected token 'EmployeeTable'. Valid alternatives: ['(', ':']", Kind.Error, Source.Parser)
         );
     }
 

@@ -54,7 +54,7 @@ public final class TestableCommandsSupport implements CommandsSupport
     public static final String RUN_TESTS_COMMAND_ID = "legend.testable.runTests";
     private static final String RUN_TESTS_COMMAND_TITLE = "Run tests";
 
-    private static final String RUN_TEST_SUITE_COMMAND_ID = "legend.testable.runTestSuite";
+    public static final String RUN_TEST_SUITE_COMMAND_ID = "legend.testable.runTestSuite";
     public static final String RUN_TEST_SUITE_COMMAND_TITLE = "Run test suite";
     private static final String TEST_SUITE_ID = "legend.testable.testSuiteId";
 
