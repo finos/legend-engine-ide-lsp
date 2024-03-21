@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package org.finos.legend.engine.ide.lsp.extension;
+package org.finos.legend.engine.ide.lsp.extension.features;
 
 import java.time.Instant;
 import java.util.Collections;
 import java.util.Map;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 
 /**
  * Defines the contract for event consumption, allowing custom event tracking that fit different environments

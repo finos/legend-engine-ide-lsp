@@ -35,6 +35,16 @@
                     <skip>true</skip>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- to prevent failures on REPL test cases... we need better mechanism to manage H2 port...-->
+                        <legend.test.h2.port>1975</legend.test.h2.port>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -51,6 +61,24 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>4.13</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <scope>test</scope>
+                <version>${junit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-api</artifactId>
+                <scope>test</scope>
+                <version>${junit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-engine</artifactId>
+                <scope>test</scope>
+                <version>${junit.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -175,6 +203,21 @@
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-relationalStore-executionPlan</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-relationalStore-executionPlan-connection</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-executionPlan-generation</artifactId>
             <scope>provided</scope>
         </dependency>
@@ -216,6 +259,12 @@
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-repl-client</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-repl-relational</artifactId>
+            <version>${legend.engine.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -295,6 +344,18 @@
 
         <!-- TEST -->
         <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>${logback.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-text-tools</artifactId>
             <scope>test</scope>
@@ -307,6 +368,11 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- TEST -->

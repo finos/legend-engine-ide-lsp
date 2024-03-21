@@ -16,6 +16,9 @@
 
 package org.finos.legend.engine.ide.lsp.server.integration;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
@@ -37,7 +40,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-@Timeout(value = 3, unit = TimeUnit.MINUTES) // all tests should finish but in case of some uncaught deadlock, timeout whole test
+@Timeout(value = 3, unit = TimeUnit.MINUTES)
+// all tests should finish but in case of some uncaught deadlock, timeout whole test
 public class TestLegendLanguageServerIntegration
 {
     @RegisterExtension
@@ -188,5 +192,52 @@ public class TestLegendLanguageServerIntegration
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
         Assertions.assertTrue(diagnosticsFixed.isEmpty());
+    }
+
+    @Test
+    void testReplStartWithGivenClasspath() throws Exception
+    {
+        String classpath = extension.futureGet(extension.getServer().getLegendLanguageService().replClasspath());
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                System.getProperty("java.home") + File.separator + "bin" + File.separator + "java",
+                "org.finos.legend.engine.ide.lsp.server.LegendREPLTerminal"
+        );
+        processBuilder.environment().put("CLASSPATH", classpath);
+        processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+        Process process = null;
+        try
+        {
+            process = processBuilder.start();
+            Assertions.assertTrue(process.isAlive());
+            read(process.getInputStream(), "Ready!");
+        }
+        finally
+        {
+            if (process != null)
+            {
+                process.destroy();
+                process.onExit().join();
+            }
+        }
+    }
+
+    private static void read(InputStream replOutputConsole, String untilToken) throws IOException
+    {
+        StringBuilder output = new StringBuilder();
+        while (!output.toString().contains(untilToken))
+        {
+            int read = replOutputConsole.read();
+            if (read != -1)
+            {
+                System.err.print((char) read);
+                output.append((char) read);
+            }
+            else
+            {
+                Assertions.fail("Did not found token and stream closed...");
+            }
+
+        }
     }
 }

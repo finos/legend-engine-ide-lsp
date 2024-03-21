@@ -16,42 +16,32 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import java.io.File;
-import java.lang.reflect.Method;
-import java.net.URLClassLoader;
-import java.util.Objects;
-import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
 
 public class LegendREPLTerminal
 {
     public static void main(String... args) throws InterruptedException
     {
-        String mavenPath = args[0];
-        String pomPath = args[1];
-
-//        todo - once we add mechanism to find pom from project, use the workspace folders
-//        ArrayList<String> workspaceFolders = new ArrayList<>(Arrays.asList(args).subList(2, args.length));
-
-        System.out.println("Initializing REPL for engine version on pom: " + pomPath);
-        System.out.println("This can take a few minutes...");
-
         try
         {
-            ClasspathUsingMavenFactory factory = new ClasspathUsingMavenFactory(new File(pomPath));
-            File maven = factory.getMavenExecLocation(mavenPath);
-            URLClassLoader classloader = Objects.requireNonNull(
-                    factory.createClassloader(maven, new File(pomPath)),
-                    "Failed to load classpath from pom");
+            Optional<LegendREPLFeature> repl = ServiceLoader.load(LegendLSPFeature.class)
+                    .stream()
+                    .map(ServiceLoader.Provider::get)
+                    .filter(LegendREPLFeature.class::isInstance)
+                    .map(LegendREPLFeature.class::cast)
+                    .findAny();
 
-            Thread.currentThread().setContextClassLoader(classloader);
-
-            Class<?> h2 = classloader.loadClass("org.finos.legend.engine.plan.execution.stores.relational.AlloyH2Server");
-            Method startServer = h2.getMethod("startServer", int.class);
-            startServer.invoke(null, 1975);
-
-            Class<?> replClient = classloader.loadClass("org.finos.legend.engine.repl.client.Client");
-            Method main = replClient.getMethod("main", String[].class);
-            main.invoke(null, new Object[] {new String[0]});
+            if (repl.isPresent())
+            {
+                repl.get().startREPL();
+            }
+            else
+            {
+                throw new IllegalStateException("No REPL feature found on current configuration.  Verify classpath...");
+            }
         }
         catch (Exception e)
         {

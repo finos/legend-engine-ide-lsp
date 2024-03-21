@@ -79,7 +79,7 @@ import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
-import org.finos.legend.engine.ide.lsp.extension.LegendUsageEventConsumer;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
