@@ -48,8 +48,6 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
     @Override
     public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params)
     {
-        Iterable<? extends LegendExecutionResult> results;
-
         List<Object> args = params.getArguments();
 
         String uri = this.server.extractValueAs(args.get(0), String.class);
@@ -58,32 +56,38 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
         String id = this.server.extractValueAs(args.get(3), String.class);
         Map<String, String> executableArgs = ((args.size() < 5) || (args.get(4) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(4), String.class, String.class);
         Map<String, Object> inputParameters = ((args.size() < 6) || (args.get(5) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(5), String.class, Object.class);
-        this.server.notifyBegin(progressToken, entity);
 
-        GlobalState globalState = this.server.getGlobalState();
-        DocumentState docState = globalState.getDocumentState(uri);
-        if (docState == null)
+        return this.server.runAndFireEvent(id, () ->
         {
-            throw new RuntimeException("Unknown document: " + uri);
-        }
+            Iterable<? extends LegendExecutionResult> results;
 
-        SectionState sectionState = docState.getSectionState(sectionNum);
-        LegendLSPGrammarExtension extension = sectionState.getExtension();
-        if (extension == null)
-        {
-            throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
-        }
+            this.server.notifyBegin(progressToken, entity);
 
-        try
-        {
-            results = inputParameters.isEmpty() ? extension.execute(sectionState, entity, id, executableArgs) : extension.execute(sectionState, entity, id, executableArgs, inputParameters);
-        }
-        catch (Throwable e)
-        {
-            String message = "Command execution " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
-            results = Collections.singletonList(LegendExecutionResult.errorResult(new Exception(message, e), message, entity, null));
-        }
+            GlobalState globalState = this.server.getGlobalState();
+            DocumentState docState = globalState.getDocumentState(uri);
+            if (docState == null)
+            {
+                throw new RuntimeException("Unknown document: " + uri);
+            }
 
-        return results;
+            SectionState sectionState = docState.getSectionState(sectionNum);
+            LegendLSPGrammarExtension extension = sectionState.getExtension();
+            if (extension == null)
+            {
+                throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
+            }
+
+            try
+            {
+                results = inputParameters.isEmpty() ? extension.execute(sectionState, entity, id, executableArgs) : extension.execute(sectionState, entity, id, executableArgs, inputParameters);
+            }
+            catch (Throwable e)
+            {
+                String message = "Command execution " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
+                results = Collections.singletonList(LegendExecutionResult.errorResult(new Exception(message, e), message, entity, null));
+            }
+
+            return results;
+        });
     }
 }

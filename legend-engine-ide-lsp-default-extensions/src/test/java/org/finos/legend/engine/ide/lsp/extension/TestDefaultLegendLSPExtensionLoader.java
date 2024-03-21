@@ -50,7 +50,6 @@ class TestDefaultLegendLSPExtensionLoader
         expected.put("Runtime", RuntimeLSPGrammarExtension.class);
         expected.put("Service", ServiceLSPGrammarExtension.class);
         expected.put("Data", DefaultLegendLSPExtensionLoader.CatchAllSectionParserLSPGrammarExtension.class);
-        expected.put("ExternalFormat", DefaultLegendLSPExtensionLoader.CatchAllSectionParserLSPGrammarExtension.class);
 
         Assertions.assertEquals(expected, grammarsMap);
     }

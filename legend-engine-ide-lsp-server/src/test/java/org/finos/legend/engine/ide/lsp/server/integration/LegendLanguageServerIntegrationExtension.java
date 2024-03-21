@@ -176,7 +176,7 @@ public class LegendLanguageServerIntegrationExtension implements
 
 
         InitializeParams initializeParams = new InitializeParams();
-        initializeParams.setWorkspaceFolders(List.of(new WorkspaceFolder(workspaceFolderPath.toUri().toString())));
+        initializeParams.setWorkspaceFolders(List.of(new WorkspaceFolder(workspaceFolderPath.toUri().toString(), "test")));
         initializeParams.setCapabilities(new ClientCapabilities());
         server.initialize(initializeParams).get(MAYBE_DEADLOCK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 

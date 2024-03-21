@@ -47,24 +47,27 @@ public class RunAllTestCasesCommandExecutionHandler implements CommandExecutionH
     @Override
     public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params)
     {
-        this.server.notifyBegin(progressToken, "Running all tests cases");
-
-        List<Stream<? extends LegendExecutionResult>> streams = new ArrayList<>();
-
-        this.server.getGlobalState().forEachDocumentState(docState ->
+        return this.server.runAndFireEvent(RUN_ALL_TESTS_COMMAND, () ->
         {
-            docState.forEachSectionState(sectionState ->
-            {
-                LegendLSPGrammarExtension extension = sectionState.getExtension();
-                if (extension == null)
-                {
-                    return;
-                }
-                streams.add(extension.executeAllTestCases(sectionState));
-            });
-        });
+            this.server.notifyBegin(progressToken, "Running all tests cases");
 
-        Stream<? extends LegendExecutionResult> legendExecutionResultStream = streams.stream().flatMap(Function.identity());
-        return legendExecutionResultStream.collect(Collectors.toList());
+            List<Stream<? extends LegendExecutionResult>> streams = new ArrayList<>();
+
+            this.server.getGlobalState().forEachDocumentState(docState ->
+            {
+                docState.forEachSectionState(sectionState ->
+                {
+                    LegendLSPGrammarExtension extension = sectionState.getExtension();
+                    if (extension == null)
+                    {
+                        return;
+                    }
+                    streams.add(extension.executeAllTestCases(sectionState));
+                });
+            });
+
+            Stream<? extends LegendExecutionResult> legendExecutionResultStream = streams.stream().flatMap(Function.identity());
+            return legendExecutionResultStream.collect(Collectors.toList());
+        });
     }
 }

@@ -16,6 +16,8 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.time.Instant;
+import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestHandler;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -36,6 +38,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
     @Override
     public CompletableFuture<LegendExecutionResult> legendTDSRequest(FunctionTDSRequest request)
     {
+        Instant start = Instant.now();
         return this.server.supplyPossiblyAsync(() ->
         {
             LegendExecutionResult result;
@@ -64,6 +67,6 @@ public class LegendLanguageService implements LegendLanguageServiceContract
             }
             this.server.logInfoToClient(result.getMessage());
             return result;
-        });
+        }).whenComplete((r, t) -> this.server.fireEvent("TDSRequest", start, Collections.emptyMap(), t));
     }
 }

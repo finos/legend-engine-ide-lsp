@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.function.Supplier;
@@ -39,13 +38,16 @@ class ExtensionsGuard
     private volatile ClassLoader classLoader;
     private volatile LegendLSPGrammarLibrary grammars;
 
+    private final Collection<LegendLSPFeature> providedFeatures;
     private volatile Collection<LegendLSPFeature> features;
 
-    public ExtensionsGuard(LegendLanguageServer server, LegendLSPGrammarLibrary providedGrammarExtensions)
+    public ExtensionsGuard(LegendLanguageServer server, LegendLSPGrammarLibrary providedGrammarExtensions, Collection<LegendLSPFeature> providedFeatures)
     {
         this.server = server;
         this.grammars = providedGrammarExtensions;
         this.providedGrammarExtensions = providedGrammarExtensions.getExtensions();
+        this.features = providedFeatures;
+        this.providedFeatures = providedFeatures;
     }
 
     public synchronized void initialize(ClassLoader classLoader)
@@ -74,9 +76,11 @@ class ExtensionsGuard
             });
 
             this.grammars = LegendLSPGrammarLibrary.builder().withExtensions(this.providedGrammarExtensions).withExtensions(grammars).build();
-            this.features = Collections.unmodifiableList(features);
+            ArrayList<LegendLSPFeature> allFeatures = new ArrayList<>(this.providedFeatures);
+            allFeatures.addAll(features);
+            this.features = allFeatures;
             this.server.logInfoToClient("Grammar extensions available: " + String.join(", ", this.grammars.getExtensionNames()));
-            this.server.logInfoToClient("Feature extensions available: " + String.join(", ", this.features.stream().map(LegendLSPFeature::description).collect(Collectors.joining())));
+            this.server.logInfoToClient("Feature extensions available: " + this.features.stream().map(LegendLSPFeature::description).collect(Collectors.joining(", ")));
 
             this.classLoader = classLoader;
         }
