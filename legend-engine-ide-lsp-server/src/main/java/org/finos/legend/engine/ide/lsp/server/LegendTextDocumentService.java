@@ -16,6 +16,7 @@ package org.finos.legend.engine.ide.lsp.server;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -143,6 +144,8 @@ public class LegendTextDocumentService implements TextDocumentService
             {
                 globalState.clearProperties();
                 this.server.getLanguageClient().refreshDiagnostics();
+                this.server.getLanguageClient().refreshSemanticTokens();
+                this.server.getLanguageClient().refreshCodeLenses();
             }
 
             LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
@@ -355,9 +358,9 @@ public class LegendTextDocumentService implements TextDocumentService
         return diagnostics;
     }
 
-    protected List<LegendDiagnostic> getLegendDiagnostics(DocumentState docState)
+    protected Set<LegendDiagnostic> getLegendDiagnostics(DocumentState docState)
     {
-        List<LegendDiagnostic> diagnostics = new ArrayList<>();
+        Set<LegendDiagnostic> diagnostics = new HashSet<>();
         docState.forEachSectionState(sectionState ->
         {
             LegendLSPGrammarExtension extension = sectionState.getExtension();
