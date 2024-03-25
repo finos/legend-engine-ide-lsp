@@ -67,6 +67,7 @@ import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerConte
 import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
+import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
@@ -295,9 +296,17 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         }
         catch (Exception e)
         {
+            SourceInformation sectionSourceInfo = getSourceInformation(sectionState);
             LOGGER.error("Unexpected exception when parsing section {} of {}", sectionState.getSectionNumber(), sectionState.getDocumentState().getDocumentId(), e);
-            return new ParseResult(elements.toImmutable(), e);
+            return new ParseResult(elements.toImmutable(), new EngineException(e.getMessage(), sectionSourceInfo, EngineErrorType.PARSER, e));
         }
+    }
+
+    private static SourceInformation getSourceInformation(SectionState sectionState)
+    {
+        GrammarSection section = sectionState.getSection();
+        int startLine = section.hasGrammarDeclaration() ? (section.getStartLine() + 1) : section.getStartLine();
+        return new SourceInformation(sectionState.getDocumentState().getDocumentId(), startLine, 0, section.getEndLine(), section.getLineLength(section.getEndLine()));
     }
 
     protected void parse(SectionState section, Consumer<PackageableElement> elementConsumer)
@@ -349,7 +358,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         {
             LOGGER.error("Unexpected exception during compilation requested for section {} of {}", sectionState.getSectionNumber(), documentState.getDocumentId(), e);
             globalState.logWarning("Unexpected error during compilation");
-            return new CompileResult(e, pureModelContextData);
+            return new CompileResult(new EngineException(e.getMessage(), getSourceInformation(sectionState), EngineErrorType.COMPILATION, e), pureModelContextData);
         }
     }
 
@@ -496,9 +505,8 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     {
         String sourceId = sectionState.getDocumentState().getDocumentId();
         GrammarSection section = sectionState.getSection();
-        int startLine = section.hasGrammarDeclaration() ? (section.getStartLine() + 1) : section.getStartLine();
-        SourceInformation sectionSourceInfo = new SourceInformation(sourceId, startLine, 0, section.getEndLine(), section.getLineLength(section.getEndLine()));
-        ParseTreeWalkerSourceInformation walkerSourceInfo = new ParseTreeWalkerSourceInformation.Builder(sourceId, startLine, 0).build();
+        SourceInformation sectionSourceInfo = getSourceInformation(sectionState);
+        ParseTreeWalkerSourceInformation walkerSourceInfo = new ParseTreeWalkerSourceInformation.Builder(sourceId, sectionSourceInfo.startLine, 0).build();
         return new SectionSourceCode(section.getText(true), section.getGrammar(), sectionSourceInfo, walkerSourceInfo);
     }
 
