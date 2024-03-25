@@ -33,7 +33,7 @@ public class LegendREPLTerminal
     public static void main(String... args) throws InterruptedException
     {
         List<LegendLSPFeature> features = new ArrayList<>();
-        Instant starTime = Instant.now().minusMillis(ManagementFactory.getRuntimeMXBean().getUptime());
+        Instant startTime = Instant.now().minusMillis(ManagementFactory.getRuntimeMXBean().getUptime());
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("replId", ManagementFactory.getRuntimeMXBean().getName());
 
@@ -50,9 +50,9 @@ public class LegendREPLTerminal
 
             if (repl.isPresent())
             {
-                fireEvent(features, LegendUsageEventConsumer.event("startReplTerminal", starTime, Instant.now(), metadata));
+                fireEvent(features, LegendUsageEventConsumer.event("startReplTerminal", startTime, Instant.now(), metadata));
                 repl.get().startREPL();
-                fireEvent(features, LegendUsageEventConsumer.event("closeReplTerminal", starTime, Instant.now(), metadata));
+                fireEvent(features, LegendUsageEventConsumer.event("closeReplTerminal", startTime, Instant.now(), metadata));
             }
             else
             {
@@ -66,7 +66,7 @@ public class LegendREPLTerminal
             System.out.println("The terminal will close itself in 60 seconds");
             metadata.put("error", true);
             metadata.put("errorMessage", e.getMessage());
-            fireEvent(features, LegendUsageEventConsumer.event("errorReplTerminal", starTime, Instant.now(), metadata));
+            fireEvent(features, LegendUsageEventConsumer.event("errorReplTerminal", startTime, Instant.now(), metadata));
             Thread.sleep(60_000);
             System.exit(1);
         }
