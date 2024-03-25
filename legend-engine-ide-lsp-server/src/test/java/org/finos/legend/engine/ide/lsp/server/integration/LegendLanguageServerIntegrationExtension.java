@@ -140,7 +140,7 @@ public class LegendLanguageServerIntegrationExtension implements
         LSPMessageTrackerFactory lspMessageTrackerFactory = new LSPMessageTrackerFactory(phaser);
 
         Path pomPath = this.workspaceFolderPath.resolve("pom.xml");
-        try (InputStream pom = TestLegendLanguageServerIntegration.class.getClassLoader().getResourceAsStream("integrationTestPom.xml"))
+        try (InputStream pom = TestLegendLanguageServerIntegration.class.getClassLoader().getResourceAsStream("pom.xml"))
         {
             Files.copy(Objects.requireNonNull(pom, "missing integration test pom"), pomPath);
         }

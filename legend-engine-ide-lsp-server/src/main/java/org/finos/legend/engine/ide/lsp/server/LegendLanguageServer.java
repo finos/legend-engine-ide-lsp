@@ -859,7 +859,8 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private DiagnosticRegistrationOptions getDiagnosticRegistrationOptions()
     {
         DiagnosticRegistrationOptions diagnosticProvider = new DiagnosticRegistrationOptions();
-        diagnosticProvider.setId("legend_diagnostic");
+        diagnosticProvider.setId("Legend");
+        diagnosticProvider.setIdentifier("Legend");
         diagnosticProvider.setWorkspaceDiagnostics(true);
         diagnosticProvider.setInterFileDependencies(true);
         return diagnosticProvider;

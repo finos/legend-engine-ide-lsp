@@ -19,19 +19,24 @@ package org.finos.legend.engine.ide.lsp.server.integration;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Path;
-import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.Diagnostic;
+import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DocumentDiagnosticParams;
 import org.eclipse.lsp4j.DocumentDiagnosticReport;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.PreviousResultId;
+import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceDiagnosticParams;
 import org.eclipse.lsp4j.WorkspaceDocumentDiagnosticReport;
-import org.eclipse.lsp4j.WorkspaceFullDocumentDiagnosticReport;
 import org.eclipse.lsp4j.WorkspaceSymbol;
 import org.eclipse.lsp4j.WorkspaceSymbolParams;
 import org.junit.jupiter.api.Assertions;
@@ -132,66 +137,142 @@ public class TestLegendLanguageServerIntegration
                 "  xyz: String[1];\n" +
                 "}\n");
 
-        // no diagnostics
-        List<WorkspaceDocumentDiagnosticReport> items = extension.futureGet(extension.getServer().getWorkspaceService().diagnostic(new WorkspaceDiagnosticParams(List.of()))).getItems();
-        Assertions.assertEquals(
-                Set.of(pureFile1.toUri().toString(), pureFile2.toUri().toString()),
-                items.stream()
-                        .map(WorkspaceDocumentDiagnosticReport::getWorkspaceFullDocumentDiagnosticReport)
-                        .map(WorkspaceFullDocumentDiagnosticReport::getUri)
-                        .collect(Collectors.toSet())
+        // no diagnostics as it parses and compiles
+        assertDiagnostics(Map.of(), List.of());
+
+        // creates a parse error on file 2, so only that diagnostics comes back
+        extension.changeWorkspaceFile(pureFile2, "###Pure\n" +
+                "Class xyz::abc extends abc::abc\n" +
+                "{\n" +
+                "  xyz: String[1\n" +
+                "}\n");
+
+        // diagnostics reported on file
+        Set<Diagnostic> parseDiagnostic = Set.of(
+                new Diagnostic(
+                        new Range(new Position(4, 0), new Position(4, 1)),
+                        "Unexpected token '}'. Valid alternatives: [']']",
+                        DiagnosticSeverity.Error,
+                        "Parser"
+                )
         );
 
-        List<Diagnostic> diagnostics = items.stream()
-                .map(WorkspaceDocumentDiagnosticReport::getWorkspaceFullDocumentDiagnosticReport)
-                .map(WorkspaceFullDocumentDiagnosticReport::getItems)
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
+        List<PreviousResultId> previousResultIds = assertDiagnostics(Map.of(pureFile2, parseDiagnostic), List.of());
+        // repeating asking for diagnostics using prev result id yield no result
+        assertDiagnostics(Map.of(), previousResultIds);
+        // but results are reported if result ids are different
+        previousResultIds = assertDiagnostics(Map.of(pureFile2, parseDiagnostic), List.of());
 
-        Assertions.assertTrue(diagnostics.isEmpty(), "Expected no diagnostic but got: " + diagnostics
+        // fix parser error
+        extension.changeWorkspaceFile(pureFile2, "###Pure\n" +
+                "Class xyz::abc extends abc::abc\n" +
+                "{\n" +
+                "  xyz: String[1];\n" +
+                "}\n");
+
+        // the document report diagnostics, but with empty items
+        previousResultIds = assertDiagnostics(Map.of(pureFile2, Set.of()), previousResultIds);
+        // no diagnostics now reported with either prev result id or no ids
+        assertDiagnostics(Map.of(), previousResultIds);
+
+        // create compile error on file 2
+        extension.changeWorkspaceFile(pureFile1, "###Pure\n" +
+                "Class abc::ab\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n");
+
+        // report compile diagnostics on file
+        Set<Diagnostic> compileDiagnostic = Set.of(
+                new Diagnostic(
+                        new Range(new Position(1, 0), new Position(4, 1)),
+                        "Can't find type 'abc::abc'",
+                        DiagnosticSeverity.Error,
+                        "Compiler"
+                )
+        );
+        previousResultIds = assertDiagnostics(Map.of(pureFile2, compileDiagnostic), previousResultIds);
+        // repeating call yield no diagnostic reported
+        assertDiagnostics(Map.of(), previousResultIds);
+
+        // fix compile error
+        extension.changeWorkspaceFile(pureFile2, "###Pure\n" +
+                "Class xyz::abc extends abc::ab\n" +
+                "{\n" +
+                "  xyz: String[1];\n" +
+                "}\n");
+
+        // the document report diagnostics, but with empty items
+        previousResultIds = assertDiagnostics(Map.of(pureFile2, Set.of()), previousResultIds);
+        // no diagnostic if called again
+        assertDiagnostics(Map.of(), previousResultIds);
+
+        extension.changeWorkspaceFile(pureFile1, "###Pure\n" +
+                "Clas abc::ab\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n");
+
+        extension.changeWorkspaceFile(pureFile2, "###Pure\n" +
+                "Clas xyz::abc extends abc::ab\n" +
+                "{\n" +
+                "  xyz: String[1];\n" +
+                "}\n");
+
+        // parse error on both files
+        Map<Path, Set<Diagnostic>> expected = Map.of(
+                pureFile2, Set.of(new Diagnostic(
+                        new Range(new Position(1, 0), new Position(1, 4)),
+                        "Unexpected token 'Clas'. Valid alternatives: ['Class', 'Association', 'Profile', 'Enum', 'Measure', 'function', 'native', '^']",
+                        DiagnosticSeverity.Error,
+                        "Parser"
+                )),
+                pureFile1, Set.of(new Diagnostic(
+                        new Range(new Position(1, 0), new Position(1, 4)),
+                        "Unexpected token 'Clas'. Valid alternatives: ['Class', 'Association', 'Profile', 'Enum', 'Measure', 'function', 'native', '^']",
+                        DiagnosticSeverity.Error,
+                        "Parser"
+                )));
+        previousResultIds = assertDiagnostics(expected, previousResultIds);
+        assertDiagnostics(Map.of(), previousResultIds);
+
+        // fix parse errors
+        extension.changeWorkspaceFile(pureFile1, "###Pure\n" +
+                "Class abc::ab\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n");
+
+        extension.changeWorkspaceFile(pureFile2, "###Pure\n" +
+                "Class xyz::abc extends abc::ab\n" +
+                "{\n" +
+                "  xyz: String[1];\n" +
+                "}\n");
+
+        // report for both files, but empty diagnostics
+        previousResultIds = assertDiagnostics(Map.of(pureFile2, Set.of(), pureFile1, Set.of()), previousResultIds);
+        // no diagnostics if called again
+        assertDiagnostics(Map.of(), previousResultIds);
+    }
+
+    private static List<PreviousResultId> assertDiagnostics(Map<Path, Set<Diagnostic>> expected, List<PreviousResultId> ids) throws Exception
+    {
+        List<WorkspaceDocumentDiagnosticReport> items = extension.futureGet(extension.getServer().getWorkspaceService().diagnostic(new WorkspaceDiagnosticParams(ids))).getItems();
+
+        Map<Path, Set<Diagnostic>> reportsByUri = items
                 .stream()
-                .map(Diagnostic::getMessage)
-                .collect(Collectors.joining())
-        );
+                .collect(Collectors.toMap(
+                                x -> Path.of(URI.create(x.getWorkspaceFullDocumentDiagnosticReport().getUri())),
+                                x -> new HashSet<>(x.getWorkspaceFullDocumentDiagnosticReport().getItems())
+                        )
+                );
 
-        // rename extended class, should lead to compile failure
-        extension.changeWorkspaceFile(pureFile1, "###Pure\n" +
-                "Class abc::abcNewName\n" +
-                "{\n" +
-                "  abc: String[1];\n" +
-                "}\n");
+        Assertions.assertEquals(expected, reportsByUri);
 
-        List<WorkspaceDocumentDiagnosticReport> itemsAfterChange = extension.futureGet(extension.getServer().getWorkspaceService().diagnostic(new WorkspaceDiagnosticParams(List.of()))).getItems();
-        Assertions.assertEquals(2, itemsAfterChange.size());
-        itemsAfterChange.sort(Comparator.comparing(x -> x.getWorkspaceFullDocumentDiagnosticReport().getUri()));
-
-        WorkspaceFullDocumentDiagnosticReport diagnosticReport1 = itemsAfterChange.get(0).getWorkspaceFullDocumentDiagnosticReport();
-        Assertions.assertNotNull(diagnosticReport1);
-        Assertions.assertEquals(pureFile1.toUri().toString(), diagnosticReport1.getUri());
-        Assertions.assertTrue(diagnosticReport1.getItems().isEmpty());
-
-        WorkspaceFullDocumentDiagnosticReport diagnosticReport2 = itemsAfterChange.get(1).getWorkspaceFullDocumentDiagnosticReport();
-        Assertions.assertNotNull(diagnosticReport2);
-        Assertions.assertEquals(pureFile2.toUri().toString(), diagnosticReport2.getUri());
-        Assertions.assertEquals(1, diagnosticReport2.getItems().size());
-        Assertions.assertEquals("Compiler", diagnosticReport2.getItems().get(0).getSource());
-        Assertions.assertEquals("Can't find type 'abc::abc'", diagnosticReport2.getItems().get(0).getMessage());
-
-        // revert rename on extended class, should fix the compile failure
-        extension.changeWorkspaceFile(pureFile1, "###Pure\n" +
-                "Class abc::abc\n" +
-                "{\n" +
-                "  abc: String[1];\n" +
-                "}\n");
-
-        // no diagnostics
-        List<WorkspaceDocumentDiagnosticReport> itemsAfterFix = extension.futureGet(extension.getServer().getWorkspaceService().diagnostic(new WorkspaceDiagnosticParams(List.of()))).getItems();
-        List<Diagnostic> diagnosticsFixed = itemsAfterFix.stream()
-                .map(WorkspaceDocumentDiagnosticReport::getWorkspaceFullDocumentDiagnosticReport)
-                .map(WorkspaceFullDocumentDiagnosticReport::getItems)
-                .flatMap(List::stream)
+        return items
+                .stream()
+                .map(x -> new PreviousResultId(x.getWorkspaceFullDocumentDiagnosticReport().getUri(), x.getWorkspaceFullDocumentDiagnosticReport().getResultId()))
                 .collect(Collectors.toList());
-        Assertions.assertTrue(diagnosticsFixed.isEmpty());
     }
 
     @Test
