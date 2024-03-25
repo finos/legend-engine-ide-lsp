@@ -16,18 +16,24 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import java.time.Instant;
-import java.util.Collections;
 import java.io.File;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendTDSRequestHandler;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
+import org.finos.legend.engine.ide.lsp.server.service.ExecuteTestRequest;
 import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 
@@ -43,36 +49,36 @@ public class LegendLanguageService implements LegendLanguageServiceContract
     @Override
     public CompletableFuture<LegendExecutionResult> legendTDSRequest(FunctionTDSRequest request)
     {
-        Instant start = Instant.now();
-        return this.server.supplyPossiblyAsync(() ->
-        {
-            LegendExecutionResult result;
-            LegendServerGlobalState globalState = this.server.getGlobalState();
-            String uri = request.getUri();
-            int sectionNum = request.getSectionNum();
-            String entity = request.getEntity();
-            DocumentState docState = globalState.getDocumentState(uri);
-            if (docState == null)
-            {
-                this.server.logWarningToClient("Cannot get TDS request result for " + uri + ": not open in language server");
-                return LegendExecutionResult.errorResult(new Exception("Cannot get TDS request result for " + uri + ": not open in language server"), "", entity, null);
-            }
+        return this.server.supplyPossiblyAsync(() -> this.server.runAndFireEvent("TDSRequest", () ->
+                {
+                    LegendExecutionResult result;
+                    LegendServerGlobalState globalState = this.server.getGlobalState();
+                    String uri = request.getUri();
+                    int sectionNum = request.getSectionNum();
+                    String entity = request.getEntity();
+                    DocumentState docState = globalState.getDocumentState(uri);
+                    if (docState == null)
+                    {
+                        this.server.logWarningToClient("Cannot get TDS request result for " + uri + ": not open in language server");
+                        return LegendExecutionResult.errorResult(new Exception("Cannot get TDS request result for " + uri + ": not open in language server"), "", entity, null);
+                    }
 
-            try
-            {
-                LegendTDSRequestHandler handler = globalState.findFeatureThatImplements(LegendTDSRequestHandler.class).findAny().orElseThrow(() -> new RuntimeException("Could not execute legend TDS request for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found"));
-                SectionState sectionState = docState.getSectionState(sectionNum);
-                result = handler.executeLegendTDSRequest(sectionState, entity, request.getRequest(), request.getInputParameters());
-            }
-            catch (Throwable e)
-            {
-                this.server.logInfoToClient(e.getMessage());
-                String message = "TDS request execution for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
-                result = LegendExecutionResult.errorResult(new Exception(message, e), message, entity, null);
-            }
-            this.server.logInfoToClient(result.getMessage());
-            return result;
-        }).whenComplete((r, t) -> this.server.fireEvent("TDSRequest", start, Collections.emptyMap(), t));
+                    try
+                    {
+                        LegendTDSRequestHandler handler = globalState.findFeatureThatImplements(LegendTDSRequestHandler.class).findAny().orElseThrow(() -> new RuntimeException("Could not execute legend TDS request for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found"));
+                        SectionState sectionState = docState.getSectionState(sectionNum);
+                        result = handler.executeLegendTDSRequest(sectionState, entity, request.getRequest(), request.getInputParameters());
+                    }
+                    catch (Throwable e)
+                    {
+                        this.server.logInfoToClient(e.getMessage());
+                        String message = "TDS request execution for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
+                        result = LegendExecutionResult.errorResult(new Exception(message, e), message, entity, null);
+                    }
+                    this.server.logInfoToClient(result.getMessage());
+                    return result;
+                }, Map.of("function", request.getEntity()))
+        );
     }
 
     @Override
@@ -106,5 +112,42 @@ public class LegendLanguageService implements LegendLanguageServiceContract
 
             return classpath;
         });
+    }
+
+    @Override
+    public CompletableFuture<List<LegendTest>> testCases()
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            List<LegendTest> commands = new ArrayList<>();
+
+            this.server.getGlobalState().forEachDocumentState(docState ->
+            {
+                docState.forEachSectionState(sectionState ->
+                {
+                    LegendLSPGrammarExtension extension = sectionState.getExtension();
+                    if (extension == null)
+                    {
+                        return;
+                    }
+                    commands.addAll(extension.testCases(sectionState));
+                });
+            });
+
+            return commands;
+        });
+    }
+
+    @Override
+    public CompletableFuture<List<LegendTestExecutionResult>> executeTests(ExecuteTestRequest rq)
+    {
+        return this.server.supplyPossiblyAsync(() -> this.server.runAndFireEvent("executeTests", () ->
+                {
+                    LegendServerGlobalState.LegendServerDocumentState documentState = this.server.getGlobalState().getDocumentState(rq.getLocation().getDocumentId());
+                    SectionState sectionStateAtLine = documentState.getSectionStateAtLine(rq.getLocation().getTextInterval().getStart().getLine());
+                    LegendLSPGrammarExtension extension = sectionStateAtLine.getExtension();
+                    return extension.executeTests(sectionStateAtLine, rq.getLocation(), rq.getTestId(), new HashSet<>(rq.getExcludedTestIds()));
+                }, Map.of("testId", rq.getTestId()))
+        );
     }
 }

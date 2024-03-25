@@ -157,6 +157,8 @@
                         <systemPropertyVariables>
                             <maven.home>${maven.home}</maven.home>
                         </systemPropertyVariables>
+                        <forkCount>1C</forkCount>
+                        <reuseForks>true</reuseForks>
                     </configuration>
                 </plugin>
                 <plugin>

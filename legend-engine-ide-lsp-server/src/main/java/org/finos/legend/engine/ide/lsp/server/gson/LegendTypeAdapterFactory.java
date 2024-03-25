@@ -23,7 +23,6 @@ import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 import java.io.IOException;
-import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 
 /**
  * The default LSP Gson processing only accept enums that are ser/deser as integers, while we want enums as strings
@@ -53,7 +52,7 @@ public class LegendTypeAdapterFactory implements TypeAdapterFactory
         @Override
         public void write(JsonWriter out, T value) throws IOException
         {
-            this.gson.toJson(value, TDSRequest.class, out);
+            this.gson.toJson(value, this.type.getType(), out);
         }
 
         @Override

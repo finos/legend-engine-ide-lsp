@@ -16,19 +16,18 @@
 
 package org.finos.legend.engine.ide.lsp.server.integration;
 
-import com.google.gson.reflect.TypeToken;
-import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import org.eclipse.lsp4j.CodeLens;
-import org.eclipse.lsp4j.CodeLensParams;
-import org.eclipse.lsp4j.ExecuteCommandParams;
-import org.eclipse.lsp4j.TextDocumentIdentifier;
-import org.finos.legend.engine.ide.lsp.commands.RunAllTestCasesCommandExecutionHandler;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTestAssertionResult;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.server.service.ExecuteTestRequest;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -36,12 +35,12 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 @Timeout(value = 3, unit = TimeUnit.MINUTES)
 // all tests should finish but in case of some uncaught deadlock, timeout whole test
-public class TestLegendLanguageServerCommandsIntegration
+public class TestLegendLanguageServerTestableIntegration
 {
     @RegisterExtension
     static LegendLanguageServerIntegrationExtension extension = new LegendLanguageServerIntegrationExtension();
 
-    void workspaceForRunningAllTestCommand() throws Exception
+    void workspaceWithTestables() throws Exception
     {
         String code1 = "function model::Hello(name: String[1]): String[1]\n" +
                 "{\n" +
@@ -187,14 +186,14 @@ public class TestLegendLanguageServerCommandsIntegration
                 "           ];\n" +
                 "          asserts:\n" +
                 "          [\n" +
-                "            assert1:\n" +
+                "            thisWillFail:\n" +
                 "              EqualToJson\n" +
                 "              #{\n" +
                 "                expected :\n" +
                 "                  ExternalFormat\n" +
                 "                  #{\n" +
                 "                    contentType: 'application/json';\n" +
-                "                    data: '{\"id\" : 77, \"name\" : \"john doe\"}';\n" +
+                "                    data: '{\"id\" : 75, \"name\" : \"john doe\"}';\n" +
                 "                  }#;\n" +
                 "              }#\n" +
                 "          ];\n" +
@@ -210,71 +209,42 @@ public class TestLegendLanguageServerCommandsIntegration
     }
 
     @Test
-    void runAllTestCommand() throws Exception
+    void testDiscoveringAndExecutionOfTestCases() throws Exception
     {
-        this.workspaceForRunningAllTestCommand();
-        List<LegendExecutionResult> legendExecutionResults = extension.futureGet(extension.getServer().getWorkspaceService().executeCommand(new ExecuteCommandParams(RunAllTestCasesCommandExecutionHandler.RUN_ALL_TESTS_COMMAND, List.of())), new TypeToken<List<LegendExecutionResult>>()
-        {
-        });
+        this.workspaceWithTestables();
+        List<LegendTest> legendTests = extension.futureGet(extension.getServer().getLegendLanguageService().testCases());
 
-        Map<String, LegendExecutionResult.Type> resultMap = legendExecutionResults.stream().collect(Collectors.toMap(x -> String.join(".", x.getIds()), LegendExecutionResult::getType));
+        Assertions.assertEquals(List.of("model::HelloAgain_String_1__String_1_", "model::Hello_String_1__String_1_", "test::modelToModelMapping"), legendTests.stream().map(LegendTest::getId).sorted().collect(Collectors.toList()));
 
-        Map<Object, Object> expected = Map.of(
-                "model::HelloAgain_String_1__String_1_.testSuite_1.testFail.default", LegendExecutionResult.Type.FAILURE,
-                "model::Hello_String_1__String_1_.testSuite_1.testPass.default", LegendExecutionResult.Type.SUCCESS,
-                "test::modelToModelMapping.testSuite1.test1.assert1", LegendExecutionResult.Type.SUCCESS,
-                "test::MyMapping.test_1", LegendExecutionResult.Type.SUCCESS
+        List<LegendTestExecutionResult> results = Collections.synchronizedList(new ArrayList<>());
+
+        CompletableFuture<Void> allOf = CompletableFuture.allOf(legendTests.stream().map(test -> extension.getServer()
+                        .getLegendLanguageService().executeTests(new ExecuteTestRequest(test.getLocation(), test.getId(), List.of()))
+                        .thenAccept(results::addAll))
+                .toArray(CompletableFuture[]::new)
         );
 
-        Assertions.assertEquals(expected, resultMap);
-    }
+        extension.futureGet(allOf);
 
-    @Test
-    void codeLensCommandsFunctionActivator() throws Exception
-    {
-        String code1 = "###Pure\n" +
-                "function model::Hello(name: String[1]): String[1]\n" +
-                "{\n" +
-                "  'Hello World! My name is ' + $name + '.';\n" +
-                "}\n" +
-                "{\n" +
-                "  testSuite_1\n" +
-                "  (\n" +
-                "    testPass | Hello('John') => 'Hello World! My name is John.';\n" +
-                "  )\n" +
-                "}\n";
+        results.sort(Comparator.comparing(LegendTestExecutionResult::getId));
 
-        String code2 = "###Snowflake\n" +
-                "SnowflakeApp app::pack::MyApp\n" +
-                "{" +
-                "   applicationName : 'name';\n" +
-                "   function : model::Hello(String[1]):String[1];\n" +
-                "   ownership : Deployment { identifier: 'MyAppOwnership'};\n" +
-                "}\n";
+        LegendTestAssertionResult failure1 = LegendTestAssertionResult.failure("default", null, "expected:Hello World! My name is Johnx., Found : Hello World! My name is John.",null, null);
+        LegendTestExecutionResult expectedResult1 = LegendTestExecutionResult.failures(List.of(failure1), "model::HelloAgain_String_1__String_1_", "testSuite_1", "testFail");
+        LegendTestExecutionResult expectedResult2 = LegendTestExecutionResult.success("model::Hello_String_1__String_1_", "testSuite_1", "testPass");
+        LegendTestAssertionResult failure3 = LegendTestAssertionResult.failure("thisWillFail",
+                TextLocation.newTextSource(extension.resolveWorkspacePath("file4.pure").toUri().toString(), 51, 14, 59, 15),
+                "Actual result does not match Expected result",
+                "{" + System.lineSeparator() +
+                "  \"id\" : 75," + System.lineSeparator() +
+                "  \"name\" : \"john doe\"" + System.lineSeparator() +
+                "}",
+                "{" + System.lineSeparator() +
+                "  \"id\" : 77," + System.lineSeparator() +
+                "  \"name\" : \"john doe\"" + System.lineSeparator() +
+                "}");
+        LegendTestExecutionResult expectedResult3 = LegendTestExecutionResult.failures(List.of(failure3), "test::modelToModelMapping", "testSuite1", "test1");
 
-        extension.addToWorkspace("file1.pure", code1);
-        Path path = extension.addToWorkspace("file2.pure", code2);
-        extension.assertWorkspaceParseAndCompiles();
+        Assertions.assertEquals(List.of(expectedResult1, expectedResult2, expectedResult3), results);
 
-        String file = path.toUri().toString();
-        List<? extends CodeLens> codeLensWithoutServer = extension.futureGet(extension.getServer().getTextDocumentService().codeLens(new CodeLensParams(new TextDocumentIdentifier(file))));
-
-        Assertions.assertTrue(codeLensWithoutServer.isEmpty(), "Expect empty, got: " + codeLensWithoutServer);
-
-        try
-        {
-            System.setProperty("legend.engine.server.url", "http://localhost/hello");
-            List<? extends CodeLens> codeLensWithServer = extension.futureGet(extension.getServer().getTextDocumentService().codeLens(new CodeLensParams(new TextDocumentIdentifier(file))));
-
-            codeLensWithServer.sort(Comparator.comparing(x -> x.getCommand().getTitle()));
-
-            Assertions.assertEquals(2, codeLensWithServer.size(), "Expect 2 code lends, got: " + codeLensWithoutServer);
-            Assertions.assertEquals("Publish to Sandbox", codeLensWithServer.get(0).getCommand().getTitle());
-            Assertions.assertEquals("Validate", codeLensWithServer.get(1).getCommand().getTitle());
-        }
-        finally
-        {
-            System.clearProperty("legend.engine.server.url");
-        }
     }
 }
