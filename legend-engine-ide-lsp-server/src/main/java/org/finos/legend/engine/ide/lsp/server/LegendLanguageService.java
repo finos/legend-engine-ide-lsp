@@ -126,11 +126,10 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                 docState.forEachSectionState(sectionState ->
                 {
                     LegendLSPGrammarExtension extension = sectionState.getExtension();
-                    if (extension == null)
+                    if (extension != null)
                     {
-                        return;
+                        commands.addAll(extension.testCases(sectionState));
                     }
-                    commands.addAll(extension.testCases(sectionState));
                 });
             });
 

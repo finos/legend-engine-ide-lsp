@@ -16,9 +16,9 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -106,7 +106,7 @@ public final class TestableCommandsSupport
         return this.collectTests(element)
                 .map(test ->
                 {
-                    LinkedList<LegendTest> q = new LinkedList<>();
+                    ArrayDeque<LegendTest> q = new ArrayDeque<>();
                     q.add(test);
 
                     while (!q.isEmpty())
@@ -154,7 +154,7 @@ public final class TestableCommandsSupport
     {
         List<UniqueTestId> uniqueTestIds = new ArrayList<>();
 
-        LinkedList<LegendTest> q = new LinkedList<>();
+        ArrayDeque<LegendTest> q = new ArrayDeque<>();
         q.add(test);
 
         while (!q.isEmpty())

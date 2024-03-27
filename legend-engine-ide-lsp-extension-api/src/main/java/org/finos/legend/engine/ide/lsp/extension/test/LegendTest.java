@@ -18,7 +18,6 @@ package org.finos.legend.engine.ide.lsp.extension.test;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 
 public class LegendTest
@@ -31,7 +30,11 @@ public class LegendTest
 
     private LegendTest(List<String> idComponents, List<LegendTest> children, TextLocation location)
     {
-        this.idComponents = idComponents;
+        if (idComponents.isEmpty())
+        {
+            throw new IllegalStateException("Requires at least 1 idComponent, found 0");
+        }
+        this.idComponents = Collections.unmodifiableList(idComponents);
         this.id = String.join(".", idComponents);
         this.label = idComponents.get(idComponents.size() - 1);
         this.children = Collections.unmodifiableList(children);
@@ -84,13 +87,13 @@ public class LegendTest
             return false;
         }
         LegendTest that = (LegendTest) o;
-        return Objects.equals(id, that.id);
+        return this.id.equals(that.id);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(id);
+        return this.id.hashCode();
     }
 
     public static LegendTest newLegendTest(TextLocation location, String... idComponents)
