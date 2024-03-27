@@ -128,20 +128,6 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     }
 
     @Override
-    public Stream<? extends LegendExecutionResult> executeAllTestCases(SectionState section)
-    {
-        Stream<? extends LegendExecutionResult> superResults = super.executeAllTestCases(section);
-        Stream<? extends LegendExecutionResult> legacyResults = this.getParseResult(section)
-                .getElements()
-                .stream()
-                .filter(Mapping.class::isInstance)
-                .map(Mapping.class::cast)
-                .filter(x -> x.tests != null && !x.tests.isEmpty())
-                .flatMap(x -> this.runLegacyMappingTests(section, x.getPath(), null).stream());
-        return Stream.concat(superResults, legacyResults);
-    }
-
-    @Override
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
         super.collectCommands(sectionState, element, consumer);

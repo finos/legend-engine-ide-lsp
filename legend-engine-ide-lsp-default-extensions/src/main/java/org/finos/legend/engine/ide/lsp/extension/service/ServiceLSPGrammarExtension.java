@@ -148,20 +148,6 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    public Stream<? extends LegendExecutionResult> executeAllTestCases(SectionState section)
-    {
-        Stream<? extends LegendExecutionResult> superResults = super.executeAllTestCases(section);
-        Stream<? extends LegendExecutionResult> legacyResults = this.getParseResult(section)
-                .getElements()
-                .stream()
-                .filter(Service.class::isInstance)
-                .map(Service.class::cast)
-                .filter(x -> x.test != null)
-                .flatMap(x -> this.runLegacyServiceTest(section, x.getPath()).stream());
-        return Stream.concat(superResults, legacyResults);
-    }
-
-    @Override
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
         super.collectCommands(sectionState, element, consumer);

@@ -51,7 +51,7 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
         List<Object> args = params.getArguments();
 
         String uri = this.server.extractValueAs(args.get(0), String.class);
-        int sectionNum = this.server.extractValueAs(args.get(1), Integer.class);
+        int line = this.server.extractValueAs(args.get(1), Integer.class);
         String entity = this.server.extractValueAs(args.get(2), String.class);
         String id = this.server.extractValueAs(args.get(3), String.class);
         Map<String, String> executableArgs = ((args.size() < 5) || (args.get(4) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(4), String.class, String.class);
@@ -70,11 +70,11 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
                 throw new RuntimeException("Unknown document: " + uri);
             }
 
-            SectionState sectionState = docState.getSectionState(sectionNum);
+            SectionState sectionState = docState.getSectionStateAtLine(line);
             LegendLSPGrammarExtension extension = sectionState.getExtension();
             if (extension == null)
             {
-                throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found");
+                throw new RuntimeException("Could not execute command " + id + " for entity " + entity + " in section " + sectionState.getSectionNumber() + " of " + uri + ": no extension found");
             }
 
             try
@@ -83,7 +83,7 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
             }
             catch (Throwable e)
             {
-                String message = "Command execution " + id + " for entity " + entity + " in section " + sectionNum + " of " + uri + " failed.";
+                String message = "Command execution " + id + " for entity " + entity + " in section " + sectionState.getSectionNumber() + " of " + uri + " failed.";
                 results = Collections.singletonList(LegendExecutionResult.errorResult(new Exception(message, e), message, entity, null));
             }
 

@@ -16,10 +16,13 @@
 
 package org.finos.legend.engine.ide.lsp.server.service;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 
 @JsonSegment("legend")
 public interface LegendLanguageServiceContract
@@ -29,4 +32,10 @@ public interface LegendLanguageServiceContract
 
     @JsonRequest("replClasspath")
     CompletableFuture<String> replClasspath();
+
+    @JsonRequest("testCases")
+    CompletableFuture<List<LegendTest>> testCases();
+
+    @JsonRequest("executeTests")
+    CompletableFuture<List<LegendTestExecutionResult>> executeTests(ExecuteTestRequest rq);
 }

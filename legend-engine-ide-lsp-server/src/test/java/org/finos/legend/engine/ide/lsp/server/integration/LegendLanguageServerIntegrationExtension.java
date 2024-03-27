@@ -202,11 +202,16 @@ public class LegendLanguageServerIntegrationExtension implements
 
     public Path addToWorkspace(String relativePath, String content) throws Exception
     {
-        Path pureFile = workspaceFolderPath.resolve(relativePath);
+        Path pureFile = resolveWorkspacePath(relativePath);
         Files.writeString(pureFile, content);
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(pureFile.toUri().toString(), "legend", 0, content)));
         waitForAllTaskToComplete();
         return pureFile;
+    }
+
+    public Path resolveWorkspacePath(String relativePath)
+    {
+        return workspaceFolderPath.resolve(relativePath);
     }
 
     public void changeWorkspaceFile(Path pureFile, String content) throws Exception
