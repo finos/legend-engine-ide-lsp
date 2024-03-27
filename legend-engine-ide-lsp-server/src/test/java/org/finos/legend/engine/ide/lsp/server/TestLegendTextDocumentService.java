@@ -28,6 +28,7 @@ import org.eclipse.lsp4j.CompletionParams;
 import org.eclipse.lsp4j.DefinitionParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.InitializeParams;
+import org.eclipse.lsp4j.InsertReplaceEdit;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.LocationLink;
 import org.eclipse.lsp4j.Position;
@@ -36,6 +37,7 @@ import org.eclipse.lsp4j.SemanticTokens;
 import org.eclipse.lsp4j.SemanticTokensRangeParams;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.TextDocumentItem;
+import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
@@ -44,6 +46,7 @@ import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -128,10 +131,15 @@ public class TestLegendTextDocumentService
         List<String> suggestions = completions.stream().map(CompletionItem::getInsertText).collect(Collectors.toList());
         List<String> labels = completions.stream().map(CompletionItem::getLabel).collect(Collectors.toList());
         List<String> descriptions = completions.stream().map(r -> r.getLabelDetails().getDescription()).collect(Collectors.toList());
+        List<Either<TextEdit, InsertReplaceEdit>> textEdits = completions.stream().map(CompletionItem::getTextEdit).collect(Collectors.toList());
 
         Assertions.assertEquals(Arrays.asList("completionSuggestion1", "completionSuggestion2"), suggestions);
         Assertions.assertEquals(Arrays.asList("completionSuggestion1", "completionSuggestion2"), labels);
         Assertions.assertEquals(Arrays.asList("Test completion", "Test completion"), descriptions);
+        Range range = LegendToLSPUtilities.newRange(4, 21, 4, 21);
+        Either<TextEdit, Object> textEdit1 = Either.forLeft(new TextEdit(range, "completionSuggestion1"));
+        Either<TextEdit, Object> textEdit2 = Either.forLeft(new TextEdit(range, "completionSuggestion2"));
+        Assertions.assertEquals(Arrays.asList(textEdit1, textEdit2), textEdits);
     }
 
     @Test
@@ -191,12 +199,17 @@ public class TestLegendTextDocumentService
         List<String> suggestions = completions.stream().map(CompletionItem::getInsertText).collect(Collectors.toList());
         List<String> labels = completions.stream().map(CompletionItem::getLabel).collect(Collectors.toList());
         List<String> descriptions = completions.stream().map(r -> r.getLabelDetails().getDescription()).collect(Collectors.toList());
+        List<Either<TextEdit, InsertReplaceEdit>> textEdits = completions.stream().map(CompletionItem::getTextEdit).collect(Collectors.toList());
 
         Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1", "boilerplateSuggestion2", "###TestGrammar"), suggestions);
         Assertions.assertEquals(Arrays.asList("boilerplateSuggestion1", "boilerplateSuggestion2", "###TestGrammar"), labels);
         Assertions.assertEquals(Arrays.asList("Test boilerplate", "Test boilerplate", "Section - TestGrammar"), descriptions);
+        Range range = LegendToLSPUtilities.newRange(2, 0, 2, 0);
+        Either<TextEdit, Object> textEdit1 = Either.forLeft(new TextEdit(range, "boilerplateSuggestion1"));
+        Either<TextEdit, Object> textEdit2 = Either.forLeft(new TextEdit(range, "boilerplateSuggestion2"));
+        Either<TextEdit, Object> textEdit3 = Either.forLeft(new TextEdit(range, "###TestGrammar"));
+        Assertions.assertEquals(Arrays.asList(textEdit1, textEdit2, textEdit3), textEdits);
     }
-
 
     @Test
     public void testNoBoilerplate() throws Exception
@@ -264,16 +277,17 @@ public class TestLegendTextDocumentService
             Assertions.assertEquals(expected, items.stream().map(CompletionItem::getLabel).collect(Collectors.toSet()));
         };
 
+        Set<String> expected = Set.of("###TestGrammar", "###EmptyGrammar");
         // start of line
-        asserter.accept(new Position(9, 0), Set.of("###TestGrammar", "###EmptyGrammar"));
+        asserter.accept(new Position(9, 0), expected);
         // with # preceding
-        asserter.accept(new Position(9, 1), Set.of("##TestGrammar", "##EmptyGrammar"));
+        asserter.accept(new Position(9, 1), expected);
         // with ## preceding
-        asserter.accept(new Position(9, 2), Set.of("#TestGrammar", "#EmptyGrammar"));
+        asserter.accept(new Position(9, 2), expected);
         // with ### preceding
-        asserter.accept(new Position(9, 3), Set.of("TestGrammar", "EmptyGrammar"));
+        asserter.accept(new Position(9, 3), expected);
         // with ###T preceding
-        asserter.accept(new Position(9, 4), Set.of("TestGrammar", "EmptyGrammar"));
+        asserter.accept(new Position(9, 4), expected);
     }
 
     @Test

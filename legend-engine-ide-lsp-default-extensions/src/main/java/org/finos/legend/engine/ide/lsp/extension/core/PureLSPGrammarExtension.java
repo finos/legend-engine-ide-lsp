@@ -88,6 +88,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variabl
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
+import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
 import org.finos.legend.engine.shared.core.identity.factory.IdentityFactoryProvider;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
@@ -525,6 +526,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     {
         try
         {
+            int autocompleteColumn = Math.max(location.getColumn() - 1, 0);
+            TextPosition autocompleteLocation = TextPosition.newPosition(location.getLine(), autocompleteColumn);
             SectionSourceCode sectionSourceCode = toSectionSourceCode(section);
             CharStream input = CharStreams.fromString(sectionSourceCode.code);
             DomainLexerGrammar lexer = new DomainLexerGrammar(input);
@@ -535,19 +538,19 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             DomainParserGrammar.DefinitionContext definition = parser.definition();
             return definition.getRuleContexts(DomainParserGrammar.ElementDefinitionContext.class)
                     .stream()
-                    .filter(elemDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(elemDefCtx)).getTextInterval().includes(location))
+                    .filter(elemDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(elemDefCtx)).getTextInterval().includes(autocompleteLocation))
                     .findAny()
                     .flatMap(elemDefCtx -> elemDefCtx.getRuleContexts(DomainParserGrammar.FunctionDefinitionContext.class)
                             .stream()
-                            .filter(funcDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcDefCtx)).getTextInterval().includes(location))
+                            .filter(funcDefCtx -> SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcDefCtx)).getTextInterval().includes(autocompleteLocation))
                             .findAny())
                     .map(funcCtx ->
                     {
                         TextLocation codeBlockLocation = SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcCtx.codeBlock()));
-                        String functionExpression = section.getSection().getInterval(codeBlockLocation.getTextInterval().getStart().getLine(), codeBlockLocation.getTextInterval().getStart().getColumn(), location.getLine(), location.getColumn());
+                        String functionExpression = section.getSection().getInterval(codeBlockLocation.getTextInterval().getStart().getLine(), codeBlockLocation.getTextInterval().getStart().getColumn(), autocompleteLocation.getLine(), autocompleteLocation.getColumn());
                         PureModelContextData pureModelContextData = this.getCompileResult(section).getPureModelContextData();
                         String buildCodeContext = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().build()).renderPureModelContextData(pureModelContextData);
-                        return new Completer(buildCodeContext).complete(functionExpression);
+                        return new Completer(buildCodeContext, Lists.mutable.with(new RelationalCompleterExtension())).complete(functionExpression);
                     }).orElse(null);
         }
         catch (Exception e)

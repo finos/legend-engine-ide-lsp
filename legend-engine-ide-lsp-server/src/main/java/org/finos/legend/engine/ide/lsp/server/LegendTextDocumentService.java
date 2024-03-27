@@ -54,6 +54,7 @@ import org.eclipse.lsp4j.SymbolInformation;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.TextDocumentItem;
+import org.eclipse.lsp4j.TextEdit;
 import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.services.TextDocumentService;
@@ -430,7 +431,7 @@ public class LegendTextDocumentService implements TextDocumentService
             completionItems = this.server.getGrammarLibrary()
                     .getGrammars()
                     .stream()
-                    .map(x -> new LegendCompletion("Section - " + x, (upToSuggestLocation.isEmpty() || upToSuggestLocation.endsWith("#") ? "#".repeat(3 - upToSuggestLocation.length()) : "") + x))
+                    .map(x -> new LegendCompletion("Section - " + x, "###" + x))
                     .collect(Collectors.toList());
         }
 
@@ -445,17 +446,34 @@ public class LegendTextDocumentService implements TextDocumentService
         }
 
 
-        return getCompletionItems(completionItems);
+        return getCompletionItems(completionItems, line, character, upToSuggestLocation);
     }
 
-    private List<CompletionItem> getCompletionItems(Iterable<? extends LegendCompletion> legendCompletions)
+    private List<CompletionItem> getCompletionItems(Iterable<? extends LegendCompletion> legendCompletions, int line, int endColumn, String upToSuggestLocation)
     {
         List<CompletionItem> completions = new ArrayList<>();
+        int startColumn = -1;
 
         for (LegendCompletion legendCompletion : legendCompletions)
         {
-            CompletionItem completionItem = new CompletionItem(legendCompletion.getSuggestion());
-            completionItem.setInsertText(legendCompletion.getSuggestion());
+            String suggestion = legendCompletion.getSuggestion();
+            if (startColumn == -1)
+            {
+                int upToSuggestLocationLength = upToSuggestLocation.length();
+                int suggestionLength = suggestion.length();
+                if (upToSuggestLocationLength > suggestionLength)
+                {
+                    int commonSubstringStartColumn = findCommonSubstringStartColumn(upToSuggestLocation.substring(upToSuggestLocationLength - suggestionLength, upToSuggestLocationLength), suggestion);
+                    startColumn = upToSuggestLocationLength - suggestionLength + commonSubstringStartColumn;
+                }
+                else
+                {
+                    startColumn = findCommonSubstringStartColumn(upToSuggestLocation, suggestion.substring(0, upToSuggestLocationLength));
+                }
+            }
+            CompletionItem completionItem = new CompletionItem(suggestion);
+            completionItem.setInsertText(suggestion);
+            completionItem.setTextEdit(Either.forLeft(new TextEdit(LegendToLSPUtilities.newRange(line, startColumn, line, endColumn), suggestion)));
             CompletionItemLabelDetails detail = new CompletionItemLabelDetails();
             detail.setDescription(legendCompletion.getDescription());
             completionItem.setLabelDetails(detail);
@@ -463,6 +481,29 @@ public class LegendTextDocumentService implements TextDocumentService
         }
 
         return completions;
+    }
+
+    private int findCommonSubstringStartColumn(String upToSuggestLocation, String suggestion)
+    {
+        int suggestionLength = suggestion.length();
+        int startColumn = 0;
+        while (startColumn < suggestionLength)
+        {
+            int upToSuggestLocationIndex = startColumn;
+            int suggestionIndex = 0;
+            while (upToSuggestLocationIndex < suggestionLength && Character.toLowerCase(upToSuggestLocation.charAt(upToSuggestLocationIndex)) == Character.toLowerCase(suggestion.charAt(suggestionIndex)))
+            {
+                upToSuggestLocationIndex++;
+                suggestionIndex++;
+                if (upToSuggestLocationIndex == suggestionLength)
+                {
+                    return startColumn;
+                }
+            }
+            startColumn++;
+        }
+
+        return startColumn;
     }
 
     @Override

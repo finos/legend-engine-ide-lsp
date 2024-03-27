@@ -274,7 +274,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         Set<String> expectedCompletions = new HashSet<>(Arrays.asList("name", "other"));
         Set<String> actualCompletions = new HashSet<>();
-        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 48));
+        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 49));
         completions.forEach(completion -> actualCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedCompletions, actualCompletions);
     }
@@ -304,13 +304,13 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         Set<String> expectedCompletions = Set.of("project");
         Set<String> actualCompletions = new HashSet<>();
-        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 36));
+        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 37));
         completions.forEach(completion -> actualCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedCompletions, actualCompletions);
 
         Set<String> expectedNoCompletions = Set.of();
         Set<String> actualNoCompletions = new HashSet<>();
-        Iterable<? extends LegendCompletion> noCompletions = this.extension.getCompletions(sectionStates.get(2), TextPosition.newPosition(2, 38));
+        Iterable<? extends LegendCompletion> noCompletions = this.extension.getCompletions(sectionStates.get(2), TextPosition.newPosition(2, 39));
         noCompletions.forEach(completion -> actualNoCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedNoCompletions, actualNoCompletions);
     }
@@ -336,7 +336,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         Set<String> expectedCompletions = Set.of();
         Set<String> actualCompletions = new HashSet<>();
-        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 1));
+        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 2));
         completions.forEach(completion -> actualCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedCompletions, actualCompletions);
     }
@@ -365,7 +365,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         Set<String> expectedCompletions = new HashSet<>(Arrays.asList("select", "size", "slice", "sort"));
         Set<String> actualCompletions = new HashSet<>();
-        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 49));
+        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 50));
         completions.forEach(completion -> actualCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedCompletions, actualCompletions);
     }
@@ -398,7 +398,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         Set<String> expectedCompletions = new HashSet<>(Arrays.asList("select", "size", "slice", "sort"));
         Set<String> actualCompletions = new HashSet<>();
-        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 49));
+        Iterable<? extends LegendCompletion> completions = this.extension.getCompletions(sectionStates.get(1), TextPosition.newPosition(2, 50));
         completions.forEach(completion -> actualCompletions.add(completion.getDescription()));
         Assertions.assertEquals(expectedCompletions, actualCompletions);
     }
