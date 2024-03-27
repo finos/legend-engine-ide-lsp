@@ -47,7 +47,6 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.finos.legend.engine.ide.lsp.commands.CommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
-import org.finos.legend.engine.ide.lsp.commands.RunAllTestCasesCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
@@ -65,7 +64,6 @@ public class LegendWorkspaceService implements WorkspaceService
     {
         this.server = server;
         this.addCommandExecutionHandler(new LegendCommandExecutionHandler(server));
-        this.addCommandExecutionHandler(new RunAllTestCasesCommandExecutionHandler(server));
     }
 
     private void addCommandExecutionHandler(CommandExecutionHandler legendCommandExecutionHandler)

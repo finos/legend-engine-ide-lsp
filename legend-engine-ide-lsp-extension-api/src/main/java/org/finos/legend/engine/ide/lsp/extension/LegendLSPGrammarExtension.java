@@ -15,9 +15,10 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
+import java.util.Set;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
@@ -25,6 +26,9 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 
 /**
@@ -127,8 +131,13 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
         return Collections.emptyList();
     }
 
-    default Stream<? extends LegendExecutionResult> executeAllTestCases(SectionState section)
+    default List<LegendTest> testCases(SectionState section)
     {
-        return Stream.empty();
+        return Collections.emptyList();
+    }
+
+    default List<LegendTestExecutionResult> executeTests(SectionState section, TextLocation location, String testId, Set<String> excludedTestIds)
+    {
+        return Collections.emptyList();
     }
 }

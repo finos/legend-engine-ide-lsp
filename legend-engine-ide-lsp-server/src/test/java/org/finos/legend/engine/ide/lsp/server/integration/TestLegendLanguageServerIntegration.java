@@ -21,12 +21,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import org.eclipse.lsp4j.CodeLens;
+import org.eclipse.lsp4j.CodeLensParams;
 import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DocumentDiagnosticParams;
@@ -319,6 +322,55 @@ public class TestLegendLanguageServerIntegration
                 Assertions.fail("Did not found token and stream closed...");
             }
 
+        }
+    }
+
+    @Test
+    void codeLensCommandsFunctionActivator() throws Exception
+    {
+        String code1 = "###Pure\n" +
+                "function model::Hello(name: String[1]): String[1]\n" +
+                "{\n" +
+                "  'Hello World! My name is ' + $name + '.';\n" +
+                "}\n" +
+                "{\n" +
+                "  testSuite_1\n" +
+                "  (\n" +
+                "    testPass | Hello('John') => 'Hello World! My name is John.';\n" +
+                "  )\n" +
+                "}\n";
+
+        String code2 = "###Snowflake\n" +
+                "SnowflakeApp app::pack::MyApp\n" +
+                "{" +
+                "   applicationName : 'name';\n" +
+                "   function : model::Hello(String[1]):String[1];\n" +
+                "   ownership : Deployment { identifier: 'MyAppOwnership'};\n" +
+                "}\n";
+
+        extension.addToWorkspace("file1.pure", code1);
+        Path path = extension.addToWorkspace("file2.pure", code2);
+        extension.assertWorkspaceParseAndCompiles();
+
+        String file = path.toUri().toString();
+        List<? extends CodeLens> codeLensWithoutServer = extension.futureGet(extension.getServer().getTextDocumentService().codeLens(new CodeLensParams(new TextDocumentIdentifier(file))));
+
+        Assertions.assertTrue(codeLensWithoutServer.isEmpty(), "Expect empty, got: " + codeLensWithoutServer);
+
+        try
+        {
+            System.setProperty("legend.engine.server.url", "http://localhost/hello");
+            List<? extends CodeLens> codeLensWithServer = extension.futureGet(extension.getServer().getTextDocumentService().codeLens(new CodeLensParams(new TextDocumentIdentifier(file))));
+
+            codeLensWithServer.sort(Comparator.comparing(x -> x.getCommand().getTitle()));
+
+            Assertions.assertEquals(2, codeLensWithServer.size(), "Expect 2 code lends, got: " + codeLensWithoutServer);
+            Assertions.assertEquals("Publish to Sandbox", codeLensWithServer.get(0).getCommand().getTitle());
+            Assertions.assertEquals("Validate", codeLensWithServer.get(1).getCommand().getTitle());
+        }
+        finally
+        {
+            System.clearProperty("legend.engine.server.url");
         }
     }
 }

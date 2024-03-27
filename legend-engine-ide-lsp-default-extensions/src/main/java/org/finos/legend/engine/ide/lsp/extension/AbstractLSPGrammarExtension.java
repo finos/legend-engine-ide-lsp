@@ -32,7 +32,6 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -51,6 +50,8 @@ import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
@@ -105,7 +106,6 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     public AbstractLSPGrammarExtension()
     {
         this.testableCommandsSupport = new TestableCommandsSupport(this);
-        this.commandsSupports.add(testableCommandsSupport);
         this.commandsSupports.add(new FunctionActivatorCommandsSupport(this));
     }
 
@@ -491,9 +491,27 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     }
 
     @Override
-    public Stream<? extends LegendExecutionResult> executeAllTestCases(SectionState section)
+    public final List<LegendTest> testCases(SectionState section)
     {
-        return this.testableCommandsSupport.executeAllTestCases(section);
+        ParseResult result = getParseResult(section);
+        if (result.hasException() || result.getElements().isEmpty())
+        {
+            return Collections.emptyList();
+        }
+
+        return result.getElements().stream().map(this.testableCommandsSupport::collectTests).flatMap(Optional::stream).collect(Collectors.toList());
+    }
+
+    @Override
+    public final List<LegendTestExecutionResult> executeTests(SectionState section, TextLocation location, String testId, Set<String> excludedTestIds)
+    {
+        return this.getParseResult(section)
+                .getElements()
+                .stream()
+                .filter(x -> SourceInformationUtil.toLocation(x.sourceInformation).subsumes(location))
+                .findAny()
+                .map(e -> this.testableCommandsSupport.executeTests(section, e, testId, excludedTestIds))
+                .orElse(List.of());
     }
 
     protected void forEachChild(PackageableElement element, Consumer<LegendDeclaration> consumer)

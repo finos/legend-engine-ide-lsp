@@ -93,7 +93,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageServer.class);
     private static final Logger LOGGER_CLIENT = LoggerFactory.getLogger(LegendLanguageServer.class.getName() + ".client");
 
-    static final String LEGEND_CLIENT_COMMAND_ID = "legend.client.command";
+    public static final String LEGEND_CLIENT_COMMAND_ID = "legend.client.command";
 
     private static final int UNINITIALIZED = 0;
     private static final int INITIALIZING = 1;
@@ -191,6 +191,11 @@ public class LegendLanguageServer implements LegendLanguageServerContract
 
     public <T> T runAndFireEvent(String eventType, Supplier<T> action)
     {
+        return runAndFireEvent(eventType, action, Map.of());
+    }
+
+    public <T> T runAndFireEvent(String eventType, Supplier<T> action, Map<String, Object> metadata)
+    {
         Instant start = Instant.now();
         Exception exception = null;
         try
@@ -204,7 +209,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         }
         finally
         {
-            this.fireEvent(eventType, start, Collections.emptyMap(), exception);
+            this.fireEvent(eventType, start, metadata, exception);
         }
     }
 
