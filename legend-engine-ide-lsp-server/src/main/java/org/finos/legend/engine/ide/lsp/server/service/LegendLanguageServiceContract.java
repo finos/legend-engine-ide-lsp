@@ -38,4 +38,8 @@ public interface LegendLanguageServiceContract
 
     @JsonRequest("executeTests")
     CompletableFuture<List<LegendTestExecutionResult>> executeTests(ExecuteTestRequest rq);
+
+    @JsonRequest("legendVirtualFile")
+    CompletableFuture<String> loadLegendVirtualFile(String uri);
+
 }

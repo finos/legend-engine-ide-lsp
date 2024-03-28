@@ -14,6 +14,6 @@
 # limitations under the License.
 #
 
-org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagementImpl
+org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagement
 org.finos.legend.engine.ide.lsp.extension.core.LegendTDSRequestHandlerImpl
 org.finos.legend.engine.ide.lsp.extension.repl.LegendREPLFeatureImpl

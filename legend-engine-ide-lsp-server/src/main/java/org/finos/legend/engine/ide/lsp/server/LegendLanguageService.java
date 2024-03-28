@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendTDSRequestHandler;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
@@ -39,6 +40,8 @@ import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContr
 
 public class LegendLanguageService implements LegendLanguageServiceContract
 {
+    private static final String LEGEND_VIRTUAL_FS_SCHEME = "legend-vfs:/";
+
     private final LegendLanguageServer server;
 
     public LegendLanguageService(LegendLanguageServer server)
@@ -149,4 +152,46 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                 }, Map.of("testId", rq.getTestId()))
         );
     }
+
+    @Override
+    public CompletableFuture<String> loadLegendVirtualFile(String uri)
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            if (uri.startsWith(LEGEND_VIRTUAL_FS_SCHEME))
+            {
+                LegendServerGlobalState.LegendServerDocumentState documentState = this.server.getGlobalState().getDocumentState(uri);
+                if (documentState == null)
+                {
+                    throw new IllegalArgumentException("Provided URI does not exists on Legend Virtual Filesystem: " + uri);
+                }
+                else
+                {
+                    return documentState.getText();
+                }
+            }
+            else
+            {
+                throw new IllegalArgumentException("Provided URI not managed by Legend Virtual Filesystem: " + uri);
+            }
+        });
+    }
+
+    protected void loadVirtualFileSystemContent()
+    {
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+
+        globalState.removeFolder(LEGEND_VIRTUAL_FS_SCHEME);
+
+        globalState.findFeatureThatImplements(LegendVirtualFileSystemContentInitializer.class)
+                .map(LegendVirtualFileSystemContentInitializer::getVirtualFilePureGrammars)
+                .flatMap(List::stream)
+                .forEach(virtualFile ->
+                {
+                    String uri = LEGEND_VIRTUAL_FS_SCHEME + virtualFile.getPath();
+                    LegendServerGlobalState.LegendServerDocumentState dependenciesDocument = globalState.getOrCreateDocState(uri);
+                    dependenciesDocument.save(virtualFile.getContent());
+                });
+    }
+
 }

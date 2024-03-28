@@ -16,36 +16,28 @@
 
 package org.finos.legend.engine.ide.lsp.extension.sdlc;
 
-import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
-import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
-import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import java.nio.file.Path;
+import java.util.List;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestLegendDependencyManagement extends AbstractLSPGrammarExtensionTest<PureLSPGrammarExtension>
+public class TestLegendDependencyManagement
 {
     @Test
     void testDependenciesDiscovered()
     {
-        String codeThatDepends = "###Pure\n" +
-                "function vscodelsp::test::functionRefersDependency(): Any[*]\n" +
+        LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
+        List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> files = legendDependencyManagement.getVirtualFilePureGrammars();
+
+        LegendVirtualFileSystemContentInitializer.LegendVirtualFile expected = LegendVirtualFileSystemContentInitializer.newVirtualFile(Path.of("dependencies.pure"),
+                String.format("// READ ONLY (sourced from workspace dependencies)%n%n") +
+                "Class vscodelsp::test::dependency::Employee\n" +
                 "{\n" +
-                "    vscodelsp::test::dependency::Employee.all();\n" +
-                "}";
+                "  foobar1: Float[1];\n" +
+                "  foobar2: Float[1];\n" +
+                "}\n");
 
-        // no dependency, compile problem
-        testDiagnostics(codeThatDepends,
-                LegendDiagnostic.newDiagnostic(
-                        TextLocation.newTextSource("file.pure", 3, 4, 3, 40),
-                        "Can't find the packageable element 'vscodelsp::test::dependency::Employee'",
-                        LegendDiagnostic.Kind.Error,
-                        LegendDiagnostic.Source.Compiler
-                )
-        );
-
-        // register feature to discover and process dependencies
-        this.registerFeature(new LegendDependencyManagementImpl());
-        // same code as before, it compiles
-        testDiagnostics(codeThatDepends);
+        Assertions.assertEquals(List.of(expected), files);
     }
 }

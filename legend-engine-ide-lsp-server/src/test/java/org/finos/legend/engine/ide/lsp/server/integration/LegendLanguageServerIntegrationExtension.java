@@ -16,8 +16,6 @@
 
 package org.finos.legend.engine.ide.lsp.server.integration;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
@@ -29,9 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
@@ -56,7 +52,6 @@ import org.eclipse.lsp4j.WorkspaceDiagnosticReport;
 import org.eclipse.lsp4j.WorkspaceDocumentDiagnosticReport;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
-import org.eclipse.lsp4j.jsonrpc.json.MessageJsonHandler;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
@@ -253,15 +248,16 @@ public class LegendLanguageServerIntegrationExtension implements
         return this.server;
     }
 
-    public <T> T futureGet(Future<T> future) throws ExecutionException, InterruptedException, TimeoutException
+    public <T> T futureGet(Future<T> future) throws Exception
     {
-        return future.get(MAYBE_DEADLOCK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    }
-
-    public <T> T futureGet(CompletableFuture<Object> future, TypeToken<T> token) throws ExecutionException, InterruptedException, TimeoutException
-    {
-        Gson gson = new MessageJsonHandler(Map.of()).getGson();
-        return futureGet(future.thenApply(x -> gson.fromJson(gson.toJsonTree(x), token)));
+        try
+        {
+            return future.get(MAYBE_DEADLOCK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        }
+        catch (ExecutionException e)
+        {
+            throw (Exception) e.getCause();
+        }
     }
 
     public void assertWorkspaceParseAndCompiles() throws Exception
