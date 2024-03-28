@@ -31,7 +31,7 @@ public class TestLegendDependencyManagement
         List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> files = legendDependencyManagement.getVirtualFilePureGrammars();
 
         LegendVirtualFileSystemContentInitializer.LegendVirtualFile expected = LegendVirtualFileSystemContentInitializer.newVirtualFile(Path.of("dependencies.pure"),
-                String.format("// READ ONLY (sourced from workspace dependencies)%n%n") +
+                "// READ ONLY (sourced from workspace dependencies)\n\n" +
                 "Class vscodelsp::test::dependency::Employee\n" +
                 "{\n" +
                 "  foobar1: Float[1];\n" +

@@ -446,12 +446,12 @@ public class TestLegendLanguageServerIntegration
     {
         String content = extension.futureGet(extension.getServer().getLegendLanguageService().loadLegendVirtualFile("legend-vfs:/dependencies.pure"));
         Assertions.assertEquals(
-                String.format("// READ ONLY (sourced from workspace dependencies)%n%n" +
+                "// READ ONLY (sourced from workspace dependencies)\n\n" +
                         "Class vscodelsp::test::dependency::Employee\n" +
                         "{\n" +
                         "  foobar1: Float[1];\n" +
                         "  foobar2: Float[1];\n" +
-                        "}\n"),
+                        "}\n",
                 content
         );
         ResponseErrorException exception = Assertions.assertThrows(ResponseErrorException.class, () -> extension.futureGet(extension.getServer().getLegendLanguageService().loadLegendVirtualFile("file:/dependencies.pure")));

@@ -51,7 +51,7 @@ public final class LegendDependencyManagement implements LegendVirtualFileSystem
             return List.of(
                     LegendVirtualFileSystemContentInitializer.newVirtualFile(
                             Path.of("dependencies.pure"),
-                            String.format("// READ ONLY (sourced from workspace dependencies)%n%n") + pureGrammar
+                            "// READ ONLY (sourced from workspace dependencies)\n\n" + pureGrammar
                     )
             );
         }
