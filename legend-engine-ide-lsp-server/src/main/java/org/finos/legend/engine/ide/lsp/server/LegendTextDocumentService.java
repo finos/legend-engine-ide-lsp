@@ -225,17 +225,28 @@ public class LegendTextDocumentService implements TextDocumentService
             }
 
             LOGGER.debug("Getting symbols for section {} ({}) of {}", sectionState.getSectionNumber(), grammar, uri);
-            extension.getDeclarations(sectionState).forEach(declaration -> results.add(Either.forRight(toDocumentSymbol(declaration))));
+            extension.getDeclarations(sectionState).forEach(declaration -> results.add(Either.forRight(this.toDocumentSymbol(declaration, null))));
         });
         return results;
     }
 
-    public DocumentSymbol toDocumentSymbol(LegendDeclaration declaration)
+    private DocumentSymbol toDocumentSymbol(LegendDeclaration declaration, DocumentSymbol parent)
     {
         Range range = LegendToLSPUtilities.toRange(declaration.getLocation().getTextInterval());
         Range selectionRange = declaration.hasCoreLocation() ? LegendToLSPUtilities.toRange(declaration.getCoreLocation().getTextInterval()) : range;
-        DocumentSymbol symbol = new DocumentSymbol(declaration.getIdentifier(), SymbolKind.Object, range, selectionRange);
-        symbol.setChildren(declaration.getChildren().stream().map(this::toDocumentSymbol).peek(x -> x.setName(symbol.getName() + "." + x.getName())).collect(Collectors.toList()));
+        String identifier = declaration.getIdentifier();
+        SymbolKind symbolKind = LegendToLSPUtilities.getSymbolKind(declaration);
+        if (parent != null)
+        {
+            identifier = parent.getName() + "." + identifier;
+            if (parent.getKind().equals(SymbolKind.Enum))
+            {
+                symbolKind = SymbolKind.EnumMember;
+            }
+        }
+        DocumentSymbol symbol = new DocumentSymbol(identifier, symbolKind, range, selectionRange);
+        symbol.setDetail(declaration.getClassifier());
+        symbol.setChildren(declaration.getChildren().stream().map(c -> this.toDocumentSymbol(c, symbol)).collect(Collectors.toList()));
         return symbol;
     }
 

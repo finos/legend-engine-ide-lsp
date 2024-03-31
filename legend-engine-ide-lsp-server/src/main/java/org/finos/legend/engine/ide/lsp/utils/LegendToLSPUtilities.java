@@ -20,6 +20,8 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SymbolKind;
+import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 
@@ -71,6 +73,27 @@ public final class LegendToLSPUtilities
             {
                 return DiagnosticSeverity.Error;
             }
+        }
+    }
+
+    public static SymbolKind getSymbolKind(LegendDeclaration declaration)
+    {
+        switch (declaration.getClassifier())
+        {
+            case "meta::pure::metamodel::type::Enumeration":
+                return SymbolKind.Enum;
+            case "meta::pure::metamodel::type::Class":
+                return SymbolKind.Class;
+            case "meta::pure::metamodel::relationship::Association":
+                return SymbolKind.Interface;
+            case "meta::pure::metamodel::function::ConcreteFunctionDefinition":
+                return SymbolKind.Function;
+            case "meta::pure::metamodel::function::property::Property":
+                return SymbolKind.Field;
+            case "meta::pure::metamodel::function::property::QualifiedProperty":
+                return SymbolKind.Method;
+            default:
+                return SymbolKind.Struct;
         }
     }
 }

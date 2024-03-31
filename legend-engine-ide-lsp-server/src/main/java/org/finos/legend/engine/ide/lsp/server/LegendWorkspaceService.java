@@ -41,14 +41,17 @@ import org.eclipse.lsp4j.WorkspaceDocumentDiagnosticReport;
 import org.eclipse.lsp4j.WorkspaceFoldersChangeEvent;
 import org.eclipse.lsp4j.WorkspaceFullDocumentDiagnosticReport;
 import org.eclipse.lsp4j.WorkspaceSymbol;
+import org.eclipse.lsp4j.WorkspaceSymbolLocation;
 import org.eclipse.lsp4j.WorkspaceSymbolParams;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.finos.legend.engine.ide.lsp.commands.CommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
+import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -320,27 +323,44 @@ public class LegendWorkspaceService implements WorkspaceService
             {
                 if (sec.getExtension() != null)
                 {
-                    sec.getExtension().getDeclarations(sec).forEach(declaration ->
-                    {
-                        if (params.getQuery().isEmpty() || declaration.getIdentifier().toLowerCase().contains(params.getQuery().toLowerCase()))
-                        {
-                            Range range = LegendToLSPUtilities.toRange(declaration.getLocation().getTextInterval());
-                            Range selectionRange = declaration.hasCoreLocation() ? LegendToLSPUtilities.toRange(declaration.getCoreLocation().getTextInterval()) : range;
-
-                            WorkspaceSymbol workspaceSymbol = new WorkspaceSymbol(
-                                    declaration.getIdentifier(),
-                                    SymbolKind.Object,
-                                    Either.forLeft(new Location(doc.getDocumentId(), selectionRange))
-                            );
-
-                            symbols.add(workspaceSymbol);
-                        }
-                    });
+                    sec.getExtension()
+                            .getDeclarations(sec)
+                            .forEach(declaration -> toWorkspaceSymbol(params, symbols, doc, declaration, null));
                 }
             });
         });
 
         return Either.forRight(symbols);
+    }
+
+    private static void toWorkspaceSymbol(WorkspaceSymbolParams params, List<WorkspaceSymbol> symbols, DocumentState doc, LegendDeclaration declaration, WorkspaceSymbol parent)
+    {
+        if (params.getQuery().isEmpty() || declaration.getIdentifier().toLowerCase().contains(params.getQuery().toLowerCase()))
+        {
+            Range range = LegendToLSPUtilities.toRange(declaration.getLocation().getTextInterval());
+            Range selectionRange = declaration.hasCoreLocation() ? LegendToLSPUtilities.toRange(declaration.getCoreLocation().getTextInterval()) : range;
+
+            String name = declaration.getIdentifier();
+            String containerName = null;
+            SymbolKind kind = LegendToLSPUtilities.getSymbolKind(declaration);
+            Either<Location, WorkspaceSymbolLocation> location = Either.forLeft(new Location(doc.getDocumentId(), selectionRange));
+            if (parent != null)
+            {
+                containerName = parent.getName();
+                name = parent.getName() + "." + name;
+                if (parent.getKind().equals(SymbolKind.Enum))
+                {
+                    kind = SymbolKind.EnumMember;
+                }
+            }
+            WorkspaceSymbol workspaceSymbol = new WorkspaceSymbol(name, kind, location);
+            workspaceSymbol.setContainerName(containerName);
+            workspaceSymbol.setData(Map.of("classifier", declaration.getClassifier()));
+
+            symbols.add(workspaceSymbol);
+
+            declaration.getChildren().forEach(x -> toWorkspaceSymbol(params, symbols, doc, x, workspaceSymbol));
+        }
     }
 
     private final AtomicReference<Map<String, Set<LegendDiagnostic>>> previousResultIdToDiagnosticReference = new AtomicReference<>(Map.of());
