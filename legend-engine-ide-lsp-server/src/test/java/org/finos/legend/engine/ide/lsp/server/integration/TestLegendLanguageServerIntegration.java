@@ -16,6 +16,8 @@
 
 package org.finos.legend.engine.ide.lsp.server.integration;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,14 +36,19 @@ import org.eclipse.lsp4j.Diagnostic;
 import org.eclipse.lsp4j.DiagnosticSeverity;
 import org.eclipse.lsp4j.DocumentDiagnosticParams;
 import org.eclipse.lsp4j.DocumentDiagnosticReport;
+import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PreviousResultId;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceDiagnosticParams;
 import org.eclipse.lsp4j.WorkspaceDocumentDiagnosticReport;
 import org.eclipse.lsp4j.WorkspaceSymbol;
 import org.eclipse.lsp4j.WorkspaceSymbolParams;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -79,7 +86,7 @@ public class TestLegendLanguageServerIntegration
     @RepeatedTest(value = 10, failureThreshold = 1)
     void testWorkspaceSymbols() throws Exception
     {
-        extension.addToWorkspace("file1.pure", "###Pure\n" +
+        Path file1Path = extension.addToWorkspace("file1.pure", "###Pure\n" +
                 "Class abc::abc\n" +
                 "{\n" +
                 "  abc: String[1];\n" +
@@ -93,7 +100,7 @@ public class TestLegendLanguageServerIntegration
                 "  abc: String[1];\n" +
                 "}\n");
 
-        extension.addToWorkspace("file2.pure", "###Pure\n" +
+        Path file2Path = extension.addToWorkspace("file2.pure", "###Pure\n" +
                 "Class xyz::abc\n" +
                 "{\n" +
                 "  abc: String[1];\n" +
@@ -107,11 +114,60 @@ public class TestLegendLanguageServerIntegration
                 "  abc: String[1];\n" +
                 "}\n");
 
+        Path enumPath = extension.addToWorkspace("enum.pure", "Enum test::model::TestEnumeration\n" +
+                "{\n" +
+                "  VAL1, VAL2,\n" +
+                "  VAL3, VAL4\n" +
+                "}\n");
+
         List<? extends WorkspaceSymbol> symbols = extension.futureGet(extension.getServer().getWorkspaceService().symbol(new WorkspaceSymbolParams(""))).getRight();
         Assertions.assertNotNull(symbols);
 
-        Set<String> symbolNames = symbols.stream().map(WorkspaceSymbol::getName).collect(Collectors.toSet());
-        Assertions.assertEquals(Set.of("abc::abc", "abc::abc2", "abc::abc3", "xyz::abc", "xyz::abc2", "xyz::abc3"), symbolNames);
+        symbols.sort(Comparator.comparing(WorkspaceSymbol::getName));
+
+        List<WorkspaceSymbol> expected = List.of(
+                createWorkspaceSymbol("abc::abc", SymbolKind.Class, TextLocation.newTextSource(file1Path.toUri().toString(), 1, 0, 4, 0), null, "meta::pure::metamodel::type::Class"),
+                createWorkspaceSymbol("abc::abc.abc", SymbolKind.Field, TextLocation.newTextSource(file1Path.toUri().toString(), 3, 2, 3, 16), "abc::abc", "meta::pure::metamodel::function::property::Property"),
+                createWorkspaceSymbol("abc::abc2", SymbolKind.Class, TextLocation.newTextSource(file1Path.toUri().toString(), 5, 0, 8, 0), null, "meta::pure::metamodel::type::Class"),
+                createWorkspaceSymbol("abc::abc2.abc", SymbolKind.Field, TextLocation.newTextSource(file1Path.toUri().toString(), 7, 2, 7, 16), "abc::abc2", "meta::pure::metamodel::function::property::Property"),
+                createWorkspaceSymbol("abc::abc3", SymbolKind.Class, TextLocation.newTextSource(file1Path.toUri().toString(), 9, 0, 12, 0), null, "meta::pure::metamodel::type::Class"),
+                createWorkspaceSymbol("abc::abc3.abc", SymbolKind.Field, TextLocation.newTextSource(file1Path.toUri().toString(), 11, 2, 11, 16), "abc::abc3", "meta::pure::metamodel::function::property::Property"),
+
+                createWorkspaceSymbol("test::model::TestEnumeration", SymbolKind.Enum, TextLocation.newTextSource(enumPath.toUri().toString(), 0, 0, 4, 0), null, "meta::pure::metamodel::type::Enumeration"),
+                createWorkspaceSymbol("test::model::TestEnumeration.VAL1", SymbolKind.EnumMember, TextLocation.newTextSource(enumPath.toUri().toString(), 2, 2, 2, 5), "test::model::TestEnumeration", "test::model::TestEnumeration"),
+                createWorkspaceSymbol("test::model::TestEnumeration.VAL2", SymbolKind.EnumMember, TextLocation.newTextSource(enumPath.toUri().toString(), 2, 8, 2, 11), "test::model::TestEnumeration", "test::model::TestEnumeration"),
+                createWorkspaceSymbol("test::model::TestEnumeration.VAL3", SymbolKind.EnumMember, TextLocation.newTextSource(enumPath.toUri().toString(), 3, 2, 3, 5), "test::model::TestEnumeration", "test::model::TestEnumeration"),
+                createWorkspaceSymbol("test::model::TestEnumeration.VAL4", SymbolKind.EnumMember, TextLocation.newTextSource(enumPath.toUri().toString(), 3, 8, 3, 11), "test::model::TestEnumeration", "test::model::TestEnumeration"),
+
+//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee", SymbolKind.Class, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 2, 0, 6, 0), null, "meta::pure::metamodel::type::Class"),
+//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar1", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 4, 2, 4, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
+//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar2", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 5, 2, 5, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
+
+                createWorkspaceSymbol("xyz::abc", SymbolKind.Class, TextLocation.newTextSource(file2Path.toUri().toString(), 1, 0, 4, 0), null, "meta::pure::metamodel::type::Class"),
+                createWorkspaceSymbol("xyz::abc.abc", SymbolKind.Field, TextLocation.newTextSource(file2Path.toUri().toString(), 3, 2, 3, 16), "xyz::abc", "meta::pure::metamodel::function::property::Property"),
+                createWorkspaceSymbol("xyz::abc2", SymbolKind.Class, TextLocation.newTextSource(file2Path.toUri().toString(), 5, 0, 8, 0), null, "meta::pure::metamodel::type::Class"),
+                createWorkspaceSymbol("xyz::abc2.abc", SymbolKind.Field, TextLocation.newTextSource(file2Path.toUri().toString(), 7, 2, 7, 16), "xyz::abc2", "meta::pure::metamodel::function::property::Property"),
+                createWorkspaceSymbol("xyz::abc3", SymbolKind.Class, TextLocation.newTextSource(file2Path.toUri().toString(), 9, 0, 12, 0), null, "meta::pure::metamodel::type::Class"),
+                createWorkspaceSymbol("xyz::abc3.abc", SymbolKind.Field, TextLocation.newTextSource(file2Path.toUri().toString(), 11, 2, 11, 16), "xyz::abc3", "meta::pure::metamodel::function::property::Property")
+        );
+
+        for (int i = 0; i < Math.max(symbols.size(), expected.size()); i++)
+        {
+            WorkspaceSymbol expectedSymbol = null;
+            if (expected.size() > i)
+            {
+                expectedSymbol = expected.get(i);
+            }
+
+            WorkspaceSymbol actualSymbol = null;
+            if (symbols.size() > i)
+            {
+                actualSymbol = symbols.get(i);
+            }
+
+            Assertions.assertEquals(expectedSymbol, actualSymbol, String.format("Symbol at %d are not equal", i));
+        }
+
 
         List<? extends WorkspaceSymbol> symbolsFiltered1 = extension.futureGet(extension.getServer().getWorkspaceService().symbol(new WorkspaceSymbolParams("xyz"))).getRight();
         Set<String> symbolNamesFiltered1 = symbolsFiltered1.stream().map(WorkspaceSymbol::getName).collect(Collectors.toSet());
@@ -120,6 +176,16 @@ public class TestLegendLanguageServerIntegration
         List<? extends WorkspaceSymbol> symbolsFiltered2 = extension.futureGet(extension.getServer().getWorkspaceService().symbol(new WorkspaceSymbolParams("abc2"))).getRight();
         Set<String> symbolNamesFiltered2 = symbolsFiltered2.stream().map(WorkspaceSymbol::getName).collect(Collectors.toSet());
         Assertions.assertEquals(Set.of("abc::abc2", "xyz::abc2"), symbolNamesFiltered2);
+    }
+
+    private WorkspaceSymbol createWorkspaceSymbol(String name, SymbolKind kind, TextLocation textLocation, String containerName, String classifier)
+    {
+        Location location = new Location(textLocation.getDocumentId(), LegendToLSPUtilities.toRange(textLocation.getTextInterval()));
+        WorkspaceSymbol workspaceSymbol = new WorkspaceSymbol(name, kind, Either.forLeft(location), containerName);
+        JsonObject data = new JsonObject();
+        data.add("classifier", new JsonPrimitive(classifier));
+        workspaceSymbol.setData(data);
+        return workspaceSymbol;
     }
 
     // repeat to test for race conditions, thread dead-locks, etc
