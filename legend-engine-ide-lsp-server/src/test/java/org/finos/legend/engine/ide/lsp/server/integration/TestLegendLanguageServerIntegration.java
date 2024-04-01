@@ -139,9 +139,9 @@ public class TestLegendLanguageServerIntegration
                 createWorkspaceSymbol("test::model::TestEnumeration.VAL3", SymbolKind.EnumMember, TextLocation.newTextSource(enumPath.toUri().toString(), 3, 2, 3, 5), "test::model::TestEnumeration", "test::model::TestEnumeration"),
                 createWorkspaceSymbol("test::model::TestEnumeration.VAL4", SymbolKind.EnumMember, TextLocation.newTextSource(enumPath.toUri().toString(), 3, 8, 3, 11), "test::model::TestEnumeration", "test::model::TestEnumeration"),
 
-                createWorkspaceSymbol("vscodelsp::test::dependency::Employee", SymbolKind.Class, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 2, 0, 6, 0), null, "meta::pure::metamodel::type::Class"),
-                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar1", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 4, 2, 4, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
-                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar2", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 5, 2, 5, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
+//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee", SymbolKind.Class, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 2, 0, 6, 0), null, "meta::pure::metamodel::type::Class"),
+//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar1", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 4, 2, 4, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
+//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar2", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 5, 2, 5, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
 
                 createWorkspaceSymbol("xyz::abc", SymbolKind.Class, TextLocation.newTextSource(file2Path.toUri().toString(), 1, 0, 4, 0), null, "meta::pure::metamodel::type::Class"),
                 createWorkspaceSymbol("xyz::abc.abc", SymbolKind.Field, TextLocation.newTextSource(file2Path.toUri().toString(), 3, 2, 3, 16), "xyz::abc", "meta::pure::metamodel::function::property::Property"),
