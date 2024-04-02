@@ -30,14 +30,41 @@ public class TestLegendDependencyManagement
         LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
         List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> files = legendDependencyManagement.getVirtualFilePureGrammars();
 
-        LegendVirtualFileSystemContentInitializer.LegendVirtualFile expected = LegendVirtualFileSystemContentInitializer.newVirtualFile(Path.of("dependencies.pure"),
-                "// READ ONLY (sourced from workspace dependencies)\n\n" +
+        String expectedContent = "// READ ONLY (sourced from workspace dependencies)\n\n" +
+                "###Pure\n" +
                 "Class vscodelsp::test::dependency::Employee\n" +
                 "{\n" +
                 "  foobar1: Float[1];\n" +
                 "  foobar2: Float[1];\n" +
-                "}\n");
+                "}\n" +
+                "\n" +
+                "###Pure\n" +
+                "Class vscodelsp::test::dependency::Employee2\n" +
+                "{\n" +
+                "  foobar1: Float[1];\n" +
+                "  foobar2: Float[1];\n" +
+                "}\n" +
+                "\n" +
+                "###Mapping\n" +
+                "Mapping vscodelsp::test::dependency::Mapping\n" +
+                "(\n" +
+                "  model::domain::TargetClass1[tc1]: Pure\n" +
+                "  {\n" +
+                "    ~src model::domain::SourceClass1\n" +
+                "    id: $src.id,\n" +
+                "    type: EnumerationMapping TestEnumerationMappingInt: $src.type,\n" +
+                "    otherType: EnumerationMapping TestEnumerationMappingString: $src.otherType,\n" +
+                "    other[tc2]: $src.other\n" +
+                "  }\n" +
+                ")\n" +
+                "\n" +
+                "/* Failed to load grammar for dependency element: vscodelsp::test::dependency::Unparsable\n" +
+                "java.lang.NullPointerException: Cannot read field \"lowerBound\" because \"multiplicity\" is null";
 
-        Assertions.assertEquals(List.of(expected), files);
+        Assertions.assertEquals(1, files.size());
+        Assertions.assertEquals(Path.of("dependencies.pure"), files.get(0).getPath());
+        Assertions.assertTrue(files.get(0).getContent().startsWith(expectedContent),
+                () -> expectedContent + "\n\n!=\n\n" + files.get(0).getContent()
+        );
     }
 }

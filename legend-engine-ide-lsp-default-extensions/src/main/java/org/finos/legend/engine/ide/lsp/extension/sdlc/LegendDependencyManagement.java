@@ -16,13 +16,14 @@
 
 package org.finos.legend.engine.ide.lsp.extension.sdlc;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
-import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
-import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
-import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
-import org.finos.legend.sdlc.protocol.pure.v1.PureModelContextDataBuilder;
+import org.finos.legend.sdlc.domain.model.entity.Entity;
+import org.finos.legend.sdlc.protocol.pure.v1.PureEntitySerializer;
 import org.finos.legend.sdlc.serialization.EntityLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,26 +41,43 @@ public final class LegendDependencyManagement implements LegendVirtualFileSystem
     private static List<LegendVirtualFile> loadDependenciesVirtualFiles()
     {
         LOGGER.info("Processing dependencies from classpath");
+
+        StringWriter pureGrammarWriter = new StringWriter();
+        pureGrammarWriter.write("// READ ONLY (sourced from workspace dependencies)\n\n");
+
         try (EntityLoader loader = EntityLoader.newEntityLoader(LegendDependencyManagement.class.getClassLoader()))
         {
-            PureModelContextDataBuilder fromClasspathBuilder = PureModelContextDataBuilder.newBuilder();
-            fromClasspathBuilder.addEntitiesIfPossible(loader.getAllEntities());
-            PureGrammarComposer pureComposer = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance()
-                    .withRenderStyle(RenderStyle.PRETTY)
-                    .build());
-            String pureGrammar = pureComposer.renderPureModelContextData(fromClasspathBuilder.build());
-            return List.of(
-                    LegendVirtualFileSystemContentInitializer.newVirtualFile(
-                            Path.of("dependencies.pure"),
-                            "// READ ONLY (sourced from workspace dependencies)\n\n" + pureGrammar
-                    )
-            );
+            PureEntitySerializer serializer = new PureEntitySerializer();
+
+            loader.getAllEntities().sorted(Comparator.comparing(Entity::getPath)).forEach(entity ->
+            {
+                try
+                {
+                    String grammar = serializer.serializeToString(entity);
+                    if (!grammar.startsWith("###"))
+                    {
+                        grammar = "###Pure\n" + grammar;
+                    }
+                    pureGrammarWriter.write(grammar);
+                }
+                catch (Exception e)
+                {
+                    pureGrammarWriter.append("/* Failed to load grammar for dependency element: ").append(entity.getPath()).write("\n");
+                    e.printStackTrace(new PrintWriter(pureGrammarWriter, true));
+                    pureGrammarWriter.append("*/");
+                }
+
+                pureGrammarWriter.write("\n");
+            });
         }
         catch (Exception e)
         {
-            LOGGER.warn("Failed to load dependencies from classpath", e);
-            return List.of();
+            pureGrammarWriter.append("/* Failed to load dependencies").write("\n");
+            e.printStackTrace(new PrintWriter(pureGrammarWriter, true));
+            pureGrammarWriter.append("*/\n");
         }
+
+        return List.of(LegendVirtualFileSystemContentInitializer.newVirtualFile(Path.of("dependencies.pure"), pureGrammarWriter.toString()));
     }
 
     @Override

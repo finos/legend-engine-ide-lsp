@@ -1,0 +1,36 @@
+{
+  "classifierPath": "meta::pure::metamodel::type::Class",
+  "content": {
+    "_type": "class",
+    "constraints": [],
+    "name": "Employee2",
+    "originalMilestonedProperties": [],
+    "package": "vscodelsp::test::dependency",
+    "properties": [
+      {
+        "multiplicity": {
+          "lowerBound": 1,
+          "upperBound": 1
+        },
+        "name": "foobar1",
+        "stereotypes": [],
+        "taggedValues": [],
+        "type": "Float"
+      },
+      {
+        "multiplicity": {
+          "lowerBound": 1,
+          "upperBound": 1
+        },
+        "name": "foobar2",
+        "stereotypes": [],
+        "taggedValues": [],
+        "type": "Float"
+      }
+    ],
+    "qualifiedProperties": [],
+    "stereotypes": [],
+    "superTypes": [],
+    "taggedValues": []
+  }
+}
