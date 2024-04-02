@@ -16,36 +16,55 @@
 
 package org.finos.legend.engine.ide.lsp.extension.sdlc;
 
-import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
-import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
-import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import java.nio.file.Path;
+import java.util.List;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestLegendDependencyManagement extends AbstractLSPGrammarExtensionTest<PureLSPGrammarExtension>
+public class TestLegendDependencyManagement
 {
     @Test
     void testDependenciesDiscovered()
     {
-        String codeThatDepends = "###Pure\n" +
-                "function vscodelsp::test::functionRefersDependency(): Any[*]\n" +
+        LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
+        List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> files = legendDependencyManagement.getVirtualFilePureGrammars();
+
+        String expectedContent = "// READ ONLY (sourced from workspace dependencies)\n\n" +
+                "###Pure\n" +
+                "Class vscodelsp::test::dependency::Employee\n" +
                 "{\n" +
-                "    vscodelsp::test::dependency::Employee.all();\n" +
-                "}";
+                "  foobar1: Float[1];\n" +
+                "  foobar2: Float[1];\n" +
+                "}\n" +
+                "\n" +
+                "###Pure\n" +
+                "Class vscodelsp::test::dependency::Employee2\n" +
+                "{\n" +
+                "  foobar1: Float[1];\n" +
+                "  foobar2: Float[1];\n" +
+                "}\n" +
+                "\n" +
+                "###Mapping\n" +
+                "Mapping vscodelsp::test::dependency::Mapping\n" +
+                "(\n" +
+                "  model::domain::TargetClass1[tc1]: Pure\n" +
+                "  {\n" +
+                "    ~src model::domain::SourceClass1\n" +
+                "    id: $src.id,\n" +
+                "    type: EnumerationMapping TestEnumerationMappingInt: $src.type,\n" +
+                "    otherType: EnumerationMapping TestEnumerationMappingString: $src.otherType,\n" +
+                "    other[tc2]: $src.other\n" +
+                "  }\n" +
+                ")\n" +
+                "\n" +
+                "/* Failed to load grammar for dependency element: vscodelsp::test::dependency::Unparsable\n" +
+                "java.lang.NullPointerException: Cannot read field \"lowerBound\" because \"multiplicity\" is null";
 
-        // no dependency, compile problem
-        testDiagnostics(codeThatDepends,
-                LegendDiagnostic.newDiagnostic(
-                        TextLocation.newTextSource("file.pure", 3, 4, 3, 40),
-                        "Can't find the packageable element 'vscodelsp::test::dependency::Employee'",
-                        LegendDiagnostic.Kind.Error,
-                        LegendDiagnostic.Source.Compiler
-                )
+        Assertions.assertEquals(1, files.size());
+        Assertions.assertEquals(Path.of("dependencies.pure"), files.get(0).getPath());
+        Assertions.assertTrue(files.get(0).getContent().startsWith(expectedContent),
+                () -> expectedContent + "\n\n!=\n\n" + files.get(0).getContent()
         );
-
-        // register feature to discover and process dependencies
-        this.registerFeature(new LegendDependencyManagementImpl());
-        // same code as before, it compiles
-        testDiagnostics(codeThatDepends);
     }
 }

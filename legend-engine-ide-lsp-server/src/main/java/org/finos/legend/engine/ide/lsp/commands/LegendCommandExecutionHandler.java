@@ -51,7 +51,7 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
         List<Object> args = params.getArguments();
 
         String uri = this.server.extractValueAs(args.get(0), String.class);
-        int line = this.server.extractValueAs(args.get(1), Integer.class);
+        int section = this.server.extractValueAs(args.get(1), Integer.class);
         String entity = this.server.extractValueAs(args.get(2), String.class);
         String id = this.server.extractValueAs(args.get(3), String.class);
         Map<String, String> executableArgs = ((args.size() < 5) || (args.get(4) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(4), String.class, String.class);
@@ -70,7 +70,7 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
                 throw new RuntimeException("Unknown document: " + uri);
             }
 
-            SectionState sectionState = docState.getSectionStateAtLine(line);
+            SectionState sectionState = docState.getSectionState(section);
             LegendLSPGrammarExtension extension = sectionState.getExtension();
             if (extension == null)
             {

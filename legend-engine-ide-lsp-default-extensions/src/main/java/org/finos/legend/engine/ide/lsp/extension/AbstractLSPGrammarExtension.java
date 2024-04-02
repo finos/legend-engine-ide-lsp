@@ -371,10 +371,6 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     {
         PureModelContextData.Builder builder = PureModelContextData.newBuilder();
 
-        globalState.findFeatureThatImplements(LegendDependencyManagement.class)
-                .map(LegendDependencyManagement::getDependenciesPMCD)
-                .forEach(builder::addPureModelContextData);
-
         globalState.forEachDocumentState(docState -> docState.forEachSectionState(secState ->
         {
             ParseResult parseResult = secState.getProperty(PARSE_RESULT);

@@ -57,6 +57,7 @@ import org.eclipse.lsp4j.SemanticTokensLegend;
 import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
+import org.eclipse.lsp4j.SetTraceParams;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
 import org.eclipse.lsp4j.WorkDoneProgressBegin;
 import org.eclipse.lsp4j.WorkDoneProgressEnd;
@@ -79,8 +80,8 @@ import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
-import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -286,6 +287,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         return this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
                 .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
+                .thenRun(this.legendLanguageService::loadVirtualFileSystemContent)
                 // trigger compilation
                 .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::getLegendDiagnostics)))
                 .thenRun(() ->
@@ -1148,5 +1150,11 @@ public class LegendLanguageServer implements LegendLanguageServerContract
             LOGGER.error("Unable to load versions", e);
         }
         return properties;
+    }
+
+    @Override
+    public void setTrace(SetTraceParams params)
+    {
+        // not supported, but default method throws, and  pollutes the logs, so ignoring the call
     }
 }

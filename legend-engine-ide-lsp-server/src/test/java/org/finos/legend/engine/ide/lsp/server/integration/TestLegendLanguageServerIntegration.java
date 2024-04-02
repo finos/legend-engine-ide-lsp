@@ -49,6 +49,7 @@ import org.eclipse.lsp4j.WorkspaceSymbolParams;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
+import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -139,9 +140,9 @@ public class TestLegendLanguageServerIntegration
                 createWorkspaceSymbol("test::model::TestEnumeration.VAL3", SymbolKind.EnumMember, TextLocation.newTextSource(enumPath.toUri().toString(), 3, 2, 3, 5), "test::model::TestEnumeration", "test::model::TestEnumeration"),
                 createWorkspaceSymbol("test::model::TestEnumeration.VAL4", SymbolKind.EnumMember, TextLocation.newTextSource(enumPath.toUri().toString(), 3, 8, 3, 11), "test::model::TestEnumeration", "test::model::TestEnumeration"),
 
-//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee", SymbolKind.Class, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 2, 0, 6, 0), null, "meta::pure::metamodel::type::Class"),
-//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar1", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 4, 2, 4, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
-//                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar2", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 5, 2, 5, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
+                createWorkspaceSymbol("vscodelsp::test::dependency::Employee", SymbolKind.Class, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 3, 0, 7, 0), null, "meta::pure::metamodel::type::Class"),
+                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar1", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 5, 2, 5, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
+                createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar2", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 6, 2, 6, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
 
                 createWorkspaceSymbol("xyz::abc", SymbolKind.Class, TextLocation.newTextSource(file2Path.toUri().toString(), 1, 0, 4, 0), null, "meta::pure::metamodel::type::Class"),
                 createWorkspaceSymbol("xyz::abc.abc", SymbolKind.Field, TextLocation.newTextSource(file2Path.toUri().toString(), 3, 2, 3, 16), "xyz::abc", "meta::pure::metamodel::function::property::Property"),
@@ -438,5 +439,24 @@ public class TestLegendLanguageServerIntegration
         {
             System.clearProperty("legend.engine.server.url");
         }
+    }
+
+    @Test
+    void virtualFileSystem() throws Exception
+    {
+        String content = extension.futureGet(extension.getServer().getLegendLanguageService().loadLegendVirtualFile("legend-vfs:/dependencies.pure"));
+        Assertions.assertEquals(
+                "// READ ONLY (sourced from workspace dependencies)\n\n" +
+                        "###Pure\n" +
+                        "Class vscodelsp::test::dependency::Employee\n" +
+                        "{\n" +
+                        "  foobar1: Float[1];\n" +
+                        "  foobar2: Float[1];\n" +
+                        "}\n" +
+                        "\n",
+                content
+        );
+        ResponseErrorException exception = Assertions.assertThrows(ResponseErrorException.class, () -> extension.futureGet(extension.getServer().getLegendLanguageService().loadLegendVirtualFile("file:/dependencies.pure")));
+        Assertions.assertTrue(exception.getResponseError().getData().toString().contains("Provided URI not managed by Legend Virtual Filesystem: " + "file:/dependencies.pure"));
     }
 }
