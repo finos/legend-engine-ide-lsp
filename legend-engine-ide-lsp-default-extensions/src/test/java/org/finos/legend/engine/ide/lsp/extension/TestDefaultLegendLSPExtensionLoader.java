@@ -22,6 +22,8 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.functionActivator.HostedServiceLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.functionActivator.SnowflakeLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.relational.RelationalLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
@@ -50,6 +52,8 @@ class TestDefaultLegendLSPExtensionLoader
         expected.put("Runtime", RuntimeLSPGrammarExtension.class);
         expected.put("Service", ServiceLSPGrammarExtension.class);
         expected.put("Data", DefaultLegendLSPExtensionLoader.CatchAllSectionParserLSPGrammarExtension.class);
+        expected.put("Snowflake", SnowflakeLSPGrammarExtension.class);
+        expected.put("HostedService", HostedServiceLSPGrammarExtension.class);
 
         Assertions.assertEquals(expected, grammarsMap);
     }

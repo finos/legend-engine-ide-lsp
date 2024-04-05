@@ -20,12 +20,12 @@ import java.util.Map;
 
 public class LegendClientCommand extends LegendCommand
 {
-    private LegendClientCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParamter> inputParameters)
+    private LegendClientCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParameter> inputParameters)
     {
         super(entity, id, title, location, executableArgs, inputParameters);
     }
 
-    public static LegendClientCommand newCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParamter> inputParameters)
+    public static LegendClientCommand newCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParameter> inputParameters)
     {
         return new LegendClientCommand(entity, id, title, location, executableArgs, inputParameters);
     }

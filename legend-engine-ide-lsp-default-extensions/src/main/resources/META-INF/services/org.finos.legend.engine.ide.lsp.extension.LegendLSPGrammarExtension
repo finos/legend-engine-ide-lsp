@@ -4,3 +4,5 @@ org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension
 org.finos.legend.engine.ide.lsp.extension.relational.RelationalLSPGrammarExtension
 org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension
 org.finos.legend.engine.ide.lsp.extension.service.ServiceLSPGrammarExtension
+org.finos.legend.engine.ide.lsp.extension.functionActivator.SnowflakeLSPGrammarExtension
+org.finos.legend.engine.ide.lsp.extension.functionActivator.HostedServiceLSPGrammarExtension

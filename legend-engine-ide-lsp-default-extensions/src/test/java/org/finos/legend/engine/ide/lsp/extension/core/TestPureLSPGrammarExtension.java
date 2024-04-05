@@ -20,10 +20,12 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
@@ -421,8 +423,10 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         SectionState sectionState = newSectionState("docId", code);
         List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionState))
                 .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
-        Assertions.assertEquals(1, commands.size());
-        Assertions.assertEquals(PureLSPGrammarExtension.EXEC_FUNCTION_WITH_PARAMETERS_ID, commands.get(0).getId());
+        Set<String> expectedCommands = Set.of(PureLSPGrammarExtension.EXEC_FUNCTION_WITH_PARAMETERS_ID, PureLSPGrammarExtension.ACTIVATE_FUNCTION_ID);
+        Set<String> actualCommands = Sets.mutable.empty();
+        commands.forEach(c -> actualCommands.add(c.getId()));
+        Assertions.assertEquals(expectedCommands, actualCommands);
 
         List<LegendTest> legendTests = this.extension.testCases(sectionState);
         Assertions.assertEquals(1, legendTests.size());
@@ -445,6 +449,103 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         LegendTest legendTest2 = tests.get(1);
         Assertions.assertEquals("model::Hello_String_1__String_1_.testSuite_1.testFail", legendTest2.getId());
         Assertions.assertEquals(TextInterval.newInterval(8, 4, 8, 64), legendTest2.getLocation().getTextInterval());
+    }
+
+    @Test
+    void activateFunction()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("Relational",
+                "###Relational\n" +
+                "Database showcase::model::Test\n" +
+                "(\n" +
+                "  Table FirmTable\n" +
+                "  (\n" +
+                "    id INTEGER PRIMARY KEY,\n" +
+                "    Type VARCHAR(200),\n" +
+                "    Legal_name VARCHAR(200)\n" +
+                "  )\n" +
+                ")");
+
+        codeFiles.put("Connection",
+                "###Connection\n" +
+                "RelationalDatabaseConnection showcase::model::mySimpleConnection\n" +
+                "{\n" +
+                "  store: showcase::model::Test;\n" +
+                "  type: Snowflake;\n" +
+                "  specification: Snowflake\n" +
+                "  {\n" +
+                "    name: 'test';\n" +
+                "    account: 'account';\n" +
+                "    warehouse: 'warehouseName';\n" +
+                "    region: 'us-east2';\n" +
+                "    cloudType: 'aws';\n" +
+                "  };\n" +
+                "  auth: SnowflakePublic\n" +
+                "  {\n" +
+                "    publicUserName: 'myName';\n" +
+                "    privateKeyVaultReference: 'privateKeyRef';\n" +
+                "    passPhraseVaultReference: 'passRef';\n" +
+                "  };\n" +
+                "}\n" +
+                "\n" +
+                "RelationalDatabaseConnection showcase::model::mySimpleConnection2\n" +
+                "{\n" +
+                "  store: showcase::model::Test;\n" +
+                "  type: Snowflake;\n" +
+                "  specification: Snowflake\n" +
+                "  {\n" +
+                "    name: 'test';\n" +
+                "    account: 'account';\n" +
+                "    warehouse: 'warehouseName';\n" +
+                "    region: 'us-east2';\n" +
+                "    cloudType: 'aws';\n" +
+                "  };\n" +
+                "  auth: SnowflakePublic\n" +
+                "  {\n" +
+                "    publicUserName: 'myName';\n" +
+                "    privateKeyVaultReference: 'privateKeyRef';\n" +
+                "    passPhraseVaultReference: 'passRef';\n" +
+                "  };\n" +
+                "}");
+
+        codeFiles.put("Pure",
+                "###Pure\n" +
+                "function showcase::model::testFunction(name: String[1], isTrue: Boolean[*]): meta::pure::store::RelationStoreAccessor[*]\n" +
+                "{\n" +
+                "  #>{showcase::model::Test.FirmTable}#->filter(x | $x.id == 1);\n" +
+                "}");
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionStates.get(2)))
+                .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
+        LegendCommand legendCommand = commands.stream().filter(c -> c.getId().equals(PureLSPGrammarExtension.ACTIVATE_FUNCTION_ID)).findAny().orElseThrow();
+        Map<String, String> functionActivatorSnippets = legendCommand.getExecutableArgs();
+        String expectedSnowflakeSnippet = "\n" +
+                "\n" +
+                "###Snowflake\n" +
+                "SnowflakeApp ${1:showcase::model}::${2:testFunctionSnowflakeActivator}\n" +
+                "{\n" +
+                "\tapplicationName: '${3:testFunctionSnowflakeActivator}';\n" +
+                "\tfunction: showcase::model::testFunction(String[1],Boolean[*]):RelationStoreAccessor[*];\n" +
+                "\townership: Deployment { identifier: '${4:DID}' };\n" +
+                "\tdescription: '${5:Please provide a description}';\n" +
+                "\tactivationConfiguration: ${6|showcase::model::mySimpleConnection,showcase::model::mySimpleConnection2|};\n" +
+                "}";
+        String expectedHostedServiceSnippet = "\n" +
+                "\n" +
+                "###HostedService\n" +
+                "HostedService ${1:showcase::model}::${2:testFunctionHostedServiceActivator}\n" +
+                "{\n" +
+                "\tpattern: '/${3:Please provide a pattern}';\n" +
+                "\townership: Deployment { identifier: '${4:DID}' };\n" +
+                "\tfunction: showcase::model::testFunction(String[1],Boolean[*]):RelationStoreAccessor[*];\n" +
+                "\tdocumentation: '${5:Please provide a documentation}';\n" +
+                "\tautoActivateUpdates: ${6:true};\n" +
+                "}";
+        Assertions.assertTrue(functionActivatorSnippets.containsKey("Snowflake"));
+        Assertions.assertTrue(functionActivatorSnippets.containsKey("HostedService"));
+        Assertions.assertEquals(expectedSnowflakeSnippet, functionActivatorSnippets.get("Snowflake"));
+        Assertions.assertEquals(expectedHostedServiceSnippet, functionActivatorSnippets.get("HostedService"));
     }
 
     @Test

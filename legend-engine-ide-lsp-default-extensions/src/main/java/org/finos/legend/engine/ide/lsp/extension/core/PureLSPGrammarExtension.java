@@ -26,12 +26,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -43,13 +43,15 @@ import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtension;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
+import org.finos.legend.engine.ide.lsp.extension.functionActivator.FunctionActivatorLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
@@ -139,7 +141,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     protected static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
     protected static final String EXEC_FUNCTION_WITH_PARAMETERS_ID = "legend.pure.executeFunctionWithParameters";
     private static final String EXEC_FUNCTION_TITLE = "Execute function";
-    private static final String EXEC_FUNCTION_RETURN_TYPE_ID = "legend.pure.executeFunction.returnType";
+    protected static final String ACTIVATE_FUNCTION_ID = "legend.pure.activateFunction";
+    private static final String ACTIVATE_FUNCTION_TITLE = "Activate function";
 
     private final JsonMapper functionResultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
             .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
@@ -164,32 +167,37 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
         super.collectCommands(sectionState, element, consumer);
-        Map<String, String> execArguments = new HashMap<>();
         if (element instanceof Function)
         {
-            Function function = (Function) element;
-            execArguments.put(EXEC_FUNCTION_RETURN_TYPE_ID, function.returnType);
-            if ((function.parameters == null) || function.parameters.isEmpty())
+            CompileResult compileResult = getCompileResult(sectionState);
+            if (!(compileResult.hasException() || compileResult.hasEngineException()))
             {
-                consumer.accept(EXEC_FUNCTION_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, LegendCommandType.CLIENT);
-            }
-            else
-            {
-                Map<String, LegendInputParamter> parameters = Maps.mutable.empty();
-                function.parameters.forEach(p ->
+                Function function = (Function) element;
+                List<PackageableElement> elements = compileResult.getPureModelContextData().getElements();
+                if ((function.parameters == null) || function.parameters.isEmpty())
                 {
-                    CompileResult compileResult = getCompileResult(sectionState);
-                    PackageableElement paramElement = compileResult.getPureModelContextData().getElements().stream().filter(e -> e.getPath().equals(p._class)).findFirst().orElse(null);
-                    if (paramElement != null && paramElement instanceof Enumeration)
+                    consumer.accept(EXEC_FUNCTION_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, LegendCommandType.CLIENT);
+                }
+                else
+                {
+                    Map<String, LegendInputParameter> parameters = Maps.mutable.empty();
+                    function.parameters.forEach(p ->
                     {
-                        parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p, paramElement));
-                    }
-                    else
-                    {
-                        parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p));
-                    }
-                });
-                consumer.accept(EXEC_FUNCTION_WITH_PARAMETERS_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, Collections.emptyMap(), parameters, LegendCommandType.CLIENT);
+                        PackageableElement paramElement = elements.stream().filter(e -> e.getPath().equals(p._class)).findFirst().orElse(null);
+                        if (paramElement != null && paramElement instanceof Enumeration)
+                        {
+                            parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p, paramElement));
+                        }
+                        else
+                        {
+                            parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p));
+                        }
+                    });
+                    consumer.accept(EXEC_FUNCTION_WITH_PARAMETERS_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, Collections.emptyMap(), parameters, LegendCommandType.CLIENT);
+                }
+
+                Map<String, String> arguments = sectionState.getDocumentState().getGlobalState().findGrammarExtensionThatImplements(FunctionActivatorLSPGrammarExtension.class).collect(Collectors.toMap(LegendLSPExtension::getName, x -> x.getSnippet((Function) element, elements)));
+                consumer.accept(ACTIVATE_FUNCTION_ID, ACTIVATE_FUNCTION_TITLE, function.sourceInformation, arguments, Collections.emptyMap(), LegendCommandType.CLIENT);
             }
         }
     }
@@ -229,7 +237,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
     }
 
-    private static class LegendFunctionInputParameter extends LegendInputParamter
+    private static class LegendFunctionInputParameter extends LegendInputParameter
     {
         private Variable variable;
         private PackageableElement element;

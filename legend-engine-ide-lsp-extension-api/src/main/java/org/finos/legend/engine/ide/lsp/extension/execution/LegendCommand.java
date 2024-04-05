@@ -30,9 +30,9 @@ public class LegendCommand implements Locatable
     private final String title;
     private final TextLocation location;
     private final Map<String, String> executableArgs;
-    private final Map<String, LegendInputParamter> inputParameters;
+    private final Map<String, LegendInputParameter> inputParameters;
 
-    protected LegendCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParamter> inputParameters)
+    protected LegendCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParameter> inputParameters)
     {
         this.entity = Objects.requireNonNull(entity, "entity is required");
         this.id = Objects.requireNonNull(id, "commandId is required");
@@ -134,7 +134,7 @@ public class LegendCommand implements Locatable
      *
      * @return command inputParameters
      */
-    public Map<String, LegendInputParamter> getInputParameters()
+    public Map<String, LegendInputParameter> getInputParameters()
     {
         return this.inputParameters;
     }
@@ -179,7 +179,7 @@ public class LegendCommand implements Locatable
      * @param inputParameters command inputParameters
      * @return new command
      */
-    public static LegendCommand newCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParamter> inputParameters)
+    public static LegendCommand newCommand(String entity, String id, String title, TextLocation location, Map<String, String> executableArgs, Map<String, LegendInputParameter> inputParameters)
     {
         return new LegendCommand(entity, id, title, location, executableArgs, inputParameters);
     }
