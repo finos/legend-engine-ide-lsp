@@ -45,7 +45,7 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParamter;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
@@ -735,7 +735,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
 
     private static class LegendCommandFactory
     {
-        public static LegendCommand newCommand(LegendCommandType type, String path, String id, String title, TextLocation textLocation, Map<String, String> arguments, Map<String, LegendInputParamter> inputParameters)
+        public static LegendCommand newCommand(LegendCommandType type, String path, String id, String title, TextLocation textLocation, Map<String, String> arguments, Map<String, LegendInputParameter> inputParameters)
         {
             if (type.equals(LegendCommandType.CLIENT))
             {
@@ -762,6 +762,6 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             accept(id, title, sourceInfo, arguments, Collections.emptyMap(), LegendCommandType.SERVER);
         }
 
-        void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments, Map<String, LegendInputParamter> inputParameters, LegendCommandType type);
+        void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments, Map<String, LegendInputParameter> inputParameters, LegendCommandType type);
     }
 }

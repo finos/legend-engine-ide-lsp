@@ -212,6 +212,16 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-hostedService-grammar</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-snowflakeApp-grammar</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>provided</scope>
@@ -364,6 +374,11 @@
         <dependency>
             <groupId>org.finos.legend.engine.ide.lsp</groupId>
             <artifactId>legend-engine-ide-lsp-text-tools</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-relationalStore-snowflake-grammar</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

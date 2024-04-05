@@ -14,7 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension.execution;
 
-public abstract class LegendInputParamter
+public abstract class LegendInputParameter
 {
 
 }
