@@ -540,7 +540,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "\townership: Deployment { identifier: '${4:DID}' };\n" +
                 "\tfunction: showcase::model::testFunction(String[1],Boolean[*]):RelationStoreAccessor[*];\n" +
                 "\tdocumentation: '${5:Please provide a documentation}';\n" +
-                "\tautoActivateUpdates: ${6:true};\n" +
+                "\tautoActivateUpdates: ${6|true,false|};\n" +
                 "}";
         Assertions.assertTrue(functionActivatorSnippets.containsKey("Snowflake"));
         Assertions.assertTrue(functionActivatorSnippets.containsKey("HostedService"));

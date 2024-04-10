@@ -43,7 +43,7 @@ public class HostedServiceLSPGrammarExtension extends FunctionActivatorLSPGramma
                 .append("\townership: Deployment { identifier: '${4:DID}' };\n")
                 .append(String.format("\tfunction: %s;\n", getFunctionDescriptor(function)))
                 .append("\tdocumentation: '${5:Please provide a documentation}';\n")
-                .append("\tautoActivateUpdates: ${6:true};\n")
+                .append("\tautoActivateUpdates: ${6|true,false|};\n")
                 .append("}");
         return builder.toString();
     }
