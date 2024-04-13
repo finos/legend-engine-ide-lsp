@@ -38,91 +38,42 @@
         </plugins>
     </build>
 
-    <dependencies>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.finos.legend.engine</groupId>
+                <artifactId>legend-engine</artifactId>
+                <version>${legend.engine.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
-        <dependency>
-            <groupId>org.finos.legend.engine.ide.lsp</groupId>
-            <artifactId>legend-engine-ide-lsp-default-extensions</artifactId>
-            <version>${project.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+    <dependencies>
 
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-extensions-collection-execution</artifactId>
-            <version>${legend.engine.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-extensions-collection-generation</artifactId>
-            <version>${legend.engine.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-configuration-plan-generation-serialization</artifactId>
-            <version>${legend.engine.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-test-runner-shared</artifactId>
-            <version>${legend.engine.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-test-runner-mapping</artifactId>
-            <version>${legend.engine.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-test-runner-service</artifactId>
-            <version>${legend.engine.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-test-runner-function</artifactId>
-            <version>${legend.engine.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.finos.legend.sdlc</groupId>
             <artifactId>legend-sdlc-test-utils</artifactId>
             <version>${legend.sdlc.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.finos.legend.pure</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.finos.legend.engine</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
+<!--        todo this is missing on legend-sdlc-test-utils - remove once merged and released: https://github.com/finos/legend-sdlc/pull/775-->
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-repl-client</artifactId>
-            <version>${legend.engine.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-repl-relational</artifactId>
+            <artifactId>legend-engine-test-runner-function</artifactId>
             <version>${legend.engine.version}</version>
         </dependency>
 
     </dependencies>
-
-
 </project>

@@ -228,11 +228,14 @@ public class TestLegendLanguageServerTestableIntegration
 
         results.sort(Comparator.comparing(LegendTestExecutionResult::getId));
 
-        LegendTestAssertionResult failure1 = LegendTestAssertionResult.failure("default", null, "expected:Hello World! My name is Johnx., Found : Hello World! My name is John.",null, null);
+        String doc2Id = extension.resolveWorkspacePath("file2.pure").toUri().toString();
+        String doc4Id = extension.resolveWorkspacePath("file4.pure").toUri().toString();
+
+        LegendTestAssertionResult failure1 = LegendTestAssertionResult.failure("default", TextLocation.newTextSource(doc2Id, 7, 37, 7, 68), "expected:Hello World! My name is Johnx., Found : Hello World! My name is John.",null, null);
         LegendTestExecutionResult expectedResult1 = LegendTestExecutionResult.failures(List.of(failure1), "model::HelloAgain_String_1__String_1_", "testSuite_1", "testFail");
         LegendTestExecutionResult expectedResult2 = LegendTestExecutionResult.success("model::Hello_String_1__String_1_", "testSuite_1", "testPass");
         LegendTestAssertionResult failure3 = LegendTestAssertionResult.failure("thisWillFail",
-                TextLocation.newTextSource(extension.resolveWorkspacePath("file4.pure").toUri().toString(), 51, 14, 59, 15),
+                TextLocation.newTextSource(doc4Id, 51, 14, 59, 15),
                 "Actual result does not match Expected result",
                 "{" + System.lineSeparator() +
                 "  \"id\" : 75," + System.lineSeparator() +
