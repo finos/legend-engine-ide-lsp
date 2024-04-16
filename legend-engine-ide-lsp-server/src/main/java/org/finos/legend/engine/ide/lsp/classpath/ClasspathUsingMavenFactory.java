@@ -242,7 +242,8 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 }
                 catch (Exception e)
                 {
-                    server.logErrorToClient("Unable to analyze project json file: " + e.getMessage());
+                    LOGGER.error("Unable to analyze project json file ({})", projectJson, e);
+                    this.server.logErrorToClient("Unable to analyze project json file (" + projectJson + "): " + e.getMessage());
                 }
             }
         }
