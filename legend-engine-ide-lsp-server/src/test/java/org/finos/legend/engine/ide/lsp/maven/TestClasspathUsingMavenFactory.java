@@ -14,11 +14,20 @@
 
 package org.finos.legend.engine.ide.lsp.maven;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import org.eclipse.lsp4j.ConfigurationItem;
+import org.eclipse.lsp4j.ConfigurationParams;
+import org.eclipse.lsp4j.InitializeParams;
+import org.finos.legend.engine.ide.lsp.Constants;
 import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
@@ -51,8 +60,30 @@ class TestClasspathUsingMavenFactory
                         "</project>", StandardCharsets.UTF_8);
 
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
-        DummyLanguageClient languageClient = new DummyLanguageClient();
+        DummyLanguageClient languageClient = new DummyLanguageClient()
+        {
+            @Override
+            public CompletableFuture<List<Object>> configuration(ConfigurationParams configurationParams)
+            {
+                clientLog.add(String.format("configuration - %s", configurationParams.getItems().stream().map(ConfigurationItem::getSection).collect(Collectors.joining())));
+                return CompletableFuture.completedFuture(configurationParams.getItems().stream().map(x ->
+                {
+                    if (x.getSection().equals(Constants.LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH))
+                    {
+                        JsonArray jsonElements = new JsonArray();
+                        jsonElements.add("commons-lang:commons-lang:2.6");
+                        jsonElements.add("commons-codec:commons-codec:1.15");
+                        return jsonElements;
+                    }
+                    else
+                    {
+                        return JsonNull.INSTANCE;
+                    }
+                }).collect(Collectors.toList()));
+            }
+        };
         server.connect(languageClient);
+        server.initialize(new InitializeParams());
 
         ClasspathUsingMavenFactory factory = new ClasspathUsingMavenFactory(pom.toFile());
         factory.initialize(server);
@@ -60,8 +91,15 @@ class TestClasspathUsingMavenFactory
 
         try (URLClassLoader urlClassLoader = Assertions.assertInstanceOf(URLClassLoader.class, classLoader))
         {
-            Assertions.assertEquals(1, urlClassLoader.getURLs().length);
+            Assertions.assertEquals(4, urlClassLoader.getURLs().length);
+            // from given pom
             Assertions.assertTrue(urlClassLoader.getURLs()[0].toString().endsWith("commons-io-2.15.1.jar"));
+            // added by default, as required for server to work
+            Assertions.assertTrue(urlClassLoader.getURLs()[1].toString().endsWith("legend-engine-ide-lsp-default-extensions-" + server.getProjectVersion() + ".jar"));
+            // from given "other dependencies" config item
+            Assertions.assertTrue(urlClassLoader.getURLs()[2].toString().endsWith("commons-lang-2.6.jar"));
+            // from given "other dependencies" config item
+            Assertions.assertTrue(urlClassLoader.getURLs()[3].toString().endsWith("commons-codec-1.15.jar"));
         }
     }
 }

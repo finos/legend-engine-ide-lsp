@@ -14,29 +14,12 @@
  * limitations under the License.
  */
 
-package org.finos.legend.engine.ide.lsp.extension.repl;
+package org.finos.legend.engine.ide.lsp;
 
-import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
-import org.finos.legend.engine.repl.relational.client.RClient;
-
-public class LegendREPLFeatureImpl implements LegendREPLFeature
+public class Constants
 {
-    @Override
-    public String description()
-    {
-        return "Legend REPL";
-    }
-
-    @Override
-    public void startREPL()
-    {
-        try
-        {
-            RClient.main(new String[0]);
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
+    public static final String MAVEN_EXEC_PATH_CONFIG_PATH = "maven.executable.path";
+    public static final String MAVEN_SETTINGS_FILE_CONFIG_PATH = "maven.settingsFile";
+    public static final String LEGEND_EXTENSIONS_DEPENDENCIES_POM_CONFIG_PATH = "legend.extensions.dependencies.pom";
+    public static final String LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH = "legend.extensions.other.dependencies";
 }

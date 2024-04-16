@@ -567,7 +567,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         TextLocation location1 = TextLocation.newTextSource("doc", TextInterval.newInterval(5, 4, 5, 5));
 
-        LegendTestAssertionResult assertionResult = LegendTestAssertionResult.failure("default", null, "expected:Hello World! My name is Johnx., Found : Hello World! My name is John.", null, null);
+        LegendTestAssertionResult assertionResult = LegendTestAssertionResult.failure("default", TextLocation.newTextSource("doc", 8, 32, 8, 63), "expected:Hello World! My name is Johnx., Found : Hello World! My name is John.", null, null);
         LegendTestExecutionResult failResult = LegendTestExecutionResult.failures(List.of(assertionResult), "model::Hello_String_1__String_1_.testSuite_1.testFail");
         LegendTestExecutionResult passResult = LegendTestExecutionResult.success("model::Hello_String_1__String_1_.testSuite_1.testPass");
 

@@ -152,7 +152,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         logInfoToClient("Initializing server");
         List<WorkspaceFolder> workspaceFolders = initializeParams.getWorkspaceFolders();
 
-        InitializeResult result = new InitializeResult(getServerCapabilities(), new ServerInfo("Legend Language Server", VERSIONS.getProperty("project.version", "-1")));
+        InitializeResult result = new InitializeResult(getServerCapabilities(), new ServerInfo("Legend Language Server", getProjectVersion()));
         CompletableFuture<InitializeResult> completableFuture = CompletableFuture.completedFuture(result);
         CompletableFuture<InitializeResult> initFuture = completableFuture;
 
@@ -237,6 +237,11 @@ public class LegendLanguageServer implements LegendLanguageServerContract
                 LOGGER.error("Failed to dispatch consume on {}", x.description(), e);
             }
         });
+    }
+
+    public String getProjectVersion()
+    {
+        return VERSIONS.getProperty("project.version", "-1");
     }
 
     @Override
@@ -472,7 +477,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         }
     }
 
-    <T> CompletableFuture<T> supplyPossiblyAsync(Supplier<T> supplier)
+    public <T> CompletableFuture<T> supplyPossiblyAsync(Supplier<T> supplier)
     {
         checkReady();
         return this.supplyPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(supplier));
@@ -776,14 +781,19 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         }
     }
 
-    @SuppressWarnings("unchecked")
     public <T> T extractValueAs(Object value, Class<T> cls)
+    {
+        return extractValueAs(value, TypeToken.get(cls));
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T extractValueAs(Object value, TypeToken<T> cls)
     {
         if (value == null)
         {
             return null;
         }
-        if (cls.isInstance(value))
+        if (cls.getRawType().isInstance(value))
         {
             return (T) value;
         }

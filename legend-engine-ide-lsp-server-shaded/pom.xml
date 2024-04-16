@@ -44,6 +44,9 @@
                                 <include>org.apache.maven.shared:maven-invoker:${maven.invoker.version}:jar:runtime</include>
                                 <include>org.apache.maven.shared:maven-shared-utils:${maven.shared.utils.version}:jar:runtime</include>
                                 <include>commons-io:commons-io:${commons-io.version}:jar:runtime</include>
+
+                                <include>org.apache.maven:maven-model:*</include>
+                                <include>org.codehaus.plexus:plexus-utils:*</include>
                             </includes>
                         </bannedDependencies>
                     </rules>
@@ -80,8 +83,12 @@
                             </transformers>
                             <relocations>
                                 <relocation>
-                                    <pattern>org.apache.maven.shared</pattern>
-                                    <shadedPattern>org.finos.legend.engine.ide.lsp.shaded.org.apache.maven.shared</shadedPattern>
+                                    <pattern>org.apache.maven</pattern>
+                                    <shadedPattern>org.finos.legend.engine.ide.lsp.shaded.org.apache.maven</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.codehaus.plexus</pattern>
+                                    <shadedPattern>org.finos.legend.engine.ide.lsp.shaded.org.codehaus.plexus</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>org.apache.commons.io</pattern>
