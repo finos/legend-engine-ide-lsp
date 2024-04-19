@@ -24,6 +24,9 @@ import java.io.PrintStream;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -159,11 +162,15 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         ConfigurationItem extraDependenciesConfig = new ConfigurationItem();
         extraDependenciesConfig.setSection(Constants.LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH);
 
+        ConfigurationItem sdlcServerConfig = new ConfigurationItem();
+        sdlcServerConfig.setSection(Constants.LEGEND_SDLC_SERVER_CONFIG_PATH);
+
         ConfigurationParams configurationParams = new ConfigurationParams(Arrays.asList(
                 mavenExecPathConfig,
                 mavenSettingXml,
                 defaultPomConfig,
-                extraDependenciesConfig
+                extraDependenciesConfig,
+                sdlcServerConfig
         ));
         return this.server.getLanguageClient().configuration(configurationParams).thenApply(x ->
         {
@@ -171,19 +178,23 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             String settingXmlPath = this.server.extractValueAs(x.get(1), String.class);
             String overrideDefaultPom = this.server.extractValueAs(x.get(2), String.class);
             List<String> extraDependencies = (List<String>) this.server.extractValueAs(x.get(3), TypeToken.getParameterized(List.class, String.class));
+            String sdlcServer = this.server.extractValueAs(x.get(4), String.class);
 
             try
             {
+                List<SDLCPlatform> platformVersions = this.getPlatformVersions(sdlcServer);
+
                 File maven = this.getMavenExecLocation(mavenExecPath);
                 this.server.logInfoToClient("Maven path: " + maven);
 
-                File pom = this.findDependencyPom(folders, overrideDefaultPom);
                 File settingsXmlFile = settingXmlPath != null && !settingXmlPath.isEmpty() ? new File(settingXmlPath) : null;
+
+                File pom = this.findDependencyPom(folders, overrideDefaultPom, maven, settingsXmlFile, platformVersions);
 
                 this.server.logInfoToClient("Dependencies loaded from POM: " + pom);
                 LOGGER.info("Dependencies loaded from POM: {}", pom);
 
-                return this.createClassloader(maven, pom, settingsXmlFile, extraDependencies);
+                return this.createClassloader(maven, pom, settingsXmlFile, extraDependencies, platformVersions);
             }
             catch (Exception e)
             {
@@ -198,24 +209,94 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         });
     }
 
-    private File findDependencyPom(Iterable<String> folders, String overrideDefaultPom) throws IOException
+    private void updatePlatformVersions(File maven, Path pom, File settingsXmlFile, List<SDLCPlatform> platforms)
+    {
+        if (!platforms.isEmpty())
+        {
+            try
+            {
+                String pomContent = Files.readString(pom);
+
+                for (SDLCPlatform platform : platforms)
+                {
+                    String versionProperty = "platform." + platform.getName() + ".version";
+                    if (pomContent.contains(versionProperty))
+                    {
+                        Properties properties = new Properties();
+                        properties.setProperty("property", versionProperty);
+                        properties.setProperty("newVersion", platform.getPlatformVersion());
+                        properties.setProperty("generateBackupPoms", Boolean.FALSE.toString());
+                        this.invokeMaven(maven, pom.toFile(), settingsXmlFile, properties, "versions:set-property");
+                    }
+                }
+            }
+            catch (IOException | MavenInvocationException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private List<SDLCPlatform> getPlatformVersions(String sdlcServer)
+    {
+        if (sdlcServer != null && !sdlcServer.isEmpty())
+        {
+            try
+            {
+                HttpClient client = HttpClient.newHttpClient();
+                HttpRequest request = HttpRequest.newBuilder().GET().uri(URI.create(sdlcServer + "/server/platforms")).build();
+                HttpResponse<String> httpResponse = client.send(request, x -> HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8));
+                if (httpResponse.statusCode() / 100 == 2)
+                {
+
+                    Gson gson = new Gson();
+                    TypeToken<List<SDLCPlatform>> platformsResponseType = new TypeToken<>()
+                    {
+                    };
+
+                    return gson.fromJson(httpResponse.body(), platformsResponseType);
+                }
+                else
+                {
+                    this.server.logErrorToClient("Unable to gather platform versions: " + request + "; Status code: " + httpResponse.statusCode() + "; response: " + httpResponse.body());
+                }
+            }
+            catch (InterruptedException | IOException e)
+            {
+                throw new RuntimeException("Unable to source platform versions using URL: " + sdlcServer, e);
+            }
+        }
+
+        return List.of();
+    }
+
+    private File findDependencyPom(Iterable<String> folders, String overrideDefaultPom, File maven, File settingsXmlFile, List<SDLCPlatform> platformVersions)
     {
         File pom = null;
 
         if (overrideDefaultPom == null || overrideDefaultPom.isEmpty())
         {
-            pom = this.maybeUseStudioProjectEntitiesPom(folders);
+            pom = this.maybeUseStudioProjectEntitiesPom(folders, maven, settingsXmlFile, platformVersions);
         }
 
         if (pom == null)
         {
-            pom = this.defaultPom;
+            if (overrideDefaultPom == null || overrideDefaultPom.isEmpty())
+            {
+                pom = this.defaultPom;
+            }
+            else
+            {
+                pom = new File(overrideDefaultPom.trim());
+            }
+
+            this.updatePlatformVersions(maven, pom.toPath(), settingsXmlFile, platformVersions);
         }
 
         return pom;
     }
 
-    private File maybeUseStudioProjectEntitiesPom(Iterable<String> folders)
+    private File maybeUseStudioProjectEntitiesPom(Iterable<String> folders, File maven, File settingsXmlFile, List<SDLCPlatform> platformVersions)
     {
         Set<Path> entitiesPoms = new HashSet<>();
 
@@ -250,7 +331,25 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
         if (entitiesPoms.size() == 1)
         {
-            return entitiesPoms.iterator().next().toFile();
+            Path pom = entitiesPoms.iterator().next();
+            Path parentPom = pom
+                    // directory where pom is located
+                    .getParent()
+                    // parent directory
+                    .getParent()
+                    // parent pom
+                    .resolve("pom.xml");
+
+            if (Files.exists(parentPom))
+            {
+                this.updatePlatformVersions(maven, parentPom, settingsXmlFile, platformVersions);
+            }
+            else
+            {
+                this.server.logErrorToClient("Parent pom does not exists for: " + pom + ".  Unable to update platform versions.");
+            }
+
+            return pom.toFile();
         }
         else if (entitiesPoms.size() != 0)
         {
@@ -305,7 +404,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         return dependencies;
     }
 
-    private URLClassLoader createClassloader(File maven, File pom, File settingXml, List<String> extraDependencies) throws Exception
+    private URLClassLoader createClassloader(File maven, File pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions) throws Exception
     {
         CompletableFuture<Stream<URL>> coreClasspathFuture = this.server.supplyPossiblyAsync(() -> this.getClasspathURLEntries("core", maven, pom, settingXml));
         CompletableFuture<Stream<URL>> extraClasspathFuture = this.server.supplyPossiblyAsync(() ->
@@ -313,7 +412,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             File extraDependenciesPom = null;
             try
             {
-                extraDependenciesPom = this.computeExtraDependenciesPom(maven, pom, settingXml, extraDependencies);
+                extraDependenciesPom = this.computeExtraDependenciesPom(maven, pom, settingXml, extraDependencies, platformVersions);
                 return this.getClasspathURLEntries("lsp-extra", maven, extraDependenciesPom, settingXml);
             }
             catch (IOException | MavenInvocationException e)
@@ -344,7 +443,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         }
     }
 
-    private File computeExtraDependenciesPom(File maven, File pom, File settingXml, List<String> extraDependencies) throws IOException, MavenInvocationException
+    private File computeExtraDependenciesPom(File maven, File pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions) throws IOException, MavenInvocationException
     {
         File legendLspExtraElementsPom = File.createTempFile("pom", ".xml");
         legendLspExtraElementsPom.deleteOnExit();
@@ -364,7 +463,6 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 this.getExtraEngineDependencies(engineVersion).forEach(extraDependenciesModel::addDependency);
             }
             extraDependenciesModel.addDependency(this.getDefaultExtensionsDependency());
-
 
             if (extraDependencies != null)
             {
@@ -393,6 +491,8 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
             new MavenXpp3Writer().write(pomOs, extraDependenciesModel);
         }
+
+        this.updatePlatformVersions(maven, legendLspExtraElementsPom.toPath(), settingXml, platformVersions);
 
         return legendLspExtraElementsPom;
     }

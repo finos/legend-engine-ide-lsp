@@ -22,4 +22,6 @@ public class Constants
     public static final String MAVEN_SETTINGS_FILE_CONFIG_PATH = "maven.settingsFile";
     public static final String LEGEND_EXTENSIONS_DEPENDENCIES_POM_CONFIG_PATH = "legend.extensions.dependencies.pom";
     public static final String LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH = "legend.extensions.other.dependencies";
+    public static final String LEGEND_ENGINE_SERVER_CONFIG_PATH = "legend.engine.server.url";
+    public static final String LEGEND_SDLC_SERVER_CONFIG_PATH = "legend.sdlc.server.url";
 }

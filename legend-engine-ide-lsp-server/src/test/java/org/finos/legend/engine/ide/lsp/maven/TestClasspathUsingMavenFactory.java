@@ -14,8 +14,14 @@
 
 package org.finos.legend.engine.ide.lsp.maven;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.stream.JsonWriter;
+import com.sun.net.httpserver.HttpServer;
+import java.io.OutputStreamWriter;
+import java.net.InetSocketAddress;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -30,6 +36,7 @@ import org.eclipse.lsp4j.InitializeParams;
 import org.finos.legend.engine.ide.lsp.Constants;
 import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
+import org.finos.legend.engine.ide.lsp.classpath.SDLCPlatform;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -40,6 +47,25 @@ class TestClasspathUsingMavenFactory
     @Test
     void loadJarsFromPom(@TempDir Path tempDir) throws Exception
     {
+        String eclipseApiVersion = "10.2.0";
+
+        HttpServer httpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        httpServer.createContext("/api/server/platforms", x ->
+        {
+            x.sendResponseHeaders(200, 0);
+            Gson gson = new Gson();
+            JsonWriter jsonWriter = gson.newJsonWriter(new OutputStreamWriter(x.getResponseBody()));
+            SDLCPlatform sdlcPlatform = new SDLCPlatform();
+            sdlcPlatform.setGroupId("org.eclipse.collections");
+            sdlcPlatform.setName("eclipse-collections");
+            sdlcPlatform.setPlatformVersion(eclipseApiVersion);
+            gson.toJson(List.of(sdlcPlatform), List.class, jsonWriter);
+            jsonWriter.flush();
+            x.close();
+        });
+
+        httpServer.start();
+
         Path pom = tempDir.resolve("pom.xml");
 
         Files.writeString(pom,
@@ -50,11 +76,19 @@ class TestClasspathUsingMavenFactory
                         "    <artifactId>legend-engine-ide-lsp-server-sample-pom</artifactId>\n" +
                         "    <version>0.0.0-SNAPSHOT</version>\n" +
                         "\n" +
+                        "    <properties>\n" +
+                        "       <platform.eclipse-collections.version>0.0.0</platform.eclipse-collections.version>\n" +
+                        "    </properties>\n" +
                         "    <dependencies>\n" +
                         "        <dependency>\n" +
                         "            <groupId>commons-io</groupId>\n" +
                         "            <artifactId>commons-io</artifactId>\n" +
                         "            <version>2.15.1</version>\n" +
+                        "        </dependency>\n" +
+                        "        <dependency>\n" +
+                        "            <groupId>org.eclipse.collections</groupId>\n" +
+                        "            <artifactId>eclipse-collections-api</artifactId>\n" +
+                        "            <version>${platform.eclipse-collections.version}</version>\n" +
                         "        </dependency>\n" +
                         "    </dependencies>\n" +
                         "</project>", StandardCharsets.UTF_8);
@@ -68,16 +102,17 @@ class TestClasspathUsingMavenFactory
                 clientLog.add(String.format("configuration - %s", configurationParams.getItems().stream().map(ConfigurationItem::getSection).collect(Collectors.joining())));
                 return CompletableFuture.completedFuture(configurationParams.getItems().stream().map(x ->
                 {
-                    if (x.getSection().equals(Constants.LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH))
+                    switch (x.getSection())
                     {
-                        JsonArray jsonElements = new JsonArray();
-                        jsonElements.add("commons-lang:commons-lang:2.6");
-                        jsonElements.add("commons-codec:commons-codec:1.15");
-                        return jsonElements;
-                    }
-                    else
-                    {
-                        return JsonNull.INSTANCE;
+                        case Constants.LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH:
+                            JsonArray jsonElements = new JsonArray();
+                            jsonElements.add("commons-lang:commons-lang:2.6");
+                            jsonElements.add("commons-codec:commons-codec:1.15");
+                            return jsonElements;
+                        case Constants.LEGEND_SDLC_SERVER_CONFIG_PATH:
+                            return new JsonPrimitive("http://localhost:" + httpServer.getAddress().getPort() + "/api");
+                        default:
+                            return JsonNull.INSTANCE;
                     }
                 }).collect(Collectors.toList()));
             }
@@ -91,15 +126,17 @@ class TestClasspathUsingMavenFactory
 
         try (URLClassLoader urlClassLoader = Assertions.assertInstanceOf(URLClassLoader.class, classLoader))
         {
-            Assertions.assertEquals(4, urlClassLoader.getURLs().length);
+            Assertions.assertEquals(5, urlClassLoader.getURLs().length);
             // from given pom
             Assertions.assertTrue(urlClassLoader.getURLs()[0].toString().endsWith("commons-io-2.15.1.jar"));
+            // from given pom, version updated from platform versions
+            Assertions.assertTrue(urlClassLoader.getURLs()[1].toString().endsWith("eclipse-collections-api-" + eclipseApiVersion + ".jar"));
             // added by default, as required for server to work
-            Assertions.assertTrue(urlClassLoader.getURLs()[1].toString().endsWith("legend-engine-ide-lsp-default-extensions-" + server.getProjectVersion() + ".jar"));
+            Assertions.assertTrue(urlClassLoader.getURLs()[2].toString().endsWith("legend-engine-ide-lsp-default-extensions-" + server.getProjectVersion() + ".jar"));
             // from given "other dependencies" config item
-            Assertions.assertTrue(urlClassLoader.getURLs()[2].toString().endsWith("commons-lang-2.6.jar"));
+            Assertions.assertTrue(urlClassLoader.getURLs()[3].toString().endsWith("commons-lang-2.6.jar"));
             // from given "other dependencies" config item
-            Assertions.assertTrue(urlClassLoader.getURLs()[3].toString().endsWith("commons-codec-1.15.jar"));
+            Assertions.assertTrue(urlClassLoader.getURLs()[4].toString().endsWith("commons-codec-1.15.jar"));
         }
     }
 }

@@ -74,6 +74,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageServer;
+import org.finos.legend.engine.ide.lsp.Constants;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
@@ -260,7 +261,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private CompletableFuture<Void> initializeEngineServerUrl()
     {
         ConfigurationItem urlConfig = new ConfigurationItem();
-        urlConfig.setSection("legend.engine.server.url");
+        urlConfig.setSection(Constants.LEGEND_ENGINE_SERVER_CONFIG_PATH);
 
         ConfigurationParams configurationParams = new ConfigurationParams(Collections.singletonList(urlConfig));
         return this.getLanguageClient().configuration(configurationParams).thenAccept(x ->
