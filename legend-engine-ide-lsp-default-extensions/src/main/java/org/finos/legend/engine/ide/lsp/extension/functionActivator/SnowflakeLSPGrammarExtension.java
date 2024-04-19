@@ -16,16 +16,16 @@
 
 package org.finos.legend.engine.ide.lsp.extension.functionActivator;
 
+import java.util.List;
 import org.eclipse.collections.impl.utility.LazyIterate;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperModelBuilder;
+import org.finos.legend.engine.language.pure.grammar.to.HelperValueSpecificationGrammarComposer;
 import org.finos.legend.engine.language.snowflakeApp.grammar.from.SnowflakeAppGrammarParserExtension;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Function;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.DatabaseType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
-
-import java.util.List;
 
 public class SnowflakeLSPGrammarExtension extends FunctionActivatorLSPGrammarExtension
 {
@@ -44,7 +44,7 @@ public class SnowflakeLSPGrammarExtension extends FunctionActivatorLSPGrammarExt
                 .append(String.format("SnowflakeApp ${1:%s}::${2:%sSnowflakeActivator}\n", packageName, functionName))
                 .append("{\n")
                 .append(String.format("\tapplicationName: '${3:%sSnowflakeActivator}';\n", functionName))
-                .append(String.format("\tfunction: %s;\n", getFunctionDescriptor(function)))
+                .append(String.format("\tfunction: %s;\n", HelperValueSpecificationGrammarComposer.getFunctionDescriptor(function)))
                 .append("\townership: Deployment { identifier: '${4:DID}' };\n")
                 .append("\tdescription: '${5:Please provide a description}';\n")
                 .append(String.format("\tactivationConfiguration: %s;\n", buildConnectionSuggestions(elements)))
