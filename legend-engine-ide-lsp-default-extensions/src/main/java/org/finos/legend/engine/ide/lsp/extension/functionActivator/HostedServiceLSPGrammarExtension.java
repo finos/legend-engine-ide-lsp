@@ -16,12 +16,12 @@
 
 package org.finos.legend.engine.ide.lsp.extension.functionActivator;
 
+import java.util.List;
 import org.finos.legend.engine.language.hostedService.grammar.from.HostedServiceGrammarParserExtension;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperModelBuilder;
+import org.finos.legend.engine.language.pure.grammar.to.HelperValueSpecificationGrammarComposer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Function;
-
-import java.util.List;
 
 public class HostedServiceLSPGrammarExtension extends FunctionActivatorLSPGrammarExtension
 {
@@ -41,7 +41,7 @@ public class HostedServiceLSPGrammarExtension extends FunctionActivatorLSPGramma
                 .append("{\n")
                 .append("\tpattern: '/${3:Please provide a pattern}';\n")
                 .append("\townership: Deployment { identifier: '${4:DID}' };\n")
-                .append(String.format("\tfunction: %s;\n", getFunctionDescriptor(function)))
+                .append(String.format("\tfunction: %s;\n", HelperValueSpecificationGrammarComposer.getFunctionDescriptor(function)))
                 .append("\tdocumentation: '${5:Please provide a documentation}';\n")
                 .append("\tautoActivateUpdates: ${6|true,false|};\n")
                 .append("}");
