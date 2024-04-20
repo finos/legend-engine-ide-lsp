@@ -19,6 +19,7 @@ import com.google.gson.reflect.TypeToken;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URI;
@@ -45,6 +46,7 @@ import java.util.stream.Stream;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Exclusion;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.shared.invoker.DefaultInvocationRequest;
 import org.apache.maven.shared.invoker.DefaultInvoker;
@@ -59,6 +61,7 @@ import org.apache.maven.shared.utils.Os;
 import org.apache.maven.shared.utils.cli.CommandLineException;
 import org.apache.maven.shared.utils.cli.CommandLineUtils;
 import org.apache.maven.shared.utils.cli.Commandline;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.finos.legend.engine.ide.lsp.Constants;
@@ -209,28 +212,30 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         });
     }
 
-    private void updatePlatformVersions(File maven, Path pom, File settingsXmlFile, List<SDLCPlatform> platforms)
+    private void updatePlatformVersions(Path pom, List<SDLCPlatform> platforms)
     {
         if (!platforms.isEmpty())
         {
             try
             {
-                String pomContent = Files.readString(pom);
+                Model model;
+                try (InputStream is = Files.newInputStream(pom))
+                {
+                    model = new MavenXpp3Reader().read(is);
+                }
 
                 for (SDLCPlatform platform : platforms)
                 {
                     String versionProperty = "platform." + platform.getName() + ".version";
-                    if (pomContent.contains(versionProperty))
-                    {
-                        Properties properties = new Properties();
-                        properties.setProperty("property", versionProperty);
-                        properties.setProperty("newVersion", platform.getPlatformVersion());
-                        properties.setProperty("generateBackupPoms", Boolean.FALSE.toString());
-                        this.invokeMaven(maven, pom.toFile(), settingsXmlFile, properties, "versions:set-property");
-                    }
+                    model.addProperty(versionProperty, platform.getPlatformVersion());
+                }
+
+                try (OutputStream os = Files.newOutputStream(pom))
+                {
+                    new MavenXpp3Writer().write(os, model);
                 }
             }
-            catch (IOException | MavenInvocationException e)
+            catch (IOException | XmlPullParserException e)
             {
                 throw new RuntimeException(e);
             }
@@ -276,7 +281,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
         if (overrideDefaultPom == null || overrideDefaultPom.isEmpty())
         {
-            pom = this.maybeUseStudioProjectEntitiesPom(folders, maven, settingsXmlFile, platformVersions);
+            pom = this.maybeUseStudioProjectEntitiesPom(folders, platformVersions);
         }
 
         if (pom == null)
@@ -290,13 +295,13 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 pom = new File(overrideDefaultPom.trim());
             }
 
-            this.updatePlatformVersions(maven, pom.toPath(), settingsXmlFile, platformVersions);
+            this.updatePlatformVersions(pom.toPath(), platformVersions);
         }
 
         return pom;
     }
 
-    private File maybeUseStudioProjectEntitiesPom(Iterable<String> folders, File maven, File settingsXmlFile, List<SDLCPlatform> platformVersions)
+    private File maybeUseStudioProjectEntitiesPom(Iterable<String> folders, List<SDLCPlatform> platformVersions)
     {
         Set<Path> entitiesPoms = new HashSet<>();
 
@@ -342,7 +347,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
             if (Files.exists(parentPom))
             {
-                this.updatePlatformVersions(maven, parentPom, settingsXmlFile, platformVersions);
+                this.updatePlatformVersions(parentPom, platformVersions);
             }
             else
             {
@@ -450,7 +455,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
         try (OutputStream pomOs = Files.newOutputStream(legendLspExtraElementsPom.toPath()))
         {
-            String engineVersion = this.findEngineVersion(maven, pom, settingXml);
+            String engineVersion = this.findEngineVersion(maven, pom, settingXml, platformVersions);
 
             Model extraDependenciesModel = new Model();
             extraDependenciesModel.setModelVersion("4.0.0");
@@ -492,13 +497,19 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             new MavenXpp3Writer().write(pomOs, extraDependenciesModel);
         }
 
-        this.updatePlatformVersions(maven, legendLspExtraElementsPom.toPath(), settingXml, platformVersions);
+        this.updatePlatformVersions(legendLspExtraElementsPom.toPath(), platformVersions);
 
         return legendLspExtraElementsPom;
     }
 
-    private String findEngineVersion(File maven, File pom, File settingXml) throws IOException, MavenInvocationException
+    private String findEngineVersion(File maven, File pom, File settingXml, List<SDLCPlatform> platforms) throws IOException, MavenInvocationException
     {
+        Optional<SDLCPlatform> enginePlatformVersion = platforms.stream().filter(x -> x.getName().equals("legend-engine")).findAny();
+        if (enginePlatformVersion.isPresent())
+        {
+            return enginePlatformVersion.get().getPlatformVersion();
+        }
+
         File legendEngineArtifacts = File.createTempFile("legend_engine_artifacts", ".txt");
         legendEngineArtifacts.deleteOnExit();
 
