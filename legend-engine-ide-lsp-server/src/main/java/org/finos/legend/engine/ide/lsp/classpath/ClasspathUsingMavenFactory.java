@@ -579,6 +579,11 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             File legendLspClasspath;
             File legendLspCachedPom;
 
+            boolean reloadClasspath = true;
+            String[] classpath = null;
+
+            String currentContent = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
+
             if (storageDir == null)
             {
                 legendLspClasspath = File.createTempFile("legend_lsp_classpath_", id + ".txt");
@@ -592,42 +597,36 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 File cacheDir = new File(storageDir);
                 legendLspClasspath = new File(cacheDir, "legend_lsp_classpath_" + id + ".txt");
                 legendLspCachedPom = new File(cacheDir, "pom_" + id + ".xml");
-            }
 
-            boolean reloadClasspath = true;
-
-            String[] classpath = null;
-            String currentContent = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
-
-            if (legendLspClasspath.exists() && legendLspCachedPom.exists())
-            {
-
-                classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8).split(";");
-                String cachedContent = Files.readString(legendLspCachedPom.toPath(), StandardCharsets.UTF_8);
-
-                if (currentContent.equals(cachedContent))
+                if (legendLspClasspath.exists() && legendLspCachedPom.exists())
                 {
-                    this.server.logInfoToClient("Found cached " + id + " classpath, checking if still valid...");
+                    classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8).split(";");
+                    String cachedContent = Files.readString(legendLspCachedPom.toPath(), StandardCharsets.UTF_8);
 
-                    reloadClasspath = false;
-
-                    // can we still can read old files or do we depend on SNAPSHOTS... maybe jars where deleted
-                    for (String entry : classpath)
+                    if (currentContent.equals(cachedContent))
                     {
-                        try
+                        this.server.logInfoToClient("Found cached " + id + " classpath, checking if still valid...");
+
+                        reloadClasspath = false;
+
+                        // can we still can read old files or do we depend on SNAPSHOTS... maybe jars where deleted
+                        for (String entry : classpath)
                         {
-                            File file = new File(entry);
-                            if (!file.canRead() || entry.contains("-SNAPSHOT"))
+                            try
                             {
-                                this.server.logInfoToClient("Need to reload " + id + " classpath.  Either an entry does not exist anymore or classpath contains -SNAPSHOT dependencies...");
+                                File file = new File(entry);
+                                if (!file.canRead() || entry.contains("-SNAPSHOT"))
+                                {
+                                    this.server.logInfoToClient("Need to reload " + id + " classpath.  Either an entry does not exist anymore or classpath contains -SNAPSHOT dependencies...");
+                                    reloadClasspath = true;
+                                    break;
+                                }
+                            }
+                            catch (Exception e)
+                            {
                                 reloadClasspath = true;
                                 break;
                             }
-                        }
-                        catch (Exception e)
-                        {
-                            reloadClasspath = true;
-                            break;
                         }
                     }
                 }
