@@ -420,7 +420,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         return dependencies;
     }
 
-    private URLClassLoader createClassloader(File maven, File pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions) throws Exception
+    private URLClassLoader createClassloader(File maven, File pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions)
     {
         CompletableFuture<Stream<URL>> coreClasspathFuture = this.server.supplyPossiblyAsync(() -> this.getClasspathURLEntries("core", maven, pom, settingXml));
         CompletableFuture<Stream<URL>> extraClasspathFuture = this.server.supplyPossiblyAsync(() ->
@@ -573,12 +573,27 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
     private Stream<URL> getClasspathURLEntries(String id, File maven, File pom, File settingXml)
     {
-        File cacheDir = new File(System.getProperty("storagePath", System.getProperty("java.io.tmpdir")));
-        File legendLspClasspath = new File(cacheDir, "legend_lsp_classpath_" + id + ".txt");
-        File legendLspCachedPom = new File(cacheDir, "pom_" + id + ".xml");
-
         try
         {
+            String storageDir = System.getProperty("storagePath");
+            File legendLspClasspath;
+            File legendLspCachedPom;
+
+            if (storageDir == null)
+            {
+                legendLspClasspath = File.createTempFile("legend_lsp_classpath_", id + ".txt");
+                legendLspClasspath.deleteOnExit();
+
+                legendLspCachedPom = File.createTempFile("pom_", id + ".xml");
+                legendLspCachedPom.deleteOnExit();
+            }
+            else
+            {
+                File cacheDir = new File(storageDir);
+                legendLspClasspath = new File(cacheDir, "legend_lsp_classpath_" + id + ".txt");
+                legendLspCachedPom = new File(cacheDir, "pom_" + id + ".xml");
+            }
+
             boolean reloadClasspath = true;
 
             String[] classpath = null;
