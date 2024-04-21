@@ -15,7 +15,11 @@
 package org.finos.legend.engine.ide.lsp.extension.state;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
@@ -40,6 +44,26 @@ public interface GlobalState extends State
      * @param consumer document state consumer
      */
     void forEachDocumentState(Consumer<? super DocumentState> consumer);
+
+    /**
+     * Apply the given consumer to each document state. No particular order is guaranteed.
+     * Implementation could do this in parallel
+     *
+     * @param consumer document state consumer, needs to be threadsafe
+     * @return future to track when this completes
+     */
+    CompletableFuture<Void> forEachDocumentStateParallel(Consumer<? super DocumentState> consumer);
+
+    /**
+     * Apply the given function to each document state, collecting its result in a list. No particular order is guaranteed.
+     * Implementation could do this in parallel.
+     *
+     * @param func function to apply to each document state, needs to be threadsafe
+     * @return future to with the collected results
+     */
+    <RESULT> CompletableFuture<List<RESULT>> collectFromEachDocumentState(Function<? super DocumentState, List<RESULT>> func);
+
+    <RESULT> CompletableFuture<List<RESULT>> collectFromEachDocumentSectionState(BiFunction<? super DocumentState, ? super SectionState, List<RESULT>> func);
 
     /**
      * List of available grammar extensions.  This is useful for extensions that need to dispatch to other extensions
