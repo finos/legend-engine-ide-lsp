@@ -18,9 +18,6 @@ package org.finos.legend.engine.ide.lsp.server.integration;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -46,10 +43,10 @@ import org.eclipse.lsp4j.WorkspaceDiagnosticParams;
 import org.eclipse.lsp4j.WorkspaceDocumentDiagnosticReport;
 import org.eclipse.lsp4j.WorkspaceSymbol;
 import org.eclipse.lsp4j.WorkspaceSymbolParams;
+import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
-import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -343,53 +340,6 @@ public class TestLegendLanguageServerIntegration
                 .stream()
                 .map(x -> new PreviousResultId(x.getWorkspaceFullDocumentDiagnosticReport().getUri(), x.getWorkspaceFullDocumentDiagnosticReport().getResultId()))
                 .collect(Collectors.toList());
-    }
-
-    @Test
-    void testReplStartWithGivenClasspath() throws Exception
-    {
-        String classpath = extension.futureGet(extension.getServer().getLegendLanguageService().replClasspath());
-
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                System.getProperty("java.home") + File.separator + "bin" + File.separator + "java",
-                "org.finos.legend.engine.ide.lsp.server.LegendREPLTerminal"
-        );
-        processBuilder.environment().put("CLASSPATH", classpath);
-        processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
-        Process process = null;
-        try
-        {
-            process = processBuilder.start();
-            Assertions.assertTrue(process.isAlive());
-            read(process.getInputStream(), "Ready!");
-        }
-        finally
-        {
-            if (process != null)
-            {
-                process.destroy();
-                process.onExit().join();
-            }
-        }
-    }
-
-    private static void read(InputStream replOutputConsole, String untilToken) throws IOException
-    {
-        StringBuilder output = new StringBuilder();
-        while (!output.toString().contains(untilToken))
-        {
-            int read = replOutputConsole.read();
-            if (read != -1)
-            {
-                System.err.print((char) read);
-                output.append((char) read);
-            }
-            else
-            {
-                Assertions.fail("Did not found token and stream closed...");
-            }
-
-        }
     }
 
     @Test

@@ -189,7 +189,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
                 File settingsXmlFile = settingXmlPath != null && !settingXmlPath.isEmpty() ? new File(settingXmlPath) : null;
 
-                File pom = this.findDependencyPom(folders, overrideDefaultPom, maven, settingsXmlFile, platformVersions);
+                File pom = this.findDependencyPom(folders, overrideDefaultPom, platformVersions);
 
                 this.server.logInfoToClient("Dependencies loaded from POM: " + pom);
                 LOGGER.info("Dependencies loaded from POM: {}", pom);
@@ -209,30 +209,25 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         });
     }
 
-    private void updatePlatformVersions(File maven, Path pom, File settingsXmlFile, List<SDLCPlatform> platforms)
+    private void updatePlatformVersions(File pom, List<SDLCPlatform> platforms) throws IOException
     {
         if (!platforms.isEmpty())
         {
-            try
-            {
-                String pomContent = Files.readString(pom);
+            this.server.logInfoToClient("Updating platform version on pom: " + pom);
+            final String pomContent = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
+            String updatedPomContent = pomContent;
 
-                for (SDLCPlatform platform : platforms)
-                {
-                    String versionProperty = "platform." + platform.getName() + ".version";
-                    if (pomContent.contains(versionProperty))
-                    {
-                        Properties properties = new Properties();
-                        properties.setProperty("property", versionProperty);
-                        properties.setProperty("newVersion", platform.getPlatformVersion());
-                        properties.setProperty("generateBackupPoms", Boolean.FALSE.toString());
-                        this.invokeMaven(maven, pom.toFile(), settingsXmlFile, properties, "versions:set-property");
-                    }
-                }
-            }
-            catch (IOException | MavenInvocationException e)
+            for (SDLCPlatform platform : platforms)
             {
-                throw new RuntimeException(e);
+                String versionProperty = "platform." + platform.getName() + ".version";
+                String toReplaceRegEx = String.format("<%s>((.|\\n)*)</%s>", versionProperty.replace(".", "\\."), versionProperty.replace(".", "\\."));
+                String replaceValue = String.format("<%s>%s</%s>", versionProperty, platform.getPlatformVersion(), versionProperty);
+                updatedPomContent = updatedPomContent.replaceAll(toReplaceRegEx, replaceValue);
+            }
+
+            if (!pomContent.equals(updatedPomContent))
+            {
+                Files.writeString(pom.toPath(), updatedPomContent, StandardCharsets.UTF_8);
             }
         }
     }
@@ -245,6 +240,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             {
                 HttpClient client = HttpClient.newHttpClient();
                 HttpRequest request = HttpRequest.newBuilder().GET().uri(URI.create(sdlcServer + "/server/platforms")).build();
+                LOGGER.info("Requesting platform versions using: {}", request.toString());
                 HttpResponse<String> httpResponse = client.send(request, x -> HttpResponse.BodySubscribers.ofString(StandardCharsets.UTF_8));
                 if (httpResponse.statusCode() / 100 == 2)
                 {
@@ -254,6 +250,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                     {
                     };
 
+                    LOGGER.info("Response from platform versions request: {}", httpResponse.body());
                     return gson.fromJson(httpResponse.body(), platformsResponseType);
                 }
                 else
@@ -270,13 +267,13 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         return List.of();
     }
 
-    private File findDependencyPom(Iterable<String> folders, String overrideDefaultPom, File maven, File settingsXmlFile, List<SDLCPlatform> platformVersions)
+    private File findDependencyPom(Iterable<String> folders, String overrideDefaultPom, List<SDLCPlatform> platformVersions) throws IOException
     {
         File pom = null;
 
         if (overrideDefaultPom == null || overrideDefaultPom.isEmpty())
         {
-            pom = this.maybeUseStudioProjectEntitiesPom(folders, maven, settingsXmlFile, platformVersions);
+            pom = this.maybeUseStudioProjectEntitiesPom(folders, platformVersions);
         }
 
         if (pom == null)
@@ -290,42 +287,49 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 pom = new File(overrideDefaultPom.trim());
             }
 
-            this.updatePlatformVersions(maven, pom.toPath(), settingsXmlFile, platformVersions);
+            this.updatePlatformVersions(pom, platformVersions);
         }
 
         return pom;
     }
 
-    private File maybeUseStudioProjectEntitiesPom(Iterable<String> folders, File maven, File settingsXmlFile, List<SDLCPlatform> platformVersions)
+    private File maybeUseStudioProjectEntitiesPom(Iterable<String> folders, List<SDLCPlatform> platformVersions) throws IOException
     {
         Set<Path> entitiesPoms = new HashSet<>();
 
         for (String folder : folders)
         {
             Path folderPath = Path.of(URI.create(folder));
-            Path projectJson = folderPath.resolve("project.json");
-            if (Files.isReadable(projectJson))
+
+            try (Stream<Path> pathWalkStream = Files.walk(folderPath))
             {
-                server.logInfoToClient("Found project json file, analyzing it: " + projectJson);
-                try
-                {
-                    String json = Files.readString(projectJson, StandardCharsets.UTF_8);
-                    Gson gson = new Gson();
-                    Map<String, Object> projectMap = (Map<String, Object>) gson.fromJson(json, TypeToken.getParameterized(Map.class, String.class, Object.class));
-                    String artifactId = (String) projectMap.get("artifactId");
+                pathWalkStream.filter(x -> x.getFileName().toString().equals("project.json"))
+                        .forEach(projectJson ->
+                        {
+                            if (Files.isReadable(projectJson))
+                            {
+                                this.server.logInfoToClient("Found project json file, analyzing it: " + projectJson);
+                                try
+                                {
+                                    String json = Files.readString(projectJson, StandardCharsets.UTF_8);
+                                    Gson gson = new Gson();
+                                    Map<String, Object> projectMap = (Map<String, Object>) gson.fromJson(json, TypeToken.getParameterized(Map.class, String.class, Object.class));
+                                    String artifactId = (String) projectMap.get("artifactId");
 
-                    Path entitiesPom = folderPath.resolve(artifactId + "-entities").resolve("pom.xml");
+                                    Path entitiesPom = projectJson.getParent().resolve(artifactId + "-entities").resolve("pom.xml");
 
-                    if (Files.isReadable(entitiesPom))
-                    {
-                        entitiesPoms.add(entitiesPom);
-                    }
-                }
-                catch (Exception e)
-                {
-                    LOGGER.error("Unable to analyze project json file ({})", projectJson, e);
-                    this.server.logErrorToClient("Unable to analyze project json file (" + projectJson + "): " + e.getMessage());
-                }
+                                    if (Files.isReadable(entitiesPom))
+                                    {
+                                        entitiesPoms.add(entitiesPom);
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    LOGGER.error("Unable to analyze project json file ({})", projectJson, e);
+                                    this.server.logErrorToClient("Unable to analyze project json file (" + projectJson + "): " + e.getMessage());
+                                }
+                            }
+                        });
             }
         }
 
@@ -342,13 +346,14 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
             if (Files.exists(parentPom))
             {
-                this.updatePlatformVersions(maven, parentPom, settingsXmlFile, platformVersions);
+                this.updatePlatformVersions(parentPom.toFile(), platformVersions);
             }
             else
             {
                 this.server.logErrorToClient("Parent pom does not exists for: " + pom + ".  Unable to update platform versions.");
             }
 
+            this.server.logInfoToClient("Using project entities pom: " + pom);
             return pom.toFile();
         }
         else if (entitiesPoms.size() != 0)
@@ -404,7 +409,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         return dependencies;
     }
 
-    private URLClassLoader createClassloader(File maven, File pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions) throws Exception
+    private URLClassLoader createClassloader(File maven, File pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions)
     {
         CompletableFuture<Stream<URL>> coreClasspathFuture = this.server.supplyPossiblyAsync(() -> this.getClasspathURLEntries("core", maven, pom, settingXml));
         CompletableFuture<Stream<URL>> extraClasspathFuture = this.server.supplyPossiblyAsync(() ->
@@ -450,7 +455,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
         try (OutputStream pomOs = Files.newOutputStream(legendLspExtraElementsPom.toPath()))
         {
-            String engineVersion = this.findEngineVersion(maven, pom, settingXml);
+            String engineVersion = this.findEngineVersion(maven, pom, settingXml, platformVersions);
 
             Model extraDependenciesModel = new Model();
             extraDependenciesModel.setModelVersion("4.0.0");
@@ -492,13 +497,19 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             new MavenXpp3Writer().write(pomOs, extraDependenciesModel);
         }
 
-        this.updatePlatformVersions(maven, legendLspExtraElementsPom.toPath(), settingXml, platformVersions);
+        this.updatePlatformVersions(legendLspExtraElementsPom, platformVersions);
 
         return legendLspExtraElementsPom;
     }
 
-    private String findEngineVersion(File maven, File pom, File settingXml) throws IOException, MavenInvocationException
+    private String findEngineVersion(File maven, File pom, File settingXml, List<SDLCPlatform> platforms) throws IOException, MavenInvocationException
     {
+        Optional<SDLCPlatform> enginePlatformVersion = platforms.stream().filter(x -> x.getName().equals("legend-engine")).findAny();
+        if (enginePlatformVersion.isPresent())
+        {
+            return enginePlatformVersion.get().getPlatformVersion();
+        }
+
         File legendEngineArtifacts = File.createTempFile("legend_engine_artifacts", ".txt");
         legendEngineArtifacts.deleteOnExit();
 
@@ -507,6 +518,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             Properties properties = new Properties();
             properties.setProperty("outputFile", legendEngineArtifacts.getAbsolutePath());
             properties.setProperty("includeGroupIds", "org.finos.legend.engine");
+            properties.setProperty("includeArtifactIds", "legend-engine-protocol");
             String goal = "dependency:list";
 
             InvocationResult result = invokeMaven(maven, pom, settingXml, properties, goal);
@@ -551,39 +563,93 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
     private Stream<URL> getClasspathURLEntries(String id, File maven, File pom, File settingXml)
     {
-        File legendLspClasspath = null;
-
         try
         {
-            legendLspClasspath = File.createTempFile("legend_lsp_classpath", ".txt");
-            legendLspClasspath.deleteOnExit();
+            String storageDir = System.getProperty("storagePath");
+            File legendLspClasspath;
+            File legendLspCachedPom;
 
-            Properties properties = new Properties();
-            properties.setProperty("mdep.outputFile", legendLspClasspath.getAbsolutePath());
-            properties.setProperty("mdep.pathSeparator", ";");
+            String[] classpath = null;
 
-            InvocationResult invocationResult = this.invokeMaven(maven, pom, settingXml, properties, "dependency:build-classpath");
+            String currentContent = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
 
-            if (invocationResult.getExitCode() != 0)
+            if (storageDir == null)
             {
-                String output = this.outputStream.toString(StandardCharsets.UTF_8);
-                throw new RuntimeException("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
+                legendLspClasspath = File.createTempFile("legend_lsp_classpath_", id + ".txt");
+                legendLspClasspath.deleteOnExit();
+
+                legendLspCachedPom = File.createTempFile("pom_", id + ".xml");
+                legendLspCachedPom.deleteOnExit();
+            }
+            else
+            {
+                File cacheDir = new File(storageDir);
+                legendLspClasspath = new File(cacheDir, "legend_lsp_classpath_" + id + ".txt");
+                legendLspCachedPom = new File(cacheDir, "pom_" + id + ".xml");
+
+                if (legendLspClasspath.exists() && legendLspCachedPom.exists())
+                {
+                    classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8).split(";");
+                    String cachedContent = Files.readString(legendLspCachedPom.toPath(), StandardCharsets.UTF_8);
+
+                    if (currentContent.equals(cachedContent))
+                    {
+                        this.server.logInfoToClient("Found cached " + id + " classpath, checking if still valid...");
+
+                        // can we still can read old files or do we depend on SNAPSHOTS... maybe jars where deleted
+                        for (String entry : classpath)
+                        {
+                            try
+                            {
+                                File file = new File(entry);
+                                if (!file.canRead() || entry.contains("-SNAPSHOT"))
+                                {
+                                    this.server.logInfoToClient("Need to reload " + id + " classpath.  Either an entry does not exist anymore or classpath contains -SNAPSHOT dependencies...");
+                                    classpath = null;
+                                    break;
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                classpath = null;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
-            String classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8);
+            if (classpath == null)
+            {
+                this.server.logInfoToClient("Resolving " + id + " classpath invoking maven...");
+
+                Properties properties = new Properties();
+                properties.setProperty("mdep.outputFile", legendLspClasspath.getAbsolutePath());
+                properties.setProperty("mdep.pathSeparator", ";");
+
+                InvocationResult invocationResult = this.invokeMaven(maven, pom, settingXml, properties, "dependency:build-classpath");
+
+                if (invocationResult.getExitCode() != 0)
+                {
+                    String output = this.outputStream.toString(StandardCharsets.UTF_8);
+                    throw new RuntimeException("Unable to initialize Legend extensions.  Maven output:\n\n" + output);
+                }
+
+                Files.writeString(legendLspCachedPom.toPath(), currentContent, StandardCharsets.UTF_8);
+                classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8).split(";");
+            }
+            else
+            {
+                this.server.logInfoToClient("Reusing cached " + id + " classpath rather that invoking maven");
+            }
 
             LOGGER.info("{} classpath URLs used:  {}", id, classpath);
 
-            return Stream.of(classpath.split(";")).map(entry ->
+            return Stream.of(classpath).map(entry ->
             {
                 try
                 {
-                    File file = new File(entry);
-                    if (!file.canRead())
-                    {
-                        throw new RuntimeException("Cannot read classpath file: " + file);
-                    }
-                    return file.toURI().toURL();
+                    return new File(entry).toURI().toURL();
                 }
                 catch (Exception e)
                 {
@@ -594,13 +660,6 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         catch (IOException | MavenInvocationException e)
         {
             throw new RuntimeException(e);
-        }
-        finally
-        {
-            if (legendLspClasspath != null)
-            {
-                legendLspClasspath.delete();
-            }
         }
     }
 

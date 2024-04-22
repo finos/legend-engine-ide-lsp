@@ -35,6 +35,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.io.FileUtils;
 import org.eclipse.lsp4j.ClientCapabilities;
 import org.eclipse.lsp4j.DeleteFilesParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -90,6 +91,7 @@ public class LegendLanguageServerIntegrationExtension implements
     @Override
     public void afterAll(ExtensionContext context) throws Exception
     {
+        FileUtils.deleteDirectory(workspaceFolderPath.toFile());
         clientFuture.cancel(true);
         serverFuture.cancel(true);
         executorService.shutdown();
@@ -193,6 +195,11 @@ public class LegendLanguageServerIntegrationExtension implements
             // catch to add phaser state, and rethrow TimeoutException to allow test watcher to print thread dump...
             throw new TimeoutException("Not all parties arrived to phaser? " + phaser);
         }
+    }
+
+    public boolean clientLogged(String logMsg)
+    {
+        return this.client.clientLog.contains(logMsg);
     }
 
     public Path addToWorkspace(String relativePath, String content) throws Exception
