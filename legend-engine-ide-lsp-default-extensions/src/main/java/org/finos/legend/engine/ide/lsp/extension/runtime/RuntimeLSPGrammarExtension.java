@@ -18,6 +18,7 @@ package org.finos.legend.engine.ide.lsp.extension.runtime;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -42,6 +43,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.RuntimePointer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.StoreConnections;
+import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 
 /**
  * Extension for the Runtime grammar.
@@ -94,7 +96,7 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     }
 
     @Override
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
         if (!(packageableElement instanceof PackageableRuntime))
         {

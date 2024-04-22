@@ -63,4 +63,9 @@ public class LegendReferenceResolver implements Locatable
     {
         return new LegendReferenceResolver(SourceInformationUtil.toLocation(location), gotoResolver);
     }
+
+    public static LegendReferenceResolver newReferenceResolver(org.finos.legend.pure.m4.coreinstance.SourceInformation location, CoreInstance coreInstance)
+    {
+        return new LegendReferenceResolver(SourceInformationUtil.toLocation(location), x -> coreInstance);
+    }
 }
