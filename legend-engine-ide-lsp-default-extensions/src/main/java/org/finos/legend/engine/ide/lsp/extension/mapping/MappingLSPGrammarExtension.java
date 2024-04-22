@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -69,6 +70,7 @@ import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.test.runner.mapping.MappingTestRunner;
 import org.finos.legend.engine.test.runner.mapping.RichMappingTestResult;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
+import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 
 /**
  * Extension for the Mapping grammar.
@@ -282,7 +284,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     }
 
     @Override
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
         Mapping mapping = (Mapping) packageableElement;
         return mapping.classMappings

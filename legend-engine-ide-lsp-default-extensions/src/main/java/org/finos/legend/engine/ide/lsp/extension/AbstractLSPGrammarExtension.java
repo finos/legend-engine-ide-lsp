@@ -75,6 +75,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
+import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -547,6 +548,11 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return isValidSourceInfo(sourceInformation) && SourceInformationUtil.toLocation(sourceInformation).getTextInterval().includes(position);
     }
 
+    private boolean isValidSourceIdAndSourceInfo(SectionState section, SourceInformation sourceInfo)
+    {
+        return section.getDocumentState().getGlobalState().getDocumentState(sourceInfo.sourceId) != null && isValidSourceInfo(sourceInfo);
+    }
+
     /**
      * Check if the source information is valid.
      *
@@ -597,7 +603,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
                                 .map(coreInstance ->
                                 {
                                     SourceInformation sourceInfo = SourceInformationHelper.fromM3SourceInformation(coreInstance.getSourceInformation());
-                                    if (isValidSourceInfo(sourceInfo))
+                                    if (isValidSourceIdAndSourceInfo(section, sourceInfo))
                                     {
                                         TextLocation declarationLocation = SourceInformationUtil.toLocation(sourceInfo);
                                         return LegendReference.builder()
@@ -614,10 +620,11 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
 
     private Collection<LegendReferenceResolver> getReferenceResolversResult(SectionState section, PackageableElement packageableElement)
     {
-        return section.getProperty(REFERENCE_RESULT + ":" + packageableElement.getPath(), () -> getReferenceResolvers(section, packageableElement));
+        Optional<CoreInstance> coreInstance = Optional.ofNullable(this.getCompileResult(section).getPureModel()).map(x -> x.getPackageableElement(packageableElement.getPath(), packageableElement.sourceInformation));
+        return section.getProperty(REFERENCE_RESULT + ":" + packageableElement.getPath(), () -> getReferenceResolvers(section, packageableElement, coreInstance));
     }
 
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
         return List.of();
     }

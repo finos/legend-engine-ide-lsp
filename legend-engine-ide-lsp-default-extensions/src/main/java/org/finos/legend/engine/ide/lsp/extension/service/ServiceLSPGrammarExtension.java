@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -73,6 +74,7 @@ import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
 import org.finos.legend.engine.test.runner.service.ServiceTestRunner;
 import org.finos.legend.engine.test.runner.shared.TestResult;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
+import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 
 /**
  * Extension for the Service grammar.
@@ -331,7 +333,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
         if (!(packageableElement instanceof Service))
         {

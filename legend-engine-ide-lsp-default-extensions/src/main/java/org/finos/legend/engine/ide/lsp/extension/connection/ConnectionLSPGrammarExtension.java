@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
@@ -51,6 +52,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.m
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.connection.ModelConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.connection.XmlModelConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
+import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 
 /**
  * Extension for the Connection grammar.
@@ -152,7 +154,7 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
     }
 
     @Override
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement)
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
         if (!(packageableElement instanceof PackageableConnection))
         {

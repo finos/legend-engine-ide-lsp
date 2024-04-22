@@ -35,6 +35,7 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
+import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestAssertionResult;
@@ -44,6 +45,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<PureLSPGrammarExtension>
@@ -583,6 +585,282 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         assertTestExecution("model::Hello_String_1__String_1_.testSuite_1", Set.of(), sectionState, location1, List.of(failResult, passResult));
         // execute a test directly
         assertTestExecution("model::Hello_String_1__String_1_.testSuite_1.testPass", Set.of(), sectionState, location1, List.of(passResult));
+    }
+
+    @Test
+    void testGetReferenceResolversProfilesAndProperties()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_PROFILE_DOC_ID = "showcase::model::MyExtension";
+        final String TEST_ENUMERATION_DOC_ID = "showcase::model::IncType";
+        final String TEST_CLASS_DOC_ID = "showcase::model::LegalEntity";
+        final String TEST_CLASS_DOC_ID2 = "showcase::model::Person";
+        final String TEST_CLASS_DOC_ID3 = "showcase::model::Firm";
+        codeFiles.put(TEST_PROFILE_DOC_ID,
+                "###Pure\n" +
+                "Profile showcase::model::MyExtension\n" +
+                "{\n" +
+                "  stereotypes: [important];\n" +
+                "  tags: [doc];\n" +
+                "}");
+
+        codeFiles.put(TEST_ENUMERATION_DOC_ID,
+                "###Pure\n" +
+                "Enum showcase::model::IncType\n" +
+                "{\n" +
+                "  Corp,\n" +
+                "  LLC\n" +
+                "}");
+
+        codeFiles.put(TEST_CLASS_DOC_ID,
+                "###Pure\n" +
+                "Class showcase::model::LegalEntity\n" +
+                "{\n" +
+                "  id: String[1];\n" +
+                "  legalName: String[1];\n" +
+                "  businessDate: Date[1];\n" +
+                "}");
+
+        codeFiles.put(TEST_CLASS_DOC_ID2,
+                "###Pure\n" +
+                "Class showcase::model::Person\n" +
+                "{\n" +
+                "  firstName: String[1];\n" +
+                "  lastName: String[1];\n" +
+                "}");
+
+        codeFiles.put(TEST_CLASS_DOC_ID3,
+                "###Pure\n" +
+                "Class <<showcase::model::MyExtension.important>> {showcase::model::MyExtension.doc = 'This is a model of a firm'} showcase::model::Firm extends showcase::model::LegalEntity\n" +
+                "[\n" +
+                "  validName: $this.legalName->startsWith('_')\n" +
+                "]\n" +
+                "{\n" +
+                "  employees: showcase::model::Person[1..*];\n" +
+                "  incType: showcase::model::IncType[1];\n" +
+                "  isApple: Boolean[1];\n" +
+                "  myVar: meta::pure::store::RelationStoreAccessor[*];\n" +
+                "  employeeSize() {$this.employees->count()}: Number[1];\n" +
+                "}");
+
+        LegendReference mappedProfileReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 1, 8, 1, 35))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_PROFILE_DOC_ID, 1, 0, 5, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(1, 30), mappedProfileReference, "Within the profile name has been mapped, referring to profile");
+
+        LegendReference mappedProfileReference2 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 1, 50, 1, 77))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_PROFILE_DOC_ID, 1, 0, 5, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(1, 70), mappedProfileReference2, "Within the profile name has been mapped, referring to profile");
+
+        LegendReference mappedPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 6, 13, 6, 35))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID2, 1, 0, 5, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(6, 30), mappedPropertyReference, "Within the property has been mapped, referring to property");
+
+        LegendReference mappedPropertyReference2 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 7, 11, 7, 34))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_ENUMERATION_DOC_ID, 1, 0, 5, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(7, 30), mappedPropertyReference2, "Within the property has been mapped, referring to property");
+    }
+
+    @Test
+    void testGetReferenceResolversPropertyInLambda()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_CLASS_DOC_ID = "showcase::model::LegalEntity";
+        final String TEST_FUNCTION_DOC_ID = "showcase::model::myfunc";
+        codeFiles.put(TEST_CLASS_DOC_ID,
+                "###Pure\n" +
+                "Class showcase::model::LegalEntity\n" +
+                "{\n" +
+                "  id: String[1];\n" +
+                "  legalName: String[1];\n" +
+                "  businessDate: Date[1];\n" +
+                "}");
+
+        codeFiles.put(TEST_FUNCTION_DOC_ID,
+                "###Pure\n" +
+                "function showcase::model::myfunc(businessDate: Date[1]): meta::pure::tds::TabularDataSet[1]\n" +
+                "{\n" +
+                "  showcase::model::LegalEntity.all($businessDate)->project(\n" +
+                "    [\n" +
+                "      x|$x.id,\n" +
+                "      x|$x.legalName\n" +
+                "    ],\n" +
+                "    [\n" +
+                "      'Id',\n" +
+                "      'Legal Name'\n" +
+                "    ]\n" +
+                "  )->distinct()->take(100);\n" +
+                "}");
+
+        LegendReference mappedPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 11, 5, 12))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 15))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(5, 12), mappedPropertyReference, "Within the property name has been mapped, referring to property");
+    }
+
+    @Test
+    void testGetReferenceResolversGraphFetchTree()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_CLASS_DOC_ID = "test::Address";
+        final String TEST_CLASS_DOC_ID2 = "test::City";
+        final String TEST_CLASS_DOC_ID3 = "test::Street";
+        final String TEST_FUNCTION_DOC_ID = "test::myFunc";
+        codeFiles.put(TEST_CLASS_DOC_ID,
+                "###Pure\n" +
+                "Class test::Address\n" +
+                "{\n" +
+                "  Id: Integer[1];\n" +
+                "}");
+
+        codeFiles.put(TEST_CLASS_DOC_ID2,
+                "###Pure\n" +
+                "Class test::City extends test::Address\n" +
+                "{\n" +
+                "  name: String[1];\n" +
+                "}");
+
+        codeFiles.put(TEST_CLASS_DOC_ID3,
+                "###Pure\n" +
+                "Class test::Street extends test::Address\n" +
+                "{\n" +
+                "  street: String[1];\n" +
+                "}");
+
+        codeFiles.put(TEST_FUNCTION_DOC_ID,
+                "###Pure\n" +
+                "function test::myFunc(): Any[*]\n" +
+                "{\n" +
+                "  test::Address.all()->graphFetch(\n" +
+                "      #{\n" +
+                "        test::Address{\n" +
+                "          Id,\n" +
+                "          ->subType(@test::Street){\n" +
+                "            street\n" +
+                "          },\n" +
+                "          ->subType(@test::City){\n" +
+                "            name\n" +
+                "          }\n" +
+                "        }\n" +
+                "      }#\n" +
+                "    )->serialize(\n" +
+                "      #{\n" +
+                "        test::Address{\n" +
+                "          Id,\n" +
+                "          ->subType(@test::Street){\n" +
+                "            street\n" +
+                "          },\n" +
+                "          ->subType(@test::City){\n" +
+                "            name\n" +
+                "          }\n" +
+                "        }\n" +
+                "      }#\n" +
+                "    );\n" +
+                "}");
+
+        LegendReference mappedPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 6, 10, 6, 11))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 16))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(6, 10), mappedPropertyReference, "Within the property name has been mapped, referring to property");
+    }
+
+    @Test
+    @Disabled("Enable once m3 source information is fixed")
+    void fetReferenceResolversFunction()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_CLASS_DOC_ID = "showcase::model::LegalEntity";
+        final String TEST_FUNCTION_DOC_ID = "showcase::model::myfunc";
+        codeFiles.put(TEST_CLASS_DOC_ID,
+                "###Pure\n" +
+                "Class showcase::model::LegalEntity\n" +
+                "{\n" +
+                "  id: String[1];\n" +
+                "  legalName: String[1];\n" +
+                "  businessDate: Date[1];\n" +
+                "}");
+
+        codeFiles.put(TEST_FUNCTION_DOC_ID,
+                "###Pure\n" +
+                "function showcase::model::myfunc(businessDate: Date[1]): meta::pure::tds::TabularDataSet[1]\n" +
+                "{\n" +
+                "  showcase::model::LegalEntity.all($businessDate)->project(\n" +
+                "    [\n" +
+                "      x|$x.id,\n" +
+                "      x|$x.legalName\n" +
+                "    ],\n" +
+                "    [\n" +
+                "      'Id',\n" +
+                "      'Legal Name'\n" +
+                "    ]\n" +
+                "  )->distinct()->take(100);\n" +
+                "}");
+
+        LegendReference mappedClassReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 3, 2, 3, 29))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 6, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(3, 25), mappedClassReference, "Within the class name has been mapped, referring to class definition");
+
+        LegendReference mappedParameterReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 3, 36, 3, 47))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 1, 33, 1, 53))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(3, 40), mappedParameterReference, "Within the parameter name has been mapped, referring to parameter");
+
+        LegendReference mappedPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 11, 5, 12))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 14))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(5, 12), mappedPropertyReference, "Within the property name has been mapped, referring to property");
+
+        LegendReference mappedLambdaVariableReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 9, 5, 9))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 6, 5, 6))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(5, 9), mappedLambdaVariableReference, "Within the lambda variable has been mapped, referring to lambda variable");
+    }
+
+    @Test
+    @Disabled("Enable once m3 source information is fixed")
+    void testGetReferenceResolversFunctionNewSyntax()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_DATABASE_DOC_ID = "showcase::model::Test";
+        final String TEST_FUNCTION_DOC_ID = "showcase::model::myfunc";
+        codeFiles.put(TEST_DATABASE_DOC_ID,
+                "###Relational\n" +
+                "Database showcase::model::Test\n" +
+                "(\n" +
+                "  Table FirmTable\n" +
+                "  (\n" +
+                "    id INTEGER PRIMARY KEY,\n" +
+                "    Type VARCHAR(200),\n" +
+                "    Legal_name VARCHAR(200)\n" +
+                "  )\n" +
+                ")");
+
+        codeFiles.put(TEST_FUNCTION_DOC_ID,
+                "###Pure\n" +
+                "function showcase::model::myfunc(name: String[1], isTrue: Boolean[*]): meta::pure::store::RelationStoreAccessor[*]\n" +
+                "{\n" +
+                "  #>{showcase::model::Test.FirmTable}#->filter(x | $x.id == 1);\n" +
+                "}");
+
+        LegendReference mappedTablePropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 3, 54, 3, 55))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_DATABASE_DOC_ID, 5, 5, 5, 25))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(3, 55), mappedTablePropertyReference, "Within the property name has been mapped, referring to property definition");
     }
 
     private void assertTestExecution(String testId, Set<String> exclusions, SectionState sectionState, TextLocation location, List<LegendTestExecutionResult> expectedResults)

@@ -25,13 +25,16 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.temporal.TemporalAccessor;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -44,6 +47,7 @@ import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtension;
+import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
@@ -84,6 +88,8 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Property;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.QualifiedProperty;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.StereotypePtr;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.TaggedValue;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
@@ -96,6 +102,7 @@ import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
+import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
 import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
 import org.slf4j.Logger;
@@ -200,6 +207,107 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 consumer.accept(ACTIVATE_FUNCTION_ID, ACTIVATE_FUNCTION_TITLE, function.sourceInformation, arguments, Collections.emptyMap(), LegendCommandType.CLIENT);
             }
         }
+    }
+
+    @Override
+    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
+    {
+        FunctionExpressionNavigator functionExpressionNavigator = new FunctionExpressionNavigator();
+        Stream<LegendReferenceResolver> pureReferences = packageableElement.accept(new PackageableElementDefaultVisitor()
+        {
+            @Override
+            public Stream<LegendReferenceResolver> visit(Function function)
+            {
+                Stream<LegendReferenceResolver> functionReferences = functionExpressionNavigator.findReferences(coreInstance);
+                Stream<LegendReferenceResolver> stereotypeReferences = toStereotypeReferences(function.stereotypes);
+                Stream<LegendReferenceResolver> taggedValueReferences = toTaggedValueReferences(function.taggedValues);
+                return Stream.of(functionReferences, stereotypeReferences, taggedValueReferences)
+                        .flatMap(java.util.function.Function.identity());
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(Class clazz)
+            {
+                Stream<LegendReferenceResolver> milestonedPropertyReferences = toPropertyReferences(clazz.originalMilestonedProperties);
+                Stream<LegendReferenceResolver> propertyReferences = toPropertyReferences(clazz.properties);
+                Stream<LegendReferenceResolver> stereotypeReferences = toStereotypeReferences(clazz.stereotypes);
+                Stream<LegendReferenceResolver> taggedValueReferences = toTaggedValueReferences(clazz.taggedValues);
+                Stream<LegendReferenceResolver> qualifiedPropertyReferences = toQualifiedPropertyReferences(clazz.qualifiedProperties);
+                return Stream.of(milestonedPropertyReferences, propertyReferences, stereotypeReferences, taggedValueReferences, qualifiedPropertyReferences)
+                        .flatMap(java.util.function.Function.identity());
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(Association association)
+            {
+                Stream<LegendReferenceResolver> milestonedPropertyReferences = toPropertyReferences(association.originalMilestonedProperties);
+                Stream<LegendReferenceResolver> propertyReferences = toPropertyReferences(association.properties);
+                Stream<LegendReferenceResolver> qualifiedPropertyReferences = toQualifiedPropertyReferences(association.qualifiedProperties);
+                Stream<LegendReferenceResolver> stereotypeReferences = toStereotypeReferences(association.stereotypes);
+                Stream<LegendReferenceResolver> taggedValueReferences = toTaggedValueReferences(association.taggedValues);
+                return Stream.of(milestonedPropertyReferences, propertyReferences, qualifiedPropertyReferences, stereotypeReferences, taggedValueReferences)
+                        .flatMap(java.util.function.Function.identity());
+            }
+
+            @Override
+            public Stream<LegendReferenceResolver> visit(Enumeration enumeration)
+            {
+                Stream<LegendReferenceResolver> stereotypeReferences = toStereotypeReferences(enumeration.stereotypes);
+                Stream<LegendReferenceResolver> taggedValueReferences = toTaggedValueReferences(enumeration.taggedValues);
+                return Stream.concat(stereotypeReferences, taggedValueReferences);
+            }
+        });
+        return pureReferences.collect(Collectors.toList());
+    }
+
+    private Stream<LegendReferenceResolver> toPropertyReferences(List<Property> properties)
+    {
+        return properties.stream().flatMap(this::toReferences);
+    }
+
+    private Stream<LegendReferenceResolver> toStereotypeReferences(List<StereotypePtr> stereotypePtrs)
+    {
+        return stereotypePtrs.stream().flatMap(this::toReferences);
+    }
+
+    private Stream<LegendReferenceResolver> toTaggedValueReferences(List<TaggedValue> taggedValues)
+    {
+        return taggedValues.stream().flatMap(this::toReferences);
+    }
+
+    private Stream<LegendReferenceResolver> toQualifiedPropertyReferences(List<QualifiedProperty> qualifiedProperties)
+    {
+        return qualifiedProperties.stream().flatMap(this::toReferences);
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(Property property)
+    {
+        LegendReferenceResolver propertyReference = LegendReferenceResolver.newReferenceResolver(property.propertyTypeSourceInformation, x -> x.resolvePackageableElement(property.type, property.propertyTypeSourceInformation));
+        Stream<LegendReferenceResolver> stereotypeReferences = toStereotypeReferences(property.stereotypes);
+        Stream<LegendReferenceResolver> taggedValueReferences = toTaggedValueReferences(property.taggedValues);
+        return Stream.of(Stream.of(propertyReference), stereotypeReferences, taggedValueReferences)
+                .flatMap(java.util.function.Function.identity());
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(QualifiedProperty qualifiedProperty)
+    {
+        Stream<LegendReferenceResolver> stereotypeReferences = toStereotypeReferences(qualifiedProperty.stereotypes);
+        Stream<LegendReferenceResolver> taggedValueReferences = toTaggedValueReferences(qualifiedProperty.taggedValues);
+        return Stream.concat(stereotypeReferences, taggedValueReferences);
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(StereotypePtr stereotypePtr)
+    {
+        LegendReferenceResolver profileReference = LegendReferenceResolver.newReferenceResolver(stereotypePtr.profileSourceInformation, x -> x.resolveProfile(stereotypePtr.profile, stereotypePtr.profileSourceInformation));
+        LegendReferenceResolver stereotypeReference = LegendReferenceResolver.newReferenceResolver(stereotypePtr.sourceInformation, x -> x.resolveStereotype(stereotypePtr.profile, stereotypePtr.value, stereotypePtr.profileSourceInformation, stereotypePtr.sourceInformation));
+        return Stream.of(profileReference, stereotypeReference);
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(TaggedValue taggedValue)
+    {
+        LegendReferenceResolver profileReference = LegendReferenceResolver.newReferenceResolver(taggedValue.tag.profileSourceInformation, x -> x.resolveProfile(taggedValue.tag.profile, taggedValue.tag.profileSourceInformation));
+        LegendReferenceResolver tagReference = LegendReferenceResolver.newReferenceResolver(taggedValue.tag.sourceInformation, x -> x.resolveTag(taggedValue.tag.profile, taggedValue.tag.value, taggedValue.tag.profileSourceInformation, taggedValue.tag.sourceInformation));
+        return Stream.of(profileReference, tagReference);
     }
 
     public static class FunctionLegendExecutionResult extends LegendExecutionResult

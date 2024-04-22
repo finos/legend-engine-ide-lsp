@@ -37,4 +37,9 @@ public final class SourceInformationUtil
     {
         return TextLocation.newTextSource(sourceInfo.sourceId, sourceInfo.startLine - 1, sourceInfo.startColumn - 1, sourceInfo.endLine - 1, sourceInfo.endColumn - 1);
     }
+
+    public static TextLocation toLocation(org.finos.legend.pure.m4.coreinstance.SourceInformation sourceInfo)
+    {
+        return TextLocation.newTextSource(sourceInfo.getSourceId(), sourceInfo.getStartLine() - 1, sourceInfo.getStartColumn() - 1, sourceInfo.getEndLine() - 1, sourceInfo.getEndColumn() - 1);
+    }
 }
