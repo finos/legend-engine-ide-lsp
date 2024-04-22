@@ -19,7 +19,6 @@ import com.google.gson.reflect.TypeToken;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URI;
@@ -46,7 +45,6 @@ import java.util.stream.Stream;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Exclusion;
 import org.apache.maven.model.Model;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.shared.invoker.DefaultInvocationRequest;
 import org.apache.maven.shared.invoker.DefaultInvoker;
@@ -61,7 +59,6 @@ import org.apache.maven.shared.utils.Os;
 import org.apache.maven.shared.utils.cli.CommandLineException;
 import org.apache.maven.shared.utils.cli.CommandLineUtils;
 import org.apache.maven.shared.utils.cli.Commandline;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.finos.legend.engine.ide.lsp.Constants;
@@ -212,33 +209,25 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         });
     }
 
-    private void updatePlatformVersions(Path pom, List<SDLCPlatform> platforms)
+    private void updatePlatformVersions(File pom, List<SDLCPlatform> platforms) throws IOException
     {
         if (!platforms.isEmpty())
         {
             this.server.logInfoToClient("Updating platform version on pom: " + pom);
-            try
+            final String pomContent = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
+            String updatedPomContent = pomContent;
+
+            for (SDLCPlatform platform : platforms)
             {
-                Model model;
-                try (InputStream is = Files.newInputStream(pom))
-                {
-                    model = new MavenXpp3Reader().read(is);
-                }
-
-                for (SDLCPlatform platform : platforms)
-                {
-                    String versionProperty = "platform." + platform.getName() + ".version";
-                    model.addProperty(versionProperty, platform.getPlatformVersion());
-                }
-
-                try (OutputStream os = Files.newOutputStream(pom))
-                {
-                    new MavenXpp3Writer().write(os, model);
-                }
+                String versionProperty = "platform." + platform.getName() + ".version";
+                String toReplaceRegEx = String.format("<%s>((.|\\n)*)</%s>", versionProperty.replace(".", "\\."), versionProperty.replace(".", "\\."));
+                String replaceValue = String.format("<%s>%s</%s>", versionProperty, platform.getPlatformVersion(), versionProperty);
+                updatedPomContent = updatedPomContent.replaceAll(toReplaceRegEx, replaceValue);
             }
-            catch (IOException | XmlPullParserException e)
+
+            if (!pomContent.equals(updatedPomContent))
             {
-                throw new RuntimeException(e);
+                Files.writeString(pom.toPath(), updatedPomContent, StandardCharsets.UTF_8);
             }
         }
     }
@@ -298,7 +287,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 pom = new File(overrideDefaultPom.trim());
             }
 
-            this.updatePlatformVersions(pom.toPath(), platformVersions);
+            this.updatePlatformVersions(pom, platformVersions);
         }
 
         return pom;
@@ -357,7 +346,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
             if (Files.exists(parentPom))
             {
-                this.updatePlatformVersions(parentPom, platformVersions);
+                this.updatePlatformVersions(parentPom.toFile(), platformVersions);
             }
             else
             {
@@ -508,7 +497,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             new MavenXpp3Writer().write(pomOs, extraDependenciesModel);
         }
 
-        this.updatePlatformVersions(legendLspExtraElementsPom.toPath(), platformVersions);
+        this.updatePlatformVersions(legendLspExtraElementsPom, platformVersions);
 
         return legendLspExtraElementsPom;
     }
@@ -529,6 +518,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             Properties properties = new Properties();
             properties.setProperty("outputFile", legendEngineArtifacts.getAbsolutePath());
             properties.setProperty("includeGroupIds", "org.finos.legend.engine");
+            properties.setProperty("includeArtifactIds", "legend-engine-protocol");
             String goal = "dependency:list";
 
             InvocationResult result = invokeMaven(maven, pom, settingXml, properties, goal);
@@ -579,7 +569,6 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             File legendLspClasspath;
             File legendLspCachedPom;
 
-            boolean reloadClasspath = true;
             String[] classpath = null;
 
             String currentContent = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
@@ -607,8 +596,6 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                     {
                         this.server.logInfoToClient("Found cached " + id + " classpath, checking if still valid...");
 
-                        reloadClasspath = false;
-
                         // can we still can read old files or do we depend on SNAPSHOTS... maybe jars where deleted
                         for (String entry : classpath)
                         {
@@ -618,13 +605,13 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                                 if (!file.canRead() || entry.contains("-SNAPSHOT"))
                                 {
                                     this.server.logInfoToClient("Need to reload " + id + " classpath.  Either an entry does not exist anymore or classpath contains -SNAPSHOT dependencies...");
-                                    reloadClasspath = true;
+                                    classpath = null;
                                     break;
                                 }
                             }
                             catch (Exception e)
                             {
-                                reloadClasspath = true;
+                                classpath = null;
                                 break;
                             }
                         }
@@ -632,7 +619,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 }
             }
 
-            if (reloadClasspath)
+            if (classpath == null)
             {
                 this.server.logInfoToClient("Resolving " + id + " classpath invoking maven...");
 
