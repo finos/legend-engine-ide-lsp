@@ -120,24 +120,17 @@ public class LegendLanguageService implements LegendLanguageServiceContract
     @Override
     public CompletableFuture<List<LegendTest>> testCases()
     {
-        return this.server.supplyPossiblyAsync(() ->
-        {
-            List<LegendTest> commands = new ArrayList<>();
-
-            this.server.getGlobalState().forEachDocumentState(docState ->
-            {
-                docState.forEachSectionState(sectionState ->
+        return this.server.getGlobalState().collectFromEachDocumentSectionState((docState, sectionState) ->
                 {
+                    List<LegendTest> commands = new ArrayList<>();
                     LegendLSPGrammarExtension extension = sectionState.getExtension();
                     if (extension != null)
                     {
                         commands.addAll(extension.testCases(sectionState));
                     }
-                });
-            });
-
-            return commands;
-        });
+                    return commands;
+                }
+        );
     }
 
     @Override

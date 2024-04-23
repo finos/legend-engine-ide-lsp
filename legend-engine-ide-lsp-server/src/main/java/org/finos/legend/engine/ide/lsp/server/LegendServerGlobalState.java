@@ -26,8 +26,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
@@ -62,6 +66,37 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
     public void forEachDocumentState(Consumer<? super DocumentState> consumer)
     {
         this.docs.values().forEach(consumer);
+    }
+
+    @Override
+    public CompletableFuture<Void> forEachDocumentStateParallel(Consumer<? super DocumentState> consumer)
+    {
+        return CompletableFuture.allOf(
+                this.docs.values()
+                        .stream()
+                        .map(x -> this.server.runPossiblyAsync(() -> consumer.accept(x)))
+                        .toArray(CompletableFuture[]::new)
+        );
+    }
+
+    @Override
+    public <RESULT> CompletableFuture<List<RESULT>> collectFromEachDocumentState(Function<? super DocumentState, List<RESULT>> func)
+    {
+        return this.docs.values()
+                .stream()
+                .map(x -> this.server.supplyPossiblyAsync(() -> func.apply(x)))
+                .reduce((x, y) -> x.thenCombine(y, (r, l) -> Stream.concat(r.stream(), l.stream()).collect(Collectors.toList())))
+                .orElseGet(() -> CompletableFuture.completedFuture(List.of()));
+    }
+
+    @Override
+    public <RESULT> CompletableFuture<List<RESULT>> collectFromEachDocumentSectionState(BiFunction<? super DocumentState, ? super SectionState, List<RESULT>> func)
+    {
+        return this.docs.values()
+                .stream()
+                .flatMap(x -> x.collectFromEachSectionState(func))
+                .reduce((x, y) -> x.thenCombine(y, (r, l) -> Stream.concat(r.stream(), l.stream()).collect(Collectors.toList())))
+                .orElseGet(() -> CompletableFuture.completedFuture(List.of()));
     }
 
     @Override
@@ -245,6 +280,16 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
             {
                 currentSectionsStates.forEach(consumer);
             }
+        }
+
+        private  <RESULT> Stream<CompletableFuture<List<RESULT>>> collectFromEachSectionState(BiFunction<? super DocumentState, ? super SectionState, List<RESULT>> func)
+        {
+            List<LegendServerSectionState> currentSectionsStates = this.sectionStates;
+            if (currentSectionsStates != null)
+            {
+                return currentSectionsStates.stream().map(x -> this.globalState.server.supplyPossiblyAsync(() -> func.apply(this, x)));
+            }
+            return Stream.empty();
         }
 
         Integer getVersion()

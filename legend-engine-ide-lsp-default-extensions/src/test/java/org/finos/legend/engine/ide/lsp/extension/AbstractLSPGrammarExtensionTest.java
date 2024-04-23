@@ -21,7 +21,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -298,6 +301,28 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         public void forEachDocumentState(Consumer<? super DocumentState> consumer)
         {
             this.docStates.forEachValue(consumer::accept);
+        }
+
+        @Override
+        public CompletableFuture<Void> forEachDocumentStateParallel(Consumer<? super DocumentState> consumer)
+        {
+            this.docStates.forEachValue(consumer::accept);
+            return CompletableFuture.completedFuture(null);
+        }
+
+        @Override
+        public <RESULT> CompletableFuture<List<RESULT>> collectFromEachDocumentState(Function<? super DocumentState, List<RESULT>> func)
+        {
+            List<RESULT> results = this.docStates.stream().map(func).flatMap(List::stream).collect(Collectors.toList());
+            return CompletableFuture.completedFuture(results);
+        }
+
+        @Override
+        public <RESULT> CompletableFuture<List<RESULT>> collectFromEachDocumentSectionState(BiFunction<? super DocumentState, ? super SectionState, List<RESULT>> func)
+        {
+            List<RESULT> results = new ArrayList<>();
+            this.docStates.stream().forEach(x -> x.forEachSectionState(s -> results.addAll(func.apply(x, s))));
+            return CompletableFuture.completedFuture(results);
         }
 
         @Override

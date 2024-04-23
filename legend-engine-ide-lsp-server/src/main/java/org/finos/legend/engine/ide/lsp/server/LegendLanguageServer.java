@@ -248,13 +248,14 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     @Override
     public void initialized(InitializedParams params)
     {
+        long start = System.currentTimeMillis();
         checkReady();
         this.classpathFactory.initialize(this);
         CompletableFuture<Void> initializeExtensions = this.initializeExtensions();
         CompletableFuture<Void> engineServerUrl = this.initializeEngineServerUrl();
 
         CompletableFuture.allOf(initializeExtensions, engineServerUrl)
-                .thenRun(() -> this.logInfoToClient("Extension finished post-initialization"));
+                .thenRun(() -> this.logInfoToClient("Extension finished post-initialization in " + (System.currentTimeMillis() - start) + "ms"));
 
     }
 
@@ -292,10 +293,16 @@ public class LegendLanguageServer implements LegendLanguageServerContract
 
         return this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
-                .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
+                .thenCompose(_x -> this.reprocessDocuments())
                 .thenRun(this.legendLanguageService::loadVirtualFileSystemContent)
                 // trigger compilation
-                .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::getLegendDiagnostics)))
+                .thenCompose(_x -> this.globalState.forEachDocumentStateParallel(x ->
+                {
+                    long diagnosticStarted = System.currentTimeMillis();
+                    this.textDocumentService.getLegendDiagnostics(x);
+                    LOGGER.info("Diagnostics computed for {} took {}ms", x.getDocumentId(), System.currentTimeMillis() - diagnosticStarted);
+
+                }))
                 .thenRun(() ->
                 {
                     LanguageClient languageClient = this.getLanguageClient();
@@ -314,10 +321,14 @@ public class LegendLanguageServer implements LegendLanguageServerContract
                 });
     }
 
-    private void reprocessDocuments()
+    private CompletableFuture<Void> reprocessDocuments()
     {
-        this.globalState.forEachDocumentState(x -> ((LegendServerGlobalState.LegendServerDocumentState) x).recreateSectionStates());
-        this.globalState.clearProperties();
+        return this.globalState.forEachDocumentStateParallel(x ->
+        {
+            long startTime = System.currentTimeMillis();
+            ((LegendServerGlobalState.LegendServerDocumentState) x).recreateSectionStates();
+            LOGGER.info("Reprocessing {} took {}ms", x.getDocumentId(), System.currentTimeMillis() - startTime);
+        }).thenRun(this.globalState::clearProperties);
     }
 
     @Override
@@ -484,10 +495,10 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         return this.supplyPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(supplier));
     }
 
-    void runPossiblyAsync(Runnable runnable)
+    CompletableFuture<?> runPossiblyAsync(Runnable runnable)
     {
         checkReady();
-        this.runPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(runnable));
+        return this.runPossiblyAsync_internal(this.extensionGuard.wrapOnClasspath(runnable));
     }
 
     private CompletableFuture<?> runPossiblyAsync_internal(Runnable work)

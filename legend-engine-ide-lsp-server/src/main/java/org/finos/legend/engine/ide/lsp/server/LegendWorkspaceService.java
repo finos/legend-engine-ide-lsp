@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.CreateFilesParams;
@@ -310,27 +311,17 @@ public class LegendWorkspaceService implements WorkspaceService
     @Override
     public CompletableFuture<Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>>> symbol(WorkspaceSymbolParams params)
     {
-        return this.server.supplyPossiblyAsync(() -> getWorkspaceSymbols(params));
-    }
-
-    private Either<List<? extends SymbolInformation>, List<? extends WorkspaceSymbol>> getWorkspaceSymbols(WorkspaceSymbolParams params)
-    {
-        List<WorkspaceSymbol> symbols = new ArrayList<>();
-
-        this.server.getGlobalState().forEachDocumentState(doc ->
+        return this.server.getGlobalState().collectFromEachDocumentSectionState((doc, sec) ->
         {
-            doc.forEachSectionState(sec ->
+            List<WorkspaceSymbol> symbols = new ArrayList<>();
+            if (sec.getExtension() != null)
             {
-                if (sec.getExtension() != null)
-                {
-                    sec.getExtension()
-                            .getDeclarations(sec)
-                            .forEach(declaration -> toWorkspaceSymbol(params, symbols, doc, declaration, null));
-                }
-            });
-        });
-
-        return Either.forRight(symbols);
+                sec.getExtension()
+                        .getDeclarations(sec)
+                        .forEach(declaration -> toWorkspaceSymbol(params, symbols, doc, declaration, null));
+            }
+            return symbols;
+        }).thenApply(Either::forRight);
     }
 
     private static void toWorkspaceSymbol(WorkspaceSymbolParams params, List<WorkspaceSymbol> symbols, DocumentState doc, LegendDeclaration declaration, WorkspaceSymbol parent)
@@ -368,65 +359,63 @@ public class LegendWorkspaceService implements WorkspaceService
     @Override
     public CompletableFuture<WorkspaceDiagnosticReport> diagnostic(WorkspaceDiagnosticParams params)
     {
-        return this.server.supplyPossiblyAsync(() ->
+        Map<String, String> previousResultIds = params.getPreviousResultIds()
+                .stream()
+                .collect(Collectors.toMap(PreviousResultId::getUri, PreviousResultId::getValue));
+
+        Map<String, Set<LegendDiagnostic>> previousResultIdToDiagnostic = this.previousResultIdToDiagnosticReference.get();
+        Map<String, Set<LegendDiagnostic>> resultIdToDiagnostic = new ConcurrentHashMap<>();
+
+        return this.server.getGlobalState().collectFromEachDocumentState(d ->
+                {
+                    String previousResultId = previousResultIds.getOrDefault(d.getDocumentId(), "");
+                    Set<LegendDiagnostic> prevDiagnostic = previousResultIdToDiagnostic.get(previousResultId);
+
+                    LegendServerGlobalState.LegendServerDocumentState doc = (LegendServerGlobalState.LegendServerDocumentState) d;
+                    Set<LegendDiagnostic> diagnostics = this.server.getTextDocumentService().getLegendDiagnostics(doc);
+
+                    String publishResultId = null;
+
+                    // no previous results
+                    if (prevDiagnostic == null)
+                    {
+                        // there are new diagnostics
+                        if (!diagnostics.isEmpty())
+                        {
+                            publishResultId = UUID.randomUUID().toString();
+                            resultIdToDiagnostic.put(publishResultId, diagnostics);
+                        }
+                    }
+                    // there are previous results
+                    else
+                    {
+                        // diagnostics are different between previous and now
+                        if (!diagnostics.equals(prevDiagnostic))
+                        {
+                            publishResultId = UUID.randomUUID().toString();
+                            resultIdToDiagnostic.put(publishResultId, diagnostics);
+                        }
+                        // only track old diagnostics if same as new and non-empty (ie don't track empty ones)
+                        // otherwise, next time prevDiagnostic will be null, and only we start tracking again if there are new diagnostics
+                        else if (!diagnostics.isEmpty())
+                        {
+                            resultIdToDiagnostic.put(previousResultId, diagnostics);
+                        }
+                    }
+
+                    if (publishResultId != null)
+                    {
+                        WorkspaceFullDocumentDiagnosticReport fullReport = new WorkspaceFullDocumentDiagnosticReport(diagnostics.stream().map(LegendToLSPUtilities::toDiagnostic).collect(Collectors.toList()), doc.getDocumentId(), doc.getVersion());
+                        fullReport.setResultId(publishResultId);
+                        return List.of(new WorkspaceDocumentDiagnosticReport(fullReport));
+                    }
+
+                    return List.of();
+                }
+        ).thenApply(x ->
         {
-            Map<String, String> previousResultIds = params.getPreviousResultIds()
-                    .stream()
-                    .collect(Collectors.toMap(PreviousResultId::getUri, PreviousResultId::getValue));
-
-            Map<String, Set<LegendDiagnostic>> previousResultIdToDiagnostic = this.previousResultIdToDiagnosticReference.get();
-            Map<String, Set<LegendDiagnostic>> resultIdToDiagnostic = new HashMap<>();
-
-            List<WorkspaceDocumentDiagnosticReport> items = new ArrayList<>();
-
-            this.server.getGlobalState().forEachDocumentState(d ->
-            {
-                String previousResultId = previousResultIds.getOrDefault(d.getDocumentId(), "");
-                Set<LegendDiagnostic> prevDiagnostic = previousResultIdToDiagnostic.get(previousResultId);
-
-                LegendServerGlobalState.LegendServerDocumentState doc = (LegendServerGlobalState.LegendServerDocumentState) d;
-                Set<LegendDiagnostic> diagnostics = this.server.getTextDocumentService().getLegendDiagnostics(doc);
-
-                String publishResultId = null;
-
-                // no previous results
-                if (prevDiagnostic == null)
-                {
-                    // there are new diagnostics
-                    if (!diagnostics.isEmpty())
-                    {
-                        publishResultId = UUID.randomUUID().toString();
-                        resultIdToDiagnostic.put(publishResultId, diagnostics);
-                    }
-                }
-                // there are previous results
-                else
-                {
-                    // diagnostics are different between previous and now
-                    if (!diagnostics.equals(prevDiagnostic))
-                    {
-                        publishResultId = UUID.randomUUID().toString();
-                        resultIdToDiagnostic.put(publishResultId, diagnostics);
-                    }
-                    // only track old diagnostics if same as new and non-empty (ie don't track empty ones)
-                    // otherwise, next time prevDiagnostic will be null, and only we start tracking again if there are new diagnostics
-                    else if (!diagnostics.isEmpty())
-                    {
-                        resultIdToDiagnostic.put(previousResultId, diagnostics);
-                    }
-                }
-
-                if (publishResultId != null)
-                {
-                    WorkspaceFullDocumentDiagnosticReport fullReport = new WorkspaceFullDocumentDiagnosticReport(diagnostics.stream().map(LegendToLSPUtilities::toDiagnostic).collect(Collectors.toList()), doc.getDocumentId(), doc.getVersion());
-                    fullReport.setResultId(publishResultId);
-                    items.add(new WorkspaceDocumentDiagnosticReport(fullReport));
-                }
-            });
-
             this.previousResultIdToDiagnosticReference.compareAndSet(previousResultIdToDiagnostic, resultIdToDiagnostic);
-
-            return new WorkspaceDiagnosticReport(items);
+            return new WorkspaceDiagnosticReport(x);
         });
     }
 }

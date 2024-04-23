@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.eclipse.collections.api.factory.Lists;
@@ -326,18 +327,30 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     {
         DocumentState documentState = sectionState.getDocumentState();
         GlobalState globalState = documentState.getGlobalState();
-        return globalState.getProperty(COMPILE_RESULT, () -> tryCompile(globalState, documentState, sectionState));
+        // when looking for compile results, there might be another thread working on it already
+        // if current thread is the one that sets the completable future, then do the actual compilation and set it on the completable future
+        // if current thread does not set the completable future, then just join and wait for result from another thread
+        CompletableFuture<CompileResult> maybeCompileResultFuture = new CompletableFuture<>();
+        CompletableFuture<CompileResult> compileResultFuture = globalState.getProperty(COMPILE_RESULT, () -> maybeCompileResultFuture);
+
+        if (compileResultFuture == maybeCompileResultFuture)
+        {
+            compileResultFuture.complete(this.tryCompile(globalState, documentState, sectionState));
+        }
+
+        return compileResultFuture.join();
     }
 
     protected CompileResult tryCompile(GlobalState globalState, DocumentState documentState, SectionState sectionState)
     {
+        long started = System.currentTimeMillis();
         globalState.logInfo("Starting compilation");
         PureModelContextData pureModelContextData = null;
         try
         {
             pureModelContextData = buildPureModelContextData(globalState);
             PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, "");
-            globalState.logInfo("Compilation completed successfully");
+            globalState.logInfo("Compilation completed successfully in " + (System.currentTimeMillis() - started) + "ms");
             return new CompileResult(pureModel, pureModelContextData);
         }
         catch (EngineException e)
@@ -345,11 +358,11 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             SourceInformation sourceInfo = e.getSourceInformation();
             if (isValidSourceInfo(sourceInfo))
             {
-                globalState.logInfo("Compilation completed with error " + "(" + sourceInfo.sourceId + " " + SourceInformationUtil.toLocation(sourceInfo) + "): " + e.getMessage());
+                globalState.logInfo("Compilation completed in " + (System.currentTimeMillis() - started) + "ms with error " + "(" + sourceInfo.sourceId + " " + SourceInformationUtil.toLocation(sourceInfo) + "): " + e.getMessage());
             }
             else
             {
-                globalState.logInfo("Compilation completed with error: " + e.getMessage());
+                globalState.logInfo("Compilation completed in " + (System.currentTimeMillis() - started) + "ms with error: " + e.getMessage());
                 globalState.logWarning("Invalid source information for compilation error");
                 LOGGER.warn("Invalid source information in exception during compilation requested for section {} of {}: {}", sectionState.getSectionNumber(), documentState.getDocumentId(), (sourceInfo == null) ? null : sourceInfo.getMessage(), e);
             }
