@@ -293,7 +293,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         return this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
                 .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
-                .thenRun(this.legendLanguageService::loadVirtualFileSystemContent)
+                .thenRun(this.extensionGuard.wrapOnClasspath(this.legendLanguageService::loadVirtualFileSystemContent))
                 // trigger compilation
                 .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::getLegendDiagnostics)))
                 .thenRun(() ->

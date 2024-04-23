@@ -18,7 +18,6 @@ package org.finos.legend.engine.ide.lsp.server.integration;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -140,6 +139,9 @@ public class TestLegendLanguageServerIntegration
                 createWorkspaceSymbol("vscodelsp::test::dependency::Employee", SymbolKind.Class, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 3, 0, 7, 0), null, "meta::pure::metamodel::type::Class"),
                 createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar1", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 5, 2, 5, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
                 createWorkspaceSymbol("vscodelsp::test::dependency::Employee.foobar2", SymbolKind.Field, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 6, 2, 6, 19), "vscodelsp::test::dependency::Employee", "meta::pure::metamodel::function::property::Property"),
+
+                createWorkspaceSymbol("vscodelsp::test::dependency::StaticConnection", SymbolKind.Struct, TextLocation.newTextSource("legend-vfs:/dependencies.pure", 10, 0, 17, 0), null, "meta::pure::runtime::PackageableConnection"),
+
 
                 createWorkspaceSymbol("xyz::abc", SymbolKind.Class, TextLocation.newTextSource(file2Path.toUri().toString(), 1, 0, 4, 0), null, "meta::pure::metamodel::type::Class"),
                 createWorkspaceSymbol("xyz::abc.abc", SymbolKind.Field, TextLocation.newTextSource(file2Path.toUri().toString(), 3, 2, 3, 16), "xyz::abc", "meta::pure::metamodel::function::property::Property"),
@@ -326,15 +328,17 @@ public class TestLegendLanguageServerIntegration
     {
         List<WorkspaceDocumentDiagnosticReport> items = extension.futureGet(extension.getServer().getWorkspaceService().diagnostic(new WorkspaceDiagnosticParams(ids))).getItems();
 
-        Map<Path, Set<Diagnostic>> reportsByUri = items
+        Map<String, Set<Diagnostic>> reportsByUri = items
                 .stream()
                 .collect(Collectors.toMap(
-                                x -> Path.of(URI.create(x.getWorkspaceFullDocumentDiagnosticReport().getUri())),
+                                x -> x.getWorkspaceFullDocumentDiagnosticReport().getUri(),
                                 x -> new HashSet<>(x.getWorkspaceFullDocumentDiagnosticReport().getItems())
                         )
                 );
 
-        Assertions.assertEquals(expected, reportsByUri);
+        Map<String, Set<Diagnostic>> expectedPathAsString = expected.entrySet().stream().collect(Collectors.toMap(x -> x.getKey().toUri().toString(), Map.Entry::getValue));
+
+        Assertions.assertEquals(expectedPathAsString, reportsByUri);
 
         return items
                 .stream()
@@ -402,6 +406,16 @@ public class TestLegendLanguageServerIntegration
                         "{\n" +
                         "  foobar1: Float[1];\n" +
                         "  foobar2: Float[1];\n" +
+                        "}\n" +
+                        "\n" +
+                        "###Connection\n" +
+                        "RelationalDatabaseConnection vscodelsp::test::dependency::StaticConnection\n" +
+                        "{\n" +
+                        "  type: H2;\n" +
+                        "  specification: LocalH2\n" +
+                        "  {\n" +
+                        "  };\n" +
+                        "  auth: DefaultH2;\n" +
                         "}\n" +
                         "\n",
                 content
