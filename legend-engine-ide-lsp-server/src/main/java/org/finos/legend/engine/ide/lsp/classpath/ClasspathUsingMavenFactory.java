@@ -220,7 +220,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             for (SDLCPlatform platform : platforms)
             {
                 String versionProperty = "platform." + platform.getName() + ".version";
-                String toReplaceRegEx = String.format("<%s>((.|\\n)*)</%s>", versionProperty.replace(".", "\\."), versionProperty.replace(".", "\\."));
+                String toReplaceRegEx = String.format("<%s>[^<]*+</%s>", versionProperty.replace(".", "\\."), versionProperty.replace(".", "\\."));
                 String replaceValue = String.format("<%s>%s</%s>", versionProperty, platform.getPlatformVersion(), versionProperty);
                 updatedPomContent = updatedPomContent.replaceAll(toReplaceRegEx, replaceValue);
             }
