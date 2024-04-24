@@ -50,6 +50,37 @@ public class TestLegendLanguageServerMavenIntegration
             extension.waitForAllTaskToComplete();
 
             Assertions.assertTrue(extension.clientLogged("logMessage - Info - Reusing cached core classpath rather that invoking maven"), "Core classpath should be reused");
+
+            // check file change detection
+            Files.writeString(extension.resolveWorkspacePath("pom.xml"),
+                    "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n" +
+                    "    <modelVersion>4.0.0</modelVersion>\n" +
+                    "\n" +
+                    "    <groupId>org.finos.legend.engine.ide.lsp</groupId>\n" +
+                    "    <artifactId>legend-engine-ide-lsp-server-sample-pom</artifactId>\n" +
+                    "    <version>0.0.0-SNAPSHOT</version>\n" +
+                    "\n" +
+                    "    <properties>\n" +
+                    "       <platform.eclipse-collections.version>0.0.0</platform.eclipse-collections.version>\n" +
+                    "    </properties>\n" +
+                    "    <dependencies>\n" +
+                    "        <dependency>\n" +
+                    "            <groupId>commons-io</groupId>\n" +
+                    "            <artifactId>commons-io</artifactId>\n" +
+                    "            <version>2.15.1</version>\n" +
+                    "        </dependency>\n" +
+                    "        <dependency>\n" +
+                    "            <groupId>org.eclipse.collections</groupId>\n" +
+                    "            <artifactId>eclipse-collections-api</artifactId>\n" +
+                    "            <version>${platform.eclipse-collections.version}</version>\n" +
+                    "        </dependency>\n" +
+                    "    </dependencies>\n" +
+                    "\n" +
+                    "</project>");
+
+            extension.getServer().initialized(new InitializedParams());
+            extension.waitForAllTaskToComplete();
+            Assertions.assertTrue(extension.clientLogged("logMessage - Info - Cached for core classpath is stale..."), "Core classpath should be not be reused");
         }
         catch (Exception e)
         {
