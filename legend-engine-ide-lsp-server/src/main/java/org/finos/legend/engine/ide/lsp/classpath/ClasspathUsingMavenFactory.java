@@ -568,10 +568,30 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             String storageDir = System.getProperty("storagePath");
             File legendLspClasspath;
             File legendLspCachedPom;
+            File legendLspCachedParentPom;
 
             String[] classpath = null;
 
             String currentContent = Files.readString(pom.toPath(), StandardCharsets.UTF_8);
+
+            String currentParentContent;
+            Path parentPom = pom
+                    .toPath()
+                    // directory where pom is located
+                    .getParent()
+                    // parent directory
+                    .getParent()
+                    // parent pom
+                    .resolve("pom.xml");
+
+            if (Files.exists(parentPom))
+            {
+                currentParentContent = Files.readString(parentPom, StandardCharsets.UTF_8);
+            }
+            else
+            {
+                currentParentContent = "";
+            }
 
             if (storageDir == null)
             {
@@ -580,21 +600,27 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
                 legendLspCachedPom = File.createTempFile("pom_", id + ".xml");
                 legendLspCachedPom.deleteOnExit();
+
+                legendLspCachedParentPom = File.createTempFile("parent_pom_", id + ".xml");
+                legendLspCachedParentPom.deleteOnExit();
             }
             else
             {
                 File cacheDir = new File(storageDir);
                 legendLspClasspath = new File(cacheDir, "legend_lsp_classpath_" + id + ".txt");
                 legendLspCachedPom = new File(cacheDir, "pom_" + id + ".xml");
+                legendLspCachedParentPom = new File(cacheDir, "parent_pom_" + id + ".xml");
 
-                if (legendLspClasspath.exists() && legendLspCachedPom.exists())
+                if (legendLspClasspath.exists() && legendLspCachedPom.exists() && legendLspCachedParentPom.exists())
                 {
-                    classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8).split(";");
-                    String cachedContent = Files.readString(legendLspCachedPom.toPath(), StandardCharsets.UTF_8);
+                    this.server.logInfoToClient("Found cached " + id + " classpath, checking if still valid...");
 
-                    if (currentContent.equals(cachedContent))
+                    String cachedContent = Files.readString(legendLspCachedPom.toPath(), StandardCharsets.UTF_8);
+                    String cachedParentContent = Files.readString(legendLspCachedParentPom.toPath(), StandardCharsets.UTF_8);
+
+                    if (currentContent.equals(cachedContent) && currentParentContent.equals(cachedParentContent))
                     {
-                        this.server.logInfoToClient("Found cached " + id + " classpath, checking if still valid...");
+                        classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8).split(";");
 
                         // can we still can read old files or do we depend on SNAPSHOTS... maybe jars where deleted
                         for (String entry : classpath)
@@ -616,6 +642,10 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                             }
                         }
                     }
+                    else
+                    {
+                        this.server.logInfoToClient("Cached for " + id + " classpath is stale...");
+                    }
                 }
             }
 
@@ -636,6 +666,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                 }
 
                 Files.writeString(legendLspCachedPom.toPath(), currentContent, StandardCharsets.UTF_8);
+                Files.writeString(legendLspCachedParentPom.toPath(), currentParentContent, StandardCharsets.UTF_8);
                 classpath = Files.readString(legendLspClasspath.toPath(), StandardCharsets.UTF_8).split(";");
             }
             else
