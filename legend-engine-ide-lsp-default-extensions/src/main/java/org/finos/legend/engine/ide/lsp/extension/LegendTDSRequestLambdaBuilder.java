@@ -297,9 +297,9 @@ public class LegendTDSRequestLambdaBuilder
         updateParentFunction(expressions, SORT_FUNCTION_NAME, Lists.mutable.of(sortCollection));
     }
 
-    public static List<ValueSpecification> buildLambdaExpressions(ValueSpecification funcBody, TDSRequest request)
+    public static List<ValueSpecification> buildLambdaExpressions(List<ValueSpecification> funcBody, TDSRequest request)
     {
-        List<ValueSpecification> expressions = Lists.mutable.of(funcBody);
+        List<ValueSpecification> expressions = Lists.mutable.withAll(funcBody);
         processFilterOperations(expressions, request.getFilter());
         processGroupByOperations(expressions, request.getGroupBy(), request.getColumns());
         processSortOperations(expressions, request.getSort());

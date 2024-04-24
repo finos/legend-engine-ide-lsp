@@ -118,7 +118,87 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
     @Test
     void testFunction() throws Exception
     {
-        Path pureFile1 = extension.addToWorkspace("file1.pure", "Class model::Person\n" +
+        int sectionNum = 0;
+        String entity = "model1::testReturnTDS__TabularDataSet_1_";
+        testFunctionExecutionOnEntity(sectionNum, entity);
+    }
+
+    @Test
+    void testService() throws Exception
+    {
+        int sectionNum = 4;
+        String entity = "service::SampleService";
+        testFunctionExecutionOnEntity(sectionNum, entity);
+    }
+
+    private void testFunctionExecutionOnEntity(int sectionNum, String entity) throws Exception
+    {
+        Path pureFile1 = prepareWorkspaceFiles();
+        String uri = pureFile1.toUri().toString();
+
+        List<TDSSort> sort = new ArrayList<>();
+        List<Filter> filter = new ArrayList<>();
+        List<String> columns = List.of("Legal Name", "Employees/ First Name", "Employees/ Last Name");
+        List<String> groupByColumns = new ArrayList<>();
+        List<String> groupKeys = new ArrayList<>();
+        List<TDSAggregation> aggregations = new ArrayList<>();
+        TDSGroupBy groupBy = new TDSGroupBy(groupByColumns, groupKeys, aggregations);
+        TDSRequest request = new TDSRequest(0, 0, columns, filter, sort, groupBy);
+        FunctionTDSRequest functionTDSRequest = new FunctionTDSRequest(uri, sectionNum, entity, request, Collections.emptyMap());
+
+        // No push down operations
+        Object resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        TabularDataSet result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 3);
+        Assertions.assertEquals(result.getRows().size(), 3);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("FirmA", "Doe", "John"));
+        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("Apple", "Smith", "Tim"));
+        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
+
+        // Sort operation on first row
+        sort.add(new TDSSort("Legal Name", TDSSortOrder.ASCENDING));
+        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 3);
+        Assertions.assertEquals(result.getRows().size(), 3);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
+        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmA", "Doe", "John"));
+        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
+
+        // Filter operation on second row
+        sort.clear();
+        filter.add(new Filter("Employees/ First Name", ColumnType.String, FilterOperation.EQUALS, "Doe"));
+        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 3);
+        Assertions.assertEquals(result.getRows().size(), 2);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("FirmA", "Doe", "John"));
+        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmB", "Doe", "Nicole"));
+
+        // Groupby operation
+        filter.clear();
+        groupByColumns.add("Legal Name");
+        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 1);
+        Assertions.assertEquals(result.getRows().size(), 3);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple"));
+        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmA"));
+        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB"));
+
+        // Expand groupBy
+        groupKeys.add("Apple");
+        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 3);
+        Assertions.assertEquals(result.getRows().size(), 1);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
+    }
+
+    private static Path prepareWorkspaceFiles() throws Exception
+    {
+        return extension.addToWorkspace("file1.pure",
+                "Class model::Person\n" +
                 "{\n" +
                 "  firstName: String[1];\n" +
                 "  lastName: String[1];\n" +
@@ -206,68 +286,16 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
                 "\n" +
                 "  Join FirmPerson(PersonTable.firm_id = FirmTable.id)\n" +
                 ")\n" +
-                "\n");
-
-        String uri = pureFile1.toUri().toString();
-        int sectionNum = 0;
-        String entity = "model1::testReturnTDS__TabularDataSet_1_";
-
-        List<TDSSort> sort = new ArrayList<>();
-        List<Filter> filter = new ArrayList<>();
-        List<String> columns = List.of("Legal Name", "Employees/ First Name", "Employees/ Last Name");
-        List<String> groupByColumns = new ArrayList<>();
-        List<String> groupKeys = new ArrayList<>();
-        List<TDSAggregation> aggregations = new ArrayList<>();
-        TDSGroupBy groupBy = new TDSGroupBy(groupByColumns, groupKeys, aggregations);
-        TDSRequest request = new TDSRequest(0, 0, columns, filter, sort, groupBy);
-        FunctionTDSRequest functionTDSRequest = new FunctionTDSRequest(uri, sectionNum, entity, request, Collections.emptyMap());
-
-        // No push down operations
-        Object resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        TabularDataSet result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 3);
-        Assertions.assertEquals(result.getRows().size(), 3);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("FirmA", "Doe", "John"));
-        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("Apple", "Smith", "Tim"));
-        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
-
-        // Sort operation on first row
-        sort.add(new TDSSort("Legal Name", TDSSortOrder.ASCENDING));
-        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 3);
-        Assertions.assertEquals(result.getRows().size(), 3);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
-        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmA", "Doe", "John"));
-        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
-
-        // Filter operation on second row
-        sort.clear();
-        filter.add(new Filter("Employees/ First Name", ColumnType.String, FilterOperation.EQUALS, "Doe"));
-        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 3);
-        Assertions.assertEquals(result.getRows().size(), 2);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("FirmA", "Doe", "John"));
-        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmB", "Doe", "Nicole"));
-
-        // Groupby operation
-        filter.clear();
-        groupByColumns.add("Legal Name");
-        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 1);
-        Assertions.assertEquals(result.getRows().size(), 3);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple"));
-        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmA"));
-        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB"));
-
-        // Expand groupBy
-        groupKeys.add("Apple");
-        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 3);
-        Assertions.assertEquals(result.getRows().size(), 1);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
+                "\n" +
+                "###Service\n" +
+                "Service service::SampleService\n" +
+                "{\n" +
+                "    pattern : 'test';\n" +
+                "    documentation : 'service for testing';\n" +
+                "    execution : Single\n" +
+                "    {\n" +
+                "        query : model::Firm.all()->project([x | $x.legalName,x | $x.employees.firstName, x |$x.employees.lastName], ['Legal Name', 'Employees/ First Name', 'Employees/ Last Name'])->from(execution::RelationalMapping, execution::Runtime);" +
+                "    }\n" +
+                "}\n");
     }
 }

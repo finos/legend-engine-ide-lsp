@@ -425,7 +425,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         SectionState sectionState = newSectionState("docId", code);
         List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionState))
                 .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
-        Set<String> expectedCommands = Set.of(PureLSPGrammarExtension.EXEC_FUNCTION_WITH_PARAMETERS_ID, PureLSPGrammarExtension.ACTIVATE_FUNCTION_ID);
+        Set<String> expectedCommands = Set.of(FunctionExecutionSupport.EXECUTE_COMMAND_ID, PureLSPGrammarExtension.ACTIVATE_FUNCTION_ID);
         Set<String> actualCommands = Sets.mutable.empty();
         commands.forEach(c -> actualCommands.add(c.getId()));
         Assertions.assertEquals(expectedCommands, actualCommands);

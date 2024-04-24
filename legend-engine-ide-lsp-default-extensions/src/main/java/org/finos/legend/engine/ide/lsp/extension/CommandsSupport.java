@@ -26,7 +26,7 @@ interface CommandsSupport
 {
     Set<String> getSupportedCommands();
 
-    void collectCommands(SectionState sectionState, PackageableElement element, AbstractLSPGrammarExtension.CommandConsumer consumer);
+    void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer);
 
     Iterable<? extends LegendExecutionResult> executeCommand(SectionState section, PackageableElement element, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters);
 }

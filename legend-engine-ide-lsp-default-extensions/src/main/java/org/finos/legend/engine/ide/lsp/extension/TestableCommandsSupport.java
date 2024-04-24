@@ -193,7 +193,7 @@ public final class TestableCommandsSupport
         // why tryCompile vs getCompileResult:
         // PureModel access is not thread safe, and we could be executing test in parallel
         // hence, this will trigger a compilation per execution required for thread safety
-        AbstractLSPGrammarExtension.CompileResult compileResult = this.extension.tryCompile(section.getDocumentState().getGlobalState(), section.getDocumentState(), section);
+        CompileResult compileResult = this.extension.tryCompile(section.getDocumentState().getGlobalState(), section.getDocumentState(), section);
 
         if (compileResult.hasException())
         {
