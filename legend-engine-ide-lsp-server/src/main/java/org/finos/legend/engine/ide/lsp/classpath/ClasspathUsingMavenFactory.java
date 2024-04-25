@@ -19,6 +19,7 @@ import com.google.gson.reflect.TypeToken;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URI;
@@ -45,6 +46,7 @@ import java.util.stream.Stream;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Exclusion;
 import org.apache.maven.model.Model;
+import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.shared.invoker.DefaultInvocationRequest;
 import org.apache.maven.shared.invoker.DefaultInvoker;
@@ -411,32 +413,13 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
     private URLClassLoader createClassloader(File maven, File pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions)
     {
-        CompletableFuture<Stream<URL>> coreClasspathFuture = this.server.supplyPossiblyAsync(() -> this.getClasspathURLEntries("core", maven, pom, settingXml));
-        CompletableFuture<Stream<URL>> extraClasspathFuture = this.server.supplyPossiblyAsync(() ->
-        {
-            File extraDependenciesPom = null;
-            try
-            {
-                extraDependenciesPom = this.computeExtraDependenciesPom(maven, pom, settingXml, extraDependencies, platformVersions);
-                return this.getClasspathURLEntries("lsp-extra", maven, extraDependenciesPom, settingXml);
-            }
-            catch (IOException | MavenInvocationException e)
-            {
-                throw new RuntimeException(e);
-            }
-            finally
-            {
-                if (extraDependenciesPom != null)
-                {
-                    extraDependenciesPom.delete();
-                }
-            }
-        });
-
+        Path pomPath = pom.toPath();
+        Path tempPom = null;
 
         try
         {
-            URL[] urls = coreClasspathFuture.thenCombine(extraClasspathFuture, Stream::concat).get().toArray(URL[]::new);
+            tempPom = this.addExtraDependenciesToPom(maven, pomPath, settingXml, extraDependencies, platformVersions);
+            URL[] urls = this.getClasspathURLEntries("core", maven, tempPom.toFile(), settingXml).toArray(URL[]::new);
             ClassLoader parentClassloader = ClasspathUsingMavenFactory.class.getClassLoader();
             return new URLClassLoader("legend-lsp", urls, parentClassloader);
         }
@@ -446,28 +429,45 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             LOGGER.error("Unable to construct extensions classpath", e);
             return null;
         }
+        finally
+        {
+            try
+            {
+                if (tempPom != null)
+                {
+                    Files.delete(tempPom);
+                }
+            }
+            catch (IOException e)
+            {
+                LOGGER.error("Failed to delete temp pom", e);
+            }
+        }
     }
 
-    private File computeExtraDependenciesPom(File maven, File pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions) throws IOException, MavenInvocationException
+    private Path addExtraDependenciesToPom(File maven, Path pom, File settingXml, List<String> extraDependencies, List<SDLCPlatform> platformVersions) throws IOException, MavenInvocationException
     {
-        File legendLspExtraElementsPom = File.createTempFile("pom", ".xml");
-        legendLspExtraElementsPom.deleteOnExit();
-
-        try (OutputStream pomOs = Files.newOutputStream(legendLspExtraElementsPom.toPath()))
+        Model model;
+        try (InputStream is = Files.newInputStream(pom))
         {
-            String engineVersion = this.findEngineVersion(maven, pom, settingXml, platformVersions);
+            model = new MavenXpp3Reader().read(is);
+        }
+        catch (Exception e)
+        {
+            throw new IOException("Cannot read pom model", e);
+        }
 
-            Model extraDependenciesModel = new Model();
-            extraDependenciesModel.setModelVersion("4.0.0");
-            extraDependenciesModel.setGroupId("org.finos.legend.ide.lsp");
-            extraDependenciesModel.setArtifactId("default-pom");
-            extraDependenciesModel.setVersion("0.0.1-SNAPSHOT");
+        Path tempPom = pom.getParent().resolve("legend_extension_temp_pom.xml");
+
+        try (OutputStream pomOs = Files.newOutputStream(tempPom))
+        {
+            String engineVersion = this.findEngineVersion(maven, pom.toFile(), settingXml, platformVersions);
 
             if (engineVersion != null)
             {
-                this.getExtraEngineDependencies(engineVersion).forEach(extraDependenciesModel::addDependency);
+                this.getExtraEngineDependencies(engineVersion).forEach(model::addDependency);
             }
-            extraDependenciesModel.addDependency(this.getDefaultExtensionsDependency());
+            model.addDependency(this.getDefaultExtensionsDependency());
 
             if (extraDependencies != null)
             {
@@ -491,15 +491,13 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
                             return dependency;
                         })
-                        .forEach(extraDependenciesModel::addDependency);
+                        .forEach(model::addDependency);
             }
 
-            new MavenXpp3Writer().write(pomOs, extraDependenciesModel);
+            new MavenXpp3Writer().write(pomOs, model);
         }
 
-        this.updatePlatformVersions(legendLspExtraElementsPom, platformVersions);
-
-        return legendLspExtraElementsPom;
+        return tempPom;
     }
 
     private String findEngineVersion(File maven, File pom, File settingXml, List<SDLCPlatform> platforms) throws IOException, MavenInvocationException
@@ -628,7 +626,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
                             try
                             {
                                 File file = new File(entry);
-                                if (!file.canRead() || entry.contains("-SNAPSHOT"))
+                                if (!file.canRead() || (entry.contains("-SNAPSHOT") && !entry.contains("legend-engine-ide-lsp-default-extensions")))
                                 {
                                     this.server.logInfoToClient("Need to reload " + id + " classpath.  Either an entry does not exist anymore or classpath contains -SNAPSHOT dependencies...");
                                     classpath = null;
