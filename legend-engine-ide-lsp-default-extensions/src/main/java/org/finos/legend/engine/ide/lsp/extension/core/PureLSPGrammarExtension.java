@@ -16,15 +16,6 @@
 
 package org.finos.legend.engine.ide.lsp.extension.core;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.StreamReadFeature;
-import com.fasterxml.jackson.core.StreamWriteFeature;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -39,13 +30,14 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
-import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
+import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
+import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
@@ -53,12 +45,11 @@ import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
 import org.finos.legend.engine.ide.lsp.extension.functionActivator.FunctionActivatorLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainLexerGrammar;
@@ -66,19 +57,12 @@ import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainPa
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
-import org.finos.legend.engine.plan.execution.PlanExecutor;
-import org.finos.legend.engine.plan.execution.nodes.helpers.ExecuteNodeParameterTransformationHelper;
-import org.finos.legend.engine.plan.execution.result.ConstantResult;
-import org.finos.legend.engine.plan.execution.result.ErrorResult;
-import org.finos.legend.engine.plan.execution.result.StreamingResult;
-import org.finos.legend.engine.plan.execution.result.serialization.SerializationFormat;
 import org.finos.legend.engine.plan.generation.PlanGenerator;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
-import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
+import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
-import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Association;
@@ -92,26 +76,23 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.TaggedValue;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
 import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
-import org.finos.legend.engine.shared.core.identity.factory.IdentityFactoryProvider;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.FunctionDefinition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
 import org.finos.legend.pure.m3.navigation.PrimitiveUtilities;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
-import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
-import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Extension for the Pure grammar.
  */
-public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension
+public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExtension implements FunctionExecutionSupport
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(PureLSPGrammarExtension.class);
 
@@ -145,19 +126,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                     "   attributeName: attributeType [attributeMultiplicity];\n" +
                     "}\n");
 
-    protected static final String EXEC_FUNCTION_ID = "legend.pure.executeFunction";
-    protected static final String EXEC_FUNCTION_WITH_PARAMETERS_ID = "legend.pure.executeFunctionWithParameters";
-    private static final String EXEC_FUNCTION_TITLE = "Execute function";
     protected static final String ACTIVATE_FUNCTION_ID = "legend.pure.activateFunction";
-    private static final String ACTIVATE_FUNCTION_TITLE = "Activate function";
-
-    private final JsonMapper functionResultMapper = PureProtocolObjectMapperFactory.withPureProtocolExtensions(JsonMapper.builder()
-            .disable(StreamWriteFeature.AUTO_CLOSE_TARGET)
-            .disable(StreamReadFeature.AUTO_CLOSE_SOURCE)
-            .enable(SerializationFeature.INDENT_OUTPUT)
-            .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
-            .serializationInclusion(JsonInclude.Include.NON_NULL)
-            .build());
+    private static final String ACTIVATE_FUNCTION_TITLE = "Activate";
 
     public PureLSPGrammarExtension()
     {
@@ -180,31 +150,17 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             if (!(compileResult.hasException() || compileResult.hasEngineException()))
             {
                 Function function = (Function) element;
-                List<PackageableElement> elements = compileResult.getPureModelContextData().getElements();
-                if ((function.parameters == null) || function.parameters.isEmpty())
-                {
-                    consumer.accept(EXEC_FUNCTION_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, LegendCommandType.CLIENT);
-                }
-                else
-                {
-                    Map<String, LegendInputParameter> parameters = Maps.mutable.empty();
-                    function.parameters.forEach(p ->
-                    {
-                        PackageableElement paramElement = elements.stream().filter(e -> e.getPath().equals(p._class)).findFirst().orElse(null);
-                        if (paramElement != null && paramElement instanceof Enumeration)
-                        {
-                            parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p, paramElement));
-                        }
-                        else
-                        {
-                            parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p));
-                        }
-                    });
-                    consumer.accept(EXEC_FUNCTION_WITH_PARAMETERS_ID, EXEC_FUNCTION_TITLE, function.sourceInformation, Collections.emptyMap(), parameters, LegendCommandType.CLIENT);
-                }
+                SourceInformation sourceInformation = function.sourceInformation;
 
-                Map<String, String> arguments = sectionState.getDocumentState().getGlobalState().findGrammarExtensionThatImplements(FunctionActivatorLSPGrammarExtension.class).collect(Collectors.toMap(LegendLSPExtension::getName, x -> x.getSnippet((Function) element, elements)));
-                consumer.accept(ACTIVATE_FUNCTION_ID, ACTIVATE_FUNCTION_TITLE, function.sourceInformation, arguments, Collections.emptyMap(), LegendCommandType.CLIENT);
+                FunctionExecutionSupport.collectFunctionExecutionCommand(
+                        this,
+                        function,
+                        compileResult,
+                        consumer
+                );
+
+                Map<String, String> arguments = sectionState.getDocumentState().getGlobalState().findGrammarExtensionThatImplements(FunctionActivatorLSPGrammarExtension.class).collect(Collectors.toMap(LegendLSPExtension::getName, x -> x.getSnippet((Function) element, compileResult.getPureModelContextData().getElements())));
+                consumer.accept(ACTIVATE_FUNCTION_ID, ACTIVATE_FUNCTION_TITLE, sourceInformation, arguments, Collections.emptyMap(), LegendCommandType.CLIENT);
             }
         }
     }
@@ -310,79 +266,47 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return Stream.of(profileReference, tagReference);
     }
 
-    public static class FunctionLegendExecutionResult extends LegendExecutionResult
-    {
-        private final String uri;
-        private final int sectionNum;
-        private final Map<String, Object> inputParameters;
-
-        public FunctionLegendExecutionResult(List<String> ids, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters)
-        {
-            super(ids, type, message, logMessage, null);
-            this.uri = uri;
-            this.sectionNum = sectionNum;
-            this.inputParameters = inputParameters;
-        }
-
-        public String getUri()
-        {
-            return uri;
-        }
-
-        public int getSectionNum()
-        {
-            return sectionNum;
-        }
-
-        public Map<String, Object> getInputParameters()
-        {
-            return inputParameters;
-        }
-
-        public static FunctionLegendExecutionResult newResult(String id, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters)
-        {
-            return new FunctionLegendExecutionResult(Collections.singletonList(id), type, message, logMessage, uri, sectionNum, inputParameters);
-        }
-    }
-
-    private static class LegendFunctionInputParameter extends LegendInputParameter
-    {
-        private Variable variable;
-        private PackageableElement element;
-
-        private LegendFunctionInputParameter(Variable variable, PackageableElement element)
-        {
-            this.variable = variable;
-            this.element = element;
-        }
-
-        public Variable getVariable()
-        {
-            return this.variable;
-        }
-
-        public PackageableElement getElement()
-        {
-            return this.element;
-        }
-
-        public static LegendFunctionInputParameter newFunctionParameter(Variable variable)
-        {
-            return newFunctionParameter(variable, null);
-        }
-
-        public static LegendFunctionInputParameter newFunctionParameter(Variable variable, PackageableElement element)
-        {
-            return new LegendFunctionInputParameter(variable, element);
-        }
-    }
-
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
-        return EXEC_FUNCTION_ID.equals(commandId) || EXEC_FUNCTION_WITH_PARAMETERS_ID.equals(commandId) ?
-               executeFunction(section, entityPath, inputParameters) :
-               super.execute(section, entityPath, commandId, executableArgs, inputParameters);
+        return FunctionExecutionSupport.EXECUTE_COMMAND_ID.equals(commandId) ?
+                FunctionExecutionSupport.executeFunction(this, section, entityPath, inputParameters)
+                :
+                super.execute(section, entityPath, commandId, executableArgs, inputParameters);
+    }
+
+    @Override
+    public AbstractLSPGrammarExtension getExtension()
+    {
+        return this;
+    }
+
+    @Override
+    public Lambda getLambda(PackageableElement element)
+    {
+        Function function = (Function) element;
+        Lambda l = new Lambda();
+        l.body = function.body;
+        l.parameters = function.parameters;
+        return l;
+    }
+
+    @Override
+    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args)
+    {
+        Function function = (Function) element;
+        FunctionDefinition<?> functionDefinition;
+        if (lambda.body == function.body)
+        {
+            functionDefinition = pureModel.getConcreteFunctionDefinition(element.getPath(), element.sourceInformation);
+        }
+        else
+        {
+            functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
+        }
+        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
+        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
+        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, null, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
     }
 
     @Override
@@ -486,130 +410,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 .build();
     }
 
-    void executePlan(SectionState section, SingleExecutionPlan executionPlan, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
-    {
-        try
-        {
-            if (this.isEngineServerConfigured())
-            {
-                ExecutionRequest executionRequest = new ExecutionRequest(executionPlan, inputParameters);
-                LegendExecutionResult legendExecutionResult = this.postEngineServer("/executionPlan/v1/execution/executeRequest?serializationFormat=DEFAULT", executionRequest, is ->
-                {
-                    ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
-                    is.transferTo(os);
-                    return FunctionLegendExecutionResult.newResult(entityPath, Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server", section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters);
-                });
-                results.add(legendExecutionResult);
-            }
-            else
-            {
-                PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
-                MutableMap<String, org.finos.legend.engine.plan.execution.result.Result> parametersToConstantResult = Maps.mutable.empty();
-                ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
-                collectResults(entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", IdentityFactoryProvider.getInstance().getAnonymousIdentity()), section, inputParameters, results::add);
-            }
-        }
-        catch (Exception e)
-        {
-            results.add(errorResult(e, entityPath));
-        }
-    }
-
-    private Iterable<? extends LegendExecutionResult> executeFunction(SectionState section, String entityPath, Map<String, Object> inputParameters)
-    {
-        CompileResult compileResult = getCompileResult(section);
-        if (compileResult.hasException())
-        {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
-        }
-
-        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        try
-        {
-            PureModel pureModel = compileResult.getPureModel();
-            ConcreteFunctionDefinition<?> function = pureModel.getConcreteFunctionDefinition(entityPath, null);
-            MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
-            MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-            SingleExecutionPlan executionPlan = PlanGenerator.generateExecutionPlan(function, null, null, null, pureModel, null, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
-
-            executePlan(section, executionPlan, entityPath, inputParameters, results);
-        }
-        catch (Exception e)
-        {
-            results.add(errorResult(e, entityPath));
-        }
-        return results;
-    }
-
-    private void collectResults(String entityPath, org.finos.legend.engine.plan.execution.result.Result result, SectionState section, Map<String, Object> inputParameters, Consumer<? super LegendExecutionResult> consumer)
-    {
-        // TODO also collect results from activities
-        if (result instanceof ErrorResult)
-        {
-            ErrorResult errorResult = (ErrorResult) result;
-            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, Type.ERROR, errorResult.getMessage(), errorResult.getTrace(), section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
-            return;
-        }
-        if (result instanceof ConstantResult)
-        {
-            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, Type.SUCCESS, getConstantResult((ConstantResult) result), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
-            return;
-        }
-        if (result instanceof StreamingResult)
-        {
-            ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1024);
-            try
-            {
-                ((StreamingResult) result).getSerializer(SerializationFormat.DEFAULT).stream(byteStream);
-            }
-            catch (IOException e)
-            {
-                consumer.accept(errorResult(e, entityPath));
-                return;
-            }
-            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
-            return;
-        }
-        consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, Type.WARNING, "Unhandled result type: " + result.getClass().getName(), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
-    }
-
-    private String getConstantResult(ConstantResult constantResult)
-    {
-        return getConstantValueResult(constantResult.getValue());
-    }
-
-    private String getConstantValueResult(Object value)
-    {
-        if (value == null)
-        {
-            return "[]";
-        }
-        if (value instanceof Iterable)
-        {
-            StringBuilder builder = new StringBuilder();
-            ((Iterable<?>) value).forEach(v -> builder.append((builder.length() == 0) ? "[" : ", ").append(getConstantValueResult(v)));
-            return builder.append("]").toString();
-        }
-        if ((value instanceof String) || (value instanceof Boolean) || (value instanceof Number) || (value instanceof PureDate) || (value instanceof PureStrictTime) || (value instanceof TemporalAccessor))
-        {
-            return value.toString();
-        }
-        try
-        {
-            return getFunctionResultMapper().writeValueAsString(value);
-        }
-        catch (Exception e)
-        {
-            LOGGER.error("Error converting value to JSON", e);
-        }
-        return value.toString();
-    }
-
-    private JsonMapper getFunctionResultMapper()
-    {
-        return this.functionResultMapper;
-    }
-
     @Override
     public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
     {
@@ -673,28 +473,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         {
             LOGGER.error("Error fetching autocompletion results", e);
             return null;
-        }
-    }
-
-    private static class ExecutionRequest
-    {
-        private final ExecutionPlan executionPlan;
-        private final Map<String, Object> executionParameters;
-
-        public ExecutionRequest(ExecutionPlan executionPlan, Map<String, Object> executionParameters)
-        {
-            this.executionPlan = executionPlan;
-            this.executionParameters = executionParameters == null ? Collections.emptyMap() : executionParameters;
-        }
-
-        public ExecutionPlan getExecutionPlan()
-        {
-            return this.executionPlan;
-        }
-
-        public Map<String, Object> getExecutionParameters()
-        {
-            return this.executionParameters;
         }
     }
 }

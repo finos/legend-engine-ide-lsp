@@ -63,7 +63,7 @@ public final class FunctionActivatorCommandsSupport implements CommandsSupport
     }
 
     @Override
-    public void collectCommands(SectionState sectionState, PackageableElement element, AbstractLSPGrammarExtension.CommandConsumer consumer)
+    public void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
         if (element instanceof FunctionActivator && this.extension.isEngineServerConfigured())
         {
@@ -78,7 +78,7 @@ public final class FunctionActivatorCommandsSupport implements CommandsSupport
         TextLocation location = SourceInformationUtil.toLocation(element.sourceInformation);
         String entityPath = element.getPath();
 
-        AbstractLSPGrammarExtension.CompileResult compileResult = this.extension.getCompileResult(section);
+        CompileResult compileResult = this.extension.getCompileResult(section);
         if (compileResult.hasException())
         {
             return Collections.singletonList(this.extension.errorResult(compileResult.getException(), entityPath, location));

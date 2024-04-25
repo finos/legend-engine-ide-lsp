@@ -24,6 +24,8 @@ import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
+import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;

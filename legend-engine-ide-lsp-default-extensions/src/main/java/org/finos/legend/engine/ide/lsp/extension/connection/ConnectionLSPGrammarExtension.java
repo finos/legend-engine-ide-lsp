@@ -29,6 +29,7 @@ import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ListIterable;
 import org.eclipse.collections.api.set.MutableSet;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;

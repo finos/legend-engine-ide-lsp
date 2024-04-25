@@ -17,21 +17,27 @@
 package org.finos.legend.engine.ide.lsp.server.integration;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.jsonrpc.json.adapters.EnumTypeAdapter;
+import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FilterOperation;
-import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSAggregation;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSortOrder;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,9 +122,153 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
     }
 
     @Test
-    void testFunction() throws Exception
+    void testFunctionTdsExecution() throws Exception
     {
-        Path pureFile1 = extension.addToWorkspace("file1.pure", "Class model::Person\n" +
+        int sectionNum = 0;
+        String entity = "model1::testReturnTDS__TabularDataSet_1_";
+        testFunctionExecutionOnEntity(sectionNum, entity);
+    }
+
+    @Test
+    void testServiceTdsExecution() throws Exception
+    {
+        int sectionNum = 4;
+        String entity = "service::SampleService";
+        testFunctionExecutionOnEntity(sectionNum, entity);
+    }
+
+    @Test
+    void testFunctionWithMultiplicityOneParameters() throws Exception
+    {
+        String code =
+                "function sample::sum(a : Integer[1], b: Integer[1]): Integer[1]\n" +
+                        "{\n" +
+                        "  $a + $b;\n" +
+                        "}\n" +
+                        "\n";
+
+        testFunctionExecution(code, "sample::sum_Integer_1__Integer_1__Integer_1_", Map.of("a", 1, "b", 2), "3");
+    }
+
+    @Test
+    void testFunctionWithMultiplicityManyParameters() throws Exception
+    {
+        String code =
+                "function sample::sum(a : Integer[*]): Integer[1]\n" +
+                        "{\n" +
+                        "  sum($a);\n" +
+                        "}\n" +
+                        "\n";
+
+        testFunctionExecution(code, "sample::sum_Integer_MANY__Integer_1_", Map.of("a", new int[]{1, 2, 3}), "6");
+    }
+
+    @Test
+    void testFunctionWithFloatParameters() throws Exception
+    {
+        String code =
+                "function sample::mult(a : Integer[1], b: Float[1]): Number[1]\n" +
+                        "{\n" +
+                        "  $a * $b;\n" +
+                        "}\n" +
+                        "\n";
+
+        testFunctionExecution(code, "sample::mult_Integer_1__Float_1__Number_1_", Map.of("a", 2, "b", 3.5), "7.0");
+    }
+
+    private static void testFunctionExecution(String code, String function, Map<String, Object> funcArgs, String funcOutput) throws Exception
+    {
+
+        Path path = extension.addToWorkspace("file1.pure", code);
+
+        ExecuteCommandParams params = new ExecuteCommandParams();
+        params.setCommand(LegendCommandExecutionHandler.LEGEND_COMMAND_ID);
+        params.setArguments(List.of(
+            path.toUri().toString(),
+                0,
+                function,
+                "legend.function.execute",
+                Map.of(),
+                funcArgs
+        ));
+
+        Gson gson = new GsonBuilder().registerTypeAdapterFactory(new EnumTypeAdapter.Factory()).create();
+        Object result = extension.futureGet(extension.getServer().getWorkspaceService().executeCommand(params));
+        LegendExecutionResult[] executionResults = (LegendExecutionResult[]) gson.fromJson(gson.toJsonTree(result), TypeToken.getArray(LegendExecutionResult.class));
+
+        Assertions.assertEquals(1, executionResults.length, "Expect one result: " + result);
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, executionResults[0].getType(), "Execution did not succeeded: " + executionResults[0]);
+        Assertions.assertEquals(funcOutput, executionResults[0].getMessage());
+    }
+
+    private void testFunctionExecutionOnEntity(int sectionNum, String entity) throws Exception
+    {
+        Path pureFile1 = prepareWorkspaceFiles();
+        String uri = pureFile1.toUri().toString();
+
+        List<TDSSort> sort = new ArrayList<>();
+        List<Filter> filter = new ArrayList<>();
+        List<String> columns = List.of("Legal Name", "Employees/ First Name", "Employees/ Last Name");
+        List<String> groupByColumns = new ArrayList<>();
+        List<String> groupKeys = new ArrayList<>();
+        List<TDSAggregation> aggregations = new ArrayList<>();
+        TDSGroupBy groupBy = new TDSGroupBy(groupByColumns, groupKeys, aggregations);
+        TDSRequest request = new TDSRequest(0, 0, columns, filter, sort, groupBy);
+        FunctionTDSRequest functionTDSRequest = new FunctionTDSRequest(uri, sectionNum, entity, request, Collections.emptyMap());
+
+        // No push down operations
+        Object resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        TabularDataSet result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 3);
+        Assertions.assertEquals(result.getRows().size(), 3);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("FirmA", "Doe", "John"));
+        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("Apple", "Smith", "Tim"));
+        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
+
+        // Sort operation on first row
+        sort.add(new TDSSort("Legal Name", TDSSortOrder.ASCENDING));
+        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 3);
+        Assertions.assertEquals(result.getRows().size(), 3);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
+        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmA", "Doe", "John"));
+        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
+
+        // Filter operation on second row
+        sort.clear();
+        filter.add(new Filter("Employees/ First Name", ColumnType.String, FilterOperation.EQUALS, "Doe"));
+        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 3);
+        Assertions.assertEquals(result.getRows().size(), 2);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("FirmA", "Doe", "John"));
+        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmB", "Doe", "Nicole"));
+
+        // Groupby operation
+        filter.clear();
+        groupByColumns.add("Legal Name");
+        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 1);
+        Assertions.assertEquals(result.getRows().size(), 3);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple"));
+        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmA"));
+        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB"));
+
+        // Expand groupBy
+        groupKeys.add("Apple");
+        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
+        result = getTabularDataSet(resultObject);
+        Assertions.assertEquals(result.getColumns().size(), 3);
+        Assertions.assertEquals(result.getRows().size(), 1);
+        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
+    }
+
+    private static Path prepareWorkspaceFiles() throws Exception
+    {
+        return extension.addToWorkspace("file1.pure",
+                "Class model::Person\n" +
                 "{\n" +
                 "  firstName: String[1];\n" +
                 "  lastName: String[1];\n" +
@@ -206,68 +356,16 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
                 "\n" +
                 "  Join FirmPerson(PersonTable.firm_id = FirmTable.id)\n" +
                 ")\n" +
-                "\n");
-
-        String uri = pureFile1.toUri().toString();
-        int sectionNum = 0;
-        String entity = "model1::testReturnTDS__TabularDataSet_1_";
-
-        List<TDSSort> sort = new ArrayList<>();
-        List<Filter> filter = new ArrayList<>();
-        List<String> columns = List.of("Legal Name", "Employees/ First Name", "Employees/ Last Name");
-        List<String> groupByColumns = new ArrayList<>();
-        List<String> groupKeys = new ArrayList<>();
-        List<TDSAggregation> aggregations = new ArrayList<>();
-        TDSGroupBy groupBy = new TDSGroupBy(groupByColumns, groupKeys, aggregations);
-        TDSRequest request = new TDSRequest(0, 0, columns, filter, sort, groupBy);
-        FunctionTDSRequest functionTDSRequest = new FunctionTDSRequest(uri, sectionNum, entity, request, Collections.emptyMap());
-
-        // No push down operations
-        Object resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        TabularDataSet result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 3);
-        Assertions.assertEquals(result.getRows().size(), 3);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("FirmA", "Doe", "John"));
-        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("Apple", "Smith", "Tim"));
-        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
-
-        // Sort operation on first row
-        sort.add(new TDSSort("Legal Name", TDSSortOrder.ASCENDING));
-        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 3);
-        Assertions.assertEquals(result.getRows().size(), 3);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
-        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmA", "Doe", "John"));
-        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
-
-        // Filter operation on second row
-        sort.clear();
-        filter.add(new Filter("Employees/ First Name", ColumnType.String, FilterOperation.EQUALS, "Doe"));
-        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 3);
-        Assertions.assertEquals(result.getRows().size(), 2);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("FirmA", "Doe", "John"));
-        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmB", "Doe", "Nicole"));
-
-        // Groupby operation
-        filter.clear();
-        groupByColumns.add("Legal Name");
-        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 1);
-        Assertions.assertEquals(result.getRows().size(), 3);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple"));
-        Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmA"));
-        Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB"));
-
-        // Expand groupBy
-        groupKeys.add("Apple");
-        resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
-        result = getTabularDataSet(resultObject);
-        Assertions.assertEquals(result.getColumns().size(), 3);
-        Assertions.assertEquals(result.getRows().size(), 1);
-        Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
+                "\n" +
+                "###Service\n" +
+                "Service service::SampleService\n" +
+                "{\n" +
+                "    pattern : 'test';\n" +
+                "    documentation : 'service for testing';\n" +
+                "    execution : Single\n" +
+                "    {\n" +
+                "        query : model::Firm.all()->project([x | $x.legalName,x | $x.employees.firstName, x |$x.employees.lastName], ['Legal Name', 'Employees/ First Name', 'Employees/ Last Name'])->from(execution::RelationalMapping, execution::Runtime);" +
+                "    }\n" +
+                "}\n");
     }
 }

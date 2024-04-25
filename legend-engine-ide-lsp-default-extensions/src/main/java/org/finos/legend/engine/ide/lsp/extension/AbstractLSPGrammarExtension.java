@@ -404,7 +404,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return this.protocolMapper;
     }
 
-    protected boolean isEngineServerConfigured()
+    public boolean isEngineServerConfigured()
     {
         return this.engineServerClient.isServerConfigured();
     }
@@ -424,7 +424,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return postEngineServer(path, payload, stream -> getProtocolMapper().readValue(stream, responseType));
     }
 
-    protected <T> T postEngineServer(String path, Object payload, ThrowingFunction<InputStream, T> consumer)
+    public <T> T postEngineServer(String path, Object payload, ThrowingFunction<InputStream, T> consumer)
     {
         if (!isEngineServerConfigured())
         {
@@ -713,33 +713,6 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         }
     }
 
-    public static class CompileResult extends Result<PureModel>
-    {
-        private final PureModelContextData pureModelContextData;
-
-        private CompileResult(PureModel pureModel, PureModelContextData pureModelContextData)
-        {
-            super(pureModel, null);
-            this.pureModelContextData = pureModelContextData;
-        }
-
-        private CompileResult(Exception e, PureModelContextData pureModelContextData)
-        {
-            super(null, e);
-            this.pureModelContextData = pureModelContextData;
-        }
-
-        public PureModel getPureModel()
-        {
-            return getResult();
-        }
-
-        public PureModelContextData getPureModelContextData()
-        {
-            return this.pureModelContextData;
-        }
-    }
-
     private static class LegendCommandFactory
     {
         public static LegendCommand newCommand(LegendCommandType type, String path, String id, String title, TextLocation textLocation, Map<String, String> arguments, Map<String, LegendInputParameter> inputParameters)
@@ -750,25 +723,5 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             }
             return LegendCommand.newCommand(path, id, title, textLocation, arguments, inputParameters);
         }
-    }
-
-    protected interface CommandConsumer
-    {
-        default void accept(String id, String title, SourceInformation sourceInfo)
-        {
-            accept(id, title, sourceInfo, Collections.emptyMap());
-        }
-
-        default void accept(String id, String title, SourceInformation sourceInfo, LegendCommandType type)
-        {
-            accept(id, title, sourceInfo, Collections.emptyMap(), Collections.emptyMap(), type);
-        }
-
-        default void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments)
-        {
-            accept(id, title, sourceInfo, arguments, Collections.emptyMap(), LegendCommandType.SERVER);
-        }
-
-        void accept(String id, String title, SourceInformation sourceInfo, Map<String, String> arguments, Map<String, LegendInputParameter> inputParameters, LegendCommandType type);
     }
 }

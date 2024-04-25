@@ -37,10 +37,14 @@ import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
+import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
+import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
@@ -49,10 +53,12 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.language.pure.dsl.service.generation.ServicePlanGenerator;
 import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
+import org.finos.legend.engine.plan.platform.PlanPlatform;
 import org.finos.legend.engine.protocol.Protocol;
 import org.finos.legend.engine.protocol.pure.PureClientVersions;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
@@ -61,14 +67,18 @@ import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElement
 import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementType;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Execution;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.KeyedExecutionParameter;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.PureExecution;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.PureMultiExecution;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.PureSingleExecution;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
 import org.finos.legend.engine.test.runner.service.ServiceTestRunner;
@@ -79,14 +89,14 @@ import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 /**
  * Extension for the Service grammar.
  */
-public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension
+public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension implements FunctionExecutionSupport
 {
     private static final List<String> KEYWORDS = List.of("Service", "import");
 
-    private static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.service.runLegacyTests";
+    static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.service.runLegacyTests";
     private static final String RUN_LEGACY_TESTS_COMMAND_TITLE = "Run legacy tests";
 
-    private static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
+    static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
     private static final String REGISTER_SERVICE_COMMAND_TITLE = "Register service";
 
     private static final ImmutableList<String> FUNCTIONS_TRIGGERS = Lists.immutable.with("->");
@@ -156,6 +166,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         if (element instanceof Service)
         {
             Service service = (Service) element;
+            this.collectExecCommand(service, this.getCompileResult(sectionState), consumer);
             if (isEngineServerConfigured())
             {
                 consumer.accept(REGISTER_SERVICE_COMMAND_ID, REGISTER_SERVICE_COMMAND_TITLE, service.sourceInformation);
@@ -167,8 +178,18 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
     }
 
+    private void collectExecCommand(Service service, CompileResult compileResult, CommandConsumer consumer)
+    {
+        FunctionExecutionSupport.collectFunctionExecutionCommand(
+                this,
+                service,
+                compileResult,
+                consumer
+        );
+    }
+
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams)
     {
         switch (commandId)
         {
@@ -180,11 +201,66 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             {
                 return registerService(section, entityPath);
             }
+            case FunctionExecutionSupport.EXECUTE_COMMAND_ID:
+            {
+                return FunctionExecutionSupport.executeFunction(this, section, entityPath, inputParams);
+            }
             default:
             {
                 return super.execute(section, entityPath, commandId, executableArgs);
             }
         }
+    }
+
+    @Override
+    public AbstractLSPGrammarExtension getExtension()
+    {
+        return this;
+    }
+
+    @Override
+    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda function, PureModel pureModel, Map<String, Object> args)
+    {
+        PureSingleExecution singleExecution = new PureSingleExecution();
+        Service service = (Service) element;
+        if (service.execution instanceof PureMultiExecution)
+        {
+            PureMultiExecution multiExecution = (PureMultiExecution) service.execution;
+            Object multiVal = args.get(multiExecution.executionKey);
+            KeyedExecutionParameter keyedExecutionParameter = multiExecution.executionParameters.stream().filter(x -> x.key.equals(multiVal)).findFirst().orElseThrow(() -> new IllegalArgumentException("Missing multi execution entry for value: " + multiVal));
+            singleExecution.mapping = keyedExecutionParameter.mapping;
+            singleExecution.runtime = keyedExecutionParameter.runtime;
+            singleExecution.executionOptions = keyedExecutionParameter.executionOptions;
+            singleExecution.func = function;
+        }
+        else
+        {
+            PureSingleExecution execution = (PureSingleExecution) service.execution;
+            singleExecution.mapping = execution.mapping;
+            singleExecution.runtime = execution.runtime;
+            singleExecution.executionOptions = execution.executionOptions;
+            singleExecution.func = function;
+        }
+
+        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
+        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
+        return ServicePlanGenerator.generateSingleExecutionPlan(
+                singleExecution,
+                null,
+                pureModel,
+                null,
+                PlanPlatform.JAVA,
+                routerExtensions,
+                planTransformers
+        );
+    }
+
+    @Override
+    public Lambda getLambda(PackageableElement element)
+    {
+        Service service = (Service) element;
+        PureExecution execution = (PureExecution) service.execution;
+        return execution.func;
     }
 
     private List<? extends LegendExecutionResult> runLegacyServiceTest(SectionState section, String entityPath)
