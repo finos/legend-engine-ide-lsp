@@ -15,7 +15,9 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.io.InputStream;
@@ -115,7 +117,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private final boolean async;
     private final LegendServerGlobalState globalState = new LegendServerGlobalState(this);
     private final AtomicInteger progressId = new AtomicInteger();
-    private final Gson gson = new Gson();
+    private final Gson gson = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
     private final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
 
     private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, Collection<LegendLSPFeature> features)

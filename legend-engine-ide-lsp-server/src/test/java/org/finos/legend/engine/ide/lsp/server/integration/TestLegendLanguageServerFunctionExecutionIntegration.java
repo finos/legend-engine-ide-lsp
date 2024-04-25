@@ -17,21 +17,27 @@
 package org.finos.legend.engine.ide.lsp.server.integration;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.jsonrpc.json.adapters.EnumTypeAdapter;
+import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FilterOperation;
-import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSAggregation;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSortOrder;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -116,7 +122,7 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
     }
 
     @Test
-    void testFunction() throws Exception
+    void testFunctionTdsExecution() throws Exception
     {
         int sectionNum = 0;
         String entity = "model1::testReturnTDS__TabularDataSet_1_";
@@ -124,11 +130,75 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
     }
 
     @Test
-    void testService() throws Exception
+    void testServiceTdsExecution() throws Exception
     {
         int sectionNum = 4;
         String entity = "service::SampleService";
         testFunctionExecutionOnEntity(sectionNum, entity);
+    }
+
+    @Test
+    void testFunctionWithMultiplicityOneParameters() throws Exception
+    {
+        String code =
+                "function sample::sum(a : Integer[1], b: Integer[1]): Integer[1]\n" +
+                        "{\n" +
+                        "  $a + $b;\n" +
+                        "}\n" +
+                        "\n";
+
+        testFunctionExecution(code, "sample::sum_Integer_1__Integer_1__Integer_1_", Map.of("a", 1, "b", 2), "3");
+    }
+
+    @Test
+    void testFunctionWithMultiplicityManyParameters() throws Exception
+    {
+        String code =
+                "function sample::sum(a : Integer[*]): Integer[1]\n" +
+                        "{\n" +
+                        "  sum($a);\n" +
+                        "}\n" +
+                        "\n";
+
+        testFunctionExecution(code, "sample::sum_Integer_MANY__Integer_1_", Map.of("a", new int[]{1, 2, 3}), "6");
+    }
+
+    @Test
+    void testFunctionWithFloatParameters() throws Exception
+    {
+        String code =
+                "function sample::mult(a : Integer[1], b: Float[1]): Number[1]\n" +
+                        "{\n" +
+                        "  $a * $b;\n" +
+                        "}\n" +
+                        "\n";
+
+        testFunctionExecution(code, "sample::mult_Integer_1__Float_1__Number_1_", Map.of("a", 2, "b", 3.5), "7.0");
+    }
+
+    private static void testFunctionExecution(String code, String function, Map<String, Object> funcArgs, String funcOutput) throws Exception
+    {
+
+        Path path = extension.addToWorkspace("file1.pure", code);
+
+        ExecuteCommandParams params = new ExecuteCommandParams();
+        params.setCommand(LegendCommandExecutionHandler.LEGEND_COMMAND_ID);
+        params.setArguments(List.of(
+            path.toUri().toString(),
+                0,
+                function,
+                "legend.function.execute",
+                Map.of(),
+                funcArgs
+        ));
+
+        Gson gson = new GsonBuilder().registerTypeAdapterFactory(new EnumTypeAdapter.Factory()).create();
+        Object result = extension.futureGet(extension.getServer().getWorkspaceService().executeCommand(params));
+        LegendExecutionResult[] executionResults = (LegendExecutionResult[]) gson.fromJson(gson.toJsonTree(result), TypeToken.getArray(LegendExecutionResult.class));
+
+        Assertions.assertEquals(1, executionResults.length, "Expect one result: " + result);
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, executionResults[0].getType(), "Execution did not succeeded: " + executionResults[0]);
+        Assertions.assertEquals(funcOutput, executionResults[0].getMessage());
     }
 
     private void testFunctionExecutionOnEntity(int sectionNum, String entity) throws Exception
