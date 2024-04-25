@@ -431,16 +431,17 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         }
         finally
         {
-            try
+            if (tempPom != null)
             {
-                if (tempPom != null)
+                try
                 {
                     Files.delete(tempPom);
                 }
-            }
-            catch (IOException e)
-            {
-                LOGGER.error("Failed to delete temp pom", e);
+                catch (IOException e)
+                {
+                    LOGGER.error("Failed to delete temp pom: {}", tempPom, e);
+                    tempPom.toFile().deleteOnExit();
+                }
             }
         }
     }
@@ -457,7 +458,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
             throw new IOException("Cannot read pom model", e);
         }
 
-        Path tempPom = pom.getParent().resolve("legend_extension_temp_pom.xml");
+        Path tempPom = Files.createTempFile(pom.getParent(), "legend_extension_pom", ".xml");
 
         try (OutputStream pomOs = Files.newOutputStream(tempPom))
         {
