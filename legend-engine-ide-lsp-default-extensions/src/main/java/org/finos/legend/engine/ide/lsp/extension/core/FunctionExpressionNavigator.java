@@ -107,8 +107,11 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
                 List<VariableExpression> matchedVariableExpressions = variableExpressions.stream()
                         .filter(ve -> variableExpression._name().equals(ve._name()))
                         .collect(Collectors.toList());
-                VariableExpression matchedVariableExpression = matchedVariableExpressions.get(matchedVariableExpressions.size() - 1);
-                return getLegendReference(variableExpression.getSourceInformation(), matchedVariableExpression);
+                if (!matchedVariableExpressions.isEmpty())
+                {
+                    VariableExpression matchedVariableExpression = matchedVariableExpressions.get(matchedVariableExpressions.size() - 1);
+                    return getLegendReference(variableExpression.getSourceInformation(), matchedVariableExpression);
+                }
             }
             return Stream.empty();
         }
@@ -147,7 +150,7 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
 
     private Stream<LegendReferenceResolver> getLegendReference(SourceInformation sourceInformation, CoreInstance coreInstance)
     {
-        if (isValidSourceInformation(sourceInformation))
+        if (isValidSourceInformation(sourceInformation) && coreInstance != null)
         {
             return Stream.of(LegendReferenceResolver.newReferenceResolver(sourceInformation, coreInstance));
         }

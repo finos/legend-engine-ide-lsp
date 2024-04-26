@@ -775,7 +775,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
     @Test
     @Disabled("Enable once m3 source information is fixed")
-    void fetReferenceResolversFunction()
+    void testGetReferenceResolversFunction()
     {
         MutableMap<String, String> codeFiles = Maps.mutable.empty();
         final String TEST_CLASS_DOC_ID = "showcase::model::LegalEntity";

@@ -562,6 +562,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     protected static boolean isValidSourceInfo(SourceInformation sourceInfo)
     {
         return (sourceInfo != null) &&
+                (sourceInfo != SourceInformation.getUnknownSourceInformation()) &&
                 (sourceInfo.startLine > 0) &&
                 (sourceInfo.startColumn > 0) &&
                 (sourceInfo.startLine <= sourceInfo.endLine) &&
@@ -606,10 +607,13 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
                                     if (isValidSourceIdAndSourceInfo(section, sourceInfo))
                                     {
                                         TextLocation declarationLocation = SourceInformationUtil.toLocation(sourceInfo);
-                                        return LegendReference.builder()
-                                                .withLocation(reference.getLocation())
-                                                .withReferencedLocation(declarationLocation)
-                                                .build();
+                                        if (!reference.getLocation().equals(declarationLocation))
+                                        {
+                                            return LegendReference.builder()
+                                                    .withLocation(reference.getLocation())
+                                                    .withReferencedLocation(declarationLocation)
+                                                    .build();
+                                        }
                                     }
 
                                     LOGGER.warn("Reference points to an element without source information");
