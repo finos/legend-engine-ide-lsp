@@ -201,4 +201,72 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 10), propertyReference, "Property mapped reference");
     }
+
+    @Test
+    public void testGetReferenceResolvers()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_CLASS_DOC_ID = "vscodelsp::test::Person";
+        final String TEST_MAPPING_DOC_ID_1 = "vscodelsp::test::TestIncludeMapping";
+        final String TEST_MAPPING_DOC_ID_2 = "vscodelsp::test::TestBaseMapping";
+        codeFiles.put(TEST_CLASS_DOC_ID,
+                "###Pure\n" +
+                        "Class vscodelsp::test::Person\n" +
+                        "{\n" +
+                        "   name: String[1];\n" +
+                        "   id: String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::Firm",
+                "###Pure\n" +
+                        "Class vscodelsp::test::Firm\n" +
+                        "{\n" +
+                        "   name: String[1];\n" +
+                        "}");
+
+        codeFiles.put(TEST_MAPPING_DOC_ID_1,
+                "###Mapping\n" +
+                        "Mapping vscodelsp::test::TestIncludeMapping\n" +
+                        "(\n" +
+                        "   include mapping vscodelsp::test::TestBaseMapping\n" +
+                        "\n" +
+                        "   vscodelsp::test::Person[per]: Pure\n" +
+                        "   {\n" +
+                        "       ~src vscodelsp::test::Person\n" +
+                        "       ~filter if($src.id =='23', |if($src.name == 'test', |true, |true), |false)\n" +
+                        "       id: '123',\n" +
+                        "       name: 'John Doe'\n" +
+                        "   }\n" +
+                        ")");
+
+        codeFiles.put(TEST_MAPPING_DOC_ID_2,
+                "###Mapping\n" +
+                        "Mapping vscodelsp::test::TestBaseMapping\n" +
+                        "(\n" +
+                        "   vscodelsp::test::Firm[firm]: Pure\n" +
+                        "   {\n" +
+                        "       ~src vscodelsp::test::Firm\n" +
+                        "       name: 'ABC'\n" +
+                        "   }\n" +
+                        ")");
+
+        LegendReference mappedIncludedMappingReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID_1, 3, 3, 3, 50))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID_2, 1, 0, 8, 0))
+                .build();
+
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(2, 2), null, "Outside of mappedIncludedMappingReference-able element should yield nothing");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(3, 2), null, "Outside of mappedIncludedMappingReference-able element (before mapping name) should yield nothing");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(3, 3), mappedIncludedMappingReference, "Start of mapping name has been mapped, referring to mapping definition");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(3, 25), mappedIncludedMappingReference, "Within the mapping name has been mapped, referring to mapping definition");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(3, 50), mappedIncludedMappingReference, "End of mapping name has been mapped, referring to mapping definition");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(4, 3), null, "Outside of mappedIncludedMappingReference-able element should yield nothing");
+
+        LegendReference mappedClassPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID_1, 8, 23, 8, 24))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 4, 3, 4, 16))
+                .build();
+
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(8, 24), mappedClassPropertyReference, "Within the class property name has been mapped, referring to class property definition");
+    }
 }

@@ -37,6 +37,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<ServiceLSPGrammarExtension>
@@ -289,6 +290,66 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         return codeFiles;
     }
 
+    private MutableMap<String, String> getCodeFilesForPostValidations()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("test::class",
+                "###Pure\n" +
+                        "Class test::class\n" +
+                        "{\n" +
+                        "    prop1: String[1];\n" +
+                        "}");
+
+        codeFiles.put("test::mapping",
+                "###Mapping\n" +
+                        "Mapping test::mapping\n" +
+                        "(\n" +
+                        ")");
+
+        codeFiles.put("test::connection",
+                "###Connection\n" +
+                        "JsonModelConnection test::connection\n" +
+                        "{\n" +
+                        "    class: test::class;\n" +
+                        "    url: 'asd';\n" +
+                        "}");
+
+        codeFiles.put("test::runtime",
+                "###Runtime\n" +
+                        "Runtime test::runtime\n" +
+                        "{\n" +
+                        "    mappings: [test::mapping];\n" +
+                        "}");
+
+        codeFiles.put("test::service",
+                "###Service\n" +
+                        "Service test::service\n" +
+                        "{\n" +
+                        "    pattern: 'url/myUrl/';\n" +
+                        "    owners: ['ownerName'];\n" +
+                        "    documentation: 'test';\n" +
+                        "    autoActivateUpdates: true;\n" +
+                        "    execution: Single\n" +
+                        "    {\n" +
+                        "        query: test::class.all()->project([col(p|$p.prop1, 'prop1')]);\n" +
+                        "        mapping: test::mapping;\n" +
+                        "        runtime: test::runtime;\n" +
+                        "    }\n" +
+                        "    postValidations:\n" +
+                        "    [\n" +
+                        "        {\n" +
+                        "            description: 'A good description of the validation';\n" +
+                        "            params: [];\n" +
+                        "            assertions: [\n" +
+                        "                testAssert: tds: TabularDataSet[1]|$tds->filter(row|$row.getString('prop1')->startsWith('X'))->meta::legend::service::validation::assertTabularDataSetEmpty('Expected no prop1 values to begin with the letter X');\n" +
+                        "            ];\n" +
+                        "        }\n" +
+                        "    ]\n" +
+                        "}");
+
+        return codeFiles;
+    }
+
     @Test
     public void testGetReferenceResolvers()
     {
@@ -309,6 +370,30 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         testReferenceLookup(codeFiles, TEST_SERVICE_DOC_ID, TextPosition.newPosition(9, 41), mappedRuntimeReference, "Within the runtime name has been mapped, referring to runtime definition");
     }
 
+    @Test
+    public void testGetReferenceResolversExecutionLambda()
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesForPostValidations();
+        LegendReference mappedClassPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("test::service", 9, 52, 9, 56))
+                .withReferencedLocation(TextLocation.newTextSource("test::class", 3, 4, 3, 20))
+                .build();
+
+        testReferenceLookup(codeFiles, "test::service", TextPosition.newPosition(9, 54), mappedClassPropertyReference, "Within the class property has been mapped, referring to class property definition");
+    }
+
+    @Test
+    @Disabled("Enable once m3 source information is fixed")
+    public void testGetReferenceResolversPostValidations()
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesForPostValidations();
+        LegendReference mappedClassPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("test::service", 19, 68, 19, 71))
+                .withReferencedLocation(TextLocation.newTextSource("test::service", 19, 64, 19, 66))
+                .build();
+
+        testReferenceLookup(codeFiles, "test::service", TextPosition.newPosition(19, 70), mappedClassPropertyReference, "Within the lambda variable has been mapped, referring to lambda variable definition");
+    }
 
     @Test
     public void testCommands()

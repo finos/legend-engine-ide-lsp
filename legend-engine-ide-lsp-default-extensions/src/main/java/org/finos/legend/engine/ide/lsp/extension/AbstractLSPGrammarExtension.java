@@ -38,6 +38,7 @@ import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.core.FunctionExpressionNavigator;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendClientCommand;
@@ -103,6 +104,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
 
     private final TestableCommandsSupport testableCommandsSupport;
     private final List<CommandsSupport> commandsSupports = new ArrayList<>();
+    protected static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
 
     public AbstractLSPGrammarExtension()
     {

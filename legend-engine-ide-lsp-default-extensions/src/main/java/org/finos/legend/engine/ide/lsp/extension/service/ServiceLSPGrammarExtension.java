@@ -32,9 +32,12 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+import org.eclipse.collections.api.RichIterable;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.impl.block.factory.Functions;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
@@ -45,6 +48,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
+import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
@@ -83,6 +87,11 @@ import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
 import org.finos.legend.engine.test.runner.service.ServiceTestRunner;
 import org.finos.legend.engine.test.runner.shared.TestResult;
+import org.finos.legend.pure.generated.Root_meta_legend_service_metamodel_Execution;
+import org.finos.legend.pure.generated.Root_meta_legend_service_metamodel_PostValidation;
+import org.finos.legend.pure.generated.Root_meta_legend_service_metamodel_PostValidationAssertion;
+import org.finos.legend.pure.generated.Root_meta_legend_service_metamodel_PureExecution;
+import org.finos.legend.pure.generated.Root_meta_legend_service_metamodel_Service;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 
@@ -416,13 +425,64 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             return List.of();
         }
 
-        // TODO: Handle references in ServiceTest_Legacy
-        return this.getExecutionReferences(((Service) packageableElement).execution, section.getDocumentState().getGlobalState()).collect(Collectors.toList());
+        Service service = (Service) packageableElement;
+        Stream<LegendReferenceResolver> executionReferences = this.getExecutionReferences(service.execution, section.getDocumentState().getGlobalState());
+        Stream<LegendReferenceResolver> stereoTypeReferences = PureLSPGrammarExtension.toStereotypeReferences(service.stereotypes);
+        Stream<LegendReferenceResolver> taggedValueReferences = PureLSPGrammarExtension.toTaggedValueReferences(service.taggedValues);
+        Stream<LegendReferenceResolver> coreReferences = Stream.empty();
+        if (coreInstance.isPresent())
+        {
+            coreReferences = toReferences((Root_meta_legend_service_metamodel_Service) coreInstance.get());
+        }
+        return Stream.of(executionReferences, stereoTypeReferences, taggedValueReferences, coreReferences)
+                .flatMap(Functions.identity())
+                .collect(Collectors.toList());
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(Root_meta_legend_service_metamodel_Service service)
+    {
+        Stream<LegendReferenceResolver> executionReferences = toReferences(service._execution());
+        Stream<LegendReferenceResolver> postValidationReferences = StreamSupport.stream(service._postValidations().spliterator(), false)
+                .flatMap(this::toReferences);
+        return Stream.concat(executionReferences, postValidationReferences);
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(Root_meta_legend_service_metamodel_Execution execution)
+    {
+        if (execution instanceof Root_meta_legend_service_metamodel_PureExecution)
+        {
+            Root_meta_legend_service_metamodel_PureExecution pureExecution = (Root_meta_legend_service_metamodel_PureExecution) execution;
+            return FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(pureExecution._func()));
+        }
+        return Stream.empty();
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(Root_meta_legend_service_metamodel_PostValidation postValidation)
+    {
+        if (postValidation == null)
+        {
+            return Stream.empty();
+        }
+        RichIterable<? extends CoreInstance> parameters = postValidation._parameters();
+        Stream<LegendReferenceResolver> parameterReferences = StreamSupport.stream(parameters.spliterator(), false)
+                .flatMap(parameter -> FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(parameter)));
+        RichIterable<? extends Root_meta_legend_service_metamodel_PostValidationAssertion> assertions = postValidation._assertions();
+        Stream<LegendReferenceResolver> assertionReferences = StreamSupport.stream(assertions.spliterator(), false)
+                .flatMap(this::toReferences);
+        return Stream.concat(parameterReferences, assertionReferences);
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(Root_meta_legend_service_metamodel_PostValidationAssertion postValidationAssertion)
+    {
+        if (postValidationAssertion == null)
+        {
+            return Stream.empty();
+        }
+        return FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(postValidationAssertion._assertion()));
     }
 
     private Stream<LegendReferenceResolver> getExecutionReferences(Execution execution, GlobalState state)
     {
-        // TODO: Handle references in Lambda expressions
         if (execution instanceof PureSingleExecution)
         {
             return this.toPureSingleExecutionReferences((PureSingleExecution) execution, state);

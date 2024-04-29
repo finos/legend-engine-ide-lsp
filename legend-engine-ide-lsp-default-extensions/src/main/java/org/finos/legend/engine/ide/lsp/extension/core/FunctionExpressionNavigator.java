@@ -26,7 +26,10 @@ import org.finos.legend.pure.m3.coreinstance.meta.pure.graphFetch.SubTypeGraphFe
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.PackageableElement;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.Function;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.FunctionDefinition;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.path.Path;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.path.PropertyPathElement;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.FunctionType;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.generics.GenericType;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.valuespecification.FunctionExpression;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.valuespecification.InstanceValue;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.valuespecification.VariableExpression;
@@ -63,7 +66,11 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
             FunctionDefinition<?> functionDefinition = (FunctionDefinition<?>) coreInstance;
             FunctionType functionType = (FunctionType) functionDefinition._classifierGenericType()._typeArguments().getOnly()._rawType();
             MutableList<VariableExpression> allVariableExpressions = Lists.mutable.withAll(variableExpressions).withAll(functionType._parameters()).asUnmodifiable();
-            return findReferences(functionDefinition._expressionSequence(), allVariableExpressions);
+            Stream<LegendReferenceResolver> expressionSequenceReferences = findReferences(functionDefinition._expressionSequence(), allVariableExpressions);
+            // TODO: Revisit return type
+            GenericType returnType = functionType._returnType();
+            Stream<LegendReferenceResolver> returnTypeReferences = getLegendReference(returnType.getSourceInformation(), returnType._rawType());
+            return Stream.concat(expressionSequenceReferences, returnTypeReferences);
         }
 
         else if (coreInstance instanceof FunctionExpression)
@@ -71,7 +78,6 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
             FunctionExpression functionExpression = (FunctionExpression) coreInstance;
             Stream<LegendReferenceResolver> paramReferences = findReferences(functionExpression._parametersValues(), variableExpressions);
             Function<?> function = functionExpression._func();
-            // TODO: Recursively find Path references
             Stream<LegendReferenceResolver> reference = getLegendReference(functionExpression.getSourceInformation(), function);
             return Stream.concat(paramReferences, reference);
         }
@@ -137,6 +143,18 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
             Stream<LegendReferenceResolver> subTypeTreeReferences = findReferences(graphFetchTree._subTypeTrees(), variableExpressions);
             return Stream.of(propertyReference, subTypeReference, subTreeReferences, subTypeTreeReferences)
                     .flatMap(java.util.function.Function.identity());
+        }
+
+        else if (coreInstance instanceof Path)
+        {
+            Path path = (Path) coreInstance;
+            return findReferences(path._path(), variableExpressions);
+        }
+
+        else if (coreInstance instanceof PropertyPathElement)
+        {
+            PropertyPathElement propertyPathElement = (PropertyPathElement) coreInstance;
+            return findReferences(propertyPathElement._parameters(), variableExpressions);
         }
 
         return Stream.empty();

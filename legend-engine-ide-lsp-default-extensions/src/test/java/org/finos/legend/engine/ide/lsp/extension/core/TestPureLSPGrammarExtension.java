@@ -773,6 +773,201 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(6, 10), mappedPropertyReference, "Within the property name has been mapped, referring to property");
     }
 
+    private MutableMap<String, String> getCodeFilesThatParseCompile()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::MyEnum",
+                "###Pure\n" +
+                        "Enum vscodelsp::test::MyEnum\n" +
+                        "{\n" +
+                        "  ENUM1,\n" +
+                        "  ENUM2,\n" +
+                        "  ENUM3\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestClass1",
+                "###Pure\n" +
+                        "Class vscodelsp::test::TestClass1\n" +
+                        "{\n" +
+                        "  name: String[1];\n" +
+                        "  address: String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestClass2",
+                "###Pure\n" +
+                        "Class vscodelsp::test::TestClass2\n" +
+                        "{\n" +
+                        "  type: vscodelsp::test::MyEnum[1];\n" +
+                        "  name: String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestClass3",
+                "###Pure\n" +
+                        "Class {meta::pure::profiles::doc.doc = 'use tags to add metadata.'} vscodelsp::test::TestClass3 extends vscodelsp::test::TestClass5\n" +
+                        "[\n" +
+                        "  constraint1: $this->project(\n" +
+                        "  [\n" +
+                        "    a: vscodelsp::test::TestClass3[1]|$a.tests.id\n" +
+                        "  ],\n" +
+                        "  ['testId']\n" +
+                        ")->groupBy(\n" +
+                        "  'testId',\n" +
+                        "  'count'->agg(\n" +
+                        "    x: meta::pure::tds::TDSRow[1]|$x,\n" +
+                        "    y: meta::pure::tds::TDSRow[*]|$y->count()\n" +
+                        "  )\n" +
+                        ")->filter(\n" +
+                        "  t: meta::pure::tds::TDSRow[1]|$t.getInteger('count') > 1\n" +
+                        ")->tdsRows()->isEmpty(),\n" +
+                        "  constraint2: true\n" +
+                        "]\n" +
+                        "{\n" +
+                        "  isOpen() {$this.closeDate->isEmpty()}: Boolean[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestClass4",
+                "###Pure\n" +
+                        "Class vscodelsp::test::TestClass4\n" +
+                        "{\n" +
+                        "  eventType: String[1];\n" +
+                        "  eventDate: StrictDate[1];\n" +
+                        "  initiator: vscodelsp::test::TestClass1[0..1];\n" +
+                        "  prop: vscodelsp::test::TestClass7[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestClass5",
+                "###Pure\n" +
+                        "Class vscodelsp::test::TestClass5\n" +
+                        "{\n" +
+                        "  name: String[1];\n" +
+                        "  createDate: StrictDate[1];\n" +
+                        "  tests: vscodelsp::test::TestClass7[*];\n" +
+                        "  closeDate: StrictDate[0..1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestClass6",
+                "###Pure\n" +
+                        "Class vscodelsp::test::TestClass6\n" +
+                        "{\n" +
+                        "  type: String[1];\n" +
+                        "  description: String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestClass7",
+                "###Pure\n" +
+                        "Class vscodelsp::test::TestClass7\n" +
+                        "{\n" +
+                        "  id: Integer[1];\n" +
+                        "  testDate: StrictDate[1];\n" +
+                        "  quantity: Float[1];\n" +
+                        "  dateTime: DateTime[0..1];\n" +
+                        "  thing: vscodelsp::test::TestClass8[0..1];\n" +
+                        "  account: vscodelsp::test::TestClass5[0..1];\n" +
+                        "  events: vscodelsp::test::TestClass4[*];\n" +
+                        "  thingIdentifier() {if(\n" +
+                        "  $this.thing->isNotEmpty(),\n" +
+                        "  |$this.thing->toOne().name,\n" +
+                        "  |'Unknown'\n" +
+                        ")}: String[1];\n" +
+                        "  eventsByDate(date: Date[1]) {$this.events->filter(\n" +
+                        "  e: vscodelsp::test::TestClass4[1]|$e.eventDate ==\n" +
+                        "    $date\n" +
+                        ")}: vscodelsp::test::TestClass4[*];\n" +
+                        "  testDateEvent() {$this.eventsByDate($this.testDate->toOne())->toOne()}: vscodelsp::test::TestClass4[1];\n" +
+                        "  testDateEventType() {$this.testDateEvent.eventType}: String[1];\n" +
+                        "  initiator() {$this.testDateEvent.initiator}: vscodelsp::test::TestClass1[0..1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestClass8",
+                "###Pure\n" +
+                        "Class {meta::pure::profiles::doc.doc = 'must pass date for ENUM2/ENUM1/ENUM3 now.'} vscodelsp::test::TestClass8\n" +
+                        "{\n" +
+                        "  name: String[1];\n" +
+                        "  classification: vscodelsp::test::TestClass6[1];\n" +
+                        "  enum1() {$this.property->filter(\n" +
+                        "  s: vscodelsp::test::TestClass2[1]|$s.type ==\n" +
+                        "    vscodelsp::test::MyEnum.ENUM1\n" +
+                        ")->toOne().name}: String[1];\n" +
+                        "  enum2() {$this.property->filter(\n" +
+                        "  s: vscodelsp::test::TestClass2[1]|$s.type ==\n" +
+                        "    vscodelsp::test::MyEnum.ENUM2\n" +
+                        ")->toOne().name}: String[1];\n" +
+                        "  enum3() {$this.property->filter(\n" +
+                        "  s: vscodelsp::test::TestClass2[1]|$s.type ==\n" +
+                        "    vscodelsp::test::MyEnum.ENUM3\n" +
+                        ")->toOne().name}: String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestAssociation",
+                "###Pure\n" +
+                        "Association vscodelsp::test::TestAssociation\n" +
+                        "{\n" +
+                        "  thing: vscodelsp::test::TestClass8[1];\n" +
+                        "  property: vscodelsp::test::TestClass2[*];\n" +
+                        "}");
+
+        return codeFiles;
+    }
+
+    @Test
+    void testGetReferenceResolversLambdasInConstraintsAndProperties()
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        LegendReference mappedClassPropertyInLambdaReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 5, 41, 5, 45))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass5", 5, 2, 5, 39))
+                .build();
+        testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(5, 42), mappedClassPropertyInLambdaReference, "Within the class property has been mapped, referring to class property definition");
+
+        LegendReference mappedQualifiedPropertyLambdaPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 20, 18, 20, 26))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass5", 6, 2, 6, 29))
+                .build();
+        testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(20, 20), mappedQualifiedPropertyLambdaPropertyReference, "Within the property has been mapped, referring to property definition");
+    }
+
+    @Test
+    @Disabled("Enable once m3 source information is fixed")
+    void testGetReferenceResolversLambdasComplete()
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        LegendReference mappedClassReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 3, 16, 3, 19))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 1, 0, 21, 0))
+                .build();
+        testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(3, 17), mappedClassReference, "Within the class name has been mapped, referring to class definition");
+
+        LegendReference mappedClassReference2 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 5, 7, 5, 33))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 1, 0, 21, 0))
+                .build();
+        testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(5, 17), mappedClassReference2, "Within the class name has been mapped, referring to class definition");
+
+        LegendReference mappedNestedClassPropertyReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 5, 47, 5, 48))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass7", 3, 2, 3, 16))
+                .build();
+        testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(5, 47), mappedNestedClassPropertyReference, "Within the nested property name has been mapped, referring to property definition");
+
+        LegendReference mappedReturnTypeReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass7", 18, 4, 18, 30))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass4", 3, 2, 3, 16))
+                .build();
+        testReferenceLookup(codeFiles, "vscodelsp::test::TestClass7", TextPosition.newPosition(18, 25), mappedReturnTypeReference, "Within the return type has been mapped, referring to class definition");
+
+        LegendReference mappedEnumReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass8", 7, 4, 7, 26))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::MyEnum", 1, 0, 6, 0))
+                .build();
+        testReferenceLookup(codeFiles, "vscodelsp::test::TestClass8", TextPosition.newPosition(7, 25), mappedEnumReference, "Within the enum has been mapped, referring to enum definition");
+
+        LegendReference mappedEnumValueReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass8", 7, 28, 7, 32))
+                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::MyEnum", 3, 2, 3, 6))
+                .build();
+        testReferenceLookup(codeFiles, "vscodelsp::test::TestClass8", TextPosition.newPosition(7, 29), mappedEnumValueReference, "Within the enum value has been mapped, referring to enum value definition");
+    }
+
     @Test
     @Disabled("Enable once m3 source information is fixed")
     void testGetReferenceResolversFunction()

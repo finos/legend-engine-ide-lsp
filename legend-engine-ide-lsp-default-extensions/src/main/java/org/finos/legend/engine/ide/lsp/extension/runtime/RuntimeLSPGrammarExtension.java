@@ -171,7 +171,7 @@ public class RuntimeLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                     Stream<LegendReferenceResolver> connectionReferences = this.toConnectionReferences(connectionStore.connectionPointer, state);
                     Stream<LegendReferenceResolver> storeReferences = connectionStore.storePointers
                             .stream()
-                            .map(packageableElementPointer -> this.toStoreReference(packageableElementPointer));
+                            .map(this::toStoreReference);
                     return Stream.concat(connectionReferences, storeReferences);
                 });
 

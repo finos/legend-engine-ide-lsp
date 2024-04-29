@@ -19,10 +19,13 @@ package org.finos.legend.engine.ide.lsp.extension.relational;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.impl.block.factory.Functions;
 import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
@@ -44,8 +47,13 @@ import org.finos.legend.engine.language.pure.grammar.from.RelationalGrammarParse
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.AssociationMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.PropertyMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.FilterMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RelationalAssociationMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RelationalClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RelationalPropertyMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.RootRelationalClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.mapping.TablePtr;
@@ -64,6 +72,8 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.r
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.TableAliasColumn;
 import org.finos.legend.pure.generated.core_relational_relational_autogeneration_relationalToPure;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.SetImplementation;
+import org.finos.legend.pure.m3.coreinstance.meta.relational.mapping.RelationalInstanceSetImplementation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -355,65 +365,103 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     @Override
     public Stream<LegendReferenceResolver> getClassMappingReferences(ClassMapping mapping, GlobalState state)
     {
-        if (mapping instanceof RootRelationalClassMapping)
+        if (mapping instanceof RelationalClassMapping)
         {
-            return toReferences((RootRelationalClassMapping) mapping);
+            return toReferences((RelationalClassMapping) mapping, state);
         }
         return Stream.empty();
     }
 
-
-    private Stream<LegendReferenceResolver> toReferences(RootRelationalClassMapping relationalClassMapping)
+    @Override
+    public Stream<LegendReferenceResolver> getAssociationMappingReferences(AssociationMapping associationMapping, GlobalState state)
     {
-        Stream<LegendReferenceResolver> properties = relationalClassMapping.propertyMappings.stream().flatMap(propertyMapping ->
+        if (associationMapping instanceof RelationalAssociationMapping)
         {
-            LegendReferenceResolver propRef = MappingLSPGrammarExtension.propertyMappingToReference(propertyMapping);
+            return toReferences((RelationalAssociationMapping) associationMapping, state);
+        }
+        return Stream.empty();
+    }
 
-            Stream<LegendReferenceResolver> propertyReference = Stream.of(propRef);
+    @Override
+    public Stream<LegendReferenceResolver> getSetImplementationReferences(SetImplementation setImplementation)
+    {
+        if (setImplementation instanceof RelationalInstanceSetImplementation)
+        {
+            RelationalInstanceSetImplementation relationalInstanceSetImplementation = (RelationalInstanceSetImplementation) setImplementation;
+            return StreamSupport.stream(relationalInstanceSetImplementation._propertyMappings().spliterator(), false)
+                    .flatMap(MappingLSPGrammarExtension::toReferences);
+        }
+        return Stream.empty();
+    }
 
-            if (propertyMapping instanceof RelationalPropertyMapping)
+    @Override
+    public Stream<LegendReferenceResolver> getPropertyMappingReferences(PropertyMapping propertyMapping)
+    {
+        if (propertyMapping instanceof RelationalPropertyMapping)
+        {
+            RelationalPropertyMapping relationalPropertyMapping = (RelationalPropertyMapping) propertyMapping;
+            return toReferences(relationalPropertyMapping.relationalOperation);
+        }
+        return Stream.empty();
+    }
+
+    private Stream<LegendReferenceResolver> toReferences(RelationalClassMapping relationalClassMapping, GlobalState state)
+    {
+        Stream<LegendReferenceResolver> properties = relationalClassMapping.propertyMappings.stream()
+                .flatMap(Functions.bind(MappingLSPGrammarExtension::propertyMappingToReferences, state));
+        Stream<LegendReferenceResolver> pkRef = relationalClassMapping.primaryKey.stream().flatMap(this::toReferences);
+        Stream<LegendReferenceResolver> rootRelationalClassMappingReferences = Stream.empty();
+        if (relationalClassMapping instanceof RootRelationalClassMapping)
+        {
+            RootRelationalClassMapping rootRelationalClassMapping = (RootRelationalClassMapping) relationalClassMapping;
+            Stream<LegendReferenceResolver> filterReferences = Stream.empty();
+            FilterMapping filter = rootRelationalClassMapping.filter;
+            if (filter != null)
             {
-                RelationalPropertyMapping relMap = (RelationalPropertyMapping) propertyMapping;
-                return Stream.concat(propertyReference, this.toReferences(relMap.relationalOperation));
+                LegendReferenceResolver filterReference = LegendReferenceResolver.newReferenceResolver(
+                        filter.sourceInformation,
+                        x ->
+                        {
+                            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(filter.filter.db, filter.sourceInformation, x);
+                            return HelperRelationalBuilder.getFilter(database, filter.filter.name, filter.sourceInformation);
+                        }
+                );
+
+                filterReferences = Stream.concat(
+                        Stream.of(filterReference),
+                        filter.joins.stream().map(this::toReferences)
+                );
             }
 
-            return propertyReference;
-        });
+            Stream<LegendReferenceResolver> mainTableRef = Stream.of(this.toReference(rootRelationalClassMapping.mainTable))
+                    .filter(Objects::nonNull);
 
-        Stream<LegendReferenceResolver> filterReferences = Stream.empty();
-
-        if (relationalClassMapping.filter != null)
-        {
-            LegendReferenceResolver filterReference = LegendReferenceResolver.newReferenceResolver(
-                    relationalClassMapping.filter.sourceInformation,
-                    x ->
-                    {
-                         org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(relationalClassMapping.filter.filter.db, relationalClassMapping.filter.sourceInformation, x);
-                         return HelperRelationalBuilder.getFilter(database, relationalClassMapping.filter.filter.name, relationalClassMapping.filter.sourceInformation);
-                    }
-            );
-
-            filterReferences = Stream.concat(
-                    Stream.of(filterReference),
-                    relationalClassMapping.filter.joins.stream().map(this::toReferences)
-            );
+            Stream<LegendReferenceResolver> groupByReferences = rootRelationalClassMapping.groupBy
+                    .stream()
+                    .flatMap(this::toReferences);
+            rootRelationalClassMappingReferences = Stream.concat(filterReferences, Stream.concat(mainTableRef, groupByReferences));
         }
 
-        Stream<LegendReferenceResolver> pkRef = relationalClassMapping.primaryKey.stream().flatMap(this::toReferences);
+        return Stream.concat(properties, Stream.concat(pkRef, rootRelationalClassMappingReferences));
+    }
 
-        Stream<LegendReferenceResolver> mainTableRef = Stream.of(
-                this.toReference(relationalClassMapping.mainTable)
-        );
-
-        return Stream.concat(Stream.concat(mainTableRef, Stream.concat(properties, filterReferences)), pkRef);
+    private Stream<LegendReferenceResolver> toReferences(RelationalAssociationMapping relationalAssociationMapping, GlobalState state)
+    {
+        return relationalAssociationMapping.propertyMappings
+                .stream()
+                .flatMap(Functions.bind(MappingLSPGrammarExtension::propertyMappingToReferences, state));
     }
 
     private LegendReferenceResolver toReference(TablePtr tablePtr)
     {
-        return LegendReferenceResolver.newReferenceResolver(
-                tablePtr.sourceInformation,
-                x -> HelperRelationalBuilder.getRelation(tablePtr, x)
-        );
+        if (tablePtr != null)
+        {
+            return LegendReferenceResolver.newReferenceResolver(
+                    tablePtr.sourceInformation,
+                    x -> HelperRelationalBuilder.getRelation(tablePtr, x)
+            );
+        }
+        return null;
     }
 
     private LegendReferenceResolver toReferences(JoinPointer joinPointer)
@@ -430,17 +478,20 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         if (element instanceof TableAliasColumn)
         {
             TableAliasColumn tableAliasColumn = (TableAliasColumn) element;
-            LegendReferenceResolver tableRef = toReference(tableAliasColumn.table);
+            if (tableAliasColumn.table != null)
+            {
+                LegendReferenceResolver tableRef = toReference(tableAliasColumn.table);
 
-            LegendReferenceResolver colRef = LegendReferenceResolver.newReferenceResolver(tableAliasColumn.sourceInformation,
-                    x -> HelperRelationalBuilder.getColumn(
-                            HelperRelationalBuilder.getRelation(tableAliasColumn.table, x),
-                            tableAliasColumn.column,
-                            tableAliasColumn.sourceInformation
-                    )
-            );
+                LegendReferenceResolver colRef = LegendReferenceResolver.newReferenceResolver(tableAliasColumn.sourceInformation,
+                        x -> HelperRelationalBuilder.getColumn(
+                                HelperRelationalBuilder.getRelation(tableAliasColumn.table, x),
+                                tableAliasColumn.column,
+                                tableAliasColumn.sourceInformation
+                        )
+                );
 
-            return Stream.of(tableRef, colRef);
+                return Stream.of(tableRef, colRef);
+            }
         }
         else if (element instanceof ElementWithJoins)
         {
