@@ -16,10 +16,14 @@
 
 package org.finos.legend.engine.ide.lsp.server.integration;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
+import com.google.gson.JsonPrimitive;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.io.UncheckedIOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.nio.file.FileVisitOption;
@@ -27,7 +31,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.Phaser;
@@ -55,6 +61,7 @@ import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
+import org.finos.legend.engine.ide.lsp.Constants;
 import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
@@ -87,6 +94,31 @@ public class LegendLanguageServerIntegrationExtension implements
     private LegendLanguageServerContract server;
     private Future<Void> serverFuture;
     private Path workspaceFolderPath;
+    private final Path pomOverride;
+
+    public LegendLanguageServerIntegrationExtension(Path pomOverride)
+    {
+        super();
+        this.pomOverride = pomOverride;
+    }
+
+    public LegendLanguageServerIntegrationExtension()
+    {
+        try
+        {
+            this.workspaceFolderPath = Files.createTempDirectory("legend-integration");
+
+            this.pomOverride = this.workspaceFolderPath.resolve("pom.xml");
+            try (InputStream pom = TestLegendLanguageServerIntegration.class.getClassLoader().getResourceAsStream("pom.xml"))
+            {
+                Files.copy(Objects.requireNonNull(pom, "missing integration test pom"), this.pomOverride);
+            }
+        }
+        catch (IOException e)
+        {
+            throw new UncheckedIOException(e);
+        }
+    }
 
     @Override
     public void afterAll(ExtensionContext context) throws Exception
@@ -129,18 +161,16 @@ public class LegendLanguageServerIntegrationExtension implements
     @Override
     public void beforeAll(ExtensionContext context) throws Exception
     {
-        workspaceFolderPath = Files.createTempDirectory("legend-integration");
-        client = new DummyLanguageClient();
+        client = new DummyLanguageClient(
+                Map.of(
+                        Constants.MAVEN_SETTINGS_FILE_CONFIG_PATH, Optional.ofNullable(System.getProperty("test.maven.settings.path")).<JsonElement>map(JsonPrimitive::new).orElse(JsonNull.INSTANCE),
+                        Constants.LEGEND_EXTENSIONS_DEPENDENCIES_POM_CONFIG_PATH, new JsonPrimitive(this.pomOverride.toString())
+                )
+        );
         // default to one party member, the one arriving and waiting for all tasks and messages
         phaser = new Phaser(1);
         executorService = new LSPAsyncTaskTrackingExecutor(phaser);
         LSPMessageTrackerFactory lspMessageTrackerFactory = new LSPMessageTrackerFactory(phaser);
-
-        Path pomPath = this.workspaceFolderPath.resolve("pom.xml");
-        try (InputStream pom = TestLegendLanguageServerIntegration.class.getClassLoader().getResourceAsStream("pom.xml"))
-        {
-            Files.copy(Objects.requireNonNull(pom, "missing integration test pom"), pomPath);
-        }
 
         PipedInputStream clientInput = new PipedInputStream();
         PipedOutputStream serverOutput = new PipedOutputStream(clientInput);
@@ -160,7 +190,7 @@ public class LegendLanguageServerIntegrationExtension implements
         clientFuture = clientLauncher.startListening();
         server = clientLauncher.getRemoteProxy();
 
-        LegendLanguageServer serverImpl = LegendLanguageServer.builder().asynchronous(executorService).classpathFromMaven(pomPath.toFile()).build();
+        LegendLanguageServer serverImpl = LegendLanguageServer.builder().asynchronous(executorService).classpathFromMaven(this.pomOverride.toFile()).build();
         Launcher<LanguageClient> serverLauncher = LSPLauncher.createServerLauncher(
                 serverImpl,
                 serverInput,

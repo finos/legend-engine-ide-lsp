@@ -703,6 +703,7 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         request.setProperties(properties);
         request.setTimeoutInSeconds((int) TimeUnit.MINUTES.toSeconds(15));
         request.setJavaHome(Optional.ofNullable(System.getProperty("java.home")).map(File::new).orElse(null));
+        request.setLocalRepositoryDirectory(Optional.ofNullable(System.getProperty("maven.repo.local")).filter(x -> !x.isEmpty()).map(File::new).orElse(null));
         request.setMavenHome(maven);
         request.setShowErrors(true);
         request.setShowVersion(true);
