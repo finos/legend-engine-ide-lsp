@@ -55,7 +55,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.Package
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Enumeration;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
-import org.finos.legend.engine.shared.core.identity.factory.IdentityFactoryProvider;
+import org.finos.legend.engine.shared.core.identity.Identity;
 import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
 import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
 import org.slf4j.Logger;
@@ -145,7 +145,7 @@ public interface FunctionExecutionSupport
                 PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
                 MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
-                collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", IdentityFactoryProvider.getInstance().getAnonymousIdentity()), section, inputParameters, results::add);
+                collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity()), section, inputParameters, results::add);
             }
         }
         catch (Exception e)
