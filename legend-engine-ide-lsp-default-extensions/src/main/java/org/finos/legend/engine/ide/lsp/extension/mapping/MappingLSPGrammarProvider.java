@@ -19,10 +19,18 @@ package org.finos.legend.engine.ide.lsp.extension.mapping;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.AssociationMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.PropertyMapping;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.SetImplementation;
 
 public interface MappingLSPGrammarProvider
 {
     Stream<LegendReferenceResolver> getClassMappingReferences(ClassMapping mapping, GlobalState state);
 
+    Stream<LegendReferenceResolver> getAssociationMappingReferences(AssociationMapping associationMapping, GlobalState state);
+
+    Stream<LegendReferenceResolver> getSetImplementationReferences(SetImplementation setImplementation);
+
+    Stream<LegendReferenceResolver> getPropertyMappingReferences(PropertyMapping propertyMapping);
 }

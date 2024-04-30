@@ -32,6 +32,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.finos.legend.engine.ide.lsp.extension.relational.RelationalLSPGrammarExtension.GENERATE_MODEL_MAPPING_COMMAND_ID;
@@ -483,5 +484,99 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(15, 31), mappedStoreReference2, "Within the store name has been mapped, referring to store definition");
+    }
+
+    @Test
+    @Disabled("Enable once m3 source information is fixed")
+    public void testLegendReferenceForRelationalAssociationMapping()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_MAPPING_DOC_ID = "vscodelsp::test::TestIncludeMapping";
+        final String TEST_ASSOCIATION_DOC_ID = "vscodelsp::test::TestAssociation";
+        codeFiles.put("vscodelsp::test::Person",
+                "###Pure\n" +
+                        "Class vscodelsp::test::Person\n" +
+                        "{\n" +
+                        "    name: String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::Firm",
+                "###Pure\n" +
+                        "Class vscodelsp::test::Firm\n" +
+                        "{\n" +
+                        "    name: String[1];\n" +
+                        "}");
+
+        codeFiles.put(TEST_ASSOCIATION_DOC_ID,
+                "###Pure\n" +
+                        "Association vscodelsp::test::TestAssociation\n" +
+                        "{\n" +
+                        "   firmPersonPerson : vscodelsp::test::Person[1];\n" +
+                        "   firmPersonFirm : vscodelsp::test::Firm[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::TestDB",
+                "###Relational\n" +
+                        "Database vscodelsp::test::TestDB\n" +
+                        "(\n" +
+                        "   Table People\n" +
+                        "   (\n" +
+                        "       id INTEGER PRIMARY KEY,\n" +
+                        "       firm_id INTEGER,\n" +
+                        "       name VARCHAR(200)\n" +
+                        "   )\n" +
+                        "   Table Firms\n" +
+                        "   (\n" +
+                        "       id INTEGER PRIMARY KEY,\n" +
+                        "       name VARCHAR(200)\n" +
+                        "   )\n" +
+                        "\n" +
+                        "   Join FirmPerson(People.firm_id = Firms.id)\n" +
+                        ")");
+
+        codeFiles.put(TEST_MAPPING_DOC_ID,
+                "###Mapping\n" +
+                        "Mapping vscodelsp::test::TestIncludeMapping\n" +
+                        "(\n" +
+                        "   vscodelsp::test::Person[vscodelsp_test_Person]: Relational\n" +
+                        "   {\n" +
+                        "       ~primaryKey\n" +
+                        "       (\n" +
+                        "           [vscodelsp::test::TestDB]People.id\n" +
+                        "       )\n" +
+                        "       ~mainTable [vscodelsp::test::TestDB]People\n" +
+                        "       name: [vscodelsp::test::TestDB]People.name\n" +
+                        "   }\n" +
+                        "   vscodelsp::test::Firm[vscodelsp_test_Firm]: Relational\n" +
+                        "   {\n" +
+                        "       ~primaryKey\n" +
+                        "       (\n" +
+                        "           [vscodelsp::test::TestDB]Firms.id\n" +
+                        "       )\n" +
+                        "       ~mainTable [vscodelsp::test::TestDB]Firms\n" +
+                        "       name: [vscodelsp::test::TestDB]Firms.name\n" +
+                        "   }\n" +
+                        "   vscodelsp::test::TestAssociation : Relational\n" +
+                        "   {\n" +
+                        "       AssociationMapping\n" +
+                        "       (\n" +
+                        "           firmPersonPerson[vscodelsp_test_Firm,vscodelsp_test_Person] : [vscodelsp::test::TestDB]@FirmPerson,\n" +
+                        "           firmPersonFirm[vscodelsp_test_Person,vscodelsp_test_Firm] : [vscodelsp::test::TestDB]@FirmPerson\n" +
+                        "       )\n" +
+                        "   }\n" +
+                        ")");
+
+        LegendReference mappedAssociationReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 25, 11, 25, 26))
+                .withReferencedLocation(TextLocation.newTextSource(TEST_ASSOCIATION_DOC_ID, 3, 3, 3, 48))
+                .build();
+
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(24, 2), null, "Outside of mappedAssociationReference-able element should yield nothing");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(25, 10), null, "Outside of mappedAssociationReference-able element (before association name) should yield nothing");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(25, 11), mappedAssociationReference, "Start of association name has been mapped, referring to association definition");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(25, 20), mappedAssociationReference, "Within the association name has been mapped, referring to association definition");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(25, 26), mappedAssociationReference, "End of association name has been mapped, referring to association definition");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(25, 27), null, "Outside of mappedAssociationReference-able element should yield nothing");
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(26, 3), null, "Outside of mappedAssociationReference-able element should yield nothing");
     }
 }
