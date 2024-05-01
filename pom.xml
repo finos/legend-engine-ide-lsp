@@ -91,6 +91,9 @@
         <sonar.organization>finos</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 
+        <!--suppress UnresolvedMavenProperty -->
+        <test.maven.settings.path>${teamcity.maven.userSettings.path}</test.maven.settings.path>
+
     </properties>
 
     <scm>
@@ -155,7 +158,11 @@
                         <trimStackTrace>false</trimStackTrace>
                         <reportsDirectory>${project.parent.basedir}/legend-engine-ide-lsp-test-reports/surefire-reports-aggregate</reportsDirectory>
                         <systemPropertyVariables>
+                            <!--suppress UnresolvedMavenProperty -->
                             <maven.home>${maven.home}</maven.home>
+                            <!--suppress UnresolvedMavenProperty -->
+                            <maven.repo.local>${maven.repo.local}</maven.repo.local>
+                            <test.maven.settings.path>${test.maven.settings.path}</test.maven.settings.path>
                         </systemPropertyVariables>
                         <forkCount>1C</forkCount>
                         <reuseForks>true</reuseForks>
@@ -296,6 +303,7 @@
                     <linkXRef>false</linkXRef>
                     <printFailingErrors>true</printFailingErrors>
                     <rulesets>
+                        <!--suppress UnresolvedMavenProperty -->
                         <ruleset>${project.parent.basedir}/.pmd/legend-ruleset.xml</ruleset>
                     </rulesets>
                 </configuration>

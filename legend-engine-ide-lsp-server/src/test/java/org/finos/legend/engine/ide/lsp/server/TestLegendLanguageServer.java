@@ -14,6 +14,7 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import java.util.Map;
 import java.util.Set;
 import org.eclipse.lsp4j.DidChangeConfigurationParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
@@ -165,6 +166,6 @@ public class TestLegendLanguageServer
 
     private DummyLanguageClient newLanguageClient()
     {
-        return new DummyLanguageClient();
+        return new DummyLanguageClient(Map.of());
     }
 }

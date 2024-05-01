@@ -16,6 +16,7 @@ package org.finos.legend.engine.ide.lsp.maven;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.stream.JsonWriter;
@@ -28,10 +29,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-import org.eclipse.lsp4j.ConfigurationItem;
-import org.eclipse.lsp4j.ConfigurationParams;
+import java.util.Map;
+import java.util.Optional;
 import org.eclipse.lsp4j.InitializeParams;
 import org.finos.legend.engine.ide.lsp.Constants;
 import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
@@ -111,29 +110,18 @@ class TestClasspathUsingMavenFactory
                         "</project>", StandardCharsets.UTF_8);
 
         LegendLanguageServer server = LegendLanguageServer.builder().synchronous().build();
-        DummyLanguageClient languageClient = new DummyLanguageClient()
-        {
-            @Override
-            public CompletableFuture<List<Object>> configuration(ConfigurationParams configurationParams)
-            {
-                clientLog.add(String.format("configuration - %s", configurationParams.getItems().stream().map(ConfigurationItem::getSection).collect(Collectors.joining())));
-                return CompletableFuture.completedFuture(configurationParams.getItems().stream().map(x ->
-                {
-                    switch (x.getSection())
-                    {
-                        case Constants.LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH:
-                            JsonArray jsonElements = new JsonArray();
-                            jsonElements.add("commons-lang:commons-lang:2.6");
-                            jsonElements.add("commons-codec:commons-codec:1.15");
-                            return jsonElements;
-                        case Constants.LEGEND_SDLC_SERVER_CONFIG_PATH:
-                            return new JsonPrimitive("http://localhost:" + httpServer.getAddress().getPort() + "/api");
-                        default:
-                            return JsonNull.INSTANCE;
-                    }
-                }).collect(Collectors.toList()));
-            }
-        };
+
+        JsonArray extensionsOtherDepsElement = new JsonArray();
+        extensionsOtherDepsElement.add("commons-lang:commons-lang:2.6");
+        extensionsOtherDepsElement.add("commons-codec:commons-codec:1.15");
+
+        Map<String, JsonElement> configs = Map.of(
+                Constants.LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH, extensionsOtherDepsElement,
+                Constants.LEGEND_SDLC_SERVER_CONFIG_PATH, new JsonPrimitive("http://localhost:" + httpServer.getAddress().getPort() + "/api"),
+                Constants.MAVEN_SETTINGS_FILE_CONFIG_PATH, Optional.ofNullable(System.getProperty("test.maven.settings.path")).<JsonElement>map(JsonPrimitive::new).orElse(JsonNull.INSTANCE)
+        );
+
+        DummyLanguageClient languageClient = new DummyLanguageClient(configs);
         server.connect(languageClient);
         server.initialize(new InitializeParams());
 
