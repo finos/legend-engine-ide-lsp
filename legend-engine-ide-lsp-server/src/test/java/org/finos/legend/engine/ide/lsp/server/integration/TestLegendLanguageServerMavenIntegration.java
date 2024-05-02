@@ -42,16 +42,6 @@ public class TestLegendLanguageServerMavenIntegration
         {
             System.setProperty("storagePath", workspaceStoragePath.toString());
 
-            // load, will create cache files
-            extension.getServer().initialized(new InitializedParams());
-            extension.waitForAllTaskToComplete();
-
-            extension.getServer().initialized(new InitializedParams());
-            extension.waitForAllTaskToComplete();
-
-            Assertions.assertTrue(extension.clientLogged("logMessage - Info - Reusing cached core classpath rather that invoking maven"), "Core classpath should be reused");
-
-            // check file change detection
             Files.writeString(extension.resolveWorkspacePath("pom.xml"),
                     "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n" +
                     "    <modelVersion>4.0.0</modelVersion>\n" +
@@ -61,7 +51,7 @@ public class TestLegendLanguageServerMavenIntegration
                     "    <version>0.0.0-SNAPSHOT</version>\n" +
                     "\n" +
                     "    <properties>\n" +
-                    "       <platform.eclipse-collections.version>0.0.0</platform.eclipse-collections.version>\n" +
+                    "       <platform.eclipse-collections.version>10.2.0</platform.eclipse-collections.version>\n" +
                     "    </properties>\n" +
                     "    <dependencies>\n" +
                     "        <dependency>\n" +
@@ -78,8 +68,41 @@ public class TestLegendLanguageServerMavenIntegration
                     "\n" +
                     "</project>");
 
+            extension.clearClientLogMessages();
             extension.getServer().initialized(new InitializedParams());
             extension.waitForAllTaskToComplete();
+
+            Assertions.assertTrue(extension.clientLogged("logMessage - Info - Resolving core classpath invoking maven..."), "Core classpath first loaded from maven");
+
+            extension.clearClientLogMessages();
+            extension.getServer().initialized(new InitializedParams());
+            extension.waitForAllTaskToComplete();
+
+            Assertions.assertTrue(extension.clientLogged("logMessage - Info - Reusing cached core classpath rather that invoking maven"), "Core classpath should be reused");
+
+            // check file change detection
+            Files.writeString(extension.resolveWorkspacePath("pom.xml"),
+                    "<project xmlns=\"http://maven.apache.org/POM/4.0.0\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n" +
+                            "    <modelVersion>4.0.0</modelVersion>\n" +
+                            "\n" +
+                            "    <groupId>org.finos.legend.engine.ide.lsp</groupId>\n" +
+                            "    <artifactId>legend-engine-ide-lsp-server-sample-pom</artifactId>\n" +
+                            "    <version>0.0.0-SNAPSHOT</version>\n" +
+                            "\n" +
+                            "    <dependencies>\n" +
+                            "        <dependency>\n" +
+                            "            <groupId>commons-io</groupId>\n" +
+                            "            <artifactId>commons-io</artifactId>\n" +
+                            "            <version>2.15.1</version>\n" +
+                            "        </dependency>\n" +
+                            "    </dependencies>\n" +
+                            "\n" +
+                            "</project>");
+
+            extension.clearClientLogMessages();
+            extension.getServer().initialized(new InitializedParams());
+            extension.waitForAllTaskToComplete();
+
             Assertions.assertTrue(extension.clientLogged("logMessage - Info - Cached for core classpath is stale..."), "Core classpath should be not be reused");
         }
         catch (Exception e)

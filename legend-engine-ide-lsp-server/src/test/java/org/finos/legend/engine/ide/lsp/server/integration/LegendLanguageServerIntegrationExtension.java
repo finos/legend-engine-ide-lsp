@@ -155,6 +155,11 @@ public class LegendLanguageServerIntegrationExtension implements
 
         server.getWorkspaceService().didDeleteFiles(new DeleteFilesParams(deletes));
         waitForAllTaskToComplete();
+        clearClientLogMessages();
+    }
+
+    public void clearClientLogMessages()
+    {
         client.clientLog.clear();
     }
 
