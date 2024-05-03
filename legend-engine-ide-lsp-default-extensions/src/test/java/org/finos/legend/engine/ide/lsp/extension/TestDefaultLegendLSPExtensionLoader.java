@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.impl.factory.Sets;
 import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.functionActivator.HostedServiceLSPGrammarExtension;
@@ -52,8 +54,15 @@ class TestDefaultLegendLSPExtensionLoader
         expected.put("Runtime", RuntimeLSPGrammarExtension.class);
         expected.put("Service", ServiceLSPGrammarExtension.class);
         expected.put("Data", DefaultLegendLSPExtensionLoader.CatchAllSectionParserLSPGrammarExtension.class);
+        expected.put("QueryPostProcessor", DefaultLegendLSPExtensionLoader.CatchAllSectionParserLSPGrammarExtension.class);
         expected.put("Snowflake", SnowflakeLSPGrammarExtension.class);
         expected.put("HostedService", HostedServiceLSPGrammarExtension.class);
+
+        MutableSet<String> missingOnActual = Sets.adapt(expected.keySet()).difference(Sets.adapt(grammarsMap.keySet()));
+        Assertions.assertTrue(missingOnActual.isEmpty(), "Expected but missed on actual: " + missingOnActual);
+
+        MutableSet<String> missingOnExpected = Sets.adapt(grammarsMap.keySet()).difference(Sets.adapt(expected.keySet()));
+        Assertions.assertTrue(missingOnExpected.isEmpty(), "Actual but missed on expected: " + missingOnExpected);
 
         Assertions.assertEquals(expected, grammarsMap);
     }
