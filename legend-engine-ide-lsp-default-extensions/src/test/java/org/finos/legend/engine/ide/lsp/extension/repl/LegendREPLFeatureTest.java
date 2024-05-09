@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +50,11 @@ public class LegendREPLFeatureTest
         PipedOutputStream replOutput = new PipedOutputStream();
         PipedInputStream replOutputConsole = new PipedInputStream(replOutput);
 
-        TerminalBuilder.setTerminalOverride(TerminalBuilder.builder().streams(replInput, replOutput).build());
+        Terminal terminalOverride = TerminalBuilder.builder()
+                .streams(replInput, replOutput)
+                .providers(TerminalBuilder.PROP_PROVIDER_EXEC)
+                .build();
+        TerminalBuilder.setTerminalOverride(terminalOverride);
 
         Future<?> replFuture = this.executorService.submit(new LegendREPLFeatureImpl()::startREPL);
 

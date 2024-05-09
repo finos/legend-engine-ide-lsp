@@ -390,17 +390,6 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
         dependencies.add(replDependency);
 
-        if (Os.isFamily(Os.FAMILY_WINDOWS))
-        {
-            Dependency replWindowsDependency = new Dependency();
-            replWindowsDependency.setGroupId("org.finos.legend.engine");
-            replWindowsDependency.setArtifactId("legend-engine-repl-client-windows");
-            replWindowsDependency.setType("pom");
-            replWindowsDependency.setVersion(engineVersion);
-
-            dependencies.add(replWindowsDependency);
-        }
-
         Dependency planGenSerializationDependency = new Dependency();
         planGenSerializationDependency.setGroupId("org.finos.legend.engine");
         planGenSerializationDependency.setArtifactId("legend-engine-configuration-plan-generation-serialization");
