@@ -251,13 +251,9 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     public void initialized(InitializedParams params)
     {
         checkReady();
-        this.classpathFactory.initialize(this);
-        CompletableFuture<Void> initializeExtensions = this.initializeExtensions();
-        CompletableFuture<Void> engineServerUrl = this.initializeEngineServerUrl();
-
-        CompletableFuture.allOf(initializeExtensions, engineServerUrl)
+        this.initializeEngineServerUrl()
+                .thenCompose(_void -> this.initializeExtensions())
                 .thenRun(() -> this.logInfoToClient("Extension finished post-initialization"));
-
     }
 
     private CompletableFuture<Void> initializeEngineServerUrl()
@@ -291,6 +287,8 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     {
         Instant start = Instant.now();
         logInfoToClient("Initializing extensions");
+
+        this.classpathFactory.initialize(this);
 
         return this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
