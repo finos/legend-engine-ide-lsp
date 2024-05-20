@@ -367,6 +367,12 @@
             <version>${legend.sdlc.version}</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.finos.legend.sdlc</groupId>
+            <artifactId>legend-sdlc-protocol</artifactId>
+            <version>${legend.sdlc.version}</version>
+            <scope>provided</scope>
+        </dependency>
 
         <!-- TEST -->
         <dependency>

@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
+import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
@@ -41,5 +42,8 @@ public interface LegendLanguageServiceContract
 
     @JsonRequest("legendVirtualFile")
     CompletableFuture<String> loadLegendVirtualFile(String uri);
+
+    @JsonRequest("entities")
+    CompletableFuture<List<LegendEntity>> entities();
 
 }

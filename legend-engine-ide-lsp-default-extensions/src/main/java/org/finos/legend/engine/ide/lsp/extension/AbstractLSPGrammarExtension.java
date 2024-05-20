@@ -32,6 +32,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -77,6 +78,8 @@ import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
+import org.finos.legend.sdlc.domain.model.entity.Entity;
+import org.finos.legend.sdlc.protocol.pure.v1.PureToEntityConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,6 +108,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     private final TestableCommandsSupport testableCommandsSupport;
     private final List<CommandsSupport> commandsSupports = new ArrayList<>();
     protected static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
+    private final PureToEntityConverter entityConverter = new PureToEntityConverter();
 
     public AbstractLSPGrammarExtension()
     {
@@ -635,6 +639,15 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return List.of();
     }
 
+    @Override
+    public Stream<LegendEntity> getEntities(SectionState sectionState)
+    {
+        ParseResult parseResult = this.getParseResult(sectionState);
+        return parseResult.getElements()
+                .stream()
+                .map(this::toEntity);
+    }
+
     private static LegendEngineServerClient newEngineServerClient()
     {
         for (LegendEngineServerClient client : ServiceLoader.load(LegendEngineServerClient.class))
@@ -729,5 +742,11 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             }
             return LegendCommand.newCommand(path, id, title, textLocation, arguments, inputParameters);
         }
+    }
+
+    private LegendEntity toEntity(PackageableElement element)
+    {
+        Entity sdlcEntity = this.entityConverter.toEntity(element);
+        return new LegendEntity(sdlcEntity.getPath(), sdlcEntity.getClassifierPath(), sdlcEntity.getContent(), SourceInformationUtil.toLocation(element.sourceInformation));
     }
 }
