@@ -25,9 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -202,7 +200,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
     {
         return this.server.supplyPossiblyAsync(() ->
         {
-            List<Stream<LegendEntity>> entityStreams = new ArrayList<>();
+            List<LegendEntity> entities = new ArrayList<>();
 
             this.server.getGlobalState().forEachDocumentState(docState ->
             {
@@ -211,12 +209,12 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                     LegendLSPGrammarExtension extension = sectionState.getExtension();
                     if (extension != null)
                     {
-                        entityStreams.add(extension.getEntities(sectionState));
+                        extension.getEntities(sectionState).forEach(entities::add);
                     }
                 });
             });
 
-            return entityStreams.stream().flatMap(Function.identity()).collect(Collectors.toList());
+            return entities;
         });
     }
 }

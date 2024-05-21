@@ -32,7 +32,6 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -640,12 +639,11 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     }
 
     @Override
-    public Stream<LegendEntity> getEntities(SectionState sectionState)
+    public Iterable<LegendEntity> getEntities(SectionState sectionState)
     {
         ParseResult parseResult = this.getParseResult(sectionState);
         return parseResult.getElements()
-                .stream()
-                .map(this::toEntity);
+                .collect(this::toEntity);
     }
 
     private static LegendEngineServerClient newEngineServerClient()
