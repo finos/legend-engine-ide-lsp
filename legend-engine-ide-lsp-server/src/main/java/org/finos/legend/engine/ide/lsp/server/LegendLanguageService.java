@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendTDSRequestHandler;
@@ -194,4 +195,26 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                 });
     }
 
+    @Override
+    public CompletableFuture<List<LegendEntity>> entities()
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            List<LegendEntity> entities = new ArrayList<>();
+
+            this.server.getGlobalState().forEachDocumentState(docState ->
+            {
+                docState.forEachSectionState(sectionState ->
+                {
+                    LegendLSPGrammarExtension extension = sectionState.getExtension();
+                    if (extension != null)
+                    {
+                        extension.getEntities(sectionState).forEach(entities::add);
+                    }
+                });
+            });
+
+            return entities;
+        });
+    }
 }

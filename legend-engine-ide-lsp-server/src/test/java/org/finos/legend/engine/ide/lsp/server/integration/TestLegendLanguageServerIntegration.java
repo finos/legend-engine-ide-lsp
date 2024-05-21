@@ -16,6 +16,7 @@
 
 package org.finos.legend.engine.ide.lsp.server.integration;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.nio.file.Path;
@@ -26,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import net.javacrumbs.jsonunit.JsonAssert;
+import net.javacrumbs.jsonunit.core.Option;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.CodeLensParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -44,6 +47,7 @@ import org.eclipse.lsp4j.WorkspaceSymbol;
 import org.eclipse.lsp4j.WorkspaceSymbolParams;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
+import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.junit.jupiter.api.Assertions;
@@ -422,5 +426,64 @@ public class TestLegendLanguageServerIntegration
         );
         ResponseErrorException exception = Assertions.assertThrows(ResponseErrorException.class, () -> extension.futureGet(extension.getServer().getLegendLanguageService().loadLegendVirtualFile("file:/dependencies.pure")));
         Assertions.assertTrue(exception.getResponseError().getData().toString().contains("Provided URI not managed by Legend Virtual Filesystem: " + "file:/dependencies.pure"));
+    }
+
+    @Test
+    void entities() throws Exception
+    {
+        extension.addToWorkspace("file1.pure", "###Pure\n" +
+                "Class abc::abc\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n" +
+                "Class abc::abc2\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n" +
+                "Class abc::abc3\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n");
+
+        extension.addToWorkspace("file2.pure", "###Pure\n" +
+                "Class xyz::abc\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n" +
+                "Class xyz::abc2\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n" +
+                "Class xyz::abc3\n" +
+                "{\n" +
+                "  abc: String[1];\n" +
+                "}\n");
+
+        extension.addToWorkspace("enum.pure", "Enum test::model::TestEnumeration\n" +
+                "{\n" +
+                "  VAL1, VAL2,\n" +
+                "  VAL3, VAL4\n" +
+                "}\n");
+
+        List<LegendEntity> entities = extension.futureGet(extension.getServer().getLegendLanguageService().entities());
+        Assertions.assertEquals(9, entities.size());
+        entities.sort(Comparator.comparing(LegendEntity::getPath));
+        String json = new Gson().toJson(entities);
+
+        JsonAssert.assertJsonEquals(
+                "[" +
+                        "   {\"path\":\"abc::abc\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
+                        "   {\"path\":\"abc::abc2\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc2\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
+                        "   {\"path\":\"abc::abc3\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc3\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
+                        "   {\"path\":\"test::model::TestEnumeration\",\"classifierPath\":\"meta::pure::metamodel::type::Enumeration\",\"content\":{\"_type\":\"Enumeration\",\"name\":\"TestEnumeration\",\"values\":[{\"value\":\"VAL1\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL2\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL3\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL4\",\"stereotypes\":[],\"taggedValues\":[]}],\"stereotypes\":[],\"taggedValues\":[],\"package\":\"test::model\"}}," +
+                        "   {\"path\":\"vscodelsp::test::dependency::Employee\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"Employee\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"foobar1\",\"type\":\"Float\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]},{\"name\":\"foobar2\",\"type\":\"Float\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"vscodelsp::test::dependency\"}}," +
+                        "   {\"path\":\"vscodelsp::test::dependency::StaticConnection\",\"classifierPath\":\"meta::pure::runtime::PackageableConnection\",\"content\":{\"_type\":\"connection\",\"name\":\"StaticConnection\",\"connectionValue\":{\"_type\":\"RelationalDatabaseConnection\",\"type\":\"H2\",\"postProcessorWithParameter\":[],\"datasourceSpecification\":{\"_type\":\"h2Local\"},\"authenticationStrategy\":{\"_type\":\"h2Default\"},\"databaseType\":\"H2\"},\"package\":\"vscodelsp::test::dependency\"}}," +
+                        "   {\"path\":\"xyz::abc\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"xyz\"}}," +
+                        "   {\"path\":\"xyz::abc2\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc2\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"xyz\"}}," +
+                        "   {\"path\":\"xyz::abc3\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc3\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"xyz\"}}" +
+                        "]",
+                json,
+                JsonAssert.when(Option.IGNORING_EXTRA_FIELDS).whenIgnoringPaths("[*].location")
+        );
     }
 }

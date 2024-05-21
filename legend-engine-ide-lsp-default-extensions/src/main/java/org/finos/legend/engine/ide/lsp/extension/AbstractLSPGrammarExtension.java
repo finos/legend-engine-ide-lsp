@@ -77,6 +77,8 @@ import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
+import org.finos.legend.sdlc.domain.model.entity.Entity;
+import org.finos.legend.sdlc.protocol.pure.v1.PureToEntityConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,6 +107,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     private final TestableCommandsSupport testableCommandsSupport;
     private final List<CommandsSupport> commandsSupports = new ArrayList<>();
     protected static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
+    private final PureToEntityConverter entityConverter = new PureToEntityConverter();
 
     public AbstractLSPGrammarExtension()
     {
@@ -635,6 +638,14 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return List.of();
     }
 
+    @Override
+    public Iterable<LegendEntity> getEntities(SectionState sectionState)
+    {
+        ParseResult parseResult = this.getParseResult(sectionState);
+        return parseResult.getElements()
+                .collect(this::toEntity);
+    }
+
     private static LegendEngineServerClient newEngineServerClient()
     {
         for (LegendEngineServerClient client : ServiceLoader.load(LegendEngineServerClient.class))
@@ -729,5 +740,11 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             }
             return LegendCommand.newCommand(path, id, title, textLocation, arguments, inputParameters);
         }
+    }
+
+    private LegendEntity toEntity(PackageableElement element)
+    {
+        Entity sdlcEntity = this.entityConverter.toEntity(element);
+        return new LegendEntity(sdlcEntity.getPath(), sdlcEntity.getClassifierPath(), sdlcEntity.getContent(), SourceInformationUtil.toLocation(element.sourceInformation));
     }
 }

@@ -140,4 +140,9 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     {
         return Collections.emptyList();
     }
+
+    default Iterable<LegendEntity> getEntities(SectionState sectionState)
+    {
+        return List.of();
+    }
 }
