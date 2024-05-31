@@ -25,7 +25,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -35,6 +37,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
+import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 import org.finos.legend.engine.ide.lsp.server.service.ExecuteTestRequest;
 import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
@@ -196,23 +199,32 @@ public class LegendLanguageService implements LegendLanguageServiceContract
     }
 
     @Override
-    public CompletableFuture<List<LegendEntity>> entities()
+    public CompletableFuture<List<LegendEntity>> entities(LegendEntitiesRequest request)
     {
         return this.server.supplyPossiblyAsync(() ->
         {
             List<LegendEntity> entities = new ArrayList<>();
 
-            this.server.getGlobalState().forEachDocumentState(docState ->
+            Consumer<DocumentState> collectEntities = docState -> docState.forEachSectionState(sectionState ->
             {
-                docState.forEachSectionState(sectionState ->
+                LegendLSPGrammarExtension extension = sectionState.getExtension();
+                if (extension != null)
                 {
-                    LegendLSPGrammarExtension extension = sectionState.getExtension();
-                    if (extension != null)
-                    {
-                        extension.getEntities(sectionState).forEach(entities::add);
-                    }
-                });
+                    extension.getEntities(sectionState).forEach(entities::add);
+                }
             });
+
+            if (request.getTextDocuments().isEmpty())
+            {
+                this.server.getGlobalState().forEachDocumentState(collectEntities);
+            }
+            else
+            {
+                request.getTextDocuments().stream()
+                        .map(TextDocumentIdentifier::getUri)
+                        .map(this.server.getGlobalState()::getDocumentState)
+                        .forEach(collectEntities);
+            }
 
             return entities;
         });

@@ -49,6 +49,7 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
@@ -431,7 +432,7 @@ public class TestLegendLanguageServerIntegration
     @Test
     void entities() throws Exception
     {
-        extension.addToWorkspace("file1.pure", "###Pure\n" +
+        Path file1Path = extension.addToWorkspace("file1.pure", "###Pure\n" +
                 "Class abc::abc\n" +
                 "{\n" +
                 "  abc: String[1];\n" +
@@ -459,13 +460,13 @@ public class TestLegendLanguageServerIntegration
                 "  abc: String[1];\n" +
                 "}\n");
 
-        extension.addToWorkspace("enum.pure", "Enum test::model::TestEnumeration\n" +
+        Path enumPath = extension.addToWorkspace("enum.pure", "Enum test::model::TestEnumeration\n" +
                 "{\n" +
                 "  VAL1, VAL2,\n" +
                 "  VAL3, VAL4\n" +
                 "}\n");
 
-        List<LegendEntity> entities = extension.futureGet(extension.getServer().getLegendLanguageService().entities());
+        List<LegendEntity> entities = extension.futureGet(extension.getServer().getLegendLanguageService().entities(new LegendEntitiesRequest()));
         Assertions.assertEquals(9, entities.size());
         entities.sort(Comparator.comparing(LegendEntity::getPath));
         String json = new Gson().toJson(entities);
@@ -483,6 +484,31 @@ public class TestLegendLanguageServerIntegration
                         "   {\"path\":\"xyz::abc3\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc3\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"xyz\"}}" +
                         "]",
                 json,
+                JsonAssert.when(Option.IGNORING_EXTRA_FIELDS).whenIgnoringPaths("[*].location")
+        );
+
+        List<LegendEntity> entitiesPerFile = extension.futureGet(extension.getServer().getLegendLanguageService().entities(
+                        new LegendEntitiesRequest(
+                                List.of(
+                                        new TextDocumentIdentifier(enumPath.toUri().toString()),
+                                        new TextDocumentIdentifier(file1Path.toUri().toString())
+                                )
+                        )
+                )
+        );
+
+        Assertions.assertEquals(4, entitiesPerFile.size());
+        entitiesPerFile.sort(Comparator.comparing(LegendEntity::getPath));
+        String jsonPerFile = new Gson().toJson(entitiesPerFile);
+
+        JsonAssert.assertJsonEquals(
+                "[" +
+                        "   {\"path\":\"abc::abc\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
+                        "   {\"path\":\"abc::abc2\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc2\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
+                        "   {\"path\":\"abc::abc3\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc3\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
+                        "   {\"path\":\"test::model::TestEnumeration\",\"classifierPath\":\"meta::pure::metamodel::type::Enumeration\",\"content\":{\"_type\":\"Enumeration\",\"name\":\"TestEnumeration\",\"values\":[{\"value\":\"VAL1\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL2\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL3\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL4\",\"stereotypes\":[],\"taggedValues\":[]}],\"stereotypes\":[],\"taggedValues\":[],\"package\":\"test::model\"}}" +
+                        "]",
+                jsonPerFile,
                 JsonAssert.when(Option.IGNORING_EXTRA_FIELDS).whenIgnoringPaths("[*].location")
         );
     }
