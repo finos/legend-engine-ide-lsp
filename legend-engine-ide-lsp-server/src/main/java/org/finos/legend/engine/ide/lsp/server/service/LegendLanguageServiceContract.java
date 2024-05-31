@@ -24,6 +24,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
+import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 
 @JsonSegment("legend")
 public interface LegendLanguageServiceContract
@@ -44,6 +45,6 @@ public interface LegendLanguageServiceContract
     CompletableFuture<String> loadLegendVirtualFile(String uri);
 
     @JsonRequest("entities")
-    CompletableFuture<List<LegendEntity>> entities();
+    CompletableFuture<List<LegendEntity>> entities(LegendEntitiesRequest request);
 
 }
