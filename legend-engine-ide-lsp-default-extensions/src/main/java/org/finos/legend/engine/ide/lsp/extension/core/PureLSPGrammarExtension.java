@@ -285,7 +285,11 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         RichIterable<? extends CoreInstance> qualifiedProperties = clazz._qualifiedProperties();
         Stream<LegendReferenceResolver> qualifiedPropertyReferences = StreamSupport.stream(qualifiedProperties.spliterator(), false)
                 .flatMap(qualifiedProperty -> FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(qualifiedProperty)));
-        return Stream.concat(constraintReferences, qualifiedPropertyReferences);
+
+        Stream<LegendReferenceResolver> superTypes = StreamSupport.stream(clazz._generalizations().spliterator(), false)
+                .map(generalization -> LegendReferenceResolver.newReferenceResolver(generalization.getSourceInformation(), generalization._general()._rawType()));
+
+        return Stream.concat(Stream.concat(constraintReferences, qualifiedPropertyReferences), superTypes);
     }
 
     private Stream<LegendReferenceResolver> toReferences(org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relationship.Association association)

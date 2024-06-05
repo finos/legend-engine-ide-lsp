@@ -259,7 +259,7 @@ public class TestLegendLanguageServerIntegration
         // report compile diagnostics on file
         Set<Diagnostic> compileDiagnostic = Set.of(
                 new Diagnostic(
-                        new Range(new Position(1, 0), new Position(4, 1)),
+                        new Range(new Position(1, 23), new Position(1, 31)),
                         "Can't find type 'abc::abc'",
                         DiagnosticSeverity.Error,
                         "Compiler"

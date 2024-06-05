@@ -232,7 +232,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "    hireDate : Date[1];\n" +
                 "    hireType : String[1];\n" +
                 "}");
-        testDiagnostics(codeFiles, "vscodelsp::test::Employee1", LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::Employee1",1, 0, 6, 0), "Can't find type 'vscodelsp::test::Employee2'", Kind.Error, Source.Compiler));
+        testDiagnostics(codeFiles, "vscodelsp::test::Employee1", LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::Employee1",1, 41, 1, 66), "Can't find type 'vscodelsp::test::Employee2'", Kind.Error, Source.Compiler));
     }
 
     @Test
@@ -585,6 +585,44 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         assertTestExecution("model::Hello_String_1__String_1_.testSuite_1", Set.of(), sectionState, location1, List.of(failResult, passResult));
         // execute a test directly
         assertTestExecution("model::Hello_String_1__String_1_.testSuite_1.testPass", Set.of(), sectionState, location1, List.of(passResult));
+    }
+
+    @Test
+    void testGetReferenceResolversClass()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+
+        String docId = "classes.pure";
+        codeFiles.put(docId,
+                "###Pure\n" +
+                        "Class showcase::model::Mammal\n" +
+                        "{\n" +
+                        "  id: String[1];\n" +
+                        "}\n" +
+                        "Class showcase::model::Pet\n" +
+                        "{\n" +
+                        "  name: String[1];\n" +
+                        "}\n" +
+                        "Class showcase::model::Dog extends showcase::model::Pet, showcase::model::Mammal\n" +
+                        "{\n" +
+                        "}\n"
+        );
+
+
+        LegendReference petReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(docId, 9, 35, 9, 54))
+                .withReferencedLocation(TextLocation.newTextSource(docId, 5, 0, 8, 0))
+                .build();
+
+        testReferenceLookup(codeFiles, docId, TextPosition.newPosition(9, 50), petReference, "Supertype linked to class");
+
+        LegendReference mammalReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(docId, 9, 57, 9, 79))
+                .withReferencedLocation(TextLocation.newTextSource(docId, 1, 0, 4, 0))
+                .build();
+
+        testReferenceLookup(codeFiles, docId, TextPosition.newPosition(9, 65), mammalReference, "Supertype linked to class");
+
     }
 
     @Test
