@@ -17,12 +17,10 @@
 package org.finos.legend.engine.ide.lsp.extension.connection;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
@@ -155,53 +153,53 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
     }
 
     @Override
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
+    protected Stream<Optional<LegendReferenceResolver>> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
         if (!(packageableElement instanceof PackageableConnection))
         {
-            return List.of();
+            return Stream.empty();
         }
 
-        return this.getConnectionReferences(((PackageableConnection) packageableElement).connectionValue, section.getDocumentState().getGlobalState()).collect(Collectors.toList());
+        return this.getConnectionReferences(((PackageableConnection) packageableElement).connectionValue, section.getDocumentState().getGlobalState());
     }
 
-    public Stream<LegendReferenceResolver> getConnectionReferences(Connection connection, GlobalState state)
+    public Stream<Optional<LegendReferenceResolver>> getConnectionReferences(Connection connection, GlobalState state)
     {
-        Stream<LegendReferenceResolver> connectionReferences = connection.accept(new ConnectionVisitor<>()
+        Stream<Optional<LegendReferenceResolver>> connectionReferences = connection.accept(new ConnectionVisitor<>()
         {
             @Override
-            public Stream<LegendReferenceResolver> visit(Connection connection)
+            public Stream<Optional<LegendReferenceResolver>> visit(Connection connection)
             {
                 return state.findGrammarExtensionThatImplements(ConnectionLSPGrammarProvider.class)
                         .flatMap(x -> x.getConnectionReferences(connection, state));
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(ConnectionPointer connectionPointer)
+            public Stream<Optional<LegendReferenceResolver>> visit(ConnectionPointer connectionPointer)
             {
                 return Stream.of(LegendReferenceResolver.newReferenceResolver(connectionPointer.sourceInformation, c -> c.resolveConnection(connectionPointer.connection, connectionPointer.sourceInformation)));
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(ModelConnection modelConnection)
+            public Stream<Optional<LegendReferenceResolver>> visit(ModelConnection modelConnection)
             {
                 return Stream.empty();
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(JsonModelConnection jsonModelConnection)
+            public Stream<Optional<LegendReferenceResolver>> visit(JsonModelConnection jsonModelConnection)
             {
                 return Stream.of(LegendReferenceResolver.newReferenceResolver(jsonModelConnection.classSourceInformation, c -> c.resolveClass(jsonModelConnection._class, jsonModelConnection.classSourceInformation)));
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(XmlModelConnection xmlModelConnection)
+            public Stream<Optional<LegendReferenceResolver>> visit(XmlModelConnection xmlModelConnection)
             {
                 return Stream.of(LegendReferenceResolver.newReferenceResolver(xmlModelConnection.classSourceInformation, c -> c.resolveClass(xmlModelConnection._class, xmlModelConnection.classSourceInformation)));
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(ModelChainConnection modelChainConnection)
+            public Stream<Optional<LegendReferenceResolver>> visit(ModelChainConnection modelChainConnection)
             {
                 // TODO: Refactor ModelChainConnection to contain List<PackageableElementPointer> in order to reference the mappings
                 return Stream.empty();

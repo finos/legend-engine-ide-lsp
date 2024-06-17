@@ -75,11 +75,9 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
                                         .withChild(LegendDeclaration.builder().withIdentifier("NAME").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,15, 12, 15, 28).build())
                                         .build())
                                 .build())
-                        .withChild(LegendDeclaration.builder().withIdentifier("default").withClassifier(M2RelationalPaths.Schema).withLocation(DOC_ID_FOR_TEXT,3, 0, 18, 0)
-                                .withChild(LegendDeclaration.builder().withIdentifier("T1").withClassifier(M2RelationalPaths.Table).withLocation(DOC_ID_FOR_TEXT,5, 4, 8, 4)
-                                        .withChild(LegendDeclaration.builder().withIdentifier("ID").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,7, 8, 7, 13).build())
-                                        .withChild(LegendDeclaration.builder().withIdentifier("NAME").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,7, 16, 7, 32).build())
-                                        .build())
+                        .withChild(LegendDeclaration.builder().withIdentifier("T1").withClassifier(M2RelationalPaths.Table).withLocation(DOC_ID_FOR_TEXT,5, 4, 8, 4)
+                                .withChild(LegendDeclaration.builder().withIdentifier("ID").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,7, 8, 7, 13).build())
+                                .withChild(LegendDeclaration.builder().withIdentifier("NAME").withClassifier(M2RelationalPaths.Column).withLocation(DOC_ID_FOR_TEXT,7, 16, 7, 32).build())
                                 .build())
                         .build()
         );
@@ -365,14 +363,14 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mainTableReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",5,  52, 5, 64))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase", 3, 3, 3, 96))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase", 3, 3, 3, 96))
                 .build();
 
         testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(5, 60), mainTableReference, "main table reference");
 
         LegendReference columnReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",6,   17, 6, 73))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase", 3, 43, 3, 55))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeDatabase", 3, 43, 3, 55))
                 .build();
 
         testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 21), columnReference, "Property mapped reference");
@@ -461,7 +459,7 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedMappingReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 5, 7, 5, 38))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(4, 2), null, "Outside of mappedMappingReference-able element should yield nothing");
@@ -473,14 +471,14 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedStoreReference1 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 9, 7, 9, 30))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID, 1, 0, 10, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID, 1, 0, 10, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(9, 20), mappedStoreReference1, "Within the store name has been mapped, referring to store definition");
 
         LegendReference mappedStoreReference2 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 15, 26, 15, 49))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID, 1, 0, 10, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID, 1, 0, 10, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(15, 31), mappedStoreReference2, "Within the store name has been mapped, referring to store definition");
@@ -568,7 +566,7 @@ public class TestRelationalLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedAssociationReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 25, 11, 25, 26))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_ASSOCIATION_DOC_ID, 3, 3, 3, 48))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_ASSOCIATION_DOC_ID, 3, 3, 3, 48))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(24, 2), null, "Outside of mappedAssociationReference-able element should yield nothing");

@@ -18,14 +18,12 @@ package org.finos.legend.engine.ide.lsp.extension.mapping;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.eclipse.collections.api.factory.Lists;
@@ -304,65 +302,64 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     }
 
     @Override
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
+    protected Stream<Optional<LegendReferenceResolver>> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
         Mapping mapping = (Mapping) packageableElement;
         GlobalState state = section.getDocumentState().getGlobalState();
-        Stream<LegendReferenceResolver> classMappingReferences = mapping.classMappings
+        Stream<Optional<LegendReferenceResolver>> classMappingReferences = mapping.classMappings
                 .stream()
                 .flatMap(Functions.bind(this::toReferences, state));
 
-        Stream<LegendReferenceResolver> includedMappingReferences = mapping.includedMappings
+        Stream<Optional<LegendReferenceResolver>> includedMappingReferences = mapping.includedMappings
                 .stream()
                 .map(this::toReference);
 
-        Stream<LegendReferenceResolver> associationMappingReferences = mapping.associationMappings
+        Stream<Optional<LegendReferenceResolver>> associationMappingReferences = mapping.associationMappings
                 .stream()
                 .flatMap(Functions.bind(this::toReferences, state));
 
-        Stream<LegendReferenceResolver> enumerationMappingReferences = mapping.enumerationMappings
+        Stream<Optional<LegendReferenceResolver>> enumerationMappingReferences = mapping.enumerationMappings
                 .stream()
                 .flatMap(this::toReferences);
 
-        Stream<LegendReferenceResolver> coreReferences = Stream.empty();
+        Stream<Optional<LegendReferenceResolver>> coreReferences = Stream.empty();
         if (coreInstance.isPresent())
         {
             coreReferences = toReferences((org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping) coreInstance.get(), state);
         }
 
         return Stream.of(classMappingReferences, includedMappingReferences, associationMappingReferences, enumerationMappingReferences, coreReferences)
-                .flatMap(Functions.identity())
-                .collect(Collectors.toList());
+                .flatMap(Functions.identity());
     }
 
-    private Stream<LegendReferenceResolver> toReferences(ClassMapping classMapping, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(ClassMapping classMapping, GlobalState state)
     {
-        LegendReferenceResolver legendReferenceResolver = LegendReferenceResolver.newReferenceResolver(classMapping.classSourceInformation, c -> c.resolveClass(classMapping._class, classMapping.classSourceInformation));
+        Optional<LegendReferenceResolver> legendReferenceResolver = LegendReferenceResolver.newReferenceResolver(classMapping.classSourceInformation, c -> c.resolveClass(classMapping._class, classMapping.classSourceInformation));
 
-        Stream<LegendReferenceResolver> otherReferences = classMapping.accept(new ClassMappingVisitor<>()
+        Stream<Optional<LegendReferenceResolver>> otherReferences = classMapping.accept(new ClassMappingVisitor<>()
         {
             @Override
-            public Stream<LegendReferenceResolver> visit(ClassMapping classMapping)
+            public Stream<Optional<LegendReferenceResolver>> visit(ClassMapping classMapping)
             {
                 return state.findGrammarExtensionThatImplements(MappingLSPGrammarProvider.class)
                         .flatMap(x -> x.getClassMappingReferences(classMapping, state));
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(OperationClassMapping operationClassMapping)
+            public Stream<Optional<LegendReferenceResolver>> visit(OperationClassMapping operationClassMapping)
             {
                 return Stream.empty();
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(PureInstanceClassMapping pureInstanceClassMapping)
+            public Stream<Optional<LegendReferenceResolver>> visit(PureInstanceClassMapping pureInstanceClassMapping)
             {
-                LegendReferenceResolver srcReference = LegendReferenceResolver.newReferenceResolver(
+                Optional<LegendReferenceResolver> srcReference = LegendReferenceResolver.newReferenceResolver(
                         pureInstanceClassMapping.sourceClassSourceInformation,
                         x -> x.resolveClass(pureInstanceClassMapping.srcClass, pureInstanceClassMapping.sourceClassSourceInformation)
                 );
 
-                Stream<LegendReferenceResolver> propReferences = pureInstanceClassMapping.propertyMappings
+                Stream<Optional<LegendReferenceResolver>> propReferences = pureInstanceClassMapping.propertyMappings
                         .stream()
                         .flatMap(Functions.bind(MappingLSPGrammarExtension::propertyMappingToReferences, state));
 
@@ -370,7 +367,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(AggregationAwareClassMapping aggregationAwareClassMapping)
+            public Stream<Optional<LegendReferenceResolver>> visit(AggregationAwareClassMapping aggregationAwareClassMapping)
             {
                 return Stream.empty();
             }
@@ -379,14 +376,14 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return Stream.concat(Stream.of(legendReferenceResolver), otherReferences);
     }
 
-    private Stream<LegendReferenceResolver> toReferences(AssociationMapping associationMapping, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(AssociationMapping associationMapping, GlobalState state)
     {
-        LegendReferenceResolver associationReference = LegendReferenceResolver.newReferenceResolver(
+        Optional<LegendReferenceResolver> associationReference = LegendReferenceResolver.newReferenceResolver(
                 associationMapping.sourceInformation,
                 x -> x.resolveAssociation(associationMapping.association, associationMapping.sourceInformation)
         );
 
-        Stream<LegendReferenceResolver> associationMappingReferences;
+        Stream<Optional<LegendReferenceResolver>> associationMappingReferences;
         if (associationMapping instanceof XStoreAssociationMapping)
         {
             associationMappingReferences = ((XStoreAssociationMapping) associationMapping).propertyMappings
@@ -403,32 +400,32 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return Stream.concat(Stream.of(associationReference), associationMappingReferences);
     }
 
-    public static Stream<LegendReferenceResolver> propertyMappingToReferences(PropertyMapping propertyMapping, GlobalState state)
+    public static Stream<Optional<LegendReferenceResolver>> propertyMappingToReferences(PropertyMapping propertyMapping, GlobalState state)
     {
-        LegendReferenceResolver propReference = propertyMappingToReference(propertyMapping);
-        Stream<LegendReferenceResolver> otherReferences = propertyMapping.accept(new PropertyMappingVisitor<>()
+        Optional<LegendReferenceResolver> propReference = propertyMappingToReference(propertyMapping);
+        Stream<Optional<LegendReferenceResolver>> otherReferences = propertyMapping.accept(new PropertyMappingVisitor<>()
         {
             @Override
-            public Stream<LegendReferenceResolver> visit(PropertyMapping propertyMapping)
+            public Stream<Optional<LegendReferenceResolver>> visit(PropertyMapping propertyMapping)
             {
                 return state.findGrammarExtensionThatImplements(MappingLSPGrammarProvider.class)
                         .flatMap(x -> x.getPropertyMappingReferences(propertyMapping));
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(PurePropertyMapping purePropertyMapping)
+            public Stream<Optional<LegendReferenceResolver>> visit(PurePropertyMapping purePropertyMapping)
             {
                 return Stream.empty();
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(XStorePropertyMapping xStorePropertyMapping)
+            public Stream<Optional<LegendReferenceResolver>> visit(XStorePropertyMapping xStorePropertyMapping)
             {
                 return Stream.empty();
             }
 
             @Override
-            public Stream<LegendReferenceResolver> visit(AggregationAwarePropertyMapping aggregationAwarePropertyMapping)
+            public Stream<Optional<LegendReferenceResolver>> visit(AggregationAwarePropertyMapping aggregationAwarePropertyMapping)
             {
                 return Stream.empty();
             }
@@ -436,13 +433,13 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return Stream.concat(Stream.of(propReference), otherReferences);
     }
 
-    private Stream<LegendReferenceResolver> toReferences(EnumerationMapping enumerationMapping)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(EnumerationMapping enumerationMapping)
     {
-        LegendReferenceResolver enumerationMappingReference = LegendReferenceResolver.newReferenceResolver(
+        Optional<LegendReferenceResolver> enumerationMappingReference = LegendReferenceResolver.newReferenceResolver(
                 enumerationMapping.sourceInformation,
                 x -> x.resolveEnumeration(enumerationMapping.enumeration, enumerationMapping.sourceInformation));
 
-        Stream<LegendReferenceResolver> enumValueReferences = enumerationMapping.enumValueMappings
+        Stream<Optional<LegendReferenceResolver>> enumValueReferences = enumerationMapping.enumValueMappings
                 .stream()
                 .map(enumValueMapping ->
                         LegendReferenceResolver.newReferenceResolver(
@@ -455,7 +452,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                 enumValueReferences);
     }
 
-    private LegendReferenceResolver toReference(MappingInclude mappingInclude)
+    private Optional<LegendReferenceResolver> toReference(MappingInclude mappingInclude)
     {
         return LegendReferenceResolver.newReferenceResolver(
             mappingInclude.sourceInformation,
@@ -463,7 +460,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         );
     }
 
-    private static LegendReferenceResolver propertyMappingToReference(PropertyMapping propertyMapping)
+    private static Optional<LegendReferenceResolver> propertyMappingToReference(PropertyMapping propertyMapping)
     {
         return LegendReferenceResolver.newReferenceResolver(
                 propertyMapping.property.sourceInformation,
@@ -471,16 +468,16 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         );
     }
 
-    private Stream<LegendReferenceResolver> toReferences(org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping mapping, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping mapping, GlobalState state)
     {
-        Stream<LegendReferenceResolver> setImplementationReferences = StreamSupport.stream(mapping._classMappings().spliterator(), false)
+        Stream<Optional<LegendReferenceResolver>> setImplementationReferences = StreamSupport.stream(mapping._classMappings().spliterator(), false)
                 .flatMap(Functions.bind(this::toReferences, state));
-        Stream<LegendReferenceResolver> associationImplementationReferences = StreamSupport.stream(mapping._associationMappings().spliterator(), false)
+        Stream<Optional<LegendReferenceResolver>> associationImplementationReferences = StreamSupport.stream(mapping._associationMappings().spliterator(), false)
                 .flatMap(this::toReferences);
         return Stream.concat(setImplementationReferences, associationImplementationReferences);
     }
 
-    private Stream<LegendReferenceResolver> toReferences(SetImplementation setImplementation, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(SetImplementation setImplementation, GlobalState state)
     {
         if (setImplementation == null)
         {
@@ -489,8 +486,8 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         if (setImplementation instanceof PureInstanceSetImplementation)
         {
             PureInstanceSetImplementation pureInstanceSetImplementation = (PureInstanceSetImplementation) setImplementation;
-            Stream<LegendReferenceResolver> filterReferences = FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(pureInstanceSetImplementation._filter()));
-            Stream<LegendReferenceResolver> propertyMappingReferences = StreamSupport.stream(pureInstanceSetImplementation._propertyMappings().spliterator(), false)
+            Stream<Optional<LegendReferenceResolver>> filterReferences = FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(pureInstanceSetImplementation._filter()));
+            Stream<Optional<LegendReferenceResolver>> propertyMappingReferences = StreamSupport.stream(pureInstanceSetImplementation._propertyMappings().spliterator(), false)
                     .flatMap(MappingLSPGrammarExtension::toReferences);
             return Stream.concat(filterReferences, propertyMappingReferences);
         }
@@ -498,10 +495,10 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         if (setImplementation instanceof AggregationAwareSetImplementation)
         {
             AggregationAwareSetImplementation aggregationAwareSetImplementation = (AggregationAwareSetImplementation) setImplementation;
-            Stream<LegendReferenceResolver> mainSetImplementationReferences = toReferences(aggregationAwareSetImplementation._mainSetImplementation(), state);
-            Stream<LegendReferenceResolver> propertyMappingReferences = StreamSupport.stream(aggregationAwareSetImplementation._propertyMappings().spliterator(), false)
+            Stream<Optional<LegendReferenceResolver>> mainSetImplementationReferences = toReferences(aggregationAwareSetImplementation._mainSetImplementation(), state);
+            Stream<Optional<LegendReferenceResolver>> propertyMappingReferences = StreamSupport.stream(aggregationAwareSetImplementation._propertyMappings().spliterator(), false)
                     .flatMap(MappingLSPGrammarExtension::toReferences);
-            Stream<LegendReferenceResolver> aggregateSetImplementationReferences = StreamSupport.stream(aggregationAwareSetImplementation._aggregateSetImplementations().spliterator(), false)
+            Stream<Optional<LegendReferenceResolver>> aggregateSetImplementationReferences = StreamSupport.stream(aggregationAwareSetImplementation._aggregateSetImplementations().spliterator(), false)
                     .flatMap(Functions.bind(this::toReferences, state));
             return Stream.of(mainSetImplementationReferences, propertyMappingReferences, aggregateSetImplementationReferences)
                     .flatMap(java.util.function.Function.identity());
@@ -517,31 +514,31 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                 .flatMap(x -> x.getSetImplementationReferences(setImplementation));
     }
 
-    private Stream<LegendReferenceResolver> toReferences(AggregateSetImplementationContainer aggregateSetImplementationContainer, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(AggregateSetImplementationContainer aggregateSetImplementationContainer, GlobalState state)
     {
         if (aggregateSetImplementationContainer == null)
         {
             return Stream.empty();
         }
-        Stream<LegendReferenceResolver> setImplementationReferences = toReferences(aggregateSetImplementationContainer._setImplementation(), state);
-        Stream<LegendReferenceResolver> aggregateSpecificationReferences = toReferences(aggregateSetImplementationContainer._aggregateSpecification());
+        Stream<Optional<LegendReferenceResolver>> setImplementationReferences = toReferences(aggregateSetImplementationContainer._setImplementation(), state);
+        Stream<Optional<LegendReferenceResolver>> aggregateSpecificationReferences = toReferences(aggregateSetImplementationContainer._aggregateSpecification());
         return Stream.concat(setImplementationReferences, aggregateSpecificationReferences);
     }
 
-    private Stream<LegendReferenceResolver> toReferences(AggregateSpecification aggregateSpecification)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(AggregateSpecification aggregateSpecification)
     {
         if (aggregateSpecification == null)
         {
             return Stream.empty();
         }
-        Stream<LegendReferenceResolver> groupByFunctionReferences = StreamSupport.stream(aggregateSpecification._groupByFunctions().spliterator(), false)
+        Stream<Optional<LegendReferenceResolver>> groupByFunctionReferences = StreamSupport.stream(aggregateSpecification._groupByFunctions().spliterator(), false)
                 .flatMap(this::toReferences);
-        Stream<LegendReferenceResolver> aggregateValueReferences = StreamSupport.stream(aggregateSpecification._aggregateValues().spliterator(), false)
+        Stream<Optional<LegendReferenceResolver>> aggregateValueReferences = StreamSupport.stream(aggregateSpecification._aggregateValues().spliterator(), false)
                 .flatMap(this::toReferences);
         return Stream.concat(groupByFunctionReferences, aggregateValueReferences);
     }
 
-    private Stream<LegendReferenceResolver> toReferences(GroupByFunctionSpecification groupByFunctionSpecification)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(GroupByFunctionSpecification groupByFunctionSpecification)
     {
         if (groupByFunctionSpecification == null)
         {
@@ -550,18 +547,18 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(groupByFunctionSpecification._groupByFn()));
     }
 
-    private Stream<LegendReferenceResolver> toReferences(AggregationFunctionSpecification aggregationFunctionSpecification)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(AggregationFunctionSpecification aggregationFunctionSpecification)
     {
         if (aggregationFunctionSpecification == null)
         {
             return Stream.empty();
         }
-        Stream<LegendReferenceResolver> mapFnReferences = FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(aggregationFunctionSpecification._mapFn()));
-        Stream<LegendReferenceResolver> aggregateFnReferences = FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(aggregationFunctionSpecification._aggregateFn()));
+        Stream<Optional<LegendReferenceResolver>> mapFnReferences = FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(aggregationFunctionSpecification._mapFn()));
+        Stream<Optional<LegendReferenceResolver>> aggregateFnReferences = FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(aggregationFunctionSpecification._aggregateFn()));
         return Stream.concat(mapFnReferences, aggregateFnReferences);
     }
 
-    private Stream<LegendReferenceResolver> toReferences(AssociationImplementation associationImplementation)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(AssociationImplementation associationImplementation)
     {
         if (associationImplementation == null)
         {
@@ -571,7 +568,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                 .flatMap(MappingLSPGrammarExtension::toReferences);
     }
 
-    public static Stream<LegendReferenceResolver> toReferences(org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.PropertyMapping propertyMapping)
+    public static Stream<Optional<LegendReferenceResolver>> toReferences(org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.PropertyMapping propertyMapping)
     {
         if (propertyMapping == null)
         {

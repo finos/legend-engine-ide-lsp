@@ -32,6 +32,7 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -137,6 +138,12 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     }
 
     @Override
+    public Optional<LegendDeclaration> getDeclaration(SectionState section, TextPosition position)
+    {
+        return this.getElementAtPosition(section, position).map(this::getDeclaration);
+    }
+
+    @Override
     public Iterable<? extends LegendDiagnostic> getDiagnostics(SectionState sectionState)
     {
         MutableList<LegendDiagnostic> diagnostics = Lists.mutable.empty();
@@ -152,7 +159,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         {
             EngineException e = parseResult.getEngineException();
             SourceInformation sourceInfo = e.getSourceInformation();
-            if (isValidSourceInfo(sourceInfo))
+            if (SourceInformationUtil.isValidSourceInfo(sourceInfo))
             {
                 consumer.accept(LegendDiagnostic.newDiagnostic(SourceInformationUtil.toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser));
             }
@@ -171,7 +178,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             EngineException e = compileResult.getEngineException();
             SourceInformation sourceInfo = e.getSourceInformation();
             String docId = sectionState.getDocumentState().getDocumentId();
-            if (!isValidSourceInfo(sourceInfo))
+            if (!SourceInformationUtil.isValidSourceInfo(sourceInfo))
             {
                 if ((sourceInfo != null) && docId.equals(sourceInfo.sourceId))
                 {
@@ -190,7 +197,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             {
                 SourceInformation sourceInfo = warning.sourceInformation;
                 String docId = sectionState.getDocumentState().getDocumentId();
-                if (!isValidSourceInfo(sourceInfo))
+                if (!SourceInformationUtil.isValidSourceInfo(sourceInfo))
                 {
                     if ((sourceInfo != null) && docId.equals(sourceInfo.sourceId))
                     {
@@ -220,7 +227,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             String path = element.getPath();
             collectCommands(section, element, (id, title, sourceInfo, args, inputParameters, type) ->
             {
-                if (isValidSourceInfo(sourceInfo))
+                if (SourceInformationUtil.isValidSourceInfo(sourceInfo))
                 {
                     commands.add(LegendCommandFactory.newCommand(type, path, id, title, SourceInformationUtil.toLocation(sourceInfo), args, inputParameters));
                 }
@@ -294,7 +301,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         catch (EngineException e)
         {
             SourceInformation sourceInfo = e.getSourceInformation();
-            if (!isValidSourceInfo(sourceInfo))
+            if (!SourceInformationUtil.isValidSourceInfo(sourceInfo))
             {
                 LOGGER.warn("Invalid source information in parsing exception in section {} of {}: {}", sectionState.getSectionNumber(), sectionState.getDocumentState().getDocumentId(), (sourceInfo == null) ? null : sourceInfo.getMessage(), e);
             }
@@ -348,7 +355,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         catch (EngineException e)
         {
             SourceInformation sourceInfo = e.getSourceInformation();
-            if (isValidSourceInfo(sourceInfo))
+            if (SourceInformationUtil.isValidSourceInfo(sourceInfo))
             {
                 globalState.logInfo("Compilation completed with error " + "(" + sourceInfo.sourceId + " " + SourceInformationUtil.toLocation(sourceInfo) + "): " + e.getMessage());
             }
@@ -461,7 +468,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     protected LegendDeclaration getDeclaration(PackageableElement element)
     {
         String path = element.getPath();
-        if (!isValidSourceInfo(element.sourceInformation))
+        if (!SourceInformationUtil.isValidSourceInfo(element.sourceInformation))
         {
             LOGGER.warn("Invalid source information for {}", path);
             return null;
@@ -550,28 +557,13 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
 
     private boolean isPositionIncludedOnSourceInfo(TextPosition position, SourceInformation sourceInformation)
     {
-        return isValidSourceInfo(sourceInformation) && SourceInformationUtil.toLocation(sourceInformation).getTextInterval().includes(position);
+        return SourceInformationUtil.isValidSourceInfo(sourceInformation) && SourceInformationUtil.toLocation(sourceInformation).getTextInterval().includes(position);
     }
 
     private boolean isValidSourceIdAndSourceInfo(SectionState section, SourceInformation sourceInfo)
     {
-        return section.getDocumentState().getGlobalState().getDocumentState(sourceInfo.sourceId) != null && isValidSourceInfo(sourceInfo);
-    }
-
-    /**
-     * Check if the source information is valid.
-     *
-     * @param sourceInfo source information
-     * @return whether source information is valid
-     */
-    protected static boolean isValidSourceInfo(SourceInformation sourceInfo)
-    {
-        return (sourceInfo != null) &&
-                (sourceInfo != SourceInformation.getUnknownSourceInformation()) &&
-                (sourceInfo.startLine > 0) &&
-                (sourceInfo.startColumn > 0) &&
-                (sourceInfo.startLine <= sourceInfo.endLine) &&
-                ((sourceInfo.startLine == sourceInfo.endLine) ? (sourceInfo.startColumn <= sourceInfo.endColumn) : (sourceInfo.endColumn > 0));
+        return section.getDocumentState().getGlobalState().getDocumentState(sourceInfo.sourceId) != null
+                && SourceInformationUtil.isValidSourceInfo(sourceInfo);
     }
 
     protected Iterable<LegendCompletion> computeCompletionsForSupportedTypes(SectionState section, TextPosition location, Set<String> supportedTypes)
@@ -616,7 +608,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
                                         {
                                             return LegendReference.builder()
                                                     .withLocation(reference.getLocation())
-                                                    .withReferencedLocation(declarationLocation)
+                                                    .withDeclarationLocation(declarationLocation)
                                                     .build();
                                         }
                                     }
@@ -627,15 +619,62 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
                                 }));
     }
 
+    @Override
+    public Stream<LegendReference> getLegendReferences(SectionState sectionState)
+    {
+        ParseResult parseResult = this.getParseResult(sectionState);
+        CompileResult compileResult = this.getCompileResult(sectionState);
+
+        if (!compileResult.hasResult())
+        {
+            return Stream.empty();
+        }
+
+        PureModel pureModel = compileResult.getPureModel();
+
+        return parseResult.getElements()
+                .stream()
+                .flatMap(packageableElement ->
+                {
+                    Optional<CoreInstance> coreInstance = Optional.ofNullable(pureModel.getPackageableElement(packageableElement.getPath(), packageableElement.sourceInformation));
+                    return this.getReferenceResolvers(sectionState, packageableElement, coreInstance)
+                            .filter(Optional::isPresent)
+                            .map(Optional::get)
+                            .map(reference ->
+                            {
+                                Optional<CoreInstance> referenced = reference.goToReferenced(pureModel.getContext(packageableElement));
+                                return referenced.map(x ->
+                                {
+                                    SourceInformation sourceInfo = SourceInformationHelper.fromM3SourceInformation(x.getSourceInformation());
+                                    if (isValidSourceIdAndSourceInfo(sectionState, sourceInfo))
+                                    {
+                                        TextLocation declarationLocation = SourceInformationUtil.toLocation(sourceInfo);
+                                        if (!reference.getLocation().equals(declarationLocation))
+                                        {
+                                            return LegendReference.builder()
+                                                    .withLocation(reference.getLocation())
+                                                    .withDeclarationLocation(declarationLocation)
+                                                    .build();
+                                        }
+                                    }
+
+                                    return null;
+                                });
+                            })
+                            .filter(Optional::isPresent)
+                            .map(Optional::get);
+                });
+    }
+
     private Collection<LegendReferenceResolver> getReferenceResolversResult(SectionState section, PackageableElement packageableElement)
     {
         Optional<CoreInstance> coreInstance = Optional.ofNullable(this.getCompileResult(section).getPureModel()).map(x -> x.getPackageableElement(packageableElement.getPath(), packageableElement.sourceInformation));
-        return section.getProperty(REFERENCE_RESULT + ":" + packageableElement.getPath(), () -> getReferenceResolvers(section, packageableElement, coreInstance));
+        return section.getProperty(REFERENCE_RESULT + ":" + packageableElement.getPath(), () -> getReferenceResolvers(section, packageableElement, coreInstance).filter(Optional::isPresent).map(Optional::get).collect(Collectors.toList()));
     }
 
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
+    protected Stream<Optional<LegendReferenceResolver>> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
-        return List.of();
+        return Stream.empty();
     }
 
     @Override

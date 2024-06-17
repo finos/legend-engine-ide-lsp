@@ -16,6 +16,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension.connection;
 
+import java.util.Optional;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
@@ -23,6 +24,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connect
 
 public interface ConnectionLSPGrammarProvider
 {
-    Stream<LegendReferenceResolver> getConnectionReferences(Connection connection, GlobalState state);
+    Stream<Optional<LegendReferenceResolver>> getConnectionReferences(Connection connection, GlobalState state);
 
 }

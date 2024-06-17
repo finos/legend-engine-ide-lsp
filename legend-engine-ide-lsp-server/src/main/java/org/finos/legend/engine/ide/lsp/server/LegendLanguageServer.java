@@ -868,6 +868,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         capabilities.setCodeLensProvider(getCodeLensOptions());
         capabilities.setExecuteCommandProvider(getExecuteCommandOptions());
         capabilities.setDefinitionProvider(true);
+        capabilities.setReferencesProvider(true);
         capabilities.setDiagnosticProvider(getDiagnosticRegistrationOptions());
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);

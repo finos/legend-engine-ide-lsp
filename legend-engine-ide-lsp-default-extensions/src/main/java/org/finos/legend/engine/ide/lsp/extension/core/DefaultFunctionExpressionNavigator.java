@@ -24,5 +24,5 @@ import java.util.stream.Stream;
 
 public interface DefaultFunctionExpressionNavigator
 {
-    Stream<LegendReferenceResolver> findReferences(Optional<CoreInstance> coreInstance);
+    Stream<Optional<LegendReferenceResolver>> findReferences(Optional<CoreInstance> coreInstance);
 }

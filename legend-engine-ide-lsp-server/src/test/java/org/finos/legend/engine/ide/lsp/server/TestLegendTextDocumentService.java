@@ -312,7 +312,7 @@ public class TestLegendTextDocumentService
 
         LegendReference reference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(uri, 8, 23, 8, 55))
-                .withReferencedLocation(TextLocation.newTextSource(uri, 11, 1, 14, 2))
+                .withDeclarationLocation(TextLocation.newTextSource(uri, 11, 1, 14, 2))
                 .build();
 
         LegendLSPGrammarExtension extWithKeywords = newExtension(
