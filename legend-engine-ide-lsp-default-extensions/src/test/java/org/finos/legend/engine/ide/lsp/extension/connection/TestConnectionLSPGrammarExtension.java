@@ -186,7 +186,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedClassReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_CONNECTION_DOC_ID, 3, 11, 3, 31))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 5, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 5, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_CONNECTION_DOC_ID, TextPosition.newPosition(2, 2), null, "Outside of mappedClassReference-able element should yield nothing");
@@ -315,7 +315,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedMappingReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 5, 7, 5, 38))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(4, 2), null, "Outside of mappedMappingReference-able element should yield nothing");
@@ -327,28 +327,28 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedStoreReference1 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 9, 7, 9, 30))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID_1, 1, 0, 10, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID_1, 1, 0, 10, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(9, 20), mappedStoreReference1, "Within the store name has been mapped, referring to store definition");
 
         LegendReference mappedConnectionReference1 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 11, 25, 11, 59))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CONNECTION_DOC_ID_1, 1, 0, 12, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CONNECTION_DOC_ID_1, 1, 0, 12, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(11, 30), mappedConnectionReference1, "Within the connection name has been mapped, referring to connection definition");
 
         LegendReference mappedStoreReference2 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 13, 7, 13, 30))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID_2, 1, 0, 9, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID_2, 1, 0, 9, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(13, 20), mappedStoreReference2, "Within the store name has been mapped, referring to store definition");
 
         LegendReference mappedConnectionReference2 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 15, 25, 15, 59))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CONNECTION_DOC_ID_2, 1, 0, 12, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CONNECTION_DOC_ID_2, 1, 0, 12, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(15, 38), mappedConnectionReference2, "Within the connection name has been mapped, referring to connection definition");
@@ -430,7 +430,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedMappingReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 5, 7, 5, 38))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(4, 2), null, "Outside of mappedMappingReference-able element should yield nothing");
@@ -442,7 +442,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedClassReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 15, 26, 15, 50))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 6, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 6, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(15, 46), mappedClassReference, "Within the class name has been mapped, referring to class definition");
@@ -524,7 +524,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedMappingReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 5, 7, 5, 38))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(4, 2), null, "Outside of mappedMappingReference-able element should yield nothing");
@@ -536,7 +536,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedClassReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 15, 26, 15, 50))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 6, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 6, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(15, 46), mappedClassReference, "Within the class name has been mapped, referring to class definition");
@@ -644,7 +644,7 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedMappingReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 5, 7, 5, 38))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(4, 2), null, "Outside of mappedMappingReference-able element should yield nothing");
@@ -656,21 +656,21 @@ public class TestConnectionLSPGrammarExtension extends AbstractLSPGrammarExtensi
 
         LegendReference mappedConnectionReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 9, 7, 9, 41))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CONNECTION_DOC_ID, 1, 0, 12, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CONNECTION_DOC_ID, 1, 0, 12, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(9, 30), mappedConnectionReference, "Within the connection name has been mapped, referring to connection definition");
 
         LegendReference mappedStoreReference1 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 11, 11, 11, 34))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID_1, 1, 0, 13, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID_1, 1, 0, 13, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(11, 20), mappedStoreReference1, "Within the store name has been mapped, referring to store definition");
 
         LegendReference mappedStoreReference2 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 12, 11, 12, 30))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID_2, 1, 0, 9, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_STORE_DOC_ID_2, 1, 0, 9, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_RUNTIME_DOC_ID, TextPosition.newPosition(12, 20), mappedStoreReference2, "Within the store name has been mapped, referring to store definition");

@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -251,7 +252,23 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         if (element instanceof Database)
         {
             Database db = (Database) element;
-            db.schemas.forEach(s -> consumer.accept(getDeclaration(s)));
+            db.schemas.forEach(s ->
+            {
+                LegendDeclaration declaration = getDeclaration(s);
+                if (declaration != null)
+                {
+                    if ("default".equals(declaration.getIdentifier())
+                            && declaration.getLocation().equals(SourceInformationUtil.toLocation(db.sourceInformation))
+                    )
+                    {
+                        declaration.getChildren().forEach(consumer);
+                    }
+                    else
+                    {
+                        consumer.accept(declaration);
+                    }
+                }
+            });
             db.joins.forEach(j -> consumer.accept(getDeclaration(j)));
             db.filters.forEach(f -> consumer.accept(getDeclaration(f)));
         }
@@ -259,7 +276,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private LegendDeclaration getDeclaration(Schema schema)
     {
-        if (!isValidSourceInfo(schema.sourceInformation))
+        if (!SourceInformationUtil.isValidSourceInfo(schema.sourceInformation))
         {
             LOGGER.warn("Invalid source information for schema {}", schema.name);
             return null;
@@ -276,7 +293,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private LegendDeclaration getDeclaration(Table table)
     {
-        if (!isValidSourceInfo(table.sourceInformation))
+        if (!SourceInformationUtil.isValidSourceInfo(table.sourceInformation))
         {
             LOGGER.warn("Invalid source information for table {}", table.name);
             return null;
@@ -292,7 +309,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private LegendDeclaration getDeclaration(Column column)
     {
-        if (!isValidSourceInfo(column.sourceInformation))
+        if (!SourceInformationUtil.isValidSourceInfo(column.sourceInformation))
         {
             LOGGER.warn("Invalid source information for column {}", column.name);
             return null;
@@ -306,7 +323,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private LegendDeclaration getDeclaration(View view)
     {
-        if (!isValidSourceInfo(view.sourceInformation))
+        if (!SourceInformationUtil.isValidSourceInfo(view.sourceInformation))
         {
             LOGGER.warn("Invalid source information for view {}", view.name);
             return null;
@@ -322,7 +339,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private LegendDeclaration getDeclaration(ColumnMapping columnMapping)
     {
-        if (!isValidSourceInfo(columnMapping.sourceInformation))
+        if (!SourceInformationUtil.isValidSourceInfo(columnMapping.sourceInformation))
         {
             LOGGER.warn("Invalid source information for column mapping {}", columnMapping.name);
             return null;
@@ -336,7 +353,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private LegendDeclaration getDeclaration(Join join)
     {
-        if (!isValidSourceInfo(join.sourceInformation))
+        if (!SourceInformationUtil.isValidSourceInfo(join.sourceInformation))
         {
             LOGGER.warn("Invalid source information for join {}", join.name);
             return null;
@@ -350,7 +367,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
 
     private LegendDeclaration getDeclaration(Filter filter)
     {
-        if (!isValidSourceInfo(filter.sourceInformation))
+        if (!SourceInformationUtil.isValidSourceInfo(filter.sourceInformation))
         {
             LOGGER.warn("Invalid source information for filter {}", filter.name);
             return null;
@@ -363,7 +380,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     }
 
     @Override
-    public Stream<LegendReferenceResolver> getClassMappingReferences(ClassMapping mapping, GlobalState state)
+    public Stream<Optional<LegendReferenceResolver>> getClassMappingReferences(ClassMapping mapping, GlobalState state)
     {
         if (mapping instanceof RelationalClassMapping)
         {
@@ -373,7 +390,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     }
 
     @Override
-    public Stream<LegendReferenceResolver> getAssociationMappingReferences(AssociationMapping associationMapping, GlobalState state)
+    public Stream<Optional<LegendReferenceResolver>> getAssociationMappingReferences(AssociationMapping associationMapping, GlobalState state)
     {
         if (associationMapping instanceof RelationalAssociationMapping)
         {
@@ -383,7 +400,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     }
 
     @Override
-    public Stream<LegendReferenceResolver> getSetImplementationReferences(SetImplementation setImplementation)
+    public Stream<Optional<LegendReferenceResolver>> getSetImplementationReferences(SetImplementation setImplementation)
     {
         if (setImplementation instanceof RelationalInstanceSetImplementation)
         {
@@ -395,7 +412,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     }
 
     @Override
-    public Stream<LegendReferenceResolver> getPropertyMappingReferences(PropertyMapping propertyMapping)
+    public Stream<Optional<LegendReferenceResolver>> getPropertyMappingReferences(PropertyMapping propertyMapping)
     {
         if (propertyMapping instanceof RelationalPropertyMapping)
         {
@@ -405,38 +422,37 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         return Stream.empty();
     }
 
-    private Stream<LegendReferenceResolver> toReferences(RelationalClassMapping relationalClassMapping, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(RelationalClassMapping relationalClassMapping, GlobalState state)
     {
-        Stream<LegendReferenceResolver> properties = relationalClassMapping.propertyMappings.stream()
+        Stream<Optional<LegendReferenceResolver>> properties = relationalClassMapping.propertyMappings.stream()
                 .flatMap(Functions.bind(MappingLSPGrammarExtension::propertyMappingToReferences, state));
-        Stream<LegendReferenceResolver> pkRef = relationalClassMapping.primaryKey.stream().flatMap(this::toReferences);
-        Stream<LegendReferenceResolver> rootRelationalClassMappingReferences = Stream.empty();
+        Stream<Optional<LegendReferenceResolver>> pkRef = relationalClassMapping.primaryKey.stream().flatMap(this::toReferences);
+        Stream<Optional<LegendReferenceResolver>> rootRelationalClassMappingReferences = Stream.empty();
         if (relationalClassMapping instanceof RootRelationalClassMapping)
         {
             RootRelationalClassMapping rootRelationalClassMapping = (RootRelationalClassMapping) relationalClassMapping;
-            Stream<LegendReferenceResolver> filterReferences = Stream.empty();
-            FilterMapping filter = rootRelationalClassMapping.filter;
-            if (filter != null)
-            {
-                LegendReferenceResolver filterReference = LegendReferenceResolver.newReferenceResolver(
-                        filter.sourceInformation,
-                        x ->
-                        {
-                            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(filter.filter.db, filter.sourceInformation, x);
-                            return HelperRelationalBuilder.getFilter(database, filter.filter.name, filter.sourceInformation);
-                        }
-                );
 
-                filterReferences = Stream.concat(
-                        Stream.of(filterReference),
-                        filter.joins.stream().map(this::toReferences)
-                );
-            }
+            Optional<FilterMapping> maybeFilter = Optional.ofNullable(rootRelationalClassMapping.filter);
 
-            Stream<LegendReferenceResolver> mainTableRef = Stream.of(this.toReference(rootRelationalClassMapping.mainTable))
+            Optional<LegendReferenceResolver> filterReference = maybeFilter.flatMap(filter ->
+                    LegendReferenceResolver.newReferenceResolver(
+                            filter.sourceInformation,
+                            x ->
+                            {
+                                org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = HelperRelationalBuilder.getDatabase(filter.filter.db, filter.sourceInformation, x);
+                                return HelperRelationalBuilder.getFilter(database, filter.filter.name, filter.sourceInformation);
+                            }
+                    ));
+
+            Stream<Optional<LegendReferenceResolver>> filterReferences = Stream.concat(
+                    Stream.of(filterReference),
+                    maybeFilter.map(filter -> filter.joins.stream().map(this::toReferences)).orElseGet(Stream::empty)
+            );
+
+            Stream<Optional<LegendReferenceResolver>> mainTableRef = Stream.of(this.toReference(rootRelationalClassMapping.mainTable))
                     .filter(Objects::nonNull);
 
-            Stream<LegendReferenceResolver> groupByReferences = rootRelationalClassMapping.groupBy
+            Stream<Optional<LegendReferenceResolver>> groupByReferences = rootRelationalClassMapping.groupBy
                     .stream()
                     .flatMap(this::toReferences);
             rootRelationalClassMappingReferences = Stream.concat(filterReferences, Stream.concat(mainTableRef, groupByReferences));
@@ -445,26 +461,23 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         return Stream.concat(properties, Stream.concat(pkRef, rootRelationalClassMappingReferences));
     }
 
-    private Stream<LegendReferenceResolver> toReferences(RelationalAssociationMapping relationalAssociationMapping, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(RelationalAssociationMapping relationalAssociationMapping, GlobalState state)
     {
         return relationalAssociationMapping.propertyMappings
                 .stream()
                 .flatMap(Functions.bind(MappingLSPGrammarExtension::propertyMappingToReferences, state));
     }
 
-    private LegendReferenceResolver toReference(TablePtr tablePtr)
+    private Optional<LegendReferenceResolver> toReference(TablePtr tablePtr)
     {
-        if (tablePtr != null)
-        {
-            return LegendReferenceResolver.newReferenceResolver(
-                    tablePtr.sourceInformation,
-                    x -> HelperRelationalBuilder.getRelation(tablePtr, x)
-            );
-        }
-        return null;
+        return Optional.ofNullable(tablePtr).flatMap(ptr ->
+                LegendReferenceResolver.newReferenceResolver(
+                        ptr.sourceInformation,
+                        x -> HelperRelationalBuilder.getRelation(ptr, x)
+                ));
     }
 
-    private LegendReferenceResolver toReferences(JoinPointer joinPointer)
+    private Optional<LegendReferenceResolver> toReferences(JoinPointer joinPointer)
     {
         return LegendReferenceResolver.newReferenceResolver(
                 joinPointer.sourceInformation,
@@ -472,7 +485,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         );
     }
 
-    private Stream<LegendReferenceResolver> toReferences(RelationalOperationElement element)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(RelationalOperationElement element)
     {
         // todo ideally we should have a visitor
         if (element instanceof TableAliasColumn)
@@ -480,9 +493,9 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
             TableAliasColumn tableAliasColumn = (TableAliasColumn) element;
             if (tableAliasColumn.table != null)
             {
-                LegendReferenceResolver tableRef = toReference(tableAliasColumn.table);
+                Optional<LegendReferenceResolver> tableRef = toReference(tableAliasColumn.table);
 
-                LegendReferenceResolver colRef = LegendReferenceResolver.newReferenceResolver(tableAliasColumn.sourceInformation,
+                Optional<LegendReferenceResolver> colRef = LegendReferenceResolver.newReferenceResolver(tableAliasColumn.sourceInformation,
                         x -> HelperRelationalBuilder.getColumn(
                                 HelperRelationalBuilder.getRelation(tableAliasColumn.table, x),
                                 tableAliasColumn.column,
@@ -496,7 +509,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         else if (element instanceof ElementWithJoins)
         {
             ElementWithJoins joins = (ElementWithJoins) element;
-            Stream<LegendReferenceResolver> joinReferences = joins.joins.stream().map(this::toReferences);
+            Stream<Optional<LegendReferenceResolver>> joinReferences = joins.joins.stream().map(this::toReferences);
             return Stream.concat(this.toReferences(joins.relationalElement), joinReferences);
         }
         else if (element instanceof DynaFunc)
@@ -509,18 +522,14 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     }
 
     @Override
-    public Stream<LegendReferenceResolver> getConnectionReferences(Connection connection, GlobalState state)
+    public Stream<Optional<LegendReferenceResolver>> getConnectionReferences(Connection connection, GlobalState state)
     {
         if (connection instanceof RelationalDatabaseConnection)
         {
-            return Stream.of(toReference((RelationalDatabaseConnection) connection));
+            return Stream.of(LegendReferenceResolver.newReferenceResolver(connection.elementSourceInformation, s -> s.resolveStore(connection.element, connection.elementSourceInformation)));
         }
 
         return Stream.empty();
     }
 
-    private LegendReferenceResolver toReference(RelationalDatabaseConnection relationalDatabaseConnection)
-    {
-        return LegendReferenceResolver.newReferenceResolver(relationalDatabaseConnection.elementSourceInformation, s -> s.resolveStore(relationalDatabaseConnection.element, relationalDatabaseConnection.elementSourceInformation));
-    }
 }

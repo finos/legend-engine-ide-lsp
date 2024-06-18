@@ -22,6 +22,7 @@ import java.util.function.Function;
 import org.finos.legend.engine.ide.lsp.extension.text.Locatable;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.CompileContext;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.SourceInformationHelper;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 import org.slf4j.Logger;
@@ -59,13 +60,18 @@ public class LegendReferenceResolver implements Locatable
         }
     }
 
-    public static LegendReferenceResolver newReferenceResolver(SourceInformation location, Function<CompileContext, CoreInstance> gotoResolver)
+    public static Optional<LegendReferenceResolver> newReferenceResolver(SourceInformation location, Function<CompileContext, CoreInstance> gotoResolver)
     {
-        return new LegendReferenceResolver(SourceInformationUtil.toLocation(location), gotoResolver);
+        if (!SourceInformationUtil.isValidSourceInfo(location))
+        {
+            return Optional.empty();
+        }
+
+        return Optional.of(new LegendReferenceResolver(SourceInformationUtil.toLocation(location), gotoResolver));
     }
 
-    public static LegendReferenceResolver newReferenceResolver(org.finos.legend.pure.m4.coreinstance.SourceInformation location, CoreInstance coreInstance)
+    public static Optional<LegendReferenceResolver> newReferenceResolver(org.finos.legend.pure.m4.coreinstance.SourceInformation location, CoreInstance coreInstance)
     {
-        return new LegendReferenceResolver(SourceInformationUtil.toLocation(location), x -> coreInstance);
+        return LegendReferenceResolver.newReferenceResolver(SourceInformationHelper.fromM3SourceInformation(location), x -> coreInstance);
     }
 }

@@ -48,12 +48,12 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
     private static final SourceInformation UNKNOWN_SOURCE_INFORMATION = new SourceInformation("X", 0, 0, 0, 0);
 
     @Override
-    public Stream<LegendReferenceResolver> findReferences(Optional<CoreInstance> coreInstance)
+    public Stream<Optional<LegendReferenceResolver>> findReferences(Optional<CoreInstance> coreInstance)
     {
         return findReferences(coreInstance, List.of());
     }
 
-    private Stream<LegendReferenceResolver> findReferences(Optional<CoreInstance> optionalCoreInstance, List<VariableExpression> variableExpressions)
+    private Stream<Optional<LegendReferenceResolver>> findReferences(Optional<CoreInstance> optionalCoreInstance, List<VariableExpression> variableExpressions)
     {
         if (optionalCoreInstance.isEmpty())
         {
@@ -66,19 +66,19 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
             FunctionDefinition<?> functionDefinition = (FunctionDefinition<?>) coreInstance;
             FunctionType functionType = (FunctionType) functionDefinition._classifierGenericType()._typeArguments().getOnly()._rawType();
             MutableList<VariableExpression> allVariableExpressions = Lists.mutable.withAll(variableExpressions).withAll(functionType._parameters()).asUnmodifiable();
-            Stream<LegendReferenceResolver> expressionSequenceReferences = findReferences(functionDefinition._expressionSequence(), allVariableExpressions);
+            Stream<Optional<LegendReferenceResolver>> expressionSequenceReferences = findReferences(functionDefinition._expressionSequence(), allVariableExpressions);
             // TODO: Revisit return type
             GenericType returnType = functionType._returnType();
-            Stream<LegendReferenceResolver> returnTypeReferences = getLegendReference(returnType.getSourceInformation(), returnType._rawType());
+            Stream<Optional<LegendReferenceResolver>> returnTypeReferences = getLegendReference(returnType.getSourceInformation(), returnType._rawType());
             return Stream.concat(expressionSequenceReferences, returnTypeReferences);
         }
 
         else if (coreInstance instanceof FunctionExpression)
         {
             FunctionExpression functionExpression = (FunctionExpression) coreInstance;
-            Stream<LegendReferenceResolver> paramReferences = findReferences(functionExpression._parametersValues(), variableExpressions);
+            Stream<Optional<LegendReferenceResolver>> paramReferences = findReferences(functionExpression._parametersValues(), variableExpressions);
             Function<?> function = functionExpression._func();
-            Stream<LegendReferenceResolver> reference = getLegendReference(functionExpression.getSourceInformation(), function);
+            Stream<Optional<LegendReferenceResolver>> reference = getLegendReference(functionExpression.getSourceInformation(), function);
             return Stream.concat(paramReferences, reference);
         }
 
@@ -86,7 +86,7 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
         {
             InstanceValue instanceValue = (InstanceValue) coreInstance;
             RichIterable<? extends CoreInstance> values = instanceValue._values().selectInstancesOf(CoreInstance.class);
-            Stream<LegendReferenceResolver> valueReferences = Stream.empty();
+            Stream<Optional<LegendReferenceResolver>> valueReferences = Stream.empty();
             if (values.size() == 1)
             {
                 CoreInstance value = values.getOnly();
@@ -125,22 +125,22 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
         else if (coreInstance instanceof GraphFetchTree)
         {
             GraphFetchTree graphFetchTree = (GraphFetchTree) coreInstance;
-            Stream<LegendReferenceResolver> propertyReference = Stream.empty();
+            Stream<Optional<LegendReferenceResolver>> propertyReference = Stream.empty();
             if (graphFetchTree instanceof PropertyGraphFetchTree)
             {
                 PropertyGraphFetchTree propertyGraphFetchTree = (PropertyGraphFetchTree) graphFetchTree;
                 propertyReference = getLegendReference(propertyGraphFetchTree.getSourceInformation(), propertyGraphFetchTree._property());
             }
 
-            Stream<LegendReferenceResolver> subTypeReference = Stream.empty();
+            Stream<Optional<LegendReferenceResolver>> subTypeReference = Stream.empty();
             if (graphFetchTree instanceof SubTypeGraphFetchTree)
             {
                 SubTypeGraphFetchTree subTypeGraphFetchTree = (SubTypeGraphFetchTree) graphFetchTree;
                 subTypeReference = getLegendReference(subTypeGraphFetchTree.getSourceInformation(), subTypeGraphFetchTree._subTypeClass());
             }
 
-            Stream<LegendReferenceResolver> subTreeReferences = findReferences(graphFetchTree._subTrees(), variableExpressions);
-            Stream<LegendReferenceResolver> subTypeTreeReferences = findReferences(graphFetchTree._subTypeTrees(), variableExpressions);
+            Stream<Optional<LegendReferenceResolver>> subTreeReferences = findReferences(graphFetchTree._subTrees(), variableExpressions);
+            Stream<Optional<LegendReferenceResolver>> subTypeTreeReferences = findReferences(graphFetchTree._subTypeTrees(), variableExpressions);
             return Stream.of(propertyReference, subTypeReference, subTreeReferences, subTypeTreeReferences)
                     .flatMap(java.util.function.Function.identity());
         }
@@ -160,13 +160,13 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
         return Stream.empty();
     }
 
-    private Stream<LegendReferenceResolver> findReferences(RichIterable<? extends CoreInstance> coreInstances, List<VariableExpression> variableExpressions)
+    private Stream<Optional<LegendReferenceResolver>> findReferences(RichIterable<? extends CoreInstance> coreInstances, List<VariableExpression> variableExpressions)
     {
         return StreamSupport.stream(coreInstances.spliterator(), false)
                 .flatMap(c -> findReferences(Optional.ofNullable(c), variableExpressions));
     }
 
-    private Stream<LegendReferenceResolver> getLegendReference(SourceInformation sourceInformation, CoreInstance coreInstance)
+    private Stream<Optional<LegendReferenceResolver>> getLegendReference(SourceInformation sourceInformation, CoreInstance coreInstance)
     {
         if (isValidSourceInformation(sourceInformation) && coreInstance != null)
         {

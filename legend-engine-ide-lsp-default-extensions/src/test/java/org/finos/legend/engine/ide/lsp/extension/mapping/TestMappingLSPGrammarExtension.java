@@ -176,7 +176,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         LegendReference targetMappedClassReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",3,  3, 3, 27))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::Employee", 1, 0, 6, 0))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::Employee", 1, 0, 6, 0))
                 .build();
 
         testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(2, 1), null, "Outside of targetMappedClassReference-able element should yield nothing");
@@ -189,14 +189,14 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         LegendReference srcMappedClassReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",5,  11, 5, 38))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeSrc", 1, 0, 6, 0))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeSrc", 1, 0, 6, 0))
                 .build();
 
         testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(5, 12), srcMappedClassReference, "Source class reference");
 
         LegendReference propertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping",6,  6, 6, 13))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::Employee", 4, 4, 4, 22))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::Employee", 4, 4, 4, 22))
                 .build();
 
         testReferenceLookup(codeFiles, "vscodelsp::test::EmployeeMapping", TextPosition.newPosition(6, 10), propertyReference, "Property mapped reference");
@@ -252,7 +252,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         LegendReference mappedIncludedMappingReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID_1, 3, 3, 3, 50))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID_2, 1, 0, 8, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID_2, 1, 0, 8, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(2, 2), null, "Outside of mappedIncludedMappingReference-able element should yield nothing");
@@ -264,7 +264,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         LegendReference mappedClassPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID_1, 8, 23, 8, 24))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 4, 3, 4, 16))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 4, 3, 4, 16))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(8, 24), mappedClassPropertyReference, "Within the class property name has been mapped, referring to class property definition");

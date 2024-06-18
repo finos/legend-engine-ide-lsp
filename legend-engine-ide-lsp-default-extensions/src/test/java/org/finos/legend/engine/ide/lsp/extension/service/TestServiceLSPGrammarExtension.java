@@ -357,14 +357,14 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         LegendReference mappedMappingReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_SERVICE_DOC_ID, 8, 18, 8, 49))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 1, 0, 9, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_SERVICE_DOC_ID, TextPosition.newPosition(8, 21), mappedMappingReference, "Within the mapping name has been mapped, referring to mapping definition");
 
         LegendReference mappedRuntimeReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_SERVICE_DOC_ID, 9, 18, 9, 43))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 1, 0, 18, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_RUNTIME_DOC_ID, 1, 0, 18, 0))
                 .build();
 
         testReferenceLookup(codeFiles, TEST_SERVICE_DOC_ID, TextPosition.newPosition(9, 41), mappedRuntimeReference, "Within the runtime name has been mapped, referring to runtime definition");
@@ -376,7 +376,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         MutableMap<String, String> codeFiles = this.getCodeFilesForPostValidations();
         LegendReference mappedClassPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("test::service", 9, 52, 9, 56))
-                .withReferencedLocation(TextLocation.newTextSource("test::class", 3, 4, 3, 20))
+                .withDeclarationLocation(TextLocation.newTextSource("test::class", 3, 4, 3, 20))
                 .build();
 
         testReferenceLookup(codeFiles, "test::service", TextPosition.newPosition(9, 54), mappedClassPropertyReference, "Within the class property has been mapped, referring to class property definition");
@@ -389,7 +389,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         MutableMap<String, String> codeFiles = this.getCodeFilesForPostValidations();
         LegendReference mappedClassPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("test::service", 19, 68, 19, 71))
-                .withReferencedLocation(TextLocation.newTextSource("test::service", 19, 64, 19, 66))
+                .withDeclarationLocation(TextLocation.newTextSource("test::service", 19, 64, 19, 66))
                 .build();
 
         testReferenceLookup(codeFiles, "test::service", TextPosition.newPosition(19, 70), mappedClassPropertyReference, "Within the lambda variable has been mapped, referring to lambda variable definition");

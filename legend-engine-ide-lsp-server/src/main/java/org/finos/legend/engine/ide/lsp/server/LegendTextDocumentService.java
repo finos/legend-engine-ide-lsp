@@ -47,6 +47,7 @@ import org.eclipse.lsp4j.DocumentSymbolParams;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.LocationLink;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.RelatedFullDocumentDiagnosticReport;
 import org.eclipse.lsp4j.SemanticTokens;
 import org.eclipse.lsp4j.SemanticTokensRangeParams;
@@ -68,6 +69,7 @@ import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.server.LegendServerGlobalState.LegendServerDocumentState;
@@ -588,7 +590,7 @@ public class LegendTextDocumentService implements TextDocumentService
 
             return Either.forRight(reference.map(x ->
                             {
-                                TextLocation referencedLocation = x.getReferencedLocation();
+                                TextLocation referencedLocation = x.getDeclarationLocation();
                                 Range range = LegendToLSPUtilities.toRange(referencedLocation.getTextInterval());
                                 return List.of(new LocationLink(
                                         referencedLocation.getDocumentId(),
@@ -602,4 +604,105 @@ public class LegendTextDocumentService implements TextDocumentService
         });
     }
 
+    /**
+     * Compute the references of a given declaration.
+     * <p>
+     * The implementation first looks through the declaration at the given position,
+     * and then computes references that link to that declaration.
+     *
+     * @param params request params, including the location of the declaration to look for references to
+     * @return the list of references to the declaration at the given position
+     */
+    @Override
+    public CompletableFuture<List<? extends Location>> references(ReferenceParams params)
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            String uri = params.getTextDocument().getUri();
+            TextPosition textPosition = TextPosition.newPosition(params.getPosition().getLine(), params.getPosition().getCharacter());
+
+            LegendServerDocumentState currDocumentState = this.server.getGlobalState().getDocumentState(uri);
+            if (currDocumentState == null)
+            {
+                LOGGER.warn("No state for {}: cannot go to definition", uri);
+                return List.of();
+            }
+
+            SectionState currSectionState = currDocumentState.getSectionStateAtLine(textPosition.getLine());
+
+            if (currSectionState == null)
+            {
+                LOGGER.warn("Cannot find section state for line {} of {}: cannot go to definition", textPosition.getLine(), uri);
+                return List.of();
+            }
+
+            LegendLSPGrammarExtension currExtension = currSectionState.getExtension();
+
+            if (currExtension == null)
+            {
+                LOGGER.warn("No extension available for section state on line {} of {}: cannot go to definition", textPosition.getLine(), uri);
+                return List.of();
+            }
+
+            TextLocation location = TextLocation.newTextSource(uri, TextInterval.newInterval(textPosition, textPosition));
+
+            // try to find the declaration that we want to find references/usage
+            Optional<? extends LegendDeclaration> maybeDeclarationToFindReferences = currExtension.getDeclaration(currSectionState, textPosition);
+
+            if (maybeDeclarationToFindReferences.isEmpty())
+            {
+                return List.of();
+            }
+
+            LegendDeclaration declarationToFindReferences = maybeDeclarationToFindReferences.get();
+
+            // narrow down through the children, in case the request is for one of these
+            boolean cont = declarationToFindReferences.hasChildren();
+            while (cont)
+            {
+                // flag to stop looping
+                cont = false;
+                for (LegendDeclaration child : declarationToFindReferences.getChildren())
+                {
+                    // check if child is a better candidate for the interested declaration to look for references
+                    if (child.getLocation().subsumes(location))
+                    {
+                        // update declaration for reference lookups
+                        declarationToFindReferences = child;
+                        // narrow down even further if the new declaration has children
+                        cont = declarationToFindReferences.hasChildren();
+                        break;
+                    }
+                }
+            }
+
+            TextLocation locationToLookForReferences = declarationToFindReferences.getLocation();
+            List<Location> references = new ArrayList<>();
+
+            this.server.getGlobalState()
+                    .forEachDocumentState(documentState ->
+                            documentState.forEachSectionState(sectionState ->
+                                    {
+                                        LegendLSPGrammarExtension extension = sectionState.getExtension();
+                                        if (extension != null)
+                                        {
+                                            extension.getLegendReferences(sectionState)
+                                                    // we look into the referenced location to match the declaration we care
+                                                    .filter(ref -> locationToLookForReferences.equals(ref.getDeclarationLocation()))
+                                                    .map(ref -> new Location(ref.getLocation().getDocumentId(), LegendToLSPUtilities.toRange(ref.getLocation().getTextInterval())))
+                                                    .forEach(references::add);
+                                        }
+                                    }
+                            )
+                    );
+
+
+            if (params.getContext().isIncludeDeclaration())
+            {
+                references.add(new Location(locationToLookForReferences.getDocumentId(), LegendToLSPUtilities.toRange(locationToLookForReferences.getTextInterval())));
+            }
+
+            return references;
+        });
+    }
 }

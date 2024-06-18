@@ -24,13 +24,11 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.eclipse.collections.api.RichIterable;
@@ -418,36 +416,35 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    protected Collection<LegendReferenceResolver> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
+    protected Stream<Optional<LegendReferenceResolver>> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
     {
         if (!(packageableElement instanceof Service))
         {
-            return List.of();
+            return Stream.empty();
         }
 
         Service service = (Service) packageableElement;
-        Stream<LegendReferenceResolver> executionReferences = this.getExecutionReferences(service.execution, section.getDocumentState().getGlobalState());
-        Stream<LegendReferenceResolver> stereoTypeReferences = PureLSPGrammarExtension.toStereotypeReferences(service.stereotypes);
-        Stream<LegendReferenceResolver> taggedValueReferences = PureLSPGrammarExtension.toTaggedValueReferences(service.taggedValues);
-        Stream<LegendReferenceResolver> coreReferences = Stream.empty();
+        Stream<Optional<LegendReferenceResolver>> executionReferences = this.getExecutionReferences(service.execution, section.getDocumentState().getGlobalState());
+        Stream<Optional<LegendReferenceResolver>> stereoTypeReferences = PureLSPGrammarExtension.toStereotypeReferences(service.stereotypes);
+        Stream<Optional<LegendReferenceResolver>> taggedValueReferences = PureLSPGrammarExtension.toTaggedValueReferences(service.taggedValues);
+        Stream<Optional<LegendReferenceResolver>> coreReferences = Stream.empty();
         if (coreInstance.isPresent())
         {
             coreReferences = toReferences((Root_meta_legend_service_metamodel_Service) coreInstance.get());
         }
         return Stream.of(executionReferences, stereoTypeReferences, taggedValueReferences, coreReferences)
-                .flatMap(Functions.identity())
-                .collect(Collectors.toList());
+                .flatMap(Functions.identity());
     }
 
-    private Stream<LegendReferenceResolver> toReferences(Root_meta_legend_service_metamodel_Service service)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(Root_meta_legend_service_metamodel_Service service)
     {
-        Stream<LegendReferenceResolver> executionReferences = toReferences(service._execution());
-        Stream<LegendReferenceResolver> postValidationReferences = StreamSupport.stream(service._postValidations().spliterator(), false)
+        Stream<Optional<LegendReferenceResolver>> executionReferences = toReferences(service._execution());
+        Stream<Optional<LegendReferenceResolver>> postValidationReferences = StreamSupport.stream(service._postValidations().spliterator(), false)
                 .flatMap(this::toReferences);
         return Stream.concat(executionReferences, postValidationReferences);
     }
 
-    private Stream<LegendReferenceResolver> toReferences(Root_meta_legend_service_metamodel_Execution execution)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(Root_meta_legend_service_metamodel_Execution execution)
     {
         if (execution instanceof Root_meta_legend_service_metamodel_PureExecution)
         {
@@ -457,22 +454,22 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         return Stream.empty();
     }
 
-    private Stream<LegendReferenceResolver> toReferences(Root_meta_legend_service_metamodel_PostValidation postValidation)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(Root_meta_legend_service_metamodel_PostValidation postValidation)
     {
         if (postValidation == null)
         {
             return Stream.empty();
         }
         RichIterable<? extends CoreInstance> parameters = postValidation._parameters();
-        Stream<LegendReferenceResolver> parameterReferences = StreamSupport.stream(parameters.spliterator(), false)
+        Stream<Optional<LegendReferenceResolver>> parameterReferences = StreamSupport.stream(parameters.spliterator(), false)
                 .flatMap(parameter -> FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(parameter)));
         RichIterable<? extends Root_meta_legend_service_metamodel_PostValidationAssertion> assertions = postValidation._assertions();
-        Stream<LegendReferenceResolver> assertionReferences = StreamSupport.stream(assertions.spliterator(), false)
+        Stream<Optional<LegendReferenceResolver>> assertionReferences = StreamSupport.stream(assertions.spliterator(), false)
                 .flatMap(this::toReferences);
         return Stream.concat(parameterReferences, assertionReferences);
     }
 
-    private Stream<LegendReferenceResolver> toReferences(Root_meta_legend_service_metamodel_PostValidationAssertion postValidationAssertion)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(Root_meta_legend_service_metamodel_PostValidationAssertion postValidationAssertion)
     {
         if (postValidationAssertion == null)
         {
@@ -481,7 +478,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         return FUNCTION_EXPRESSION_NAVIGATOR.findReferences(Optional.ofNullable(postValidationAssertion._assertion()));
     }
 
-    private Stream<LegendReferenceResolver> getExecutionReferences(Execution execution, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> getExecutionReferences(Execution execution, GlobalState state)
     {
         if (execution instanceof PureSingleExecution)
         {
@@ -496,31 +493,31 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         return Stream.empty();
     }
 
-    private Stream<LegendReferenceResolver> toPureSingleExecutionReferences(PureSingleExecution pureSingleExecution, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toPureSingleExecutionReferences(PureSingleExecution pureSingleExecution, GlobalState state)
     {
-        LegendReferenceResolver mappingReference = LegendReferenceResolver.newReferenceResolver(
+        Optional<LegendReferenceResolver> mappingReference = LegendReferenceResolver.newReferenceResolver(
                 pureSingleExecution.mappingSourceInformation,
                 x -> x.resolveMapping(pureSingleExecution.mapping, pureSingleExecution.mappingSourceInformation));
-        Stream<LegendReferenceResolver> runtimeReferences = this.toRuntimeReferences(pureSingleExecution.runtime, state);
+        Stream<Optional<LegendReferenceResolver>> runtimeReferences = this.toRuntimeReferences(pureSingleExecution.runtime, state);
         return Stream.concat(Stream.of(mappingReference), runtimeReferences);
     }
 
-    private Stream<LegendReferenceResolver> toPureMultiExecutionReferences(PureMultiExecution pureMultiExecution, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toPureMultiExecutionReferences(PureMultiExecution pureMultiExecution, GlobalState state)
     {
         return pureMultiExecution.executionParameters
                 .stream()
                 .flatMap(executionParameter ->
                 {
-                    LegendReferenceResolver mappingReference = LegendReferenceResolver.newReferenceResolver(
+                    Optional<LegendReferenceResolver> mappingReference = LegendReferenceResolver.newReferenceResolver(
                             executionParameter.mappingSourceInformation,
                             x -> x.resolveMapping(executionParameter.mapping, executionParameter.mappingSourceInformation)
                     );
-                    Stream<LegendReferenceResolver> runtimeReferences = this.toRuntimeReferences(executionParameter.runtime, state);
+                    Stream<Optional<LegendReferenceResolver>> runtimeReferences = this.toRuntimeReferences(executionParameter.runtime, state);
                     return Stream.concat(Stream.of(mappingReference), runtimeReferences);
                 });
     }
 
-    private Stream<LegendReferenceResolver> toRuntimeReferences(Runtime runtime, GlobalState state)
+    private Stream<Optional<LegendReferenceResolver>> toRuntimeReferences(Runtime runtime, GlobalState state)
     {
         return state.findGrammarExtensionThatImplements(RuntimeLSPGrammarExtension.class)
                 .flatMap(x -> x.getRuntimeReferences(runtime, state));

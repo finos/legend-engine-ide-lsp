@@ -42,4 +42,20 @@ public final class SourceInformationUtil
     {
         return TextLocation.newTextSource(sourceInfo.getSourceId(), sourceInfo.getStartLine() - 1, sourceInfo.getStartColumn() - 1, sourceInfo.getEndLine() - 1, sourceInfo.getEndColumn() - 1);
     }
+
+    /**
+     * Check if the source information is valid.
+     *
+     * @param sourceInfo source information
+     * @return whether source information is valid
+     */
+    public static boolean isValidSourceInfo(SourceInformation sourceInfo)
+    {
+        return (sourceInfo != null) &&
+                (sourceInfo != SourceInformation.getUnknownSourceInformation()) &&
+                (sourceInfo.startLine > 0) &&
+                (sourceInfo.startColumn > 0) &&
+                (sourceInfo.startLine <= sourceInfo.endLine) &&
+                ((sourceInfo.startLine == sourceInfo.endLine) ? (sourceInfo.startColumn <= sourceInfo.endColumn) : (sourceInfo.endColumn > 0));
+    }
 }

@@ -16,6 +16,8 @@
 
 package org.finos.legend.engine.ide.lsp.extension.core;
 
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElementVisitor;
@@ -31,78 +33,76 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.PackageableRuntime;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.section.SectionIndex;
 
-import java.util.stream.Stream;
-
-public class PackageableElementDefaultVisitor implements PackageableElementVisitor<Stream<LegendReferenceResolver>>
+public class PackageableElementDefaultVisitor implements PackageableElementVisitor<Stream<Optional<LegendReferenceResolver>>>
 {
     @Override
-    public Stream<LegendReferenceResolver> visit(PackageableElement packageableElement)
+    public Stream<Optional<LegendReferenceResolver>> visit(PackageableElement packageableElement)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(Profile profile)
+    public Stream<Optional<LegendReferenceResolver>> visit(Profile profile)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(Enumeration enumeration)
+    public Stream<Optional<LegendReferenceResolver>> visit(Enumeration enumeration)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(Class aClass)
+    public Stream<Optional<LegendReferenceResolver>> visit(Class aClass)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(Association association)
+    public Stream<Optional<LegendReferenceResolver>> visit(Association association)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(Function function)
+    public Stream<Optional<LegendReferenceResolver>> visit(Function function)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(Measure measure)
+    public Stream<Optional<LegendReferenceResolver>> visit(Measure measure)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(SectionIndex sectionIndex)
+    public Stream<Optional<LegendReferenceResolver>> visit(SectionIndex sectionIndex)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(Mapping mapping)
+    public Stream<Optional<LegendReferenceResolver>> visit(Mapping mapping)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(PackageableRuntime packageableRuntime)
+    public Stream<Optional<LegendReferenceResolver>> visit(PackageableRuntime packageableRuntime)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(PackageableConnection packageableConnection)
+    public Stream<Optional<LegendReferenceResolver>> visit(PackageableConnection packageableConnection)
     {
         return Stream.empty();
     }
 
     @Override
-    public Stream<LegendReferenceResolver> visit(DataElement dataElement)
+    public Stream<Optional<LegendReferenceResolver>> visit(DataElement dataElement)
     {
         return Stream.empty();
     }

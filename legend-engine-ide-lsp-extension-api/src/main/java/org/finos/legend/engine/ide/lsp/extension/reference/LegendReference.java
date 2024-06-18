@@ -21,26 +21,26 @@ import org.finos.legend.engine.ide.lsp.extension.text.LegendTextObject;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 
 /**
- * Legend reference. This track the location where a pointer to another element exits, and the referenced element's location.
+ * Legend reference. This tracks the location where a reference to another element exists and the referenced element's declaration location.
  * This allows navigation from the given reference to the referenced location.
  */
 public class LegendReference extends LegendTextObject
 {
-    private final TextLocation referencedLocation;
+    private final TextLocation declarationLocation;
 
-    private LegendReference(TextLocation referenceLocation, TextLocation coreReferenceLocation, TextLocation referencedLocation)
+    private LegendReference(TextLocation referenceLocation, TextLocation coreReferenceLocation, TextLocation declarationLocation)
     {
         super(referenceLocation, coreReferenceLocation);
-        this.referencedLocation = Objects.requireNonNull(referencedLocation, "referenced location is required");
+        this.declarationLocation = Objects.requireNonNull(declarationLocation, "declaration location is required");
     }
 
     /**
-     * The referenced element location.
-     * @return the location of the element been referenced by this reference
+     * The element declaration location.
+     * @return the location of the declaration this reference links to
      */
-    public TextLocation getReferencedLocation()
+    public TextLocation getDeclarationLocation()
     {
-        return referencedLocation;
+        return declarationLocation;
     }
 
     public static Builder builder()
@@ -64,13 +64,13 @@ public class LegendReference extends LegendTextObject
         LegendReference that = (LegendReference) other;
         return getLocation().equals(that.getLocation()) &&
                 Objects.equals(getCoreLocation(), that.getCoreLocation()) &&
-                this.referencedLocation.equals(that.referencedLocation);
+                this.declarationLocation.equals(that.declarationLocation);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(this.getLocation(), this.getCoreLocation(), this.referencedLocation);
+        return Objects.hash(this.getLocation(), this.getCoreLocation(), this.declarationLocation);
     }
 
     @Override
@@ -86,7 +86,7 @@ public class LegendReference extends LegendTextObject
         {
             builder.append(" coreLocation=").append(getCoreLocation());
         }
-        builder.append(" referencedLocation=").append(this.referencedLocation);
+        builder.append(" declarationLocation=").append(this.declarationLocation);
         return builder.append("}");
     }
 
@@ -95,7 +95,7 @@ public class LegendReference extends LegendTextObject
      */
     public static class Builder extends AbstractBuilder<Builder>
     {
-        private TextLocation referencedLocation;
+        private TextLocation declarationLocation;
 
         private Builder()
         {
@@ -109,20 +109,20 @@ public class LegendReference extends LegendTextObject
         }
 
         /**
-         * Location of the referenced element
+         * Location of the declaration been referenced
          *
-         * @param referencedLocation referenced element's location
-         * @return the current builder with the new referenced location set
+         * @param declarationLocation declaration element's location
+         * @return the current builder with the new declaration location set
          */
-        public Builder withReferencedLocation(TextLocation referencedLocation)
+        public Builder withDeclarationLocation(TextLocation declarationLocation)
         {
-            this.referencedLocation = referencedLocation;
+            this.declarationLocation = declarationLocation;
             return this;
         }
 
         public LegendReference build()
         {
-            return new LegendReference(this.getLocation(), this.getCoreLocation(), this.referencedLocation);
+            return new LegendReference(this.getLocation(), this.getCoreLocation(), this.declarationLocation);
         }
     }
 }

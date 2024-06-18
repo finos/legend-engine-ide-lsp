@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
@@ -54,6 +55,18 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Iterable<? extends LegendDeclaration> getDeclarations(SectionState section)
     {
         return Collections.emptyList();
+    }
+
+    /**
+     * Return the Legend declaration for the given section at the given position, if one exists.
+     *
+     * @param section grammar section state
+     * @param position the position to get the declaration
+     * @return Legend declaration at given position
+     */
+    default Optional<LegendDeclaration> getDeclaration(SectionState section, TextPosition position)
+    {
+        return Optional.empty();
     }
 
     /**
@@ -114,6 +127,19 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Optional<LegendReference> getLegendReference(SectionState sectionState, TextPosition textPosition)
     {
         return Optional.empty();
+    }
+
+    /**
+     * Provides access to all references available on the section state.  Given that this can be computationally expensive, depending on the
+     * number of elements on the section, the method returns a Stream to allow further processing by the caller without the need
+     * to bring all these into memory.
+     *
+     * @param sectionState grammar section state
+     * @return a stream of all references existing in the given section state
+     */
+    default Stream<LegendReference> getLegendReferences(SectionState sectionState)
+    {
+        return Stream.empty();
     }
     
     /**

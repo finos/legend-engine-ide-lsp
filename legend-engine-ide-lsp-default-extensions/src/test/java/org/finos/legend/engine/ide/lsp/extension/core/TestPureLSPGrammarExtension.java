@@ -611,14 +611,14 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         LegendReference petReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(docId, 9, 35, 9, 54))
-                .withReferencedLocation(TextLocation.newTextSource(docId, 5, 0, 8, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(docId, 5, 0, 8, 0))
                 .build();
 
         testReferenceLookup(codeFiles, docId, TextPosition.newPosition(9, 50), petReference, "Supertype linked to class");
 
         LegendReference mammalReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(docId, 9, 57, 9, 79))
-                .withReferencedLocation(TextLocation.newTextSource(docId, 1, 0, 4, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(docId, 1, 0, 4, 0))
                 .build();
 
         testReferenceLookup(codeFiles, docId, TextPosition.newPosition(9, 65), mammalReference, "Supertype linked to class");
@@ -683,25 +683,25 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         LegendReference mappedProfileReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 1, 8, 1, 35))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_PROFILE_DOC_ID, 1, 0, 5, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_PROFILE_DOC_ID, 1, 0, 5, 0))
                 .build();
         testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(1, 30), mappedProfileReference, "Within the profile name has been mapped, referring to profile");
 
         LegendReference mappedProfileReference2 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 1, 50, 1, 77))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_PROFILE_DOC_ID, 1, 0, 5, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_PROFILE_DOC_ID, 1, 0, 5, 0))
                 .build();
         testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(1, 70), mappedProfileReference2, "Within the profile name has been mapped, referring to profile");
 
         LegendReference mappedPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 6, 13, 6, 35))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID2, 1, 0, 5, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID2, 1, 0, 5, 0))
                 .build();
         testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(6, 30), mappedPropertyReference, "Within the property has been mapped, referring to property");
 
         LegendReference mappedPropertyReference2 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 7, 11, 7, 34))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_ENUMERATION_DOC_ID, 1, 0, 5, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_ENUMERATION_DOC_ID, 1, 0, 5, 0))
                 .build();
         testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(7, 30), mappedPropertyReference2, "Within the property has been mapped, referring to property");
     }
@@ -739,7 +739,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         LegendReference mappedPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 11, 5, 12))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 15))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 15))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(5, 12), mappedPropertyReference, "Within the property name has been mapped, referring to property");
     }
@@ -806,7 +806,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         LegendReference mappedPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 6, 10, 6, 11))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 16))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 16))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(6, 10), mappedPropertyReference, "Within the property name has been mapped, referring to property");
     }
@@ -953,13 +953,13 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         LegendReference mappedClassPropertyInLambdaReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 5, 41, 5, 45))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass5", 5, 2, 5, 39))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::TestClass5", 5, 2, 5, 39))
                 .build();
         testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(5, 42), mappedClassPropertyInLambdaReference, "Within the class property has been mapped, referring to class property definition");
 
         LegendReference mappedQualifiedPropertyLambdaPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 20, 18, 20, 26))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass5", 6, 2, 6, 29))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::TestClass5", 6, 2, 6, 29))
                 .build();
         testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(20, 20), mappedQualifiedPropertyLambdaPropertyReference, "Within the property has been mapped, referring to property definition");
     }
@@ -971,37 +971,37 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         LegendReference mappedClassReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 3, 16, 3, 19))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 1, 0, 21, 0))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 1, 0, 21, 0))
                 .build();
         testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(3, 17), mappedClassReference, "Within the class name has been mapped, referring to class definition");
 
         LegendReference mappedClassReference2 = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 5, 7, 5, 33))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 1, 0, 21, 0))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 1, 0, 21, 0))
                 .build();
         testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(5, 17), mappedClassReference2, "Within the class name has been mapped, referring to class definition");
 
         LegendReference mappedNestedClassPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass3", 5, 47, 5, 48))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass7", 3, 2, 3, 16))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::TestClass7", 3, 2, 3, 16))
                 .build();
         testReferenceLookup(codeFiles, "vscodelsp::test::TestClass3", TextPosition.newPosition(5, 47), mappedNestedClassPropertyReference, "Within the nested property name has been mapped, referring to property definition");
 
         LegendReference mappedReturnTypeReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass7", 18, 4, 18, 30))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::TestClass4", 3, 2, 3, 16))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::TestClass4", 3, 2, 3, 16))
                 .build();
         testReferenceLookup(codeFiles, "vscodelsp::test::TestClass7", TextPosition.newPosition(18, 25), mappedReturnTypeReference, "Within the return type has been mapped, referring to class definition");
 
         LegendReference mappedEnumReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass8", 7, 4, 7, 26))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::MyEnum", 1, 0, 6, 0))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::MyEnum", 1, 0, 6, 0))
                 .build();
         testReferenceLookup(codeFiles, "vscodelsp::test::TestClass8", TextPosition.newPosition(7, 25), mappedEnumReference, "Within the enum has been mapped, referring to enum definition");
 
         LegendReference mappedEnumValueReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource("vscodelsp::test::TestClass8", 7, 28, 7, 32))
-                .withReferencedLocation(TextLocation.newTextSource("vscodelsp::test::MyEnum", 3, 2, 3, 6))
+                .withDeclarationLocation(TextLocation.newTextSource("vscodelsp::test::MyEnum", 3, 2, 3, 6))
                 .build();
         testReferenceLookup(codeFiles, "vscodelsp::test::TestClass8", TextPosition.newPosition(7, 29), mappedEnumValueReference, "Within the enum value has been mapped, referring to enum value definition");
     }
@@ -1040,25 +1040,25 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         LegendReference mappedClassReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 3, 2, 3, 29))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 6, 0))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 6, 0))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(3, 25), mappedClassReference, "Within the class name has been mapped, referring to class definition");
 
         LegendReference mappedParameterReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 3, 36, 3, 47))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 1, 33, 1, 53))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 1, 33, 1, 53))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(3, 40), mappedParameterReference, "Within the parameter name has been mapped, referring to parameter");
 
         LegendReference mappedPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 11, 5, 12))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 14))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 14))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(5, 12), mappedPropertyReference, "Within the property name has been mapped, referring to property");
 
         LegendReference mappedLambdaVariableReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 9, 5, 9))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 6, 5, 6))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 6, 5, 6))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(5, 9), mappedLambdaVariableReference, "Within the lambda variable has been mapped, referring to lambda variable");
     }
@@ -1091,7 +1091,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         LegendReference mappedTablePropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 3, 54, 3, 55))
-                .withReferencedLocation(TextLocation.newTextSource(TEST_DATABASE_DOC_ID, 5, 5, 5, 25))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_DATABASE_DOC_ID, 5, 5, 5, 25))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(3, 55), mappedTablePropertyReference, "Within the property name has been mapped, referring to property definition");
     }

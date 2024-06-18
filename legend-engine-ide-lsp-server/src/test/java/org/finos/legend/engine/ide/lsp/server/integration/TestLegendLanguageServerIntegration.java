@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import net.javacrumbs.jsonunit.JsonAssert;
 import net.javacrumbs.jsonunit.core.Option;
 import org.eclipse.lsp4j.CodeLens;
@@ -39,6 +40,8 @@ import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.PreviousResultId;
 import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.ReferenceContext;
+import org.eclipse.lsp4j.ReferenceParams;
 import org.eclipse.lsp4j.SymbolKind;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceDiagnosticParams;
@@ -511,5 +514,118 @@ public class TestLegendLanguageServerIntegration
                 jsonPerFile,
                 JsonAssert.when(Option.IGNORING_EXTRA_FIELDS).whenIgnoringPaths("[*].location")
         );
+    }
+
+    @Test
+    void getDeclarationReferences() throws Exception
+    {
+
+        Path modelPath = extension.addToWorkspace("LegalEntity.pure",
+                "###Pure\n" +
+                        "Class showcase::model::LegalEntity\n" +
+                        "{\n" +
+                        "  id: String[1];\n" +
+                        "  legalName: String[1];\n" +
+                        "  businessDate: Date[1];\n" +
+                        "}\n" +
+                        "Class showcase::model::LegalEntitySrc\n" +
+                        "{\n" +
+                        "  id: String[1];\n" +
+                        "  legalName: String[1];\n" +
+                        "  businessDate: Date[1];\n" +
+                        "}"
+        );
+
+        Path mappingPath = extension.addToWorkspace("mapping.pure",
+                "###Mapping\n" +
+                        "Mapping showcase::model::mapping\n" +
+                        "(\n" +
+                        "   showcase::model::LegalEntity : Pure\n" +
+                        "   {\n" +
+                        "      ~src showcase::model::LegalEntitySrc\n" +
+                        "      id : '123',\n" +
+                        "      legalName : $src.legalName,\n" +
+                        "      businessDate : $src.businessDate\n" +
+                        "   }\n" +
+                        ")");
+
+        Path funcPath = extension.addToWorkspace("myfunc.pure",
+                "###Pure\n" +
+                        "function showcase::model::myfunc(businessDate: Date[1]): meta::pure::tds::TabularDataSet[1]\n" +
+                        "{\n" +
+                        "  showcase::model::LegalEntity.all($businessDate)->project(\n" +
+                        "    [\n" +
+                        "      x|$x.id,\n" +
+                        "      x|$x.legalName\n" +
+                        "    ],\n" +
+                        "    [\n" +
+                        "      'Id',\n" +
+                        "      'Legal Name'\n" +
+                        "    ]\n" +
+                        "  )->distinct()->take(100);\n" +
+                        "}");
+
+        String modelDocumentId = modelPath.toUri().toString();
+        String mappingDocumentId = mappingPath.toUri().toString();
+        String functionDocumentId = funcPath.toUri().toString();
+
+        this.assertReferences("Usage of class LegalEntity", modelPath, 2, 3, false,
+                // reference in class mapping definition
+                TextLocation.newTextSource(mappingDocumentId, 3, 3, 3, 30)
+                // todo - missing the usage on function given missing source information
+        );
+
+        this.assertReferences("Usage of property LegalEntity.legalName", modelPath, 4, 3, false,
+                // reference in class mapping property definition
+                TextLocation.newTextSource(mappingDocumentId, 7, 6, 7, 14),
+                // usage in function expression
+                TextLocation.newTextSource(functionDocumentId, 6, 11, 6, 19)
+        );
+
+        this.assertReferences("Usage of property LegalEntity.id (without declaration)", modelPath, 3, 3, false,
+                // reference in class mapping property definition
+                TextLocation.newTextSource(mappingDocumentId, 6, 6, 6, 7),
+                // usage in function expression
+                TextLocation.newTextSource(functionDocumentId, 5, 11, 5, 12)
+        );
+
+        this.assertReferences("Usage of property LegalEntity.id (with declaration)", modelPath, 3, 3, true,
+                // reference in class mapping property definition
+                TextLocation.newTextSource(mappingDocumentId, 6, 6, 6, 7),
+                // usage in function expression
+                TextLocation.newTextSource(functionDocumentId, 5, 11, 5, 12),
+                // the declaration of the property
+                TextLocation.newTextSource(modelDocumentId, 3, 2, 3, 15)
+        );
+
+        this.assertReferences("Usage of class LegalEntitySrc", modelPath, 8, 3, false,
+                // reference in the Pure class mapping ~src
+                TextLocation.newTextSource(mappingDocumentId, 5, 11, 5, 41)
+        );
+
+        this.assertReferences("Usage of class LegalEntitySrc.businessDate", modelPath, 11, 3, false,
+                // reference in class mapping property right-side expression
+                TextLocation.newTextSource(mappingDocumentId, 8, 26, 8, 37)
+        );
+    }
+
+    private void assertReferences(String description, Path document, int posLine, int posChar, boolean includeDeclaration, TextLocation... expectedReferences) throws Exception
+    {
+        Comparator<Location> locationComparator = Comparator.comparing(Location::toString);
+
+
+        ReferenceParams params = new ReferenceParams(
+                new TextDocumentIdentifier(document.toUri().toString()),
+                new Position(posLine, posChar),
+                new ReferenceContext(includeDeclaration)
+        );
+        List<? extends Location> locations = extension.futureGet(extension.getServer().getTextDocumentService().references(params));
+        locations.sort(locationComparator);
+
+        List<Location> expected = Stream.of(expectedReferences).map(x -> new Location(x.getDocumentId(), LegendToLSPUtilities.toRange(x.getTextInterval())))
+                .sorted(locationComparator)
+                .collect(Collectors.toList());
+
+        Assertions.assertEquals(expected, locations, description);
     }
 }
