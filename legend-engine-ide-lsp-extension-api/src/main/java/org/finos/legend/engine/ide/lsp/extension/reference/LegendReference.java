@@ -21,7 +21,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.LegendTextObject;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 
 /**
- * Legend reference. This track the location where a pointer to another element exits, and the referenced element's (declaration) location.
+ * Legend reference. This tracks the location where a reference to another element exists and the referenced element's declaration location.
  * This allows navigation from the given reference to the referenced location.
  */
 public class LegendReference extends LegendTextObject

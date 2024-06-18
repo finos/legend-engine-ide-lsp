@@ -607,11 +607,11 @@ public class LegendTextDocumentService implements TextDocumentService
     /**
      * Compute the references of a given declaration.
      * <p>
-     * The implementation first look through the declaration at the interested position,
-     * and then compute what navigation reference links to that location.
+     * The implementation first looks through the declaration at the given position,
+     * and then computes references that link to that declaration.
      *
-     * @param params request params, including the location of the declaration to look for references
-     * @return the list of reference for the declaration at given position
+     * @param params request params, including the location of the declaration to look for references to
+     * @return the list of references to the declaration at the given position
      */
     @Override
     public CompletableFuture<List<? extends Location>> references(ReferenceParams params)

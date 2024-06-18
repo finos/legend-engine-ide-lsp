@@ -130,12 +130,12 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     }
 
     /**
-     * Provides access to all references available on the section state.  Given this can be computing expensive, depending on the
+     * Provides access to all references available on the section state.  Given that this can be computationally expensive, depending on the
      * number of elements on the section, the method returns a Stream to allow further processing by the caller without the need
      * to bring all these into memory.
      *
      * @param sectionState grammar section state
-     * @return all a stream of all references existing on the given section state
+     * @return a stream of all references existing in the given section state
      */
     default Stream<LegendReference> getLegendReferences(SectionState sectionState)
     {
