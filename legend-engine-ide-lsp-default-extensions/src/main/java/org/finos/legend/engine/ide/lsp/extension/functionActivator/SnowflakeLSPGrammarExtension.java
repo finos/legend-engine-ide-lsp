@@ -17,7 +17,11 @@
 package org.finos.legend.engine.ide.lsp.extension.functionActivator;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.eclipse.collections.impl.utility.LazyIterate;
+import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperModelBuilder;
 import org.finos.legend.engine.language.pure.grammar.to.HelperValueSpecificationGrammarComposer;
 import org.finos.legend.engine.language.snowflakeApp.grammar.from.SnowflakeAppGrammarParserExtension;
@@ -26,6 +30,9 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connect
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Function;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.DatabaseType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
+import org.finos.legend.engine.protocol.snowflakeApp.metamodel.SnowflakeApp;
+import org.finos.legend.engine.protocol.snowflakeApp.metamodel.SnowflakeAppDeploymentConfiguration;
+import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 
 public class SnowflakeLSPGrammarExtension extends FunctionActivatorLSPGrammarExtension
 {
@@ -72,5 +79,17 @@ public class SnowflakeLSPGrammarExtension extends FunctionActivatorLSPGrammarExt
     public String getName()
     {
         return "Snowflake";
+    }
+
+    @Override
+    protected Stream<Optional<LegendReferenceResolver>> getReferenceResolvers(SectionState section, PackageableElement packageableElement, Optional<CoreInstance> coreInstance)
+    {
+        SnowflakeApp functionActivator = (SnowflakeApp) packageableElement;
+        SnowflakeAppDeploymentConfiguration configuration = (SnowflakeAppDeploymentConfiguration) functionActivator.activationConfiguration;
+        Optional<LegendReferenceResolver> connectionResolver = Optional.ofNullable(configuration).flatMap(config ->
+                LegendReferenceResolver.newReferenceResolver(config.activationConnection.sourceInformation,
+                        x -> x.resolveConnection(config.activationConnection.connection, config.activationConnection.sourceInformation))
+        );
+        return Stream.concat(super.getReferenceResolvers(section, packageableElement, coreInstance), Stream.of(connectionResolver));
     }
 }

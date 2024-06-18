@@ -74,4 +74,9 @@ public class LegendReferenceResolver implements Locatable
     {
         return LegendReferenceResolver.newReferenceResolver(SourceInformationHelper.fromM3SourceInformation(location), x -> coreInstance);
     }
+
+    public static Optional<LegendReferenceResolver> newReferenceResolver(SourceInformation location, CoreInstance coreInstance)
+    {
+        return LegendReferenceResolver.newReferenceResolver(location, x -> coreInstance);
+    }
 }
