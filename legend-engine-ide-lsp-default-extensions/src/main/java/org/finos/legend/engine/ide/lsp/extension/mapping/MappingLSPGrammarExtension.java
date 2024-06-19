@@ -383,7 +383,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     {
         LegendReferenceResolver associationReference = LegendReferenceResolver.newReferenceResolver(
                 associationMapping.sourceInformation,
-                x -> x.resolveAssociation(associationMapping.association, associationMapping.sourceInformation)
+                x -> x.resolveAssociation(associationMapping.association.path, associationMapping.association.sourceInformation)
         );
 
         Stream<LegendReferenceResolver> associationMappingReferences;
@@ -440,14 +440,14 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     {
         LegendReferenceResolver enumerationMappingReference = LegendReferenceResolver.newReferenceResolver(
                 enumerationMapping.sourceInformation,
-                x -> x.resolveEnumeration(enumerationMapping.enumeration, enumerationMapping.sourceInformation));
+                x -> x.resolveEnumeration(enumerationMapping.enumeration.path, enumerationMapping.enumeration.sourceInformation));
 
         Stream<LegendReferenceResolver> enumValueReferences = enumerationMapping.enumValueMappings
                 .stream()
                 .map(enumValueMapping ->
                         LegendReferenceResolver.newReferenceResolver(
                                 enumValueMapping.enumValueSourceInformation,
-                                x -> x.resolveEnumValue(enumerationMapping.enumeration, enumValueMapping.enumValue, enumValueMapping.enumValueSourceInformation, enumValueMapping.sourceInformation)
+                                x -> x.resolveEnumValue(enumerationMapping.enumeration.path, enumValueMapping.enumValue, enumValueMapping.enumValueSourceInformation, enumValueMapping.sourceInformation)
                         ));
 
         return Stream.concat(
