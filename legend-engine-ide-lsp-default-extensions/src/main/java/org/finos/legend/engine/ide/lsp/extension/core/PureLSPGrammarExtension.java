@@ -263,20 +263,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return Stream.concat(stereotypeReferences, taggedValueReferences);
     }
 
-    private static Stream<Optional<LegendReferenceResolver>> toReferences(StereotypePtr stereotypePtr)
-    {
-        Optional<LegendReferenceResolver> profileReference = LegendReferenceResolver.newReferenceResolver(stereotypePtr.profileSourceInformation, x -> x.resolveProfile(stereotypePtr.profile, stereotypePtr.profileSourceInformation));
-        Optional<LegendReferenceResolver> stereotypeReference = LegendReferenceResolver.newReferenceResolver(stereotypePtr.sourceInformation, x -> x.resolveStereotype(stereotypePtr.profile, stereotypePtr.value, stereotypePtr.profileSourceInformation, stereotypePtr.sourceInformation));
-        return Stream.of(profileReference, stereotypeReference);
-    }
-
-    private static Stream<Optional<LegendReferenceResolver>> toReferences(TaggedValue taggedValue)
-    {
-        Optional<LegendReferenceResolver> profileReference = LegendReferenceResolver.newReferenceResolver(taggedValue.tag.profileSourceInformation, x -> x.resolveProfile(taggedValue.tag.profile, taggedValue.tag.profileSourceInformation));
-        Optional<LegendReferenceResolver> tagReference = LegendReferenceResolver.newReferenceResolver(taggedValue.tag.sourceInformation, x -> x.resolveTag(taggedValue.tag.profile, taggedValue.tag.value, taggedValue.tag.profileSourceInformation, taggedValue.tag.sourceInformation));
-        return Stream.of(profileReference, tagReference);
-    }
-
     private Stream<Optional<LegendReferenceResolver>> toReferences(org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.Class clazz)
     {
         Stream<Optional<LegendReferenceResolver>> constraintReferences = StreamSupport.stream(clazz._constraints().spliterator(), false)

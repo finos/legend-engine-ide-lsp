@@ -73,6 +73,8 @@ import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.StereotypePtr;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.TaggedValue;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
@@ -785,5 +787,19 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     {
         Entity sdlcEntity = this.entityConverter.toEntity(element);
         return new LegendEntity(sdlcEntity.getPath(), sdlcEntity.getClassifierPath(), sdlcEntity.getContent(), SourceInformationUtil.toLocation(element.sourceInformation));
+    }
+
+    protected static Stream<Optional<LegendReferenceResolver>> toReferences(StereotypePtr stereotypePtr)
+    {
+        Optional<LegendReferenceResolver> profileReference = LegendReferenceResolver.newReferenceResolver(stereotypePtr.profileSourceInformation, x -> x.resolveProfile(stereotypePtr.profile, stereotypePtr.profileSourceInformation));
+        Optional<LegendReferenceResolver> stereotypeReference = LegendReferenceResolver.newReferenceResolver(stereotypePtr.sourceInformation, x -> x.resolveStereotype(stereotypePtr.profile, stereotypePtr.value, stereotypePtr.profileSourceInformation, stereotypePtr.sourceInformation));
+        return Stream.of(profileReference, stereotypeReference);
+    }
+
+    protected static Stream<Optional<LegendReferenceResolver>> toReferences(TaggedValue taggedValue)
+    {
+        Optional<LegendReferenceResolver> profileReference = LegendReferenceResolver.newReferenceResolver(taggedValue.tag.profileSourceInformation, x -> x.resolveProfile(taggedValue.tag.profile, taggedValue.tag.profileSourceInformation));
+        Optional<LegendReferenceResolver> tagReference = LegendReferenceResolver.newReferenceResolver(taggedValue.tag.sourceInformation, x -> x.resolveTag(taggedValue.tag.profile, taggedValue.tag.value, taggedValue.tag.profileSourceInformation, taggedValue.tag.sourceInformation));
+        return Stream.of(profileReference, tagReference);
     }
 }
