@@ -15,6 +15,8 @@
 package org.finos.legend.engine.ide.lsp.extension.state;
 
 import java.util.Collection;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
@@ -86,5 +88,17 @@ public interface GlobalState extends State
                 .stream()
                 .filter(type::isInstance)
                 .map(type::cast);
+    }
+
+    default ForkJoinPool getForkJoinPool()
+    {
+        return new ForkJoinPool(1, x ->
+        {
+            ForkJoinWorkerThread forkJoinWorkerThread = new ForkJoinWorkerThread(x)
+            {
+            };
+            forkJoinWorkerThread.setContextClassLoader(Thread.currentThread().getContextClassLoader());
+            return forkJoinWorkerThread;
+        }, null,  false);
     }
 }

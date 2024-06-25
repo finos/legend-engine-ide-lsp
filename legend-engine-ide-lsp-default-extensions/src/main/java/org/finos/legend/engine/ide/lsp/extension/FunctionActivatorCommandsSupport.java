@@ -81,7 +81,7 @@ public final class FunctionActivatorCommandsSupport implements CommandsSupport
         CompileResult compileResult = this.extension.getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(this.extension.errorResult(compileResult.getException(), entityPath, location));
+            return Collections.singletonList(this.extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
 
         try
