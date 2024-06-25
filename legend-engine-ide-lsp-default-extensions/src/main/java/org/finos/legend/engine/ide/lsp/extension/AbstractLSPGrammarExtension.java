@@ -59,6 +59,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModelProcessParameter;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.SourceInformationHelper;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.Warning;
 import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceInformation;
@@ -177,19 +178,21 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         CompileResult compileResult = getCompileResult(sectionState);
         if (compileResult.hasEngineException())
         {
-            EngineException e = compileResult.getEngineException();
-            SourceInformation sourceInfo = e.getSourceInformation();
             String docId = sectionState.getDocumentState().getDocumentId();
-            if (!SourceInformationUtil.isValidSourceInfo(sourceInfo))
+            for (EngineException e : compileResult.getEngineExceptions())
             {
-                if ((sourceInfo != null) && docId.equals(sourceInfo.sourceId))
+                SourceInformation sourceInfo = e.getSourceInformation();
+                if (!SourceInformationUtil.isValidSourceInfo(sourceInfo))
                 {
-                    LOGGER.warn("Invalid source information in compiler exception in {}: cannot create diagnostic", docId, e);
+                    if ((sourceInfo != null) && docId.equals(sourceInfo.sourceId))
+                    {
+                        LOGGER.warn("Invalid source information in compiler exception in {}: cannot create diagnostic", docId, e);
+                    }
                 }
-            }
-            else if (docId.equals(sourceInfo.sourceId))
-            {
-                consumer.accept(LegendDiagnostic.newDiagnostic(SourceInformationUtil.toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler));
+                else if (docId.equals(sourceInfo.sourceId))
+                {
+                    consumer.accept(LegendDiagnostic.newDiagnostic(SourceInformationUtil.toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler));
+                }
             }
         }
         if (compileResult.getPureModel() != null)
@@ -350,23 +353,12 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         try
         {
             pureModelContextData = buildPureModelContextData(globalState);
-            PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, "");
-            globalState.logInfo("Compilation completed successfully");
+            PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).build();
+            PureModel pureModel = Compiler.compile(pureModelContextData, DeploymentMode.PROD, "", null, pureModelProcessParameter);
             return new CompileResult(pureModel, pureModelContextData);
         }
         catch (EngineException e)
         {
-            SourceInformation sourceInfo = e.getSourceInformation();
-            if (SourceInformationUtil.isValidSourceInfo(sourceInfo))
-            {
-                globalState.logInfo("Compilation completed with error " + "(" + sourceInfo.sourceId + " " + SourceInformationUtil.toLocation(sourceInfo) + "): " + e.getMessage());
-            }
-            else
-            {
-                globalState.logInfo("Compilation completed with error: " + e.getMessage());
-                globalState.logWarning("Invalid source information for compilation error");
-                LOGGER.warn("Invalid source information in exception during compilation requested for section {} of {}: {}", sectionState.getSectionNumber(), documentState.getDocumentId(), (sourceInfo == null) ? null : sourceInfo.getMessage(), e);
-            }
             return new CompileResult(e, pureModelContextData);
         }
         catch (Exception e)
