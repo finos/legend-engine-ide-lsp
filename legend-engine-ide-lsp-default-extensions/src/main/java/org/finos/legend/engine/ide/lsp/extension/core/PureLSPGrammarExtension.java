@@ -149,7 +149,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         if (element instanceof Function)
         {
             CompileResult compileResult = getCompileResult(sectionState);
-            if (!(compileResult.hasException() || compileResult.hasEngineException()))
+            if (!compileResult.hasException())
             {
                 Function function = (Function) element;
                 SourceInformation sourceInformation = function.sourceInformation;

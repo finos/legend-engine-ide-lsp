@@ -58,7 +58,7 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
         CompileResult compileResult = extension.getCompileResult(section);
         if (compileResult.hasException())
         {
-            return extension.errorResult(compileResult.getException(), entityPath);
+            return extension.errorResult(compileResult.getCompileErrorResult(), entityPath);
         }
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         PureModel pureModel = compileResult.getPureModel();

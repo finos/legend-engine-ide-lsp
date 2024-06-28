@@ -197,7 +197,7 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
         LegendExecutionResult[] executionResults = (LegendExecutionResult[]) gson.fromJson(gson.toJsonTree(result), TypeToken.getArray(LegendExecutionResult.class));
 
         Assertions.assertEquals(1, executionResults.length, "Expect one result: " + result);
-        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, executionResults[0].getType(), "Execution did not succeeded: " + executionResults[0]);
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, executionResults[0].getType(), "Execution did not succeed: " + executionResults[0]);
         Assertions.assertEquals(funcOutput, executionResults[0].getMessage());
     }
 

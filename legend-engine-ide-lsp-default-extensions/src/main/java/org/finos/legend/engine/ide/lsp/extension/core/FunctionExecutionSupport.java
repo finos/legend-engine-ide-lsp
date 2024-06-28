@@ -104,7 +104,7 @@ public interface FunctionExecutionSupport
         CompileResult compileResult = extension.getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(extension.errorResult(compileResult.getException(), entityPath));
+            return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
 
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();

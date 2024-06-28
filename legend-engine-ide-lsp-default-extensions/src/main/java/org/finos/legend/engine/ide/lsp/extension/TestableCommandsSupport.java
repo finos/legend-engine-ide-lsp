@@ -197,7 +197,7 @@ public final class TestableCommandsSupport
 
         if (compileResult.hasException())
         {
-            return List.of(LegendTestExecutionResult.error(compileResult.getException(), entityPath));
+            return List.of(LegendTestExecutionResult.error(compileResult.getCompileErrorResult(), entityPath));
         }
 
         try

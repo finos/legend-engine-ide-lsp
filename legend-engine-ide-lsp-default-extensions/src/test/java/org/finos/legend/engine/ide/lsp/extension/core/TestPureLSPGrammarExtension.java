@@ -236,6 +236,30 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Test
+    public void testDiagnostics_partial_compilation()
+    {
+        testDiagnostics(
+                "###Pure\n" +
+                "Class test::Persond\n" +
+                "{\n" +
+                "    id: String[1];\n" +
+                "}\n" +
+                "\n" +
+                "Class test::Person2 extends test::Person\n" +
+                "{\n" +
+                "    id: String[1];\n" +
+                "}\n" +
+                "\n" +
+                "Class test::Person3 extends test::Person\n" +
+                "{\n" +
+                "    id: String[1];\n" +
+                "}\n",
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 6, 28, 6, 39), "Can't find type 'test::Person'", Kind.Error, Source.Compiler),
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 11, 28, 11, 39), "Can't find type 'test::Person'", Kind.Error, Source.Compiler)
+        );
+    }
+
+    @Test
     public void testCompletion()
     {
         String code = "###Pure\n" +

@@ -287,7 +287,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, location));
+            return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
 
         PureModel pureModel = compileResult.getPureModel();
@@ -302,7 +302,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
         catch (Exception e)
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath, location));
+            return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
 
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();

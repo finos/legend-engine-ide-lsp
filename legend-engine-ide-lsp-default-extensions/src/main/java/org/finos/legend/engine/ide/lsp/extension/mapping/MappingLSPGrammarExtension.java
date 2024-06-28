@@ -202,7 +202,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         CompileResult compileResult = getCompileResult(section);
         if (compileResult.hasException())
         {
-            return Collections.singletonList(errorResult(compileResult.getException(), entityPath));
+            return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
 
         PureModel pureModel = compileResult.getPureModel();

@@ -16,23 +16,29 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.ImmutableList;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
+import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 
 public class CompileResult extends AbstractLSPGrammarExtension.Result<PureModel>
 {
     private final PureModelContextData pureModelContextData;
+    private final ImmutableList<EngineException> engineExceptions;
 
     CompileResult(PureModel pureModel, PureModelContextData pureModelContextData)
     {
         super(pureModel, null);
         this.pureModelContextData = pureModelContextData;
+        this.engineExceptions = pureModel.getEngineExceptions();
     }
 
     CompileResult(Exception e, PureModelContextData pureModelContextData)
     {
         super(null, e);
         this.pureModelContextData = pureModelContextData;
+        this.engineExceptions = Lists.immutable.empty();
     }
 
     public PureModel getPureModel()
@@ -43,5 +49,31 @@ public class CompileResult extends AbstractLSPGrammarExtension.Result<PureModel>
     public PureModelContextData getPureModelContextData()
     {
         return this.pureModelContextData;
+    }
+
+    @Override
+    public boolean hasException()
+    {
+        return hasEngineException() || this.e != null;
+    }
+
+    @Override
+    public boolean hasEngineException()
+    {
+        return !engineExceptions.isEmpty() || super.hasEngineException();
+    }
+
+    public ImmutableList<EngineException> getEngineExceptions()
+    {
+        if (!engineExceptions.isEmpty())
+        {
+            return this.engineExceptions;
+        }
+        return Lists.immutable.with(getEngineException());
+    }
+
+    public RuntimeException getCompileErrorResult()
+    {
+        return new RuntimeException("Cannot execute action due to compilation failure(s)! Check diagnostics for more details.");
     }
 }
