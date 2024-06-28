@@ -24,6 +24,7 @@ import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.factory.Sets;
 import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.dataSpace.DataSpaceLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.functionActivator.HostedServiceLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.functionActivator.SnowflakeLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtension;
@@ -57,6 +58,7 @@ class TestDefaultLegendLSPExtensionLoader
         expected.put("QueryPostProcessor", DefaultLegendLSPExtensionLoader.CatchAllSectionParserLSPGrammarExtension.class);
         expected.put("Snowflake", SnowflakeLSPGrammarExtension.class);
         expected.put("HostedService", HostedServiceLSPGrammarExtension.class);
+        expected.put("DataSpace", DataSpaceLSPGrammarExtension.class);
 
         MutableSet<String> missingOnActual = Sets.adapt(expected.keySet()).difference(Sets.adapt(grammarsMap.keySet()));
         Assertions.assertTrue(missingOnActual.isEmpty(), "Expected but missed on actual: " + missingOnActual);
