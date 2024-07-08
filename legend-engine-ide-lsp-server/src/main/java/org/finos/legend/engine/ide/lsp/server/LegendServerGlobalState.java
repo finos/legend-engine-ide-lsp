@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
@@ -80,6 +81,12 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
     public void logError(String message)
     {
         this.server.logErrorToClient(message);
+    }
+
+    @Override
+    public ForkJoinPool getForkJoinPool()
+    {
+        return this.server.getForkJoinPool();
     }
 
     synchronized LegendServerDocumentState getOrCreateDocState(String uri)

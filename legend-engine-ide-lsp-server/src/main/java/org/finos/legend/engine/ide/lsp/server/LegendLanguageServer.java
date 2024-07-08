@@ -33,6 +33,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -312,6 +313,11 @@ public class LegendLanguageServer implements LegendLanguageServerContract
                     logErrorToClient("Failed during post-initialization: " + x.getMessage());
                     return null;
                 });
+    }
+
+    public ForkJoinPool getForkJoinPool()
+    {
+        return this.extensionGuard.getForkJoinPool();
     }
 
     private void reprocessDocuments()
@@ -946,6 +952,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private void doShutdown()
     {
         LOGGER.info("Starting shut down process");
+        this.getForkJoinPool().shutdown();
         int currentState;
         while ((currentState = this.state.get()) < SHUTTING_DOWN)
         {

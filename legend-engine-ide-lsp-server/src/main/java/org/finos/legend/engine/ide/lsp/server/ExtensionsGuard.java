@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtensionLoader;
@@ -40,6 +42,7 @@ class ExtensionsGuard
 
     private final Collection<LegendLSPFeature> providedFeatures;
     private volatile Collection<LegendLSPFeature> features;
+    private volatile ForkJoinPool forkJoinPool;
 
     public ExtensionsGuard(LegendLanguageServer server, LegendLSPGrammarLibrary providedGrammarExtensions, Collection<LegendLSPFeature> providedFeatures)
     {
@@ -83,6 +86,7 @@ class ExtensionsGuard
             this.server.logInfoToClient("Feature extensions available: " + this.features.stream().map(LegendLSPFeature::description).collect(Collectors.joining(", ")));
 
             this.classLoader = classLoader;
+            this.forkJoinPool = createForkJoinPool(this.classLoader);
         }
         catch (IOException e)
         {
@@ -92,6 +96,23 @@ class ExtensionsGuard
         {
             Thread.currentThread().setContextClassLoader(contextClassLoader);
         }
+    }
+
+    private ForkJoinPool createForkJoinPool(ClassLoader classLoader)
+    {
+        return new ForkJoinPool(1, x ->
+        {
+            ForkJoinWorkerThread forkJoinWorkerThread = new ForkJoinWorkerThread(x)
+            {
+            };
+            forkJoinWorkerThread.setContextClassLoader(classLoader);
+            return forkJoinWorkerThread;
+        }, null,  false);
+    }
+
+    public ForkJoinPool getForkJoinPool()
+    {
+        return this.forkJoinPool;
     }
 
     public LegendLSPGrammarLibrary getGrammars()
