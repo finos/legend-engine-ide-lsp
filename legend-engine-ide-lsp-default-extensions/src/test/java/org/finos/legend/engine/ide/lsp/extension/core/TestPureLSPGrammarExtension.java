@@ -1269,40 +1269,4 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
         List<LegendTestExecutionResult> legendTestExecutionResults = this.extension.executeTests(sectionState, location, testId, exclusions);
         Assertions.assertEquals(expectedResults, legendTestExecutionResults.stream().sorted(Comparator.comparing(LegendTestExecutionResult::getId)).collect(Collectors.toList()));
     }
-
-    @Test
-    public void testTemp4()
-    {
-        MutableMap<String, String> codeFiles = Maps.mutable.empty();
-
-        codeFiles.put("test::class1",
-                "###Pure\n" +
-                        "Class test::class1\n" +
-                        "{\n" +
-                        "    prop1: String[1];\n" +
-                        "}");
-
-        codeFiles.put("test:class3",
-                "Class test::class3\n" +
-                        "{\n" +
-                        "  intp: Integer[1];\n" +
-                        "}");
-
-        codeFiles.put("test::temp",
-                "function test::temp(b: String[1]): Integer[1]\n" +
-                        "{\n" +
-                        "let p = [1, 2, 3];\n" +
-                        "let a = [^test::class3(intp = 4), ^test::class3(intp = 0)];\n" +
-                        "$a->filter(x: test::class3[1] |$x.intp>1)->at(0).intp;\n" +
-                        "$b;\n" +
-                        "$p->filter(x|$x>1)->at(0);\n" +
-                        "}");
-
-        LegendReference mappedClassPropertyReference = LegendReference.builder()
-                .withLocation(TextLocation.newTextSource("test::temp", 2, 9, 2, 11))
-                .withDeclarationLocation(TextLocation.newTextSource("test::temp", 2, 4, 2, 5))
-                .build();
-
-        testReferenceLookup(codeFiles, "test::temp", TextPosition.newPosition(2, 11), mappedClassPropertyReference, "Within the lambda variable has been mapped, referring to lambda variable definition");
-    }
 }
