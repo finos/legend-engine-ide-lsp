@@ -717,6 +717,12 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 .build();
         testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(1, 70), mappedProfileReference2, "Within the profile name has been mapped, referring to profile");
 
+        LegendReference mappedTagReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 1, 79, 1, 81))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_PROFILE_DOC_ID, 4, 9, 4, 11))
+                .build();
+        testReferenceLookup(codeFiles, TEST_CLASS_DOC_ID3, TextPosition.newPosition(1, 80), mappedTagReference, "Within the class tag has been mapped, referring to profile tag");
+
         LegendReference mappedPropertyReference = LegendReference.builder()
                 .withLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID3, 6, 13, 6, 35))
                 .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID2, 1, 0, 5, 0))
@@ -833,6 +839,18 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 3, 2, 3, 16))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(6, 10), mappedPropertyReference, "Within the property name has been mapped, referring to property");
+
+        LegendReference mappedClassReference1 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 8, 5, 20))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 4, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(5, 11), mappedClassReference1, "Within the rootGraphFetchTree name has been mapped, referring to class definition");
+
+        LegendReference mappedClassReference2 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 17, 8, 17, 20))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID, 1, 0, 4, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(17, 10), mappedClassReference2, "Within the rootGraphFetchTree name has been mapped, referring to class definition");
     }
 
     private MutableMap<String, String> getCodeFilesThatParseCompile()
@@ -1085,6 +1103,132 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 .withDeclarationLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 5, 6, 5, 6))
                 .build();
         testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(5, 9), mappedLambdaVariableReference, "Within the lambda variable has been mapped, referring to lambda variable");
+    }
+
+    @Test
+    void testGetReferenceResolversFunctionTestSuite()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_DATABASE_DOC_ID = "store::TestDB";
+        final String TEST_CLASS_DOC_ID = "model::Person";
+        final String TEST_MAPPING_DOC_ID = "execution::RelationalMapping";
+        final String TEST_FUNCTION_DOC_ID = "model::PersonWithConnectionStores";
+        final String TEST_RUNTIME_DOC_ID = "execution::RuntimeWithStoreConnections";
+        final String TEST_CONNECTION_DOC_ID = "model::MyConnection";
+
+        codeFiles.put(TEST_DATABASE_DOC_ID,
+                "###Relational\n" +
+                        "Database store::TestDB\n" +
+                        "(\n" +
+                        "  Table FirmTable\n" +
+                        "  (\n" +
+                        "    id INTEGER PRIMARY KEY,\n" +
+                        "    legal_name VARCHAR(200)\n" +
+                        "  )\n" +
+                        "  Table PersonTable\n" +
+                        "  (\n" +
+                        "    id INTEGER PRIMARY KEY,\n" +
+                        "    firm_id INTEGER,\n" +
+                        "    firstName VARCHAR(200),\n" +
+                        "    lastName VARCHAR(200)\n" +
+                        "  )\n" +
+                        "\n" +
+                        "  Join FirmPerson(PersonTable.firm_id = FirmTable.id)\n" +
+                        ")");
+
+        codeFiles.put(TEST_CLASS_DOC_ID,
+                "###Pure\n" +
+                "Class model::Person\n" +
+                        "{\n" +
+                        "  firstName: String[1];\n" +
+                        "  lastName: String[1];\n" +
+                        "}");
+
+        codeFiles.put(TEST_MAPPING_DOC_ID,
+                "###Mapping\n" +
+                        "Mapping execution::RelationalMapping\n" +
+                        "(\n" +
+                        "  *model::Person: Relational\n" +
+                        "  {\n" +
+                        "    ~primaryKey\n" +
+                        "    (\n" +
+                        "      [store::TestDB]PersonTable.id\n" +
+                        "    )\n" +
+                        "    ~mainTable [store::TestDB]PersonTable\n" +
+                        "    firstName: [store::TestDB]PersonTable.firstName,\n" +
+                        "    lastName: [store::TestDB]PersonTable.lastName\n" +
+                        "  }\n" +
+                        ")");
+
+        codeFiles.put(TEST_CONNECTION_DOC_ID,
+                "###Connection\n" +
+                        "RelationalDatabaseConnection model::MyConnection\n" +
+                        "{\n" +
+                        "  store: store::TestDB;\n" +
+                        "  type: H2;\n" +
+                        "  specification: LocalH2\n" +
+                        "  {\n" +
+                        "    testDataSetupSqls: [\n" +
+                        "      ];\n" +
+                        "  };\n" +
+                        "  auth: DefaultH2;\n" +
+                        "}\n");
+
+        codeFiles.put(TEST_RUNTIME_DOC_ID,
+                "###Runtime\n" +
+                        "Runtime execution::RuntimeWithStoreConnections\n" +
+                        "{\n" +
+                        "  mappings:\n" +
+                        "  [\n" +
+                        "    execution::RelationalMapping\n" +
+                        "  ];\n" +
+                        "  connectionStores:\n" +
+                        "  [\n" +
+                        "    model::MyConnection:\n" +
+                        "    [\n" +
+                        "       store::TestDB\n" +
+                        "    ]\n" +
+                        "  ];\n" +
+                        "}");
+
+        codeFiles.put(TEST_FUNCTION_DOC_ID,
+                "###Pure\n" +
+                        "function model::PersonWithConnectionStores(): meta::pure::tds::TabularDataSet[1]\n" +
+                        "{\n" +
+                        "  model::Person.all()->project(\n" +
+                        "    [\n" +
+                        "      x|$x.firstName,\n" +
+                        "      x|$x.lastName\n" +
+                        "    ],\n" +
+                        "    [\n" +
+                        "      'First Name',\n" +
+                        "      'Last Name'\n" +
+                        "    ]\n" +
+                        "  )->from(\n" +
+                        "     execution::RelationalMapping,\n" +
+                        "     execution::RuntimeWithStoreConnections\n" +
+                        "  )\n" +
+                        "}\n" +
+                        "{\n" +
+                        "testSuite_1\n" +
+                        "  (\n" +
+                        "    store::TestDB:\n" +
+                        "          Relational\n" +
+                        "          #{\n" +
+                        "            default.PersonTable:\n" +
+                        "              'id,firm_id,firstName,lastName,employeeType\\n'+\n" +
+                        "              '2,1,Nicole,Smith,FTC\\n';\n" +
+                        "          }#;\n" +
+                        "    test_1 | PersonWithConnectionStores() => (JSON) '[ {\\n  \"First Name\" : \"Nicole\",\\n  \"Last Name\" : \"Smith\"\\n} ]';\n" +
+                        "   )\n" +
+                        "}");
+
+        LegendReference mappedStoreReference = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_FUNCTION_DOC_ID, 20, 4, 20, 16))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_DATABASE_DOC_ID, 1, 0, 17, 0))
+                .build();
+
+        testReferenceLookup(codeFiles, TEST_FUNCTION_DOC_ID, TextPosition.newPosition(20, 4), mappedStoreReference, "Within the function test suite class name has been mapped, referring to store definition");
     }
 
     @Test

@@ -76,6 +76,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.StereotypePtr;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.TaggedValue;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.StoreTestData;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
@@ -177,8 +178,9 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             {
                 Stream<Optional<LegendReferenceResolver>> stereotypeReferences = toStereotypeReferences(function.stereotypes);
                 Stream<Optional<LegendReferenceResolver>> taggedValueReferences = toTaggedValueReferences(function.taggedValues);
+                Stream<Optional<LegendReferenceResolver>> testSuiteReferences = toFunctionTestSuiteReferences(getTestSuites(function));
                 Stream<Optional<LegendReferenceResolver>> coreReferences = FUNCTION_EXPRESSION_NAVIGATOR.findReferences(coreInstance);
-                return Stream.of(stereotypeReferences, taggedValueReferences, coreReferences)
+                return Stream.of(stereotypeReferences, taggedValueReferences, coreReferences, testSuiteReferences)
                         .flatMap(java.util.function.Function.identity());
             }
 
@@ -247,6 +249,11 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return qualifiedProperties.stream().flatMap(this::toReferences);
     }
 
+    private Stream<Optional<LegendReferenceResolver>> toFunctionTestSuiteReferences(List<? extends TestSuite> functionTestSuites)
+    {
+        return functionTestSuites.stream().flatMap(testSuite -> toReferences((FunctionTestSuite) testSuite));
+    }
+
     private Stream<Optional<LegendReferenceResolver>> toReferences(Property property)
     {
         Optional<LegendReferenceResolver> propertyReference = LegendReferenceResolver.newReferenceResolver(property.propertyTypeSourceInformation, x -> x.resolvePackageableElement(property.type, property.propertyTypeSourceInformation));
@@ -261,6 +268,17 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         Stream<Optional<LegendReferenceResolver>> stereotypeReferences = toStereotypeReferences(qualifiedProperty.stereotypes);
         Stream<Optional<LegendReferenceResolver>> taggedValueReferences = toTaggedValueReferences(qualifiedProperty.taggedValues);
         return Stream.concat(stereotypeReferences, taggedValueReferences);
+    }
+
+    private Stream<Optional<LegendReferenceResolver>> toReferences(FunctionTestSuite functionTestSuite)
+    {
+        return functionTestSuite.testData.stream().flatMap(this::toReferences);
+    }
+
+    private Stream<Optional<LegendReferenceResolver>> toReferences(StoreTestData storeTestData)
+    {
+        Optional<LegendReferenceResolver> storeReference = LegendReferenceResolver.newReferenceResolver(storeTestData.store.sourceInformation, x -> x.resolveStore(storeTestData.store.path, storeTestData.store.sourceInformation));
+        return Stream.of(storeReference);
     }
 
     private Stream<Optional<LegendReferenceResolver>> toReferences(org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.Class clazz)

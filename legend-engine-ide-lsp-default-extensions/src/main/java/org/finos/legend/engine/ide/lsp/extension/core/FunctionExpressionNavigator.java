@@ -22,8 +22,11 @@ import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.graphFetch.GraphFetchTree;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.graphFetch.PropertyGraphFetchTree;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.graphFetch.RootGraphFetchTree;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.graphFetch.SubTypeGraphFetchTree;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.PackageableElement;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.constraint.Constraint;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.ConcreteFunctionDefinition;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.Function;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.FunctionDefinition;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.path.Path;
@@ -67,10 +70,19 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
             FunctionType functionType = (FunctionType) functionDefinition._classifierGenericType()._typeArguments().getOnly()._rawType();
             MutableList<VariableExpression> allVariableExpressions = Lists.mutable.withAll(variableExpressions).withAll(functionType._parameters()).asUnmodifiable();
             Stream<Optional<LegendReferenceResolver>> expressionSequenceReferences = findReferences(functionDefinition._expressionSequence(), allVariableExpressions);
+
+            Stream<Optional<LegendReferenceResolver>> preConstraintReferences = Stream.empty();
+            Stream<Optional<LegendReferenceResolver>> postConstraintReferences = Stream.empty();
+            if (functionDefinition instanceof ConcreteFunctionDefinition<?>)
+            {
+                ConcreteFunctionDefinition<?> concreteFunctionDefinition = (ConcreteFunctionDefinition<?>) functionDefinition;
+                preConstraintReferences = findReferences(concreteFunctionDefinition._preConstraints(), allVariableExpressions);
+                postConstraintReferences = findReferences(concreteFunctionDefinition._postConstraints(), allVariableExpressions);
+            }
             // TODO: Revisit return type
             GenericType returnType = functionType._returnType();
             Stream<Optional<LegendReferenceResolver>> returnTypeReferences = getLegendReference(returnType.getSourceInformation(), returnType._rawType());
-            return Stream.concat(expressionSequenceReferences, returnTypeReferences);
+            return Stream.of(expressionSequenceReferences, returnTypeReferences, preConstraintReferences, postConstraintReferences).flatMap(java.util.function.Function.identity());
         }
 
         else if (coreInstance instanceof FunctionExpression)
@@ -125,6 +137,13 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
         else if (coreInstance instanceof GraphFetchTree)
         {
             GraphFetchTree graphFetchTree = (GraphFetchTree) coreInstance;
+            Stream<Optional<LegendReferenceResolver>> classReference = Stream.empty();
+            if (graphFetchTree instanceof RootGraphFetchTree)
+            {
+                RootGraphFetchTree rootGraphFetchTree = (RootGraphFetchTree) graphFetchTree;
+                classReference = getLegendReference(rootGraphFetchTree.getSourceInformation(), rootGraphFetchTree._class());
+            }
+
             Stream<Optional<LegendReferenceResolver>> propertyReference = Stream.empty();
             if (graphFetchTree instanceof PropertyGraphFetchTree)
             {
@@ -141,7 +160,7 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
 
             Stream<Optional<LegendReferenceResolver>> subTreeReferences = findReferences(graphFetchTree._subTrees(), variableExpressions);
             Stream<Optional<LegendReferenceResolver>> subTypeTreeReferences = findReferences(graphFetchTree._subTypeTrees(), variableExpressions);
-            return Stream.of(propertyReference, subTypeReference, subTreeReferences, subTypeTreeReferences)
+            return Stream.of(classReference, propertyReference, subTypeReference, subTreeReferences, subTypeTreeReferences)
                     .flatMap(java.util.function.Function.identity());
         }
 
@@ -157,6 +176,14 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
             return findReferences(propertyPathElement._parameters(), variableExpressions);
         }
 
+        else if (coreInstance instanceof Constraint)
+        {
+            Constraint constraint = (Constraint) coreInstance;
+            Stream<Optional<LegendReferenceResolver>> functionDefinitionReferences = findReferences(Optional.ofNullable(constraint._functionDefinition()), variableExpressions);
+            Stream<Optional<LegendReferenceResolver>> messageFunctionReferences = findReferences(Optional.ofNullable(constraint._messageFunction()), variableExpressions);
+            return Stream.concat(functionDefinitionReferences, messageFunctionReferences);
+        }
+
         return Stream.empty();
     }
 
@@ -168,7 +195,7 @@ public class FunctionExpressionNavigator implements DefaultFunctionExpressionNav
 
     private Stream<Optional<LegendReferenceResolver>> getLegendReference(SourceInformation sourceInformation, CoreInstance coreInstance)
     {
-        if (isValidSourceInformation(sourceInformation) && coreInstance != null)
+        if (isValidSourceInformation(sourceInformation) && coreInstance != null && isValidSourceInformation(coreInstance.getSourceInformation()) && !sourceInformation.equals(coreInstance.getSourceInformation()))
         {
             return Stream.of(LegendReferenceResolver.newReferenceResolver(sourceInformation, coreInstance));
         }
