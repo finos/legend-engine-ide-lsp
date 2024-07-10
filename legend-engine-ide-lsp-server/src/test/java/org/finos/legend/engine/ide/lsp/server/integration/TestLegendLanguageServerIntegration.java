@@ -571,8 +571,8 @@ public class TestLegendLanguageServerIntegration
 
         this.assertReferences("Usage of class LegalEntity", modelPath, 2, 3, false,
                 // reference in class mapping definition
-                TextLocation.newTextSource(mappingDocumentId, 3, 3, 3, 30)
-                // todo - missing the usage on function given missing source information
+                TextLocation.newTextSource(mappingDocumentId, 3, 3, 3, 30),
+                TextLocation.newTextSource(functionDocumentId, 3, 2, 3, 29)
         );
 
         this.assertReferences("Usage of property LegalEntity.legalName", modelPath, 4, 3, false,

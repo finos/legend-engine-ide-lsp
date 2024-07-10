@@ -272,4 +272,107 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID_1, TextPosition.newPosition(8, 24), mappedClassPropertyReference, "Within the class property name has been mapped, referring to class property definition");
     }
+
+    @Test
+    public void testGetReferenceResolversMappingTestSuite()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        final String TEST_CLASS_DOC_ID_1 = "example::util::model::DateTimeWrapper";
+        final String TEST_CLASS_DOC_ID_2 = "example::util::model::StrictDateWrapper";
+        final String TEST_MAPPING_DOC_ID = "example::m2mExamplesByFunction::datePart::StrictDatesFromDateTimes";
+
+        codeFiles.put(TEST_CLASS_DOC_ID_1,
+                "###Pure\n" +
+                        "Class example::util::model::DateTimeWrapper\n" +
+                        "{\n" +
+                        "  values: DateTime[*];\n" +
+                        "}");
+
+        codeFiles.put(TEST_CLASS_DOC_ID_2,
+                "###Pure\n" +
+                        "Class example::util::model::StrictDateWrapper\n" +
+                        "{\n" +
+                        "  values: StrictDate[*];\n" +
+                        "}");
+
+        codeFiles.put(TEST_MAPPING_DOC_ID,
+                "###Mapping\n" +
+                        "Mapping example::m2mExamplesByFunction::datePart::StrictDatesFromDateTimes\n" +
+                        "(\n" +
+                        "  *example::util::model::StrictDateWrapper: Pure\n" +
+                        "  {\n" +
+                        "    ~src example::util::model::DateTimeWrapper\n" +
+                        "    values: $src.values->map(\n" +
+                        "  dt|$dt->datePart()->cast(\n" +
+                        "    @StrictDate\n" +
+                        "  )\n" +
+                        ")\n" +
+                        "  }\n" +
+                        "\n" +
+                        "  testSuites:\n" +
+                        "  [\n" +
+                        "    TestSuite1:\n" +
+                        "    {\n" +
+                        "      function: |example::util::model::StrictDateWrapper.all()->graphFetch(\n" +
+                        "  #{\n" +
+                        "    example::util::model::StrictDateWrapper{\n" +
+                        "      values\n" +
+                        "    }\n" +
+                        "  }#\n" +
+                        ")->serialize(\n" +
+                        "  #{\n" +
+                        "    example::util::model::StrictDateWrapper{\n" +
+                        "      values\n" +
+                        "    }\n" +
+                        "  }#\n" +
+                        ");\n" +
+                        "      tests:\n" +
+                        "      [\n" +
+                        "        Test1:\n" +
+                        "        {\n" +
+                        "          doc: 'Conversion of DateTime values to the StrictDate representing the date part of the value. Note that at read time, all dates are converted to UTC, and so date part will represent the value of the date component after this conversion.';\n" +
+                        "          data:\n" +
+                        "          [\n" +
+                        "            ModelStore:\n" +
+                        "              ModelStore\n" +
+                        "              #{\n" +
+                        "                example::util::model::DateTimeWrapper:\n" +
+                        "                  ExternalFormat\n" +
+                        "                  #{\n" +
+                        "                    contentType: 'application/json';\n" +
+                        "                    data: '{\\n  \"values\": [\\n    \"2023-11-22T23:58:44+0000\",\\n    \"2023-11-05T10:10:10+0000\",\\n    \"2023-11-05T02:10:10+0500\"\\n  ]\\n}';\n" +
+                        "                  }#\n" +
+                        "              }#\n" +
+                        "          ];\n" +
+                        "          asserts:\n" +
+                        "          [\n" +
+                        "            expectedAssertion:\n" +
+                        "              EqualToJson\n" +
+                        "              #{\n" +
+                        "                expected:\n" +
+                        "                  ExternalFormat\n" +
+                        "                  #{\n" +
+                        "                    contentType: 'application/json';\n" +
+                        "                    data: '{\\n  \"values\": [\\n    \"2023-11-22\",\\n    \"2023-11-05\",\\n    \"2023-11-04\"\\n  ]\\n}';\n" +
+                        "                  }#;\n" +
+                        "              }#\n" +
+                        "          ];\n" +
+                        "        }\n" +
+                        "      ];\n" +
+                        "    }\n" +
+                        "  ]\n" +
+                        ")");
+
+        LegendReference mappedClassReference1 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 19, 4, 19, 42))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID_2, 1, 0, 4, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(19, 30), mappedClassReference1, "Within the mapping test suite class name has been mapped, referring to class definition");
+
+        LegendReference mappedClassReference2 = LegendReference.builder()
+                .withLocation(TextLocation.newTextSource(TEST_MAPPING_DOC_ID, 25, 4, 25, 42))
+                .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID_2, 1, 0, 4, 0))
+                .build();
+        testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(25, 40), mappedClassReference2, "Within the mapping test suite class name has been mapped, referring to class definition");
+    }
 }
