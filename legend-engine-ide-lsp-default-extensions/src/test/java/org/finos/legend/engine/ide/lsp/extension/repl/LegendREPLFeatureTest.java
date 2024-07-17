@@ -24,6 +24,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.jline.reader.impl.LineReaderImpl;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.junit.jupiter.api.AfterEach;
@@ -98,7 +99,7 @@ public class LegendREPLFeatureTest
                 break;
             }
 
-            if (output.toString().contains(untilToken))
+            if (output.toString().contains(untilToken) && output.toString().endsWith(LineReaderImpl.BRACKETED_PASTE_ON + "> "))
             {
                 break;
             }
