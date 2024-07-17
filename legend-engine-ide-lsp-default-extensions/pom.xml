@@ -455,8 +455,6 @@
         <dependency>
             <groupId>org.jline</groupId>
             <artifactId>jline-terminal</artifactId>
-            <!-- todo remove once we update to next version of engine-->
-            <version>3.25.0</version>
             <scope>test</scope>
         </dependency>
         <!-- TEST -->
