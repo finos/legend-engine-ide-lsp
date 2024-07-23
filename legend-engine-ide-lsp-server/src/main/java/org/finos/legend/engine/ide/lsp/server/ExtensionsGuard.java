@@ -100,7 +100,7 @@ class ExtensionsGuard
 
     private ForkJoinPool createForkJoinPool(ClassLoader classLoader)
     {
-        return new ForkJoinPool(1, x ->
+        return new ForkJoinPool(Runtime.getRuntime().availableProcessors(), x ->
         {
             ForkJoinWorkerThread forkJoinWorkerThread = new ForkJoinWorkerThread(x)
             {
