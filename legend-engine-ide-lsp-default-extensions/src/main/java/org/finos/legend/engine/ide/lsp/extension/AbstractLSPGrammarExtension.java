@@ -348,7 +348,6 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
 
     private CompileResult tryCompile(GlobalState globalState, DocumentState documentState, SectionState sectionState)
     {
-        globalState.logInfo("Starting compilation");
         PureModelContextData pureModelContextData = null;
         try
         {

@@ -18,7 +18,10 @@ package org.finos.legend.engine.ide.lsp.extension.features;
 
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 
+import java.nio.file.Path;
+import java.util.List;
+
 public interface LegendREPLFeature extends LegendLSPFeature
 {
-    void startREPL();
+    void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features);
 }

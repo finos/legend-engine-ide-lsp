@@ -1,0 +1,16 @@
+{
+  "relationalExecutionConfiguration" : {
+    "temporarytestdb" : {
+      "port" : 1975
+    },
+    "tempPath" : "/test/path/repl",
+    "oauthProfiles" : [ {
+      "key" : "testProfileKey",
+      "discoveryUrl" : "https://test/discoveryUrl",
+      "clientId" : "testClientId",
+      "customParams" : {
+        "testKey" : "testValue"
+      }
+    } ]
+  }
+}
