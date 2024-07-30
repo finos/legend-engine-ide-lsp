@@ -17,6 +17,7 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import java.lang.management.ManagementFactory;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +33,11 @@ public class LegendREPLTerminal
 {
     public static void main(String... args) throws InterruptedException
     {
+        Path planExecutorConfigurationJsonPath = null;
+        if (args.length > 0 && !args[0].isEmpty())
+        {
+            planExecutorConfigurationJsonPath = Path.of(args[0]);
+        }
         List<LegendLSPFeature> features = new ArrayList<>();
         Instant startTime = Instant.now().minusMillis(ManagementFactory.getRuntimeMXBean().getUptime());
         Map<String, Object> metadata = new HashMap<>();
@@ -51,7 +57,7 @@ public class LegendREPLTerminal
             if (repl.isPresent())
             {
                 fireEvent(features, LegendUsageEventConsumer.event("startReplTerminal", startTime, Instant.now(), metadata));
-                repl.get().startREPL();
+                repl.get().startREPL(planExecutorConfigurationJsonPath, features);
                 fireEvent(features, LegendUsageEventConsumer.event("closeReplTerminal", startTime, Instant.now(), metadata));
             }
             else

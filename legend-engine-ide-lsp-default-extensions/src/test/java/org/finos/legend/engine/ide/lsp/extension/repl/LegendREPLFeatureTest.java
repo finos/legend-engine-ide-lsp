@@ -25,6 +25,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.jline.reader.impl.LineReaderImpl;
+import org.eclipse.collections.api.factory.Lists;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.junit.jupiter.api.AfterEach;
@@ -57,7 +58,7 @@ public class LegendREPLFeatureTest
                 .build();
         TerminalBuilder.setTerminalOverride(terminalOverride);
 
-        Future<?> replFuture = this.executorService.submit(new LegendREPLFeatureImpl()::startREPL);
+        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureImpl().startREPL(null, Lists.fixedSize.empty()));
 
         read(replFuture, replOutputConsole, "Ready!");
 
