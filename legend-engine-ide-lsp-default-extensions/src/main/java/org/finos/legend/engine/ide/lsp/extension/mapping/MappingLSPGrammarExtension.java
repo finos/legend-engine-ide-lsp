@@ -39,7 +39,10 @@ import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
+import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -212,7 +215,8 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         PureModel pureModel = compileResult.getPureModel();
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
+        GlobalState globalState = section.getDocumentState().getGlobalState();
+        PlanExecutor planExecutor = PlanExecutorConfigurator.create(globalState.getProperty(Constants.PLAN_EXECUTOR_CONFIGURATION_PATH_KEY), (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         tests.forEach(test ->
         {

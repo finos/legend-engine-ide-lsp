@@ -21,6 +21,7 @@ import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -254,7 +255,25 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         checkReady();
         this.initializeEngineServerUrl()
                 .thenCompose(_void -> this.initializeExtensions())
+                .thenRun(this::initializePlanExecutorConfigurationPath)
                 .thenRun(() -> this.logInfoToClient("Extension finished post-initialization"));
+    }
+
+    private void initializePlanExecutorConfigurationPath()
+    {
+        ConfigurationItem planExecutorConfig = new ConfigurationItem();
+        planExecutorConfig.setSection(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+
+        ConfigurationParams configurationParams = new ConfigurationParams(Collections.singletonList(planExecutorConfig));
+        this.getLanguageClient().configuration(configurationParams).thenAccept(x ->
+        {
+            String planExecutorConfigurationPathString = this.extractValueAs(x.get(0), String.class);
+            if (planExecutorConfigurationPathString != null && !planExecutorConfigurationPathString.isEmpty())
+            {
+                Path planExecutorConfigurationPath = Path.of(planExecutorConfigurationPathString);
+                this.getGlobalState().setProperty(org.finos.legend.engine.ide.lsp.extension.Constants.PLAN_EXECUTOR_CONFIGURATION_PATH_KEY, planExecutorConfigurationPath);
+            }
+        });
     }
 
     private CompletableFuture<Void> initializeEngineServerUrl()

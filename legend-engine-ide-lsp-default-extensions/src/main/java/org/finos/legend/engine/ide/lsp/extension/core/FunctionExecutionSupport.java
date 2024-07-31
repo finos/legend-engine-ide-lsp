@@ -38,6 +38,9 @@ import org.eclipse.collections.impl.tuple.Tuples;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
+import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
@@ -170,7 +173,8 @@ public interface FunctionExecutionSupport
             }
             else
             {
-                PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
+                GlobalState globalState = section.getDocumentState().getGlobalState();
+                PlanExecutor planExecutor = PlanExecutorConfigurator.create(globalState.getProperty(Constants.PLAN_EXECUTOR_CONFIGURATION_PATH_KEY), (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
                 MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
                 collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity(), context), docId, sectionNum, inputParameters, results::add);
