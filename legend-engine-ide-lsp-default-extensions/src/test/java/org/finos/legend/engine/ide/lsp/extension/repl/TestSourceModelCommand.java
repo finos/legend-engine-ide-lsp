@@ -17,6 +17,7 @@
 package org.finos.legend.engine.ide.lsp.extension.repl;
 
 import org.eclipse.collections.impl.factory.Lists;
+import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.client.Client;
@@ -31,7 +32,7 @@ public class TestSourceModelCommand
     {
         try
         {
-            PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
+            PlanExecutor planExecutor = PlanExecutorConfigurator.create(null, Lists.fixedSize.empty());
             Client client = new Client(Lists.mutable.with(new LSPReplExtension()), Lists.mutable.with(new CompleterExtension[]{new RelationalCompleterExtension()}), planExecutor);
             SourceModelCommand sourceModelCommand = new SourceModelCommand(client);
             Assertions.assertTrue(sourceModelCommand.process("sourceModel src/test/resources/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure"));

@@ -42,7 +42,10 @@ import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
+import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
@@ -293,7 +296,9 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         PureModel pureModel = compileResult.getPureModel();
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        ServiceTestRunner testRunner = new ServiceTestRunner(service, null, compileResult.getPureModelContextData(), pureModel, null, PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build(), routerExtensions, planTransformers, null);
+        GlobalState globalState = section.getDocumentState().getGlobalState();
+        PlanExecutor planExecutor = PlanExecutorConfigurator.create(globalState.getProperty(Constants.PLAN_EXECUTOR_CONFIGURATION_PATH_KEY), (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
+        ServiceTestRunner testRunner = new ServiceTestRunner(service, null, compileResult.getPureModelContextData(), pureModel, null, planExecutor, routerExtensions, planTransformers, null);
 
         List<RichServiceTestResult> richServiceTestResults;
         try
