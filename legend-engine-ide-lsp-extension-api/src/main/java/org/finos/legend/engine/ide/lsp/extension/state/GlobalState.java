@@ -101,4 +101,12 @@ public interface GlobalState extends State
             return forkJoinWorkerThread;
         }, null,  false);
     }
+
+    /**
+     * Get the value of a setting. Returns null if the setting has no value.
+     *
+     * @param key setting key
+     * @return setting value or null
+     */
+    Object getSetting(String key);
 }
