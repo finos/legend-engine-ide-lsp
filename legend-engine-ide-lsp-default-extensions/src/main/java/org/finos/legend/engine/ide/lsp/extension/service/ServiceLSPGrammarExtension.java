@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -313,7 +314,8 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
         GlobalState globalState = section.getDocumentState().getGlobalState();
-        PlanExecutor planExecutor = PlanExecutorConfigurator.create(globalState.getProperty(Constants.PLAN_EXECUTOR_CONFIGURATION_PATH_KEY), (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
+        Path planExecutorConfigPath = (Path) globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+        PlanExecutor planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
         ServiceTestRunner testRunner = new ServiceTestRunner(service, null, compileResult.getPureModelContextData(), pureModel, null, planExecutor, routerExtensions, planTransformers, null);
 
         List<RichServiceTestResult> richServiceTestResults;

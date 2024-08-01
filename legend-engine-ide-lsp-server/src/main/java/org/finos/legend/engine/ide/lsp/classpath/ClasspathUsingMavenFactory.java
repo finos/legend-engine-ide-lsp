@@ -63,7 +63,7 @@ import org.apache.maven.shared.utils.cli.CommandLineUtils;
 import org.apache.maven.shared.utils.cli.Commandline;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
-import org.finos.legend.engine.ide.lsp.Constants;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

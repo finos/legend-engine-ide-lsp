@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collections;
 import java.util.List;
@@ -174,7 +175,8 @@ public interface FunctionExecutionSupport
             else
             {
                 GlobalState globalState = section.getDocumentState().getGlobalState();
-                PlanExecutor planExecutor = PlanExecutorConfigurator.create(globalState.getProperty(Constants.PLAN_EXECUTOR_CONFIGURATION_PATH_KEY), (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
+                Path planExecutorConfigPath = (Path) globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+                PlanExecutor planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
                 MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
                 collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity(), context), docId, sectionNum, inputParameters, results::add);
