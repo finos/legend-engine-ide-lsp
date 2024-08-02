@@ -26,6 +26,7 @@ import org.finos.legend.engine.plan.execution.stores.relational.plugin.Relationa
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -33,22 +34,15 @@ import java.util.Map;
 public class TestRelationalStoreExecutorConfigurator
 {
     @Test
-    public void testBuildRelationalStoreExecutorConfigurator()
+    public void testBuildRelationalStoreExecutorConfigurator() throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException
     {
         String planExecutorConfigurationJson = "src/test/resources/entities/vscodelsp/test/dependency/planExecutorConfiguration.json";
         Path planExecutorConfigurationJsonPath = Path.of(planExecutorConfigurationJson);
-        try
-        {
-            PlanExecutor actualPlanExecutor = PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, List.of(RelationalStoreExecutorConfigurator.class.getDeclaredConstructor().newInstance()));
-            Assertions.assertTrue(actualPlanExecutor.getExecutorsOfType(StoreType.Relational)
-                    .stream()
-                    .map(rse -> ((RelationalStoreState) rse.getStoreState()).getRelationalExecutor().getRelationalExecutionConfiguration())
-                    .anyMatch(this::isEqual), "Assertion failure: the actual configuration does not match the expected configuration!");
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException(e);
-        }
+        PlanExecutor actualPlanExecutor = PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, List.of(RelationalStoreExecutorConfigurator.class.getDeclaredConstructor().newInstance()));
+        Assertions.assertTrue(actualPlanExecutor.getExecutorsOfType(StoreType.Relational)
+                .stream()
+                .map(rse -> ((RelationalStoreState) rse.getStoreState()).getRelationalExecutor().getRelationalExecutionConfiguration())
+                .anyMatch(this::isEqual), "Assertion failure: the actual configuration does not match the expected configuration!");
     }
 
     private boolean isEqual(RelationalExecutionConfiguration actualConfig)

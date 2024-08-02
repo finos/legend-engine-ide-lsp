@@ -18,7 +18,6 @@ package org.finos.legend.engine.ide.lsp.extension.repl;
 
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.factory.Lists;
-import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.repl.client.Client;
 import org.finos.legend.engine.repl.client.jline3.JLine3Parser;
 import org.finos.legend.engine.repl.core.Command;
@@ -31,6 +30,8 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class SourceModelCommand implements Command
 {
@@ -127,9 +128,12 @@ public class SourceModelCommand implements Command
                 String compressed = words.makeString("");
                 MutableList<Candidate> list = Lists.mutable.empty();
                 completer.complete(lineReader, new JLine3Parser.MyParsedLine(new JLine3Parser.ParserResult(parsedLine.line(), Lists.mutable.with("sourceModel", " ", compressed))), list);
-                MutableList<Candidate> ca = ListIterate.collect(list, c -> new Candidate(c.value(), c.value(), (String) null, (String) null, (String) null, (String) null, false, 0));
+                List<Candidate> candidates = list.stream()
+                        .filter(c -> c.value() != null && (c.value().endsWith("/") || c.value().endsWith(".pure")))
+                        .map(c -> new Candidate(c.value(), c.value(), (String) null, (String) null, (String) null, (String) null, false, 0))
+                        .collect(Collectors.toList());
                 list.clear();
-                list.addAll(ca);
+                list.addAll(candidates);
                 return list;
             }
         }

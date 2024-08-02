@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -68,6 +69,7 @@ import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
+import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
@@ -112,6 +114,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     private final List<CommandsSupport> commandsSupports = new ArrayList<>();
     protected static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
     private final PureToEntityConverter entityConverter = new PureToEntityConverter();
+    private volatile PlanExecutor planExecutor;
 
     public AbstractLSPGrammarExtension()
     {
@@ -407,6 +410,16 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     private JsonMapper getProtocolMapper()
     {
         return this.protocolMapper;
+    }
+
+    protected PlanExecutor getPlanExecutor(GlobalState globalState)
+    {
+        if (planExecutor == null)
+        {
+            Path planExecutorConfigPath = globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+            planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
+        }
+        return planExecutor;
     }
 
     public boolean isEngineServerConfigured()

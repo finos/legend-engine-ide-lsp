@@ -108,5 +108,5 @@ public interface GlobalState extends State
      * @param key setting key
      * @return setting value or null
      */
-    Object getSetting(String key);
+    <T> T getSetting(String key);
 }

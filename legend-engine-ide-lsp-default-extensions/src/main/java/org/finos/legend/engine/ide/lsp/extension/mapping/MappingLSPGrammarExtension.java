@@ -18,7 +18,6 @@ package org.finos.legend.engine.ide.lsp.extension.mapping;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -40,10 +39,7 @@ import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
-import org.finos.legend.engine.ide.lsp.extension.Constants;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
-import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -57,7 +53,6 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.mapping.MappingParser;
-import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
@@ -216,15 +211,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         PureModel pureModel = compileResult.getPureModel();
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        GlobalState globalState = section.getDocumentState().getGlobalState();
-        Path planExecutorConfigPath = (Path) globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
-        PlanExecutor planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         tests.forEach(test ->
         {
             try
             {
-                MappingTestRunner testRunner = new MappingTestRunner(pureModel, entityPath, test, planExecutor, routerExtensions, planTransformers);
+                MappingTestRunner testRunner = new MappingTestRunner(pureModel, entityPath, test, getPlanExecutor(section.getDocumentState().getGlobalState()), routerExtensions, planTransformers);
                 RichMappingTestResult result = testRunner.setupAndRunTest();
                 TextLocation location = SourceInformationUtil.toLocation(test.sourceInformation);
                 switch (result.getResult())
