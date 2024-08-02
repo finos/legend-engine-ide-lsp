@@ -190,10 +190,7 @@ public final class TestableCommandsSupport
     private List<LegendTestExecutionResult> executeTests(SectionState section, PackageableElement element, List<UniqueTestId> unitTestIds)
     {
         String entityPath = element.getPath();
-        // why tryCompile vs getCompileResult:
-        // PureModel access is not thread safe, and we could be executing test in parallel
-        // hence, this will trigger a compilation per execution required for thread safety
-        CompileResult compileResult = this.extension.tryCompile(section.getDocumentState().getGlobalState(), section.getDocumentState(), section);
+        CompileResult compileResult = this.extension.getCompileResult(section);
 
         if (compileResult.hasException())
         {
