@@ -412,7 +412,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return this.protocolMapper;
     }
 
-    protected PlanExecutor getPlanExecutor(GlobalState globalState)
+    public PlanExecutor getPlanExecutor(GlobalState globalState)
     {
         if (planExecutor == null)
         {
