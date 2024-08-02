@@ -24,7 +24,6 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collections;
 import java.util.List;
@@ -37,13 +36,9 @@ import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
-import org.finos.legend.engine.ide.lsp.extension.Constants;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
-import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
-import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
@@ -147,9 +142,7 @@ public interface FunctionExecutionSupport
             }
             else
             {
-                GlobalState globalState = section.getDocumentState().getGlobalState();
-                Path planExecutorConfigPath = globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
-                PlanExecutor planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
+                PlanExecutor planExecutor = extension.getPlanExecutor(section.getDocumentState().getGlobalState());
                 MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
                 collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity()), section, inputParameters, results::add);
