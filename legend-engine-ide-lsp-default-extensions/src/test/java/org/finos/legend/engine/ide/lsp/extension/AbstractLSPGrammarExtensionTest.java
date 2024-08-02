@@ -313,7 +313,7 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         }
 
         @Override
-        public Object getSetting(String key)
+        public <T> T getSetting(String key)
         {
             return null;
         }

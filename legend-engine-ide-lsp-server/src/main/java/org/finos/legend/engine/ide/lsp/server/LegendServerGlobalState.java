@@ -169,7 +169,7 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
     }
 
     @Override
-    public Object getSetting(String key)
+    public <T> T getSetting(String key)
     {
         return this.server.getSetting(key);
     }

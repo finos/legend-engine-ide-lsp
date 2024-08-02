@@ -291,7 +291,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
 
     private void initializeEngineServerUrl()
     {
-        String url = (String) getSetting(Constants.LEGEND_ENGINE_SERVER_CONFIG_PATH);
+        String url = getSetting(Constants.LEGEND_ENGINE_SERVER_CONFIG_PATH);
         if (url != null && !url.isEmpty())
         {
             this.logInfoToClient("Using server URL: " + url);
@@ -340,9 +340,9 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         return this.extensionGuard.getForkJoinPool();
     }
 
-    public Object getSetting(String settingKey)
+    public <T> T getSetting(String settingKey)
     {
-        return settings.get(settingKey);
+        return (T) settings.get(settingKey);
     }
 
     private void reprocessDocuments()
