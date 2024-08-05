@@ -26,6 +26,7 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
@@ -170,5 +171,10 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Iterable<LegendEntity> getEntities(SectionState sectionState)
     {
         return List.of();
+    }
+
+    default void startup(GlobalState globalState)
+    {
+
     }
 }

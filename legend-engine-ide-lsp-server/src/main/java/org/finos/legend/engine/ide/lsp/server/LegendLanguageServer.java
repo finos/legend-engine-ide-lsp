@@ -295,8 +295,10 @@ public class LegendLanguageServer implements LegendLanguageServerContract
                 .thenAccept(this.extensionGuard::initialize)
                 .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
                 .thenRun(this.extensionGuard.wrapOnClasspath(this.legendLanguageService::loadVirtualFileSystemContent))
-                // trigger compilation
+                // trigger parsing/compilation/execution
+                .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.getAvailableGrammarExtensions().forEach(x -> x.startup(this.globalState))))
                 .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::getLegendDiagnostics)))
+                // tell client to refresh base on diagnostics discovered
                 .thenRun(() ->
                 {
                     LanguageClient languageClient = this.getLanguageClient();

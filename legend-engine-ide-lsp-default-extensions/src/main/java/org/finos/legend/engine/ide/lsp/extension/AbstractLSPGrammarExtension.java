@@ -346,7 +346,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return globalState.getProperty(COMPILE_RESULT, () -> tryCompile(globalState, documentState, sectionState));
     }
 
-    protected CompileResult tryCompile(GlobalState globalState, DocumentState documentState, SectionState sectionState)
+    private CompileResult tryCompile(GlobalState globalState, DocumentState documentState, SectionState sectionState)
     {
         globalState.logInfo("Starting compilation");
         PureModelContextData pureModelContextData = null;

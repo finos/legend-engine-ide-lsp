@@ -16,6 +16,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension.core;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -47,15 +48,20 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.functionActivator.FunctionActivatorLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.language.pure.grammar.from.ParseTreeWalkerSourceInformation;
+import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainLexerGrammar;
 import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
+import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
 import org.finos.legend.engine.plan.generation.PlanGenerator;
@@ -83,6 +89,8 @@ import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
 import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
+import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
+import org.finos.legend.engine.shared.core.identity.Identity;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.constraint.Constraint;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.FunctionDefinition;
@@ -521,5 +529,36 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             LOGGER.error("Error fetching autocompletion results", e);
             return null;
         }
+    }
+
+    @Override
+    public void startup(GlobalState globalState)
+    {
+        // sample parse/compile/exec to load classes at startup and speed up future executions
+
+        String startupGrammar = "function _startup_::_vscode_::function(): Any[1]\n" +
+                "{\n" +
+                "  1 + 1;\n" +
+                "}";
+
+        List<PackageableElement> elements = new ArrayList<>();
+
+        this.parse(
+                new SectionSourceCode(
+                        startupGrammar,
+                        "Pure",
+                        SourceInformation.getUnknownSourceInformation(),
+                        new ParseTreeWalkerSourceInformation.Builder("memory", 0, 0).build()
+                ),
+                elements::add,
+                new PureGrammarParserContext(PureGrammarParserExtensions.fromAvailableExtensions())
+        );
+
+        PureModelContextData pmcd = PureModelContextData.newBuilder().withElements(elements).build();
+        PureModel pureModel = Compiler.compile(pmcd, DeploymentMode.PROD, Identity.getAnonymousIdentity().getName());
+        PackageableElement element = elements.get(0);
+        SingleExecutionPlan executionPlan = this.getExecutionPlan(element, this.getLambda(element), pureModel, Map.of());
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+        FunctionExecutionSupport.executePlan(this, "memory", -1, executionPlan, null, element.getPath(), Map.of(), results);
     }
 }

@@ -27,6 +27,7 @@ import java.io.StringWriter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.stream.Stream;
@@ -223,6 +224,21 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     public AbstractLSPGrammarExtension getExtension()
     {
         return this;
+    }
+
+    @Override
+    public String getExecutionKey(PackageableElement element, Map<String, Object> args)
+    {
+        Service service = (Service) element;
+        if (service.execution instanceof PureMultiExecution)
+        {
+            PureMultiExecution multiExecution = (PureMultiExecution) service.execution;
+            return Objects.toString(args.get(multiExecution.executionKey));
+        }
+        else
+        {
+            return "";
+        }
     }
 
     @Override
