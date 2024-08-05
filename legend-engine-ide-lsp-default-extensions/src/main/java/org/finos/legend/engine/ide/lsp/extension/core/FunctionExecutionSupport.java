@@ -33,14 +33,18 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.tuple.Tuples;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.plan.execution.PlanExecutionContext;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.execution.nodes.helpers.ExecuteNodeParameterTransformationHelper;
 import org.finos.legend.engine.plan.execution.result.ConstantResult;
@@ -56,6 +60,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.shared.core.identity.Identity;
+import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
 import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
 import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
 import org.slf4j.Logger;
@@ -71,6 +76,12 @@ public interface FunctionExecutionSupport
     AbstractLSPGrammarExtension getExtension();
 
     Lambda getLambda(PackageableElement element);
+
+    @Deprecated
+    default String getExecutionKey(PackageableElement element, Map<String, Object> args)
+    {
+        return "";
+    }
 
     SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args);
 
@@ -111,10 +122,27 @@ public interface FunctionExecutionSupport
         try
         {
             PackageableElement element = compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(entityPath)).findFirst().orElseThrow(() -> new IllegalArgumentException("Element " + entityPath + " not found"));
-            Lambda lambda = executionSupport.getLambda(element);
-            PureModel pureModel = compileResult.getPureModel();
-            SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(element, lambda, pureModel, inputParameters);
-            executePlan(executionSupport, section, executionPlan, entityPath, inputParameters, results);
+            GlobalState globalState = section.getDocumentState().getGlobalState();
+            String executionKey = executionSupport.getExecutionKey(element, inputParameters);
+
+            Pair<SingleExecutionPlan, PlanExecutionContext> executionPlanAndContext = globalState.getProperty(EXECUTE_COMMAND_ID + ":" + entityPath + ":" + executionKey, () ->
+            {
+                Lambda lambda = executionSupport.getLambda(element);
+                PureModel pureModel = compileResult.getPureModel();
+                SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(element, lambda, pureModel, inputParameters);
+                PlanExecutionContext planExecutionContext = null;
+                try
+                {
+                    planExecutionContext = new PlanExecutionContext(executionPlan, List.of());
+                }
+                catch (JavaCompileException e)
+                {
+                    LOGGER.warn("Failed to compile plan");
+                }
+
+                return Tuples.pair(executionPlan, planExecutionContext);
+            });
+            executePlan(executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlanAndContext.getOne(), executionPlanAndContext.getTwo(), entityPath, inputParameters, results);
         }
         catch (Exception e)
         {
@@ -123,7 +151,7 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static void executePlan(FunctionExecutionSupport executionSupport, SectionState section, SingleExecutionPlan executionPlan, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
+    static void executePlan(FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -136,7 +164,7 @@ public interface FunctionExecutionSupport
                 {
                     ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
                     is.transferTo(os);
-                    return FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server", section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters);
+                    return FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server", docId, sectionNum, inputParameters);
                 });
                 results.add(legendExecutionResult);
             }
@@ -145,7 +173,7 @@ public interface FunctionExecutionSupport
                 PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
                 MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
-                collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity()), section, inputParameters, results::add);
+                collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity(), context), docId, sectionNum, inputParameters, results::add);
             }
         }
         catch (Exception e)
@@ -154,7 +182,7 @@ public interface FunctionExecutionSupport
         }
     }
 
-    private static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, SectionState section, Map<String, Object> inputParameters, Consumer<? super LegendExecutionResult> consumer)
+    private static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, Consumer<? super LegendExecutionResult> consumer)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -162,12 +190,12 @@ public interface FunctionExecutionSupport
         if (result instanceof ErrorResult)
         {
             ErrorResult errorResult = (ErrorResult) result;
-            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.ERROR, errorResult.getMessage(), errorResult.getTrace(), section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
+            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.ERROR, errorResult.getMessage(), errorResult.getTrace(), docId, secNum, inputParameters));
             return;
         }
         if (result instanceof ConstantResult)
         {
-            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, getConstantResult((ConstantResult) result), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
+            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, getConstantResult((ConstantResult) result), null, docId, secNum, inputParameters));
             return;
         }
         if (result instanceof StreamingResult)
@@ -182,10 +210,10 @@ public interface FunctionExecutionSupport
                 consumer.accept(extension.errorResult(e, entityPath));
                 return;
             }
-            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
+            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8), null, docId, secNum, inputParameters));
             return;
         }
-        consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.WARNING, "Unhandled result type: " + result.getClass().getName(), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
+        consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.WARNING, "Unhandled result type: " + result.getClass().getName(), null, docId, secNum, inputParameters));
     }
 
     private static String getConstantResult(ConstantResult constantResult)

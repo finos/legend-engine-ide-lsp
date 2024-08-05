@@ -80,7 +80,7 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
             newLambda.parameters = lambda.parameters;
 
             SingleExecutionPlan executionPlan = functionExecutionSupport.getExecutionPlan(packageableElement, newLambda, pureModel, inputParameters);
-            FunctionExecutionSupport.executePlan(functionExecutionSupport, section, executionPlan, entityPath, inputParameters, results);
+            FunctionExecutionSupport.executePlan(functionExecutionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, null, entityPath, inputParameters, results);
         }
         catch (Exception e)
         {
