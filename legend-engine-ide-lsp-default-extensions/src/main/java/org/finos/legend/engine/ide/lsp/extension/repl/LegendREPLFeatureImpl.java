@@ -50,36 +50,7 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
         try
         {
             PlanExecutor planExecutor = PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features);
-            Client client = new Client(Lists.mutable.with(new LSPReplExtension(), new RelationalReplExtension()), Lists.mutable.with(new CompleterExtension[]{new RelationalCompleterExtension()}), planExecutor);
-            LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
-            List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> virtualFilePureGrammars = legendDependencyManagement.getVirtualFilePureGrammars();
-            virtualFilePureGrammars.forEach(g -> client.getModelState().addElement(g.getContent()));
-
-            try (Stream<Path> paths = Files.find(Path.of(System.getProperty("user.dir")), Integer.MAX_VALUE,
-                    (path, attr) -> attr.isRegularFile() && path.getFileName().toString().endsWith(".pure"),
-                    FileVisitOption.FOLLOW_LINKS))
-            {
-                paths.forEach(p ->
-                {
-                    try
-                    {
-                        String pathString = p.toString();
-                        String modelText = "###Pure\n//Start of models sourced from " +
-                                pathString +
-                                "\n" +
-                                Files.readString(p, StandardCharsets.UTF_8) +
-                                "\n//End of models sourced from " +
-                                pathString +
-                                "\n";
-                        client.getModelState().addElement(modelText);
-                    }
-                    catch (IOException e)
-                    {
-                        client.getTerminal().writer().println("Unable to source model(s) from " + p);
-                    }
-                });
-            }
-            client.loop();
+            (new Client(Lists.mutable.with(new LSPReplExtension(), new RelationalReplExtension()), Lists.mutable.with(new CompleterExtension[]{new RelationalCompleterExtension()}), planExecutor)).loop();
         }
         catch (Exception e)
         {
