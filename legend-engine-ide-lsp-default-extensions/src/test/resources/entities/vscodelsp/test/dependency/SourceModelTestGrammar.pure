@@ -1,0 +1,23 @@
+###Pure
+Class model::Person
+{
+  firstName: String[1];
+  lastName: String[1];
+}
+
+Enum model::EmployeeType
+{
+    CONTRACT,
+    FULL_TIME
+}
+
+Class model::Firm
+{
+  legalName: String[1];
+}
+
+Association model::Person_Firm
+{
+  employees: model::Person[*];
+  firm: model::Firm[1];
+}

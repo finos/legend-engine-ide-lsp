@@ -311,6 +311,12 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         {
             return AbstractLSPGrammarExtensionTest.this.features;
         }
+
+        @Override
+        public <T> T getSetting(String key)
+        {
+            return null;
+        }
     }
 
     private static class TestDocumentState extends AbstractState implements DocumentState

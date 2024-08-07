@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.eclipse.lsp4j.InitializeParams;
-import org.finos.legend.engine.ide.lsp.Constants;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.DummyLanguageClient;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.classpath.SDLCPlatform;

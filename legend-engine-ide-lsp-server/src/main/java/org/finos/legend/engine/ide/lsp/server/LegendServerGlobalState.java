@@ -168,6 +168,12 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
         return this.server.getFeatures();
     }
 
+    @Override
+    public <T> T getSetting(String key)
+    {
+        return this.server.getSetting(key);
+    }
+
     static class LegendServerDocumentState extends AbstractState implements DocumentState
     {
         private final LegendServerGlobalState globalState;

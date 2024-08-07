@@ -170,7 +170,7 @@ public interface FunctionExecutionSupport
             }
             else
             {
-                PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
+                PlanExecutor planExecutor = extension.getPlanExecutor();
                 MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
                 collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity(), context), docId, sectionNum, inputParameters, results::add);

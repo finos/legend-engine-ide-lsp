@@ -53,7 +53,6 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensionLoader;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.from.mapping.MappingParser;
-import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
@@ -212,13 +211,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         PureModel pureModel = compileResult.getPureModel();
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        PlanExecutor planExecutor = PlanExecutor.newPlanExecutorBuilder().withAvailableStoreExecutors().build();
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         tests.forEach(test ->
         {
             try
             {
-                MappingTestRunner testRunner = new MappingTestRunner(pureModel, entityPath, test, planExecutor, routerExtensions, planTransformers);
+                MappingTestRunner testRunner = new MappingTestRunner(pureModel, entityPath, test, getPlanExecutor(), routerExtensions, planTransformers);
                 RichMappingTestResult result = testRunner.setupAndRunTest();
                 TextLocation location = SourceInformationUtil.toLocation(test.sourceInformation);
                 switch (result.getResult())

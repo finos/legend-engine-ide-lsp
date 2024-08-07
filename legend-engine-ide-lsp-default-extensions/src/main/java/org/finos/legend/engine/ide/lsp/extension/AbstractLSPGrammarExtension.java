@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -68,6 +69,7 @@ import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
+import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
@@ -112,6 +114,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     private final List<CommandsSupport> commandsSupports = new ArrayList<>();
     protected static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
     private final PureToEntityConverter entityConverter = new PureToEntityConverter();
+    private PlanExecutor planExecutor;
 
     public AbstractLSPGrammarExtension()
     {
@@ -348,7 +351,6 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
 
     private CompileResult tryCompile(GlobalState globalState, DocumentState documentState, SectionState sectionState)
     {
-        globalState.logInfo("Starting compilation");
         PureModelContextData pureModelContextData = null;
         try
         {
@@ -408,6 +410,18 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     private JsonMapper getProtocolMapper()
     {
         return this.protocolMapper;
+    }
+
+    @Override
+    public void startup(GlobalState globalState)
+    {
+        Path planExecutorConfigPath = globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+        planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
+    }
+
+    public PlanExecutor getPlanExecutor()
+    {
+        return planExecutor;
     }
 
     public boolean isEngineServerConfigured()

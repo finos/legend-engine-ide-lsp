@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -40,6 +41,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -86,7 +88,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageServer;
-import org.finos.legend.engine.ide.lsp.Constants;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
@@ -130,6 +132,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
     private final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
+    private final Map<String, Object> settings = new ConcurrentHashMap<>();
 
     private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, Collection<LegendLSPFeature> features)
     {
@@ -262,26 +265,42 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     public void initialized(InitializedParams params)
     {
         checkReady();
-        this.initializeEngineServerUrl()
+        this.initializeSettings()
+                .thenRun(this::initializeEngineServerUrl)
                 .thenCompose(_void -> this.initializeExtensions())
                 .thenRun(() -> this.logInfoToClient("Extension finished post-initialization"));
     }
 
-    private CompletableFuture<Void> initializeEngineServerUrl()
+    private CompletableFuture<Void> initializeSettings()
     {
         ConfigurationItem urlConfig = new ConfigurationItem();
         urlConfig.setSection(Constants.LEGEND_ENGINE_SERVER_CONFIG_PATH);
 
-        ConfigurationParams configurationParams = new ConfigurationParams(Collections.singletonList(urlConfig));
+        ConfigurationItem planExecutorConfig = new ConfigurationItem();
+        planExecutorConfig.setSection(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+
+        ConfigurationParams configurationParams = new ConfigurationParams(Arrays.asList(
+                urlConfig,
+                planExecutorConfig
+        ));
         return this.getLanguageClient().configuration(configurationParams).thenAccept(x ->
         {
             String url = this.extractValueAs(x.get(0), String.class);
-            this.setEngineServerUrl(url);
+            String planExecutorConfigPathString = this.extractValueAs(x.get(1), String.class);
+            if (url != null)
+            {
+                settings.put(Constants.LEGEND_ENGINE_SERVER_CONFIG_PATH, url);
+            }
+            if (planExecutorConfigPathString != null && !planExecutorConfigPathString.isEmpty())
+            {
+                settings.put(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH, Path.of(planExecutorConfigPathString));
+            }
         });
     }
 
-    private void setEngineServerUrl(String url)
+    private void initializeEngineServerUrl()
     {
+        String url = getSetting(Constants.LEGEND_ENGINE_SERVER_CONFIG_PATH);
         if (url != null && !url.isEmpty())
         {
             this.logInfoToClient("Using server URL: " + url);
@@ -379,6 +398,11 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     public ForkJoinPool getForkJoinPool()
     {
         return this.extensionGuard.getForkJoinPool();
+    }
+
+    public <T> T getSetting(String settingKey)
+    {
+        return (T) settings.get(settingKey);
     }
 
     private void reprocessDocuments()

@@ -16,8 +16,18 @@
 
 package org.finos.legend.engine.ide.lsp.extension.repl;
 
+import org.eclipse.collections.impl.factory.Lists;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
+import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
-import org.finos.legend.engine.repl.relational.client.RClient;
+import org.finos.legend.engine.plan.execution.PlanExecutor;
+import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
+import org.finos.legend.engine.repl.client.Client;
+import org.finos.legend.engine.repl.relational.RelationalReplExtension;
+import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
+
+import java.nio.file.Path;
+import java.util.List;
 
 public class LegendREPLFeatureImpl implements LegendREPLFeature
 {
@@ -28,11 +38,12 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
     }
 
     @Override
-    public void startREPL()
+    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
     {
         try
         {
-            RClient.main(new String[0]);
+            PlanExecutor planExecutor = PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features);
+            (new Client(Lists.mutable.with(new LSPReplExtension(), new RelationalReplExtension()), Lists.mutable.with(new CompleterExtension[]{new RelationalCompleterExtension()}), planExecutor)).loop();
         }
         catch (Exception e)
         {
