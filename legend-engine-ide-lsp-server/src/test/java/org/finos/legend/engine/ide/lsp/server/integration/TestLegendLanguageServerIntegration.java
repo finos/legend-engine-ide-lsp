@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.javacrumbs.jsonunit.JsonAssert;
 import net.javacrumbs.jsonunit.core.Option;
+import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
+import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.CodeLensParams;
 import org.eclipse.lsp4j.Diagnostic;
@@ -42,10 +44,13 @@ import org.eclipse.lsp4j.PreviousResultId;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.ReferenceContext;
 import org.eclipse.lsp4j.ReferenceParams;
+import org.eclipse.lsp4j.ResourceOperation;
 import org.eclipse.lsp4j.SymbolKind;
+import org.eclipse.lsp4j.TextDocumentEdit;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.WorkspaceDiagnosticParams;
 import org.eclipse.lsp4j.WorkspaceDocumentDiagnosticReport;
+import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.WorkspaceSymbol;
 import org.eclipse.lsp4j.WorkspaceSymbolParams;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
@@ -53,6 +58,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
+import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
@@ -627,5 +633,86 @@ public class TestLegendLanguageServerIntegration
                 .collect(Collectors.toList());
 
         Assertions.assertEquals(expected, locations, description);
+    }
+
+    @Test
+    void jsonEntitiesToPureTextWorkspaceEdits() throws Exception
+    {
+        Path jsonFilePath = extension.addToWorkspace(
+                "src/main/legend/LegalEntity.json",
+                "{\n" +
+                        "  \"content\": {\n" +
+                        "    \"_type\": \"class\",\n" +
+                        "    \"name\": \"A\",\n" +
+                        "    \"package\": \"model\",\n" +
+                        "    \"properties\": [\n" +
+                        "      {\n" +
+                        "        \"multiplicity\": {\n" +
+                        "          \"lowerBound\": 1,\n" +
+                        "          \"upperBound\": 1\n" +
+                        "        },\n" +
+                        "        \"name\": \"name\",\n" +
+                        "        \"type\": \"String\"\n" +
+                        "      }\n" +
+                        "    ]\n" +
+                        "  },\n" +
+                        "  \"classifierPath\": \"meta::pure::metamodel::type::Class\"\n" +
+                        "}\n"
+        );
+
+        String pureFileUri = jsonFilePath.toUri().toString().replace("/src/main/legend/", "/src/main/pure/").replace(".json", ".pure");
+
+        ApplyWorkspaceEditResponse editResponse = extension.futureGet(
+                extension.getServer().getLegendLanguageService().jsonEntitiesToPureTextWorkspaceEdits(
+                        new LegendJsonToPureRequest(List.of(jsonFilePath.toUri().toString()))
+                )
+        );
+
+        Assertions.assertTrue(editResponse.isApplied());
+
+        List<ApplyWorkspaceEditParams> workspaceEdits = extension.getClient().workspaceEdits;
+
+        Assertions.assertEquals(1, workspaceEdits.size());
+
+        WorkspaceEdit edit = workspaceEdits.get(0).getEdit();
+        Assertions.assertEquals(0, edit.getChanges().size());
+
+        List<Either<TextDocumentEdit, ResourceOperation>> documentChanges = edit.getDocumentChanges();
+        Assertions.assertEquals(2, documentChanges.size());
+
+        Either<TextDocumentEdit, ResourceOperation> delete = documentChanges.get(0);
+        Assertions.assertEquals(
+                "RenameFile [\n" +
+                "  oldUri = \"" + jsonFilePath.toUri() + "\"\n" +
+                "  newUri = \"" + pureFileUri + "\"\n" +
+                "  options = null\n" +
+                "  kind = \"rename\"\n" +
+                "  annotationId = null\n" +
+                "]", delete.get().toString());
+
+        Either<TextDocumentEdit, ResourceOperation> addText = documentChanges.get(1);
+        Assertions.assertEquals(
+                "TextDocumentEdit [\n" +
+                        "  textDocument = VersionedTextDocumentIdentifier [\n" +
+                        "    version = null\n" +
+                        "    uri = \"" + pureFileUri + "\"\n" +
+                        "  ]\n" +
+                        "  edits = ArrayList (\n" +
+                        "    TextEdit [\n" +
+                        "      range = Range [\n" +
+                        "        start = Position [\n" +
+                        "          line = 0\n" +
+                        "          character = 0\n" +
+                        "        ]\n" +
+                        "        end = Position [\n" +
+                        "          line = 18\n" +
+                        "          character = 0\n" +
+                        "        ]\n" +
+                        "      ]\n" +
+                        "      newText = \"// Converted by Legend LSP from JSON file: src/main/legend/LegalEntity.json\\nClass model::A\\n{\\n  name: String[1];\\n}\\n\"\n" +
+                        "    ]\n" +
+                        "  )\n" +
+                        "]",
+                addText.get().toString());
     }
 }

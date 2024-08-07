@@ -16,11 +16,14 @@ package org.finos.legend.engine.ide.lsp;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
+import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
+import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
 import org.eclipse.lsp4j.ConfigurationItem;
 import org.eclipse.lsp4j.ConfigurationParams;
 import org.eclipse.lsp4j.MessageActionItem;
@@ -35,6 +38,7 @@ public class DummyLanguageClient implements LanguageClient
     private final Map<String, JsonElement> configs;
 
     public final LinkedBlockingQueue<String> clientLog = new LinkedBlockingQueue();
+    public List<ApplyWorkspaceEditParams> workspaceEdits = new ArrayList<>();
 
     public DummyLanguageClient(Map<String, JsonElement> configs)
     {
@@ -117,5 +121,12 @@ public class DummyLanguageClient implements LanguageClient
     public void notifyProgress(ProgressParams params)
     {
         clientLog.add("notifyProgress");
+    }
+
+    @Override
+    public CompletableFuture<ApplyWorkspaceEditResponse> applyEdit(ApplyWorkspaceEditParams params)
+    {
+        this.workspaceEdits.add(params);
+        return CompletableFuture.completedFuture(new ApplyWorkspaceEditResponse(true));
     }
 }

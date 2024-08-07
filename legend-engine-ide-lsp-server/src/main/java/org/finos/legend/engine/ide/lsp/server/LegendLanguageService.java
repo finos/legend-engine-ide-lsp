@@ -17,8 +17,11 @@
 package org.finos.legend.engine.ide.lsp.server;
 
 import java.io.File;
+import java.net.URI;
 import java.net.URLClassLoader;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -27,10 +30,22 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
+import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.RenameFile;
+import org.eclipse.lsp4j.ResourceOperation;
+import org.eclipse.lsp4j.TextDocumentEdit;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.TextEdit;
+import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
+import org.eclipse.lsp4j.WorkspaceEdit;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendSDLCFeature;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendTDSRequestHandler;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
@@ -38,6 +53,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
+import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.server.service.ExecuteTestRequest;
 import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
@@ -228,5 +244,58 @@ public class LegendLanguageService implements LegendLanguageServiceContract
 
             return entities;
         });
+    }
+
+    @Override
+    public CompletableFuture<ApplyWorkspaceEditResponse> jsonEntitiesToPureTextWorkspaceEdits(LegendJsonToPureRequest request)
+    {
+        LegendSDLCFeature handler = this.server.getGlobalState().findFeatureThatImplements(LegendSDLCFeature.class).findAny().orElseThrow(() -> new RuntimeException("Could not find feature to convert json to pure files"));
+
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            List<Either<TextDocumentEdit, ResourceOperation>> edits = new ArrayList<>();
+
+            for (String jsonFileUri : request.getJsonFileUris())
+            {
+                int lastIndexOf = jsonFileUri.indexOf("/src/main/legend/");
+                if (lastIndexOf != -1)
+                {
+                    try
+                    {
+                        Path path = Paths.get(URI.create(jsonFileUri));
+                        List<String> jsonText = Files.readAllLines(path);
+                        String pureText = "// Converted by Legend LSP from JSON file: " + jsonFileUri.substring(lastIndexOf + 1) + "\n"
+                                + handler.entityJsonToPureText(String.join("", jsonText));
+
+                        String pureFileUri = jsonFileUri
+                                .replace("/src/main/legend/", "/src/main/pure/")
+                                .replace(".json", ".pure");
+
+                        // rename json file to pure file
+                        edits.add(Either.forRight(new RenameFile(jsonFileUri, pureFileUri)));
+
+                        // add pure content to it
+                        VersionedTextDocumentIdentifier textDocument = new VersionedTextDocumentIdentifier(pureFileUri, null);
+                        TextEdit addPureContent = new TextEdit(
+                                new Range(
+                                        new Position(0, 0),
+                                        new Position(jsonText.size(), 0)
+                                ), pureText);
+                        edits.add(Either.forLeft(new TextDocumentEdit(textDocument, List.of(addPureContent))));
+
+                        this.server.logInfoToClient("Converting JSON protocol to Pure text for: "
+                                + jsonFileUri + " -> " + pureFileUri);
+                    }
+                    catch (Exception e)
+                    {
+                        this.server.logErrorToClient("Failed to convert JSON to pure for: " + jsonFileUri);
+                    }
+                }
+            }
+
+            WorkspaceEdit workspaceEdit = new WorkspaceEdit(edits);
+            ApplyWorkspaceEditParams applyWorkspaceEditParams = new ApplyWorkspaceEditParams(workspaceEdit, "Convert JSON protocol files to Legend language text");
+            return this.server.getLanguageClient().applyEdit(applyWorkspaceEditParams);
+        }).thenCompose(x -> x);
     }
 }
