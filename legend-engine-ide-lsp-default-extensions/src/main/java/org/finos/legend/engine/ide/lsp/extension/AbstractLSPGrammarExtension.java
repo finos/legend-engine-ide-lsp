@@ -114,7 +114,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     private final List<CommandsSupport> commandsSupports = new ArrayList<>();
     protected static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
     private final PureToEntityConverter entityConverter = new PureToEntityConverter();
-    private volatile PlanExecutor planExecutor;
+    private PlanExecutor planExecutor;
 
     public AbstractLSPGrammarExtension()
     {
@@ -412,13 +412,15 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return this.protocolMapper;
     }
 
-    public PlanExecutor getPlanExecutor(GlobalState globalState)
+    @Override
+    public void startup(GlobalState globalState)
     {
-        if (planExecutor == null)
-        {
-            Path planExecutorConfigPath = globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
-            planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
-        }
+        Path planExecutorConfigPath = globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+        planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
+    }
+
+    public PlanExecutor getPlanExecutor()
+    {
         return planExecutor;
     }
 

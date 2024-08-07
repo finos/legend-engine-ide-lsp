@@ -82,7 +82,7 @@ public class SourceModelCommand implements Command
                 try
                 {
                     String pathString = modelPath.toString();
-                    String modelText = "###Pure\n//Sourced from " +
+                    String modelText = "###Pure\n//Start of models sourced from " +
                             pathString +
                             "\n" +
                             Files.readString(modelPath, StandardCharsets.UTF_8) +

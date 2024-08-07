@@ -25,6 +25,8 @@ import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterE
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
+
 public class TestSourceModelCommand
 {
     @Test
@@ -35,9 +37,10 @@ public class TestSourceModelCommand
             PlanExecutor planExecutor = PlanExecutorConfigurator.create(null, Lists.fixedSize.empty());
             Client client = new Client(Lists.mutable.with(new LSPReplExtension()), Lists.mutable.with(new CompleterExtension[]{new RelationalCompleterExtension()}), planExecutor);
             SourceModelCommand sourceModelCommand = new SourceModelCommand(client);
-            Assertions.assertTrue(sourceModelCommand.process("sourceModel src/test/resources/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure"));
+            String pathString = Path.of("src/test/resources/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure").toString();
+            Assertions.assertTrue(sourceModelCommand.process("sourceModel " + pathString));
             Assertions.assertEquals("###Pure\n" +
-                    "//Sourced from src/test/resources/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure\n" +
+                    "//Start of models sourced from " + pathString + "\n" +
                     "###Pure\n" +
                     "Class model::Person\n" +
                     "{\n" +
@@ -61,7 +64,7 @@ public class TestSourceModelCommand
                     "  employees: model::Person[*];\n" +
                     "  firm: model::Firm[1];\n" +
                     "}\n" +
-                    "//End of models sourced from src/test/resources/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure\n", client.getModelState().getText());
+                    "//End of models sourced from " + pathString + "\n", client.getModelState().getText());
         }
         catch (Exception e)
         {

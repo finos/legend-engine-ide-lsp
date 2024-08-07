@@ -534,8 +534,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     @Override
     public void startup(GlobalState globalState)
     {
+        super.startup(globalState);
         // sample parse/compile/exec to load classes at startup and speed up future executions
-
         String startupGrammar = "function _startup_::_vscode_::function(): Any[1]\n" +
                 "{\n" +
                 "  1 + 1;\n" +

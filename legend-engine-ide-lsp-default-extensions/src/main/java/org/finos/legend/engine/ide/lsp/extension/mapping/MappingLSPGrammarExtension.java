@@ -216,7 +216,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         {
             try
             {
-                MappingTestRunner testRunner = new MappingTestRunner(pureModel, entityPath, test, getPlanExecutor(section.getDocumentState().getGlobalState()), routerExtensions, planTransformers);
+                MappingTestRunner testRunner = new MappingTestRunner(pureModel, entityPath, test, getPlanExecutor(), routerExtensions, planTransformers);
                 RichMappingTestResult result = testRunner.setupAndRunTest();
                 TextLocation location = SourceInformationUtil.toLocation(test.sourceInformation);
                 switch (result.getResult())

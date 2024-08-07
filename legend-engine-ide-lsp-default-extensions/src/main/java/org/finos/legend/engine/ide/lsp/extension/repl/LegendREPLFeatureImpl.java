@@ -20,14 +20,21 @@ import org.eclipse.collections.impl.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
+import org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagement;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.client.Client;
 import org.finos.legend.engine.repl.relational.RelationalReplExtension;
 import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class LegendREPLFeatureImpl implements LegendREPLFeature
 {
@@ -43,7 +50,36 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
         try
         {
             PlanExecutor planExecutor = PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features);
-            (new Client(Lists.mutable.with(new LSPReplExtension(), new RelationalReplExtension()), Lists.mutable.with(new CompleterExtension[]{new RelationalCompleterExtension()}), planExecutor)).loop();
+            Client client = new Client(Lists.mutable.with(new LSPReplExtension(), new RelationalReplExtension()), Lists.mutable.with(new CompleterExtension[]{new RelationalCompleterExtension()}), planExecutor);
+            LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
+            List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> virtualFilePureGrammars = legendDependencyManagement.getVirtualFilePureGrammars();
+            virtualFilePureGrammars.forEach(g -> client.getModelState().addElement(g.getContent()));
+
+            try (Stream<Path> paths = Files.find(Path.of(System.getProperty("user.dir")), Integer.MAX_VALUE,
+                    (path, attr) -> attr.isRegularFile() && path.getFileName().toString().endsWith(".pure"),
+                    FileVisitOption.FOLLOW_LINKS))
+            {
+                paths.forEach(p ->
+                {
+                    try
+                    {
+                        String pathString = p.toString();
+                        String modelText = "###Pure\n//Start of models sourced from " +
+                                pathString +
+                                "\n" +
+                                Files.readString(p, StandardCharsets.UTF_8) +
+                                "\n//End of models sourced from " +
+                                pathString +
+                                "\n";
+                        client.getModelState().addElement(modelText);
+                    }
+                    catch (IOException e)
+                    {
+                        client.getTerminal().writer().println("Unable to source model(s) from " + p);
+                    }
+                });
+            }
+            client.loop();
         }
         catch (Exception e)
         {

@@ -308,7 +308,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         PureModel pureModel = compileResult.getPureModel();
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        ServiceTestRunner testRunner = new ServiceTestRunner(service, null, compileResult.getPureModelContextData(), pureModel, null, getPlanExecutor(section.getDocumentState().getGlobalState()), routerExtensions, planTransformers, null);
+        ServiceTestRunner testRunner = new ServiceTestRunner(service, null, compileResult.getPureModelContextData(), pureModel, null, getPlanExecutor(), routerExtensions, planTransformers, null);
 
         List<RichServiceTestResult> richServiceTestResults;
         try

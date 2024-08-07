@@ -41,6 +41,7 @@ import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.plan.execution.PlanExecutionContext;
@@ -169,7 +170,7 @@ public interface FunctionExecutionSupport
             }
             else
             {
-                PlanExecutor planExecutor = extension.getPlanExecutor(section.getDocumentState().getGlobalState());
+                PlanExecutor planExecutor = extension.getPlanExecutor();
                 MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
                 collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity(), context), docId, sectionNum, inputParameters, results::add);
