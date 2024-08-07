@@ -20,9 +20,8 @@ import org.eclipse.collections.impl.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
-import org.finos.legend.engine.plan.execution.PlanExecutor;
-import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.client.Client;
+import org.finos.legend.engine.repl.dataCube.DataCubeReplExtension;
 import org.finos.legend.engine.repl.relational.RelationalReplExtension;
 import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
 
@@ -37,17 +36,31 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
         return "Legend REPL";
     }
 
-    @Override
-    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+    public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
     {
         try
         {
-            PlanExecutor planExecutor = PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features);
-            (new Client(Lists.mutable.with(new LSPReplExtension(), new RelationalReplExtension()), Lists.mutable.with(new CompleterExtension[]{new RelationalCompleterExtension()}), planExecutor)).loop();
+            return new Client(
+                    Lists.mutable.with(
+                            new LSPReplExtension(),
+                            new RelationalReplExtension(),
+                            new DataCubeReplExtension()
+                    ),
+                    Lists.mutable.with(
+                            new RelationalCompleterExtension()
+                    ),
+                    PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features)
+            );
         }
         catch (Exception e)
         {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+    {
+        this.buildREPL(planExecutorConfigurationJsonPath, features).loop();
     }
 }
