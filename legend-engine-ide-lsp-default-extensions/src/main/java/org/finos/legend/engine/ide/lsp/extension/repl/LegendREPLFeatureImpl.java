@@ -20,21 +20,14 @@ import org.eclipse.collections.impl.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
-import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
-import org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagement;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.client.Client;
 import org.finos.legend.engine.repl.relational.RelationalReplExtension;
 import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Stream;
 
 public class LegendREPLFeatureImpl implements LegendREPLFeature
 {
