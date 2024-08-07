@@ -18,6 +18,7 @@ package org.finos.legend.engine.ide.lsp.server.service;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
@@ -25,6 +26,7 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
+import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 
 @JsonSegment("legend")
 public interface LegendLanguageServiceContract
@@ -47,4 +49,6 @@ public interface LegendLanguageServiceContract
     @JsonRequest("entities")
     CompletableFuture<List<LegendEntity>> entities(LegendEntitiesRequest request);
 
+    @JsonRequest("jsonToPure")
+    CompletableFuture<ApplyWorkspaceEditResponse> jsonEntitiesToPureTextWorkspaceEdits(LegendJsonToPureRequest request);
 }
