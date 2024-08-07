@@ -161,6 +161,7 @@ public class LegendLanguageServerIntegrationExtension implements
     public void clearClientLogMessages()
     {
         client.clientLog.clear();
+        client.workspaceEdits.clear();
     }
 
     @Override
@@ -240,6 +241,7 @@ public class LegendLanguageServerIntegrationExtension implements
     public Path addToWorkspace(String relativePath, String content) throws Exception
     {
         Path pureFile = resolveWorkspacePath(relativePath);
+        Files.createDirectories(pureFile.getParent());
         Files.writeString(pureFile, content);
         server.getTextDocumentService().didOpen(new DidOpenTextDocumentParams(new TextDocumentItem(pureFile.toUri().toString(), "legend", 0, content)));
         waitForAllTaskToComplete();
@@ -311,5 +313,10 @@ public class LegendLanguageServerIntegrationExtension implements
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
         Assertions.assertTrue(diagnostics.isEmpty(), "Expected no diagnostics, got: " + diagnostics);
+    }
+
+    public DummyLanguageClient getClient()
+    {
+        return this.client;
     }
 }

@@ -1,16 +1,18 @@
-// Copyright 2023 Goldman Sachs
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/*
+ * Copyright 2024 Goldman Sachs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.finos.legend.engine.ide.lsp.server;
 
@@ -20,8 +22,13 @@ import com.google.gson.JsonElement;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.eclipse.lsp4j.CodeLensOptions;
 import org.eclipse.lsp4j.CompletionOptions;
 import org.eclipse.lsp4j.ConfigurationItem;
@@ -89,6 +97,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
+import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -328,6 +337,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
                     languageClient.refreshInlineValues();
                     languageClient.refreshSemanticTokens();
                 })
+                .thenCompose(x -> this.applyWorkspaceEdits())
                 .whenComplete((v, t) -> this.fireEvent("initialize", start, Collections.emptyMap(), t))
                 .exceptionally(x ->
                 {
@@ -335,6 +345,54 @@ public class LegendLanguageServer implements LegendLanguageServerContract
                     logErrorToClient("Failed during post-initialization: " + x.getMessage());
                     return null;
                 });
+    }
+
+    private CompletableFuture<Void> applyWorkspaceEdits()
+    {
+        return CompletableFuture.allOf(
+            this.convertingJsonEntitiesToPureFiles()
+        );
+    }
+
+    private CompletableFuture<Void> convertingJsonEntitiesToPureFiles()
+    {
+        List<String> jsonUris = new ArrayList<>();
+
+        for (String rootFolder : this.rootFolders)
+        {
+            Path rootPath = Paths.get(URI.create(rootFolder));
+            try (Stream<Path> stream = Files.find(rootPath, Integer.MAX_VALUE,
+                    (path, attr) -> attr.isRegularFile() && path.getFileName().toString().endsWith(".json"),
+                    FileVisitOption.FOLLOW_LINKS))
+            {
+                stream.map(Path::toUri).map(URI::toString).forEach(jsonUris::add);
+            }
+            catch (IOException e)
+            {
+                LOGGER.error("Failed to scan for json files", e);
+            }
+        }
+
+        if (jsonUris.isEmpty())
+        {
+            return CompletableFuture.completedFuture(null);
+        }
+        else
+        {
+            return this.legendLanguageService.jsonEntitiesToPureTextWorkspaceEdits(new LegendJsonToPureRequest(jsonUris))
+                    .thenAccept(x ->
+                            {
+                                if (x.isApplied())
+                                {
+                                    LOGGER.info("Applied suggested json to pure edits");
+                                }
+                                else
+                                {
+                                    LOGGER.warn("Failed to apply suggested json to pure edits: {}", x);
+                                }
+                            }
+                    );
+        }
     }
 
     public ForkJoinPool getForkJoinPool()
@@ -692,6 +750,12 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     {
         LOGGER_CLIENT.warn(message);
         logToClient(MessageType.Warning, message);
+    }
+
+    public void logErrorToClient(String message, Throwable e)
+    {
+        LOGGER_CLIENT.error(message, e);
+        logToClient(MessageType.Error, message + " - " + e.getMessage());
     }
 
     public void logErrorToClient(String message)
