@@ -660,15 +660,43 @@ public class TestLegendLanguageServerIntegration
                         "}\n"
         );
 
+        // will be ignored as cannot be converted to text
+        Path badJsonFilePath = extension.addToWorkspace(
+                "src/main/legend/BadEntity.json",
+                "{\n" +
+                        "  \"content\": {\n" +
+                        "    \"_type\": \"nonExistent\",\n" +
+                        "    \"name\": \"A\",\n" +
+                        "    \"package\": \"model\",\n" +
+                        "    \"properties\": [\n" +
+                        "      {\n" +
+                        "        \"multiplicity\": {\n" +
+                        "          \"lowerBound\": 1,\n" +
+                        "          \"upperBound\": 1\n" +
+                        "        },\n" +
+                        "        \"name\": \"name\",\n" +
+                        "        \"type\": \"String\"\n" +
+                        "      }\n" +
+                        "    ]\n" +
+                        "  },\n" +
+                        "  \"classifierPath\": \"meta::pure::metamodel::type::NonExistent\"\n" +
+                        "}\n"
+        );
+
         String pureFileUri = jsonFilePath.toUri().toString().replace("/src/main/legend/", "/src/main/pure/").replace(".json", ".pure");
 
         ApplyWorkspaceEditResponse editResponse = extension.futureGet(
                 extension.getServer().getLegendLanguageService().jsonEntitiesToPureTextWorkspaceEdits(
-                        new LegendJsonToPureRequest(List.of(jsonFilePath.toUri().toString()))
+                        new LegendJsonToPureRequest(List.of(jsonFilePath.toUri().toString(), badJsonFilePath.toUri().toString()))
                 )
         );
 
         Assertions.assertTrue(editResponse.isApplied());
+
+        // converts good file
+        extension.clientLogged("logMessage - Info - Converting JSON protocol to Pure text for: " + jsonFilePath.toUri() + " -> " + pureFileUri);
+        // ignore and log for bad file
+        extension.clientLogged("logMessage - Error - Failed to convert JSON to pure for: " + badJsonFilePath.toUri());
 
         List<ApplyWorkspaceEditParams> workspaceEdits = extension.getClient().workspaceEdits;
 

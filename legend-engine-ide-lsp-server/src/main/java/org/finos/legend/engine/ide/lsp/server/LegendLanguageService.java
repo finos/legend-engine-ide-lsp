@@ -61,6 +61,7 @@ import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContr
 public class LegendLanguageService implements LegendLanguageServiceContract
 {
     private static final String LEGEND_VIRTUAL_FS_SCHEME = "legend-vfs:/";
+    private static final String JSON_ENTITY_DIRECTORY = "/src/main/legend/";
 
     private final LegendLanguageServer server;
 
@@ -257,18 +258,18 @@ public class LegendLanguageService implements LegendLanguageServiceContract
 
             for (String jsonFileUri : request.getJsonFileUris())
             {
-                int lastIndexOf = jsonFileUri.indexOf("/src/main/legend/");
-                if (lastIndexOf != -1)
+                int indexOfJsonEntityDirectory = jsonFileUri.indexOf(JSON_ENTITY_DIRECTORY);
+                if (indexOfJsonEntityDirectory != -1)
                 {
                     try
                     {
                         Path path = Paths.get(URI.create(jsonFileUri));
                         List<String> jsonText = Files.readAllLines(path);
-                        String pureText = "// Converted by Legend LSP from JSON file: " + jsonFileUri.substring(lastIndexOf + 1) + "\n"
+                        String pureText = "// Converted by Legend LSP from JSON file: " + jsonFileUri.substring(indexOfJsonEntityDirectory + 1) + "\n"
                                 + handler.entityJsonToPureText(String.join("", jsonText));
 
                         String pureFileUri = jsonFileUri
-                                .replace("/src/main/legend/", "/src/main/pure/")
+                                .replace(JSON_ENTITY_DIRECTORY, "/src/main/pure/")
                                 .replace(".json", ".pure");
 
                         // rename json file to pure file
@@ -288,7 +289,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                     }
                     catch (Exception e)
                     {
-                        this.server.logErrorToClient("Failed to convert JSON to pure for: " + jsonFileUri);
+                        this.server.logErrorToClient("Failed to convert JSON to pure for: " + jsonFileUri + " - " + e.getMessage());
                     }
                 }
             }
