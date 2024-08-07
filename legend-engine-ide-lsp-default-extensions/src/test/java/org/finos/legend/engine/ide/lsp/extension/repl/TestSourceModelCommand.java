@@ -39,6 +39,11 @@ public class TestSourceModelCommand
             SourceModelCommand sourceModelCommand = new SourceModelCommand(client);
             String pathString = Path.of("src/test/resources/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure").toString();
             Assertions.assertTrue(sourceModelCommand.process("sourceModel " + pathString));
+            String modelText = client.getModelState().getText();
+            if (!System.lineSeparator().equals("\n"))
+            {
+                modelText = modelText.replaceAll(System.lineSeparator(), "\n");
+            }
             Assertions.assertEquals("###Pure\n" +
                     "//Start of models sourced from " + pathString + "\n" +
                     "###Pure\n" +
@@ -64,7 +69,7 @@ public class TestSourceModelCommand
                     "  employees: model::Person[*];\n" +
                     "  firm: model::Firm[1];\n" +
                     "}\n" +
-                    "//End of models sourced from " + pathString + "\n", client.getModelState().getText());
+                    "//End of models sourced from " + pathString + "\n", modelText);
         }
         catch (Exception e)
         {
