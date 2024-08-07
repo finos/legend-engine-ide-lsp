@@ -728,6 +728,12 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         logToClient(MessageType.Warning, message);
     }
 
+    public void logErrorToClient(String message, Throwable e)
+    {
+        LOGGER_CLIENT.error(message, e);
+        logToClient(MessageType.Error, message + " - " + e.getMessage());
+    }
+
     public void logErrorToClient(String message)
     {
         LOGGER_CLIENT.error(message);

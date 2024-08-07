@@ -289,7 +289,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                     }
                     catch (Exception e)
                     {
-                        this.server.logErrorToClient("Failed to convert JSON to pure for: " + jsonFileUri + " - " + e.getMessage());
+                        this.server.logErrorToClient("Failed to convert JSON to pure for: " + jsonFileUri, e);
                     }
                 }
             }
