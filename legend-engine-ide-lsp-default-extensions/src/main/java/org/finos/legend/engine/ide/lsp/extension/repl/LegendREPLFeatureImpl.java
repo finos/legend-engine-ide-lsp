@@ -61,6 +61,8 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
     @Override
     public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
     {
-        this.buildREPL(planExecutorConfigurationJsonPath, features).loop();
+        Client client = this.buildREPL(planExecutorConfigurationJsonPath, features);
+        client.loop();
+        client.forceExit();
     }
 }

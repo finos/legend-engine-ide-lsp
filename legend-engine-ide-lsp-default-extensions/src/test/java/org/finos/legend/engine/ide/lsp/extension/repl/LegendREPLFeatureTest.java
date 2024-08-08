@@ -112,35 +112,13 @@ public class LegendREPLFeatureTest
         }
     }
 
-    private static class TestClient extends Client
-    {
-        public TestClient(Client client) throws Exception
-        {
-            super(client.getReplExtensions(), client.getCompleterExtensions(), client.getPlanExecutor());
-        }
-
-        @Override
-        public void exit()
-        {
-            // NOTE: the current implementation makes use of System.exit()
-            // which is not easy to test, so we mocking it out for testing
-            // See https://stackoverflow.com/questions/309396/how-to-test-methods-that-call-system-exit
-        }
-    }
-
     private static class LegendREPLFeatureTestImpl extends LegendREPLFeatureImpl
     {
         @Override
-        public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+        public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
         {
-            try
-            {
-                return new TestClient(new LegendREPLFeatureImpl().buildREPL(planExecutorConfigurationJsonPath, features));
-            }
-            catch (Exception e)
-            {
-                throw new RuntimeException(e);
-            }
+            Client client = this.buildREPL(planExecutorConfigurationJsonPath, features);
+            client.loop();
         }
     }
 }
