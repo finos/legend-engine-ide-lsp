@@ -84,6 +84,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.StoreTestData;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.repl.autocomplete.Completer;
@@ -560,5 +561,12 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         SingleExecutionPlan executionPlan = this.getExecutionPlan(element, this.getLambda(element), pureModel, Map.of());
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         FunctionExecutionSupport.executePlan(this, "memory", -1, executionPlan, null, element.getPath(), Map.of(), results);
+    }
+
+    @Override
+    public List<Variable> getParameters(PackageableElement element)
+    {
+        Function function = (Function) element;
+        return function.parameters;
     }
 }

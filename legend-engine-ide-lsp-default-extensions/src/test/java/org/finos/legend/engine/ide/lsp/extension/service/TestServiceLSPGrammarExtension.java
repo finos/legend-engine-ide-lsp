@@ -285,7 +285,25 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        data : '';\n" +
                         "        asserts : [];\n" +
                         "    }\n" +
+                        "}\n" +
+                        "Service test::service\n" +
+                        "{\n" +
+                        "    pattern: 'url/myUrl/';\n" +
+                        "    owners: ['ownerName'];\n" +
+                        "    documentation: 'test';\n" +
+                        "    autoActivateUpdates: true;\n" +
+                        "    execution: Multi\n" +
+                        "    {\n" +
+                        "        query: src:vscodelsp::test::Employee[1] | $src.hireType;\n" +
+                        "        key: 'env';\n" +
+                        "        executions['default']:\n" +
+                        "        {\n" +
+                        "           mapping: vscodelsp::test::EmployeeMapping;\n" +
+                        "           runtime: vscodelsp::test::H2Runtime;\n" +
+                        "        }\n" +
+                        "    }\n" +
                         "}");
+
 
         return codeFiles;
     }
@@ -408,5 +426,11 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Set<String> actualCommands = Sets.mutable.empty();
         commands.forEach(c -> actualCommands.add(c.getId()));
         Assertions.assertEquals(expectedCommands, actualCommands);
+
+        LegendCommand singleServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("vscodelsp::test::TestService")).findAny().get();
+        LegendCommand multiServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("test::service")).findAny().get();
+
+        Assertions.assertEquals(Set.of("src"), singleServiceCommand.getInputParameters().keySet());
+        Assertions.assertEquals(Set.of("env", "src"), multiServiceCommand.getInputParameters().keySet());
     }
 }

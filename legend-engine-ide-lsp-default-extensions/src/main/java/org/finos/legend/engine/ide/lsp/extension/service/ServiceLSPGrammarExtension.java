@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextDa
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Execution;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.KeyedExecutionParameter;
@@ -80,6 +82,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
@@ -536,5 +539,24 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     {
         return state.findGrammarExtensionThatImplements(RuntimeLSPGrammarExtension.class)
                 .flatMap(x -> x.getRuntimeReferences(runtime, state));
+    }
+
+    @Override
+    public List<Variable> getParameters(PackageableElement element)
+    {
+        Service service = (Service) element;
+        PureExecution execution = (PureExecution) service.execution;
+
+        if (execution instanceof PureMultiExecution)
+        {
+            PureMultiExecution multiExecution = (PureMultiExecution) execution;
+            List<Variable> variables = new ArrayList<>(execution.func.parameters);
+            variables.add(0, new Variable(multiExecution.executionKey, "String", Multiplicity.PURE_ONE));
+            return variables;
+        }
+        else
+        {
+            return execution.func.parameters;
+        }
     }
 }

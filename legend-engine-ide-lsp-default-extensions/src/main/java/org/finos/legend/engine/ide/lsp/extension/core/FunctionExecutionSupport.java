@@ -57,6 +57,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPla
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Enumeration;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.shared.core.identity.Identity;
@@ -89,7 +90,7 @@ public interface FunctionExecutionSupport
     {
         List<PackageableElement> elements = compileResult.getPureModelContextData().getElements();
         Map<String, LegendInputParameter> parameters = Maps.mutable.empty();
-        List<Variable> funcParameters = executionSupport.getLambda(element).parameters;
+        List<Variable> funcParameters = executionSupport.getParameters(element);
         if (funcParameters != null && !funcParameters.isEmpty())
         {
             funcParameters.forEach(p ->
@@ -107,6 +108,8 @@ public interface FunctionExecutionSupport
         }
         consumer.accept(EXECUTE_COMMAND_ID, EXECUTE_COMMAND_TITLE, element.sourceInformation, Collections.emptyMap(), parameters, LegendCommandType.CLIENT);
     }
+
+    List<Variable> getParameters(PackageableElement element);
 
     static Iterable<? extends LegendExecutionResult> executeFunction(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, Object> inputParameters)
     {
@@ -293,16 +296,16 @@ public interface FunctionExecutionSupport
 
     class LegendFunctionInputParameter extends LegendInputParameter
     {
-        private final Variable variable;
+        private final LegendVariable variable;
         private final PackageableElement element;
 
         private LegendFunctionInputParameter(Variable variable, PackageableElement element)
         {
-            this.variable = variable;
+            this.variable = LegendVariable.create(variable);
             this.element = element;
         }
 
-        public Variable getVariable()
+        public LegendVariable getVariable()
         {
             return this.variable;
         }
@@ -320,6 +323,40 @@ public interface FunctionExecutionSupport
         public static LegendFunctionInputParameter newFunctionParameter(Variable variable, PackageableElement element)
         {
             return new LegendFunctionInputParameter(variable, element);
+        }
+    }
+
+    class LegendVariable
+    {
+        private final String name;
+        private final Multiplicity multiplicity;
+        private final String _class;
+
+        private LegendVariable(String name, Multiplicity multiplicity, String _class)
+        {
+            this.name = name;
+            this.multiplicity = multiplicity;
+            this._class = _class;
+        }
+
+        public static LegendVariable create(Variable variable)
+        {
+            return new LegendVariable(variable.name, variable.multiplicity, variable._class.path);
+        }
+
+        public String getName()
+        {
+            return name;
+        }
+
+        public Multiplicity getMultiplicity()
+        {
+            return multiplicity;
+        }
+
+        public String get_class()
+        {
+            return _class;
         }
     }
 
