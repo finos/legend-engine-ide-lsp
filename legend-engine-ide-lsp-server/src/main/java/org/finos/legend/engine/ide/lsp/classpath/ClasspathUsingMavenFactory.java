@@ -383,18 +383,22 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
     {
         List<Dependency> dependencies = new ArrayList<>();
 
-        Dependency replDependency = new Dependency();
-        replDependency.setGroupId("org.finos.legend.engine");
-        replDependency.setArtifactId("legend-engine-repl-relational");
-        replDependency.setVersion(engineVersion);
+        Dependency replRelationalExtensionDependency = new Dependency();
+        replRelationalExtensionDependency.setGroupId("org.finos.legend.engine");
+        replRelationalExtensionDependency.setArtifactId("legend-engine-repl-relational");
+        replRelationalExtensionDependency.setVersion(engineVersion);
+        dependencies.add(replRelationalExtensionDependency);
 
-        dependencies.add(replDependency);
+        Dependency replDataCubeExtensionDependency = new Dependency();
+        replDataCubeExtensionDependency.setGroupId("org.finos.legend.engine");
+        replDataCubeExtensionDependency.setArtifactId("legend-engine-repl-data-cube");
+        replDataCubeExtensionDependency.setVersion(engineVersion);
+        dependencies.add(replDataCubeExtensionDependency);
 
         Dependency planGenSerializationDependency = new Dependency();
         planGenSerializationDependency.setGroupId("org.finos.legend.engine");
         planGenSerializationDependency.setArtifactId("legend-engine-configuration-plan-generation-serialization");
         planGenSerializationDependency.setVersion(engineVersion);
-
         dependencies.add(planGenSerializationDependency);
 
         return dependencies;

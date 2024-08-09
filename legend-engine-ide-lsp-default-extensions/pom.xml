@@ -309,6 +309,12 @@
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-repl-data-cube</artifactId>
+            <version>${legend.engine.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
             <artifactId>legend-engine-xt-functionActivator-protocol</artifactId>
             <scope>provided</scope>
         </dependency>

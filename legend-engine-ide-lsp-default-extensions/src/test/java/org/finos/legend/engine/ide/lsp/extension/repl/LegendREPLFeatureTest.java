@@ -16,21 +16,26 @@
 
 package org.finos.legend.engine.ide.lsp.extension.repl;
 
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import org.jline.reader.impl.LineReaderImpl;
 import org.eclipse.collections.api.factory.Lists;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
+import org.finos.legend.engine.repl.client.Client;
+import org.jline.reader.impl.LineReaderImpl;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 @Timeout(value = 3, unit = TimeUnit.MINUTES)
 public class LegendREPLFeatureTest
@@ -58,7 +63,7 @@ public class LegendREPLFeatureTest
                 .build();
         TerminalBuilder.setTerminalOverride(terminalOverride);
 
-        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureImpl().startREPL(null, Lists.fixedSize.empty()));
+        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureTestImpl().startREPL(null, Lists.fixedSize.empty()));
 
         read(replFuture, replOutputConsole, "Ready!");
 
@@ -104,6 +109,16 @@ public class LegendREPLFeatureTest
             {
                 break;
             }
+        }
+    }
+
+    private static class LegendREPLFeatureTestImpl extends LegendREPLFeatureImpl
+    {
+        @Override
+        public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+        {
+            Client client = this.buildREPL(planExecutorConfigurationJsonPath, features);
+            client.loop();
         }
     }
 }
