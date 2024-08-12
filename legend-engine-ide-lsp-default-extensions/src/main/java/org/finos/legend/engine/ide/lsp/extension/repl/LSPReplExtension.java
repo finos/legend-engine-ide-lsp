@@ -138,7 +138,6 @@ public class LSPReplExtension implements ReplExtension
             for (WatchEvent<?> event : watchKey.pollEvents())
             {
                 Path resolvedPath = keyPath.resolve((Path) event.context());
-                System.out.println(event.kind() + ": " + resolvedPath);
                 switch (event.kind().name())
                 {
                     case "ENTRY_CREATE":
