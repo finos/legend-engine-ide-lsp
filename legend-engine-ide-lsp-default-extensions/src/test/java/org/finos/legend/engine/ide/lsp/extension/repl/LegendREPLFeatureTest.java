@@ -18,7 +18,13 @@ package org.finos.legend.engine.ide.lsp.extension.repl;
 
 import org.eclipse.collections.api.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
+import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
+import org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagement;
 import org.finos.legend.engine.repl.client.Client;
+import org.finos.legend.engine.repl.dataCube.DataCubeReplExtension;
+import org.finos.legend.engine.repl.relational.RelationalReplExtension;
+import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
 import org.jline.reader.impl.LineReaderImpl;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
@@ -114,6 +120,32 @@ public class LegendREPLFeatureTest
 
     private static class LegendREPLFeatureTestImpl extends LegendREPLFeatureImpl
     {
+        @Override
+        public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+        {
+            try
+            {
+                Client client = new Client(
+                        org.eclipse.collections.impl.factory.Lists.mutable.with(
+                                new RelationalReplExtension(),
+                                new DataCubeReplExtension()
+                        ),
+                        org.eclipse.collections.impl.factory.Lists.mutable.with(
+                                new RelationalCompleterExtension()
+                        ),
+                        PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features)
+                );
+                LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
+                List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> virtualFilePureGrammars = legendDependencyManagement.getVirtualFilePureGrammars();
+                virtualFilePureGrammars.forEach(g -> client.getModelState().addElement(g.getContent()));
+                return client;
+            }
+            catch (Exception e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+
         @Override
         public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
         {
