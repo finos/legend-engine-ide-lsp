@@ -16,25 +16,30 @@
 
 package org.finos.legend.engine.ide.lsp.extension.repl;
 
+import org.eclipse.collections.api.factory.Lists;
+import org.eclipse.collections.api.list.MutableList;
+import org.finos.legend.engine.plan.execution.PlanExecutor;
+import org.finos.legend.engine.repl.client.Client;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
-import java.nio.file.attribute.FileTime;
-import java.time.Instant;
 
-public class TestLegendFile
+public class TestLSPReplExtension
 {
     @Test
-    public void testLegendFile()
+    public void testInitialize() throws Exception
     {
-        Path filePath = Path.of("src/test/resources/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure");
-        FileTime fileTime = FileTime.from(Instant.now());
-        LegendFile legendFile = new LegendFile(filePath, fileTime);
-        String fileContent = legendFile.getFileContent();
+        String workspaceFolderPath = "src/test/resources/entities/vscodelsp/test/dependency";
+        Path filePath = Path.of(workspaceFolderPath + "/SourceModelTestGrammar.pure");
+        LSPReplExtension lspReplExtension = new LSPReplExtension(Lists.fixedSize.of(workspaceFolderPath));
+        lspReplExtension.initialize(new Client(Lists.fixedSize.empty(), Lists.fixedSize.empty(), PlanExecutor.newPlanExecutorBuilder().build()));
+        MutableList<String> fileContent = lspReplExtension.generateDynamicContent("");
+        Assertions.assertEquals(1, fileContent.size());
+        String actualFileContent = fileContent.get(0);
         if (!System.lineSeparator().equals("\n"))
         {
-            fileContent = fileContent.replaceAll(System.lineSeparator(), "\n");
+            actualFileContent = actualFileContent.replaceAll(System.lineSeparator(), "\n");
         }
         Assertions.assertEquals("\n//Start of models sourced from " + filePath + "\n" +
                 "###Pure\n" +
@@ -61,19 +66,6 @@ public class TestLegendFile
                 "  employees: model::Person[*];\n" +
                 "  firm: model::Firm[1];\n" +
                 "}\n" +
-                "//End of models sourced from " + filePath + "\n", fileContent);
-    }
-
-    @Test
-    public void testInvalidLegendFile()
-    {
-        try
-        {
-            new LegendFile(Path.of("src/test/resources/entities/vscodelsp/test/dependency/wrongPath.txt"), FileTime.from(Instant.now()));
-        }
-        catch (RuntimeException e)
-        {
-            Assertions.assertEquals("Valid filePath is required", e.getMessage());
-        }
+                "//End of models sourced from " + filePath + "\n", actualFileContent);
     }
 }

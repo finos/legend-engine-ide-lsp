@@ -39,7 +39,9 @@ public class TestLegendLanguageServerReplIntegration
 
         ProcessBuilder processBuilder = new ProcessBuilder(
                 System.getProperty("java.home") + File.separator + "bin" + File.separator + "java",
-                "org.finos.legend.engine.ide.lsp.server.LegendREPLTerminal"
+                "org.finos.legend.engine.ide.lsp.server.LegendREPLTerminal",
+                "",
+                "src/test/resources/entities/vscodelsp/test/dependency"
         );
         processBuilder.environment().put("CLASSPATH", classpath);
         processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);

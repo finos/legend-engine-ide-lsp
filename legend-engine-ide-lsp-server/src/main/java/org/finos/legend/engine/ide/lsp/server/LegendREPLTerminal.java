@@ -16,28 +16,27 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
+
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ServiceLoader;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
-import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
-import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
 
 public class LegendREPLTerminal
 {
     public static void main(String... args) throws InterruptedException
     {
         Path planExecutorConfigurationJsonPath = null;
-        if (args.length > 0 && !args[0].isEmpty())
-        {
-            planExecutorConfigurationJsonPath = Path.of(args[0]);
-        }
+        List<String> workspaceFolders = new ArrayList<>();
         List<LegendLSPFeature> features = new ArrayList<>();
         Instant startTime = Instant.now().minusMillis(ManagementFactory.getRuntimeMXBean().getUptime());
         Map<String, Object> metadata = new HashMap<>();
@@ -45,6 +44,23 @@ public class LegendREPLTerminal
 
         try
         {
+            /*
+              The first argument is the string value of plan executor configuration path, which defaults to ""
+              The rest of the arguments are string values of workspace folder paths
+             */
+            if (args.length < 2)
+            {
+                throw new RuntimeException("At least one workspace folder is required.");
+            }
+            else
+            {
+                if (!args[0].isEmpty())
+                {
+                    planExecutorConfigurationJsonPath = Path.of(args[0]);
+                }
+                Arrays.stream(args).skip(1).forEach(workspaceFolders::add);
+            }
+
             ServiceLoader.load(LegendLSPFeature.class).forEach(features::add);
 
             Optional<LegendREPLFeature> repl = features
@@ -57,7 +73,7 @@ public class LegendREPLTerminal
             if (repl.isPresent())
             {
                 fireEvent(features, LegendUsageEventConsumer.event("startReplTerminal", startTime, Instant.now(), metadata));
-                repl.get().startREPL(planExecutorConfigurationJsonPath, features);
+                repl.get().startREPL(planExecutorConfigurationJsonPath, features, workspaceFolders);
                 fireEvent(features, LegendUsageEventConsumer.event("closeReplTerminal", startTime, Instant.now(), metadata));
             }
             else

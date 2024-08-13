@@ -38,13 +38,13 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
         return "Legend REPL";
     }
 
-    public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+    public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders)
     {
         try
         {
             Client client = new Client(
                     Lists.mutable.with(
-                            new LSPReplExtension(),
+                            new LSPReplExtension(workspaceFolders),
                             new RelationalReplExtension(),
                             new DataCubeReplExtension()
                     ),
@@ -65,9 +65,9 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
     }
 
     @Override
-    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders)
     {
-        Client client = this.buildREPL(planExecutorConfigurationJsonPath, features);
+        Client client = this.buildREPL(planExecutorConfigurationJsonPath, features, workspaceFolders);
         client.loop();
         client.forceExit();
     }
