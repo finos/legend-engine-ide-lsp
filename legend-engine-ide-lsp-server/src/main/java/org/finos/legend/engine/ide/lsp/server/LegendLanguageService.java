@@ -27,11 +27,18 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
 import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
+import org.eclipse.lsp4j.CreateFile;
+import org.eclipse.lsp4j.CreateFileOptions;
+import org.eclipse.lsp4j.DeleteFile;
 import org.eclipse.lsp4j.Position;
 import org.eclipse.lsp4j.Range;
 import org.eclipse.lsp4j.RenameFile;
@@ -57,11 +64,16 @@ import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.server.service.ExecuteTestRequest;
 import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LegendLanguageService implements LegendLanguageServiceContract
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageService.class);
+
     private static final String LEGEND_VIRTUAL_FS_SCHEME = "legend-vfs:/";
     private static final String JSON_ENTITY_DIRECTORY = "/src/main/legend/";
+    public static final String PURE_FILE_DIRECTORY = "/src/main/pure/";
 
     private final LegendLanguageServer server;
 
@@ -240,6 +252,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                 request.getTextDocuments().stream()
                         .map(TextDocumentIdentifier::getUri)
                         .map(this.server.getGlobalState()::getDocumentState)
+                        .filter(Objects::nonNull)
                         .forEach(collectEntities);
             }
 
@@ -269,7 +282,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                                 + handler.entityJsonToPureText(String.join("", jsonText));
 
                         String pureFileUri = jsonFileUri
-                                .replace(JSON_ENTITY_DIRECTORY, "/src/main/pure/")
+                                .replace(JSON_ENTITY_DIRECTORY, PURE_FILE_DIRECTORY)
                                 .replace(".json", ".pure");
 
                         // rename json file to pure file
@@ -298,5 +311,148 @@ public class LegendLanguageService implements LegendLanguageServiceContract
             ApplyWorkspaceEditParams applyWorkspaceEditParams = new ApplyWorkspaceEditParams(workspaceEdit, "Convert JSON protocol files to Legend language text");
             return this.server.getLanguageClient().applyEdit(applyWorkspaceEditParams);
         }).thenCompose(x -> x);
+    }
+
+    @Override
+    public CompletableFuture<Void> oneEntityPerFileRefactoring()
+    {
+        LegendServerGlobalState globalState = this.server.getGlobalState();
+        LegendSDLCFeature handler = globalState.findFeatureThatImplements(LegendSDLCFeature.class).findAny().orElseThrow(() -> new RuntimeException("Could not find feature to convert json to pure files"));
+
+        return this.server.supplyPossiblyAsync(() ->
+                        {
+                            Set<Path> existingDocumentIdsToDelete = new TreeSet<>();
+                            Map<Path, String> editContentPerFile = new TreeMap<>();
+
+                            Map<Path, DocumentState> docStatesToRefactor = new TreeMap<>();
+
+                            globalState.forEachDocumentState(documentState ->
+                                    {
+                                        if (!documentState.getDocumentId().startsWith(LEGEND_VIRTUAL_FS_SCHEME))
+                                        {
+                                            docStatesToRefactor.put(Path.of(URI.create(documentState.getDocumentId())), documentState);
+                                        }
+                                    }
+                            );
+
+                            for (Path documentStateToRefactorPath : docStatesToRefactor.keySet())
+                            {
+                                DocumentState documentState = docStatesToRefactor.get(documentStateToRefactorPath);
+
+                                Path root;
+
+                                if (documentStateToRefactorPath.toString().contains(PURE_FILE_DIRECTORY))
+                                {
+                                    root = documentStateToRefactorPath;
+                                    while (!root.toString().endsWith(PURE_FILE_DIRECTORY))
+                                    {
+                                        root = root.getParent();
+                                    }
+                                }
+                                else
+                                {
+                                    root = Path.of(URI.create(this.server.rootFolders.iterator().next()));
+                                }
+
+                                Map<Path, String> editContentForDocState = handler.convertToOneElementPerFile(root, documentState);
+                                // if result is single entity and on same file as input, don't edit it
+                                if (editContentForDocState.size() == 1)
+                                {
+                                    Path onlyPath = editContentForDocState.keySet().iterator().next();
+                                    if (!onlyPath.equals(Path.of(URI.create(documentState.getDocumentId()))))
+                                    {
+                                        existingDocumentIdsToDelete.add(documentStateToRefactorPath);
+                                        editContentPerFile.putAll(editContentForDocState);
+                                    }
+                                    else
+                                    {
+                                        this.server.logInfoToClient("One entity per file refactoring - skipping file as content is up-to-date: " + documentState.getDocumentId());
+                                    }
+                                }
+                                else
+                                {
+                                    existingDocumentIdsToDelete.add(documentStateToRefactorPath);
+                                    editContentPerFile.putAll(editContentForDocState);
+                                }
+                            }
+
+                            List<Either<TextDocumentEdit, ResourceOperation>> edits = new ArrayList<>();
+
+                            for (Path path : editContentPerFile.keySet())
+                            {
+                                String newContent = editContentPerFile.get(path);
+                                String documentId = path.toUri().toString();
+
+                                LegendServerGlobalState.LegendServerDocumentState documentState = (LegendServerGlobalState.LegendServerDocumentState) docStatesToRefactor.get(path);
+                                if (documentState != null)
+                                {
+                                    this.server.logInfoToClient("One entity per file refactoring - updating existing file: " + documentId);
+                                    // update pure content of existing file
+                                    VersionedTextDocumentIdentifier textDocument = new VersionedTextDocumentIdentifier(documentId, documentState.getVersion());
+                                    TextEdit addPureContent = new TextEdit(
+                                            new Range(
+                                                    new Position(0, 0),
+                                                    new Position(documentState.getLineCount() + 1, 0)
+                                            ), newContent);
+                                    edits.add(Either.forLeft(new TextDocumentEdit(textDocument, List.of(addPureContent))));
+                                }
+                                else
+                                {
+                                    this.server.logInfoToClient("One entity per file refactoring - creating new file: " + documentId);
+                                    // create new file
+                                    edits.add(Either.forRight(new CreateFile(documentId, new CreateFileOptions(null, true))));
+
+                                    // update content on it
+                                    VersionedTextDocumentIdentifier textDocument = new VersionedTextDocumentIdentifier(documentId, null);
+                                    TextEdit addPureContent = new TextEdit(
+                                            new Range(
+                                                    new Position(0, 0),
+                                                    new Position(0, 0)
+                                            ), newContent);
+                                    edits.add(Either.forLeft(new TextDocumentEdit(textDocument, List.of(addPureContent))));
+                                }
+
+                                existingDocumentIdsToDelete.remove(path);
+                            }
+
+                            for (Path documentId : existingDocumentIdsToDelete)
+                            {
+                                this.server.logInfoToClient("One entity per file refactoring - deleting existing file: " + documentId);
+                                edits.add(Either.forRight(new DeleteFile(documentId.toUri().toString())));
+                            }
+
+                            WorkspaceEdit workspaceEdit = new WorkspaceEdit(edits);
+                            return new ApplyWorkspaceEditParams(workspaceEdit, "One entity per file refactoring");
+                        }
+                )
+                .thenCompose(x ->
+                {
+                    if (x.getEdit().getDocumentChanges().isEmpty())
+                    {
+                        return CompletableFuture.completedFuture(new ApplyWorkspaceEditResponse(true));
+                    }
+                    else
+                    {
+                        return this.server.getLanguageClient().applyEdit(x);
+                    }
+                })
+                .exceptionally(e ->
+                {
+                    LOGGER.error("Error while applying edits", e);
+                    ApplyWorkspaceEditResponse editResponse = new ApplyWorkspaceEditResponse(false);
+                    editResponse.setFailureReason(e.getMessage());
+                    return editResponse;
+                })
+                .thenAccept(x ->
+                {
+                    if (x.isApplied())
+                    {
+                        this.server.showInfoToClient("One entity per file refactoring completed successfully");
+                    }
+                    else
+                    {
+                        this.server.showErrorToClient("One entity per file refactoring failed: " + x.getFailureReason());
+                    }
+                });
     }
 }

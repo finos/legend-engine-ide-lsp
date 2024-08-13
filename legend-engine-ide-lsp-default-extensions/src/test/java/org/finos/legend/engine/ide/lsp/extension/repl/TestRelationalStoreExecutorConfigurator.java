@@ -36,7 +36,7 @@ public class TestRelationalStoreExecutorConfigurator
     @Test
     public void testBuildRelationalStoreExecutorConfigurator() throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException
     {
-        String planExecutorConfigurationJson = "src/test/resources/entities/vscodelsp/test/dependency/planExecutorConfiguration.json";
+        String planExecutorConfigurationJson = "src/test/resources/planExecutorConfiguration.json";
         Path planExecutorConfigurationJsonPath = Path.of(planExecutorConfigurationJson);
         PlanExecutor actualPlanExecutor = PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, List.of(RelationalStoreExecutorConfigurator.class.getDeclaredConstructor().newInstance()));
         Assertions.assertTrue(actualPlanExecutor.getExecutorsOfType(StoreType.Relational)

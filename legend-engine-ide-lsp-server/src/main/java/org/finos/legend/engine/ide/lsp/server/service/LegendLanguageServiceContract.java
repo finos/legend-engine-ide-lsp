@@ -16,6 +16,7 @@
 
 package org.finos.legend.engine.ide.lsp.server.service;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
@@ -23,6 +24,7 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
@@ -51,4 +53,17 @@ public interface LegendLanguageServiceContract
 
     @JsonRequest("jsonToPure")
     CompletableFuture<ApplyWorkspaceEditResponse> jsonEntitiesToPureTextWorkspaceEdits(LegendJsonToPureRequest request);
+
+    /**
+     * Traverse all the documents, and propose workspace edits to convert to one element per file.
+     * The process will skip files that already contain a single entity and the file name match expected name.
+     * As result of this, multiple files could be deleted, created, and updated, but all the document content on these
+     * will still be preserved, including formatting and comments.
+     * <p>
+     * For more details on the conversion, see {@link org.finos.legend.engine.ide.lsp.extension.features.LegendSDLCFeature#convertToOneElementPerFile(Path, DocumentState)}
+     * <p>
+     * @return A completable future that will finish once the refactoring is completes or fails.
+     */
+    @JsonRequest("oneEntityPerFileRefactoring")
+    CompletableFuture<Void> oneEntityPerFileRefactoring();
 }
