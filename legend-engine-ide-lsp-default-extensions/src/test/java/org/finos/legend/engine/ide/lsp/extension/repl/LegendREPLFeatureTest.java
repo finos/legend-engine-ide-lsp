@@ -63,7 +63,7 @@ public class LegendREPLFeatureTest
                 .build();
         TerminalBuilder.setTerminalOverride(terminalOverride);
 
-        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureTestImpl().startREPL(null, Lists.fixedSize.empty()));
+        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureTestImpl().startREPL(null, Lists.fixedSize.empty(), Lists.fixedSize.of("src/test/resources/entities/vscodelsp/test/dependency")));
 
         read(replFuture, replOutputConsole, "Ready!");
 
@@ -115,9 +115,9 @@ public class LegendREPLFeatureTest
     private static class LegendREPLFeatureTestImpl extends LegendREPLFeatureImpl
     {
         @Override
-        public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+        public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders)
         {
-            Client client = this.buildREPL(planExecutorConfigurationJsonPath, features);
+            Client client = this.buildREPL(planExecutorConfigurationJsonPath, features, workspaceFolders);
             client.loop();
         }
     }

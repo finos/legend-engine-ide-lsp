@@ -20,6 +20,8 @@ import org.eclipse.collections.impl.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
+import org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagement;
 import org.finos.legend.engine.repl.client.Client;
 import org.finos.legend.engine.repl.dataCube.DataCubeReplExtension;
 import org.finos.legend.engine.repl.relational.RelationalReplExtension;
@@ -36,13 +38,13 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
         return "Legend REPL";
     }
 
-    public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+    public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders)
     {
         try
         {
-            return new Client(
+            Client client = new Client(
                     Lists.mutable.with(
-                            new LSPReplExtension(),
+                            new LSPReplExtension(workspaceFolders),
                             new RelationalReplExtension(),
                             new DataCubeReplExtension()
                     ),
@@ -51,6 +53,10 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
                     ),
                     PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features)
             );
+            LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
+            List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> virtualFilePureGrammars = legendDependencyManagement.getVirtualFilePureGrammars();
+            virtualFilePureGrammars.forEach(g -> client.getModelState().addElement(g.getContent()));
+            return client;
         }
         catch (Exception e)
         {
@@ -59,9 +65,9 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
     }
 
     @Override
-    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features)
+    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders)
     {
-        Client client = this.buildREPL(planExecutorConfigurationJsonPath, features);
+        Client client = this.buildREPL(planExecutorConfigurationJsonPath, features, workspaceFolders);
         client.loop();
         client.forceExit();
     }
