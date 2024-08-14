@@ -17,7 +17,10 @@
 package org.finos.legend.engine.ide.lsp.extension.features;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Map;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
+import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 
 /**
  * Provide Legend SDLC features, translating/compensating from what the SDLC server expects,
@@ -38,4 +41,55 @@ public interface LegendSDLCFeature extends LegendLSPFeature
      * @throws IOException Thrown if failed to read JSON or to write Pure grammar
      */
     String entityJsonToPureText(String entityJson) throws IOException;
+
+    /**
+     * Split all the elements on a given document into multiple documents.  The new path of the new documents
+     * follow Legend SDLC server expectations, where each element is stored on files that the path is derived from the element name.
+     * <p>
+     * For example, pkg1::pkg2::ElementName is expected in a file with path /pk1/pk2/ElementName.pure.
+     * <p>
+     * The conversion is top to bottom, splitting the document text on the lines where each element ends.  This
+     * has the side effect of preserving comments that are above elements.
+     * <p>
+     * For example, a document with content as follows
+     * <pre>
+     *    Class hello::world
+     *    {
+     *        a: Integer[1];
+     *    }
+     *    // Sample comment here
+     *    Class hello::moon
+     *    {
+     *        b: Integer[1];
+     *    }
+     * </pre>
+     * <p>
+     * Will generate two paths with content as follows
+     * <ul>
+     *     <li> File Path /hello/world.pure with content:
+     * <pre>
+     *    Class hello::world
+     *    {
+     *        a: Integer[1];
+     *    }
+     * </pre>
+     *     <li> File Path /hello/moon.pure with content (the comment is preserved):
+     * <pre>
+     *    // Sample comment here
+     *    Class hello::moon
+     *    {
+     *        b: Integer[1];
+     *    }
+     * </pre>
+     * </ul>
+     * <p>
+     * For elements on DSL that required explicit defining it,
+     * the conversion will insert the ###_DSL_NAME on top of the content.
+     * <p>
+     * @param rootFolder The root folder for the path of each element
+     * @param documentState The document to convert into one element per file
+     * @return A map of path for each element on the document to the content of each of these paths.
+     * @throws UnsupportedOperationException if the start line of an element is the same as the end line of the previous element
+     */
+    Map<Path, String> convertToOneElementPerFile(Path rootFolder, DocumentState documentState);
 }

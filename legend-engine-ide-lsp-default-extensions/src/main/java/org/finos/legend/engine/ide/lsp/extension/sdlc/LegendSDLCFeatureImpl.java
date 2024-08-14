@@ -17,20 +17,103 @@
 package org.finos.legend.engine.ide.lsp.extension.sdlc;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.set.sorted.mutable.TreeSortedSet;
+import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
+import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendSDLCFeature;
+import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.sdlc.domain.model.entity.Entity;
 import org.finos.legend.sdlc.protocol.pure.v1.PureEntitySerializer;
 import org.finos.legend.sdlc.serialization.DefaultJsonEntitySerializer;
 
 public class LegendSDLCFeatureImpl implements LegendSDLCFeature
 {
-    private final PureEntitySerializer entityConverter = new PureEntitySerializer();
+    private final PureEntitySerializer pureEntitySerializer = new PureEntitySerializer();
     private final DefaultJsonEntitySerializer jsonEntitySerializer = new DefaultJsonEntitySerializer();
 
     @Override
     public String entityJsonToPureText(String entityJson) throws IOException
     {
         Entity entity = this.jsonEntitySerializer.deserialize(entityJson);
-        return this.entityConverter.serializeToString(entity);
+        return this.pureEntitySerializer.serializeToString(entity);
+    }
+
+    @Override
+    public Map<Path, String> convertToOneElementPerFile(Path rootFolder, DocumentState documentState)
+    {
+        Map<Path, String> fileToContentMap = new HashMap<>();
+
+        Comparator<LegendEntity> comparator = Comparators.<LegendEntity, String>byFunction(x -> x.getLocation().getDocumentId())
+                .thenComparing(x -> x.getLocation().getTextInterval().getStart());
+
+        TreeSortedSet<LegendEntity> legendEntitiesSorted = TreeSortedSet.newSetWith(comparator);
+
+        documentState.forEachSectionState(x ->
+        {
+            x.getExtension().getDiagnostics(x).forEach(d ->
+            {
+                if (d.getSource().equals(LegendDiagnostic.Source.Parser) && d.getKind().equals(LegendDiagnostic.Kind.Error))
+                {
+                    throw new IllegalStateException("Unable to refactor document " + documentState.getDocumentId() + " given the parser errors (ie. " + d.getMessage() + ").  Fix and try again!");
+                }
+            });
+            x.getExtension().getEntities(x).forEach(legendEntitiesSorted::add);
+        });
+
+        Iterator<LegendEntity> iterator = legendEntitiesSorted.iterator();
+        LegendEntity prevEntity = null;
+
+        while (iterator.hasNext())
+        {
+            LegendEntity entity = iterator.next();
+            int startLine;
+            if (prevEntity == null)
+            {
+                startLine = 0;
+            }
+            else
+            {
+                startLine = prevEntity.getLocation().getTextInterval().getEnd().getLine() + 1;
+            }
+
+            if (prevEntity != null && entity.getLocation().getTextInterval().getStart().getLine() < startLine)
+            {
+                throw new UnsupportedOperationException("Refactoring elements that are defined on the same line not supported.  Element '" + entity.getPath() + "' defined next to previous element '" + prevEntity.getPath() + "'");
+            }
+
+            SectionState sectionState = documentState.getSectionStateAtLine(entity.getLocation().getTextInterval().getStart().getLine());
+            LegendLSPGrammarExtension extension = sectionState.getExtension();
+
+            int endLine = iterator.hasNext() ? entity.getLocation().getTextInterval().getEnd().getLine() : documentState.getLineCount() - 1;
+
+            String entityContent = documentState
+                    .getLines(startLine, endLine)
+                    .replace("###Pure", "")
+                    .trim();
+
+            if (!extension.getName().equals("Pure") && !entityContent.contains("###" + extension.getName()))
+            {
+                entityContent = "###" + extension.getName() + "\n" + entityContent;
+            }
+
+            Path path = this.pureEntitySerializer.filePathForEntity(
+                    Entity.newEntity(entity.getPath(), entity.getClassifierPath(), entity.getContent()),
+                    rootFolder
+            );
+
+            fileToContentMap.put(path, entityContent);
+
+            prevEntity = entity;
+        }
+
+        return fileToContentMap;
     }
 }

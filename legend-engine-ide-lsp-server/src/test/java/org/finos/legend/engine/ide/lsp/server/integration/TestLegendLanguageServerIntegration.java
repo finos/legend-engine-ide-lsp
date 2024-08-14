@@ -17,6 +17,7 @@
 package org.finos.legend.engine.ide.lsp.server.integration;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import java.nio.file.Path;
@@ -711,12 +712,12 @@ public class TestLegendLanguageServerIntegration
         Either<TextDocumentEdit, ResourceOperation> delete = documentChanges.get(0);
         Assertions.assertEquals(
                 "RenameFile [\n" +
-                "  oldUri = \"" + jsonFilePath.toUri() + "\"\n" +
-                "  newUri = \"" + pureFileUri + "\"\n" +
-                "  options = null\n" +
-                "  kind = \"rename\"\n" +
-                "  annotationId = null\n" +
-                "]", delete.get().toString());
+                        "  oldUri = \"" + jsonFilePath.toUri() + "\"\n" +
+                        "  newUri = \"" + pureFileUri + "\"\n" +
+                        "  options = null\n" +
+                        "  kind = \"rename\"\n" +
+                        "  annotationId = null\n" +
+                        "]", delete.get().toString());
 
         Either<TextDocumentEdit, ResourceOperation> addText = documentChanges.get(1);
         Assertions.assertEquals(
@@ -742,5 +743,316 @@ public class TestLegendLanguageServerIntegration
                         "  )\n" +
                         "]",
                 addText.get().toString());
+    }
+
+    @Test
+    void oneEntityPerFileRefactoring() throws Exception
+    {
+        // one file with one element and good name - no edits will happen
+        Path oneFileWithOneElementNoEdit = extension.addToWorkspace("one/element.pure",
+                "###Pure\n" +
+                        "Class one::element\n" +
+                        "{\n" +
+                        "  a:Integer[1];\n" +
+                        "}");
+
+        // one file with one element and bad name - delete current, create/edit new one
+        Path oneFileWithOneElementWrongElementName = extension.addToWorkspace("one/element/wrongfile.pure",
+                "###Pure\n" +
+                        "Class another::one::element\n" +
+                        "{\n" +
+                        "  a:Integer[1];\n" +
+                        "}");
+
+        // one file with multiple elements - one element is correct - edit file, create/edit other files
+        Path manyElementsOneElementCorrectPath = extension.addToWorkspace("many/elements.pure",
+                "// This comment will be with element below\n" +
+                        "###Pure\n" +
+                        "function hello::world(): Integer[1]\n" +
+                        "{\n" +
+                        "  1 + 1;\n" +
+                        "}\n" +
+                        "###Relational\n" +
+                        "// A comment here will be kept\n" +
+                        "Database another::element()\n" +
+                        "###Pure\n" +
+                        "Class many::elements\n" +
+                        "{\n" +
+                        "  a:Integer[1];\n" +
+                        "}\n"
+        );
+
+        // one file with multiple elements - create/edit new files, delete existing file
+        Path manyElementsNoElementCorrectPath = extension.addToWorkspace("another/many/elements.pure",
+                "###Relational\n" +
+                        "// A comment here will be kept\n" +
+                        "Database my::database()\n" +
+                        "// This comment will be with element below\n" +
+                        "###Pure\n" +
+                        "function hello::moon(): Integer[1]\n" +
+                        "{\n" +
+                        "  1 + 1;\n" +
+                        "}\n" +
+                        "Class another::class\n" +
+                        "{\n" +
+                        "  a:Integer[1];\n" +
+                        "}\n"
+        );
+
+        extension.futureGet(extension.getServer().getLegendLanguageService().oneEntityPerFileRefactoring());
+        List<ApplyWorkspaceEditParams> workspaceEdits = extension.getClient().workspaceEdits;
+        Assertions.assertEquals(1, workspaceEdits.size());
+
+        WorkspaceEdit edit = workspaceEdits.get(0).getEdit();
+        Assertions.assertEquals(0, edit.getChanges().size());
+
+        List<Either<TextDocumentEdit, ResourceOperation>> documentChanges = edit.getDocumentChanges();
+        Assertions.assertEquals(15, documentChanges.size());
+        String expected = "[\n" +
+                // create - another::class file
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/another/class.pure\",\n" +
+                "      \"options\": {\n" +
+                "        \"ignoreIfExists\": true\n" +
+                "      },\n" +
+                "      \"kind\": \"create\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - another::class file to add Pure code
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": null,\n" +
+                "        \"uri\": \"__root_path__/another/class.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"Class another::class\\n{\\n  a:Integer[1];\\n}\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
+                // create - another::element file
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/another/element.pure\",\n" +
+                "      \"options\": {\n" +
+                "        \"ignoreIfExists\": true\n" +
+                "      },\n" +
+                "      \"kind\": \"create\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - another::element file
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": null,\n" +
+                "        \"uri\": \"__root_path__/another/element.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"###Relational\\n// A comment here will be kept\\nDatabase another::element()\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
+                // create - another::one::element file
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/another/one/element.pure\",\n" +
+                "      \"options\": {\n" +
+                "        \"ignoreIfExists\": true\n" +
+                "      },\n" +
+                "      \"kind\": \"create\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - another::one::element file
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": null,\n" +
+                "        \"uri\": \"__root_path__/another/one/element.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"Class another::one::element\\n{\\n  a:Integer[1];\\n}\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
+                // create - hello::moon file
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/hello/moon__Integer_1_.pure\",\n" +
+                "      \"options\": {\n" +
+                "        \"ignoreIfExists\": true\n" +
+                "      },\n" +
+                "      \"kind\": \"create\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - hello::moon file
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": null,\n" +
+                "        \"uri\": \"__root_path__/hello/moon__Integer_1_.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"// This comment will be with element below\\n\\nfunction hello::moon(): Integer[1]\\n{\\n  1 + 1;\\n}\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
+                // create - hello::world file
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/hello/world__Integer_1_.pure\",\n" +
+                "      \"options\": {\n" +
+                "        \"ignoreIfExists\": true\n" +
+                "      },\n" +
+                "      \"kind\": \"create\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - hello::world file
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": null,\n" +
+                "        \"uri\": \"__root_path__/hello/world__Integer_1_.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"// This comment will be with element below\\n\\nfunction hello::world(): Integer[1]\\n{\\n  1 + 1;\\n}\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - many::elements file (remove elements moved to their own files, but keep existing file)
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": 0,\n" +
+                "        \"uri\": \"__root_path__/many/elements.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 16,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"Class many::elements\\n{\\n  a:Integer[1];\\n}\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
+                // create - my::database file
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/my/database.pure\",\n" +
+                "      \"options\": {\n" +
+                "        \"ignoreIfExists\": true\n" +
+                "      },\n" +
+                "      \"kind\": \"create\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - my::database file
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": null,\n" +
+                "        \"uri\": \"__root_path__/my/database.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"###Relational\\n// A comment here will be kept\\nDatabase my::database()\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
+                // delete - another/many/elements.pure
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/another/many/elements.pure\",\n" +
+                "      \"kind\": \"delete\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // delete - one/element/wrongfile.pure
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/one/element/wrongfile.pure\",\n" +
+                "      \"kind\": \"delete\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "]";
+        Assertions.assertEquals(expected.replace("__root_path__/", extension.resolveWorkspacePath("").toUri().toString()),
+                new GsonBuilder().setPrettyPrinting().create().toJson(documentChanges));
     }
 }

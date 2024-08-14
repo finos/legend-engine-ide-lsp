@@ -131,7 +131,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private final LegendServerGlobalState globalState = new LegendServerGlobalState(this);
     private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
-    private final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
+    final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
     private final Map<String, Object> settings = new ConcurrentHashMap<>();
 
     private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, Collection<LegendLSPFeature> features)
