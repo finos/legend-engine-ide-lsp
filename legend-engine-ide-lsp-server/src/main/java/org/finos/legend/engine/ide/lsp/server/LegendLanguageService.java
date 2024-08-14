@@ -341,13 +341,10 @@ public class LegendLanguageService implements LegendLanguageServiceContract
 
                                 Path root;
 
-                                if (documentStateToRefactorPath.toString().contains(PURE_FILE_DIRECTORY))
+                                int indexOfPureFileDir = documentStateToRefactorPath.toUri().toString().indexOf(PURE_FILE_DIRECTORY);
+                                if (indexOfPureFileDir >= 0)
                                 {
-                                    root = documentStateToRefactorPath;
-                                    while (!root.toString().endsWith(PURE_FILE_DIRECTORY))
-                                    {
-                                        root = root.getParent();
-                                    }
+                                    root = Path.of(URI.create(documentStateToRefactorPath.toUri().toString().substring(0, indexOfPureFileDir + PURE_FILE_DIRECTORY.length())));
                                 }
                                 else
                                 {
