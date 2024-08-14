@@ -58,6 +58,7 @@ import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.server.LegendLanguageService;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
@@ -783,7 +784,7 @@ public class TestLegendLanguageServerIntegration
         );
 
         // one file with multiple elements - create/edit new files, delete existing file
-        Path manyElementsNoElementCorrectPath = extension.addToWorkspace("another/many/elements.pure",
+        Path manyElementsNoElementCorrectPath = extension.addToWorkspace("entities" + LegendLanguageService.PURE_FILE_DIRECTORY + "another/many/elements.pure",
                 "###Relational\n" +
                         "// A comment here will be kept\n" +
                         "Database my::database()\n" +
@@ -809,40 +810,6 @@ public class TestLegendLanguageServerIntegration
         List<Either<TextDocumentEdit, ResourceOperation>> documentChanges = edit.getDocumentChanges();
         Assertions.assertEquals(15, documentChanges.size());
         String expected = "[\n" +
-                // create - another::class file
-                "  {\n" +
-                "    \"right\": {\n" +
-                "      \"uri\": \"__root_path__/another/class.pure\",\n" +
-                "      \"options\": {\n" +
-                "        \"ignoreIfExists\": true\n" +
-                "      },\n" +
-                "      \"kind\": \"create\"\n" +
-                "    }\n" +
-                "  },\n" +
-                // edit - another::class file to add Pure code
-                "  {\n" +
-                "    \"left\": {\n" +
-                "      \"textDocument\": {\n" +
-                "        \"version\": null,\n" +
-                "        \"uri\": \"__root_path__/another/class.pure\"\n" +
-                "      },\n" +
-                "      \"edits\": [\n" +
-                "        {\n" +
-                "          \"range\": {\n" +
-                "            \"start\": {\n" +
-                "              \"line\": 0,\n" +
-                "              \"character\": 0\n" +
-                "            },\n" +
-                "            \"end\": {\n" +
-                "              \"line\": 0,\n" +
-                "              \"character\": 0\n" +
-                "            }\n" +
-                "          },\n" +
-                "          \"newText\": \"Class another::class\\n{\\n  a:Integer[1];\\n}\"\n" +
-                "        }\n" +
-                "      ]\n" +
-                "    }\n" +
-                "  },\n" +
                 // create - another::element file
                 "  {\n" +
                 "    \"right\": {\n" +
@@ -911,10 +878,44 @@ public class TestLegendLanguageServerIntegration
                 "      ]\n" +
                 "    }\n" +
                 "  },\n" +
+                // create - another::class file to add Pure code
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/entities/src/main/pure/another/class.pure\",\n" +
+                "      \"options\": {\n" +
+                "        \"ignoreIfExists\": true\n" +
+                "      },\n" +
+                "      \"kind\": \"create\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - another::class file to add Pure code
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": null,\n" +
+                "        \"uri\": \"__root_path__/entities/src/main/pure/another/class.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"Class another::class\\n{\\n  a:Integer[1];\\n}\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
                 // create - hello::moon file
                 "  {\n" +
                 "    \"right\": {\n" +
-                "      \"uri\": \"__root_path__/hello/moon__Integer_1_.pure\",\n" +
+                "      \"uri\": \"__root_path__/entities/src/main/pure/hello/moon__Integer_1_.pure\",\n" +
                 "      \"options\": {\n" +
                 "        \"ignoreIfExists\": true\n" +
                 "      },\n" +
@@ -926,7 +927,7 @@ public class TestLegendLanguageServerIntegration
                 "    \"left\": {\n" +
                 "      \"textDocument\": {\n" +
                 "        \"version\": null,\n" +
-                "        \"uri\": \"__root_path__/hello/moon__Integer_1_.pure\"\n" +
+                "        \"uri\": \"__root_path__/entities/src/main/pure/hello/moon__Integer_1_.pure\"\n" +
                 "      },\n" +
                 "      \"edits\": [\n" +
                 "        {\n" +
@@ -941,6 +942,40 @@ public class TestLegendLanguageServerIntegration
                 "            }\n" +
                 "          },\n" +
                 "          \"newText\": \"// This comment will be with element below\\n\\nfunction hello::moon(): Integer[1]\\n{\\n  1 + 1;\\n}\"\n" +
+                "        }\n" +
+                "      ]\n" +
+                "    }\n" +
+                "  },\n" +
+                // create - my::database file
+                "  {\n" +
+                "    \"right\": {\n" +
+                "      \"uri\": \"__root_path__/entities/src/main/pure/my/database.pure\",\n" +
+                "      \"options\": {\n" +
+                "        \"ignoreIfExists\": true\n" +
+                "      },\n" +
+                "      \"kind\": \"create\"\n" +
+                "    }\n" +
+                "  },\n" +
+                // edit - my::database file
+                "  {\n" +
+                "    \"left\": {\n" +
+                "      \"textDocument\": {\n" +
+                "        \"version\": null,\n" +
+                "        \"uri\": \"__root_path__/entities/src/main/pure/my/database.pure\"\n" +
+                "      },\n" +
+                "      \"edits\": [\n" +
+                "        {\n" +
+                "          \"range\": {\n" +
+                "            \"start\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            },\n" +
+                "            \"end\": {\n" +
+                "              \"line\": 0,\n" +
+                "              \"character\": 0\n" +
+                "            }\n" +
+                "          },\n" +
+                "          \"newText\": \"###Relational\\n// A comment here will be kept\\nDatabase my::database()\"\n" +
                 "        }\n" +
                 "      ]\n" +
                 "    }\n" +
@@ -1003,44 +1038,10 @@ public class TestLegendLanguageServerIntegration
                 "      ]\n" +
                 "    }\n" +
                 "  },\n" +
-                // create - my::database file
-                "  {\n" +
-                "    \"right\": {\n" +
-                "      \"uri\": \"__root_path__/my/database.pure\",\n" +
-                "      \"options\": {\n" +
-                "        \"ignoreIfExists\": true\n" +
-                "      },\n" +
-                "      \"kind\": \"create\"\n" +
-                "    }\n" +
-                "  },\n" +
-                // edit - my::database file
-                "  {\n" +
-                "    \"left\": {\n" +
-                "      \"textDocument\": {\n" +
-                "        \"version\": null,\n" +
-                "        \"uri\": \"__root_path__/my/database.pure\"\n" +
-                "      },\n" +
-                "      \"edits\": [\n" +
-                "        {\n" +
-                "          \"range\": {\n" +
-                "            \"start\": {\n" +
-                "              \"line\": 0,\n" +
-                "              \"character\": 0\n" +
-                "            },\n" +
-                "            \"end\": {\n" +
-                "              \"line\": 0,\n" +
-                "              \"character\": 0\n" +
-                "            }\n" +
-                "          },\n" +
-                "          \"newText\": \"###Relational\\n// A comment here will be kept\\nDatabase my::database()\"\n" +
-                "        }\n" +
-                "      ]\n" +
-                "    }\n" +
-                "  },\n" +
                 // delete - another/many/elements.pure
                 "  {\n" +
                 "    \"right\": {\n" +
-                "      \"uri\": \"__root_path__/another/many/elements.pure\",\n" +
+                "      \"uri\": \"__root_path__/entities/src/main/pure/another/many/elements.pure\",\n" +
                 "      \"kind\": \"delete\"\n" +
                 "    }\n" +
                 "  },\n" +
