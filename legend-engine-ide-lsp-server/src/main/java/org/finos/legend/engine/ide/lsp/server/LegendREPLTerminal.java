@@ -47,8 +47,8 @@ public class LegendREPLTerminal
                 throw new RuntimeException("At least one workspace folder is required.");
             }
 
-            String planExecutorConfigurationProperty = System.getProperty("legend.planExecutor.configuration");
-            Path planExecutorConfigurationJsonPath = (planExecutorConfigurationProperty == null) ? null : Path.of(planExecutorConfigurationProperty);
+            String planExecutorConfigurationProperty = System.getProperty("legend.planExecutor.configuration", "");
+            Path planExecutorConfigurationJsonPath = planExecutorConfigurationProperty.isEmpty() ? null : Path.of(planExecutorConfigurationProperty);
             List<String> workspaceFolders = Arrays.asList(args);
 
             ServiceLoader.load(LegendLSPFeature.class).forEach(features::add);
