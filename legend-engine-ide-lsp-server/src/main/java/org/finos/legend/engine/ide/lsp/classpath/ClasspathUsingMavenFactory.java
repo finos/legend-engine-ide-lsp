@@ -401,6 +401,41 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
         planGenSerializationDependency.setVersion(engineVersion);
         dependencies.add(planGenSerializationDependency);
 
+        Dependency duckDBPCTDependency = new Dependency();
+        duckDBPCTDependency.setGroupId("org.finos.legend.engine");
+        duckDBPCTDependency.setArtifactId("legend-engine-xt-relationalStore-duckdb-PCT");
+        duckDBPCTDependency.setVersion(engineVersion);
+
+        dependencies.add(duckDBPCTDependency);
+
+        Dependency javaPCTDependency = new Dependency();
+        javaPCTDependency.setGroupId("org.finos.legend.engine");
+        javaPCTDependency.setArtifactId("legend-engine-xt-javaPlatformBinding-PCT");
+        javaPCTDependency.setVersion(engineVersion);
+
+        dependencies.add(javaPCTDependency);
+
+        Dependency h2PCTDependency = new Dependency();
+        h2PCTDependency.setGroupId("org.finos.legend.engine");
+        h2PCTDependency.setArtifactId("legend-engine-xt-relationalStore-h2-PCT");
+        h2PCTDependency.setVersion(engineVersion);
+
+        dependencies.add(h2PCTDependency);
+
+        Dependency postgresPCTDependency = new Dependency();
+        postgresPCTDependency.setGroupId("org.finos.legend.engine");
+        postgresPCTDependency.setArtifactId("legend-engine-xt-relationalStore-postgres-PCT");
+        postgresPCTDependency.setVersion(engineVersion);
+
+        dependencies.add(postgresPCTDependency);
+
+        Dependency snowflakePCTDependency = new Dependency();
+        snowflakePCTDependency.setGroupId("org.finos.legend.engine");
+        snowflakePCTDependency.setArtifactId("legend-engine-xt-relationalStore-snowflake-PCT");
+        snowflakePCTDependency.setVersion(engineVersion);
+
+        dependencies.add(snowflakePCTDependency);
+
         return dependencies;
     }
 
