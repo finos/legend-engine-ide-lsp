@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.HashSet;
-import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Map;
 import java.util.Objects;
@@ -228,12 +227,13 @@ public class LegendLanguageService implements LegendLanguageServiceContract
         globalState.findFeatureThatImplements(LegendVirtualFileSystemContentInitializer.class)
                 .map(LegendVirtualFileSystemContentInitializer::getVirtualFilePureGrammars)
                 .flatMap(List::stream)
-                .forEach(virtualFile ->
-                {
-                    String uri = LEGEND_VIRTUAL_FS_SCHEME + virtualFile.getPath();
-                    LegendServerGlobalState.LegendServerDocumentState dependenciesDocument = globalState.getOrCreateDocState(uri);
-                    dependenciesDocument.save(virtualFile.getContent());
-                });
+                .filter(virtualFile -> virtualFile.getPath().endsWith(".pure"))
+                        .forEach(virtualFile ->
+                        {
+                            String uri = LEGEND_VIRTUAL_FS_SCHEME + virtualFile.getPath();
+                            LegendServerGlobalState.LegendServerDocumentState dependenciesDocument = globalState.getOrCreateDocState(uri);
+                            dependenciesDocument.save(virtualFile.getContent());
+                        });
     }
 
     @Override
