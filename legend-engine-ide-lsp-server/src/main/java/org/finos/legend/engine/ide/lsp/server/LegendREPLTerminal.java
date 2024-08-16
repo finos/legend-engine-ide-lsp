@@ -35,8 +35,6 @@ public class LegendREPLTerminal
 {
     public static void main(String... args) throws InterruptedException
     {
-        Path planExecutorConfigurationJsonPath = null;
-        List<String> workspaceFolders = new ArrayList<>();
         List<LegendLSPFeature> features = new ArrayList<>();
         Instant startTime = Instant.now().minusMillis(ManagementFactory.getRuntimeMXBean().getUptime());
         Map<String, Object> metadata = new HashMap<>();
@@ -44,22 +42,14 @@ public class LegendREPLTerminal
 
         try
         {
-            /*
-              The first argument is the string value of plan executor configuration path, which defaults to ""
-              The rest of the arguments are string values of workspace folder paths
-             */
-            if (args.length < 2)
+            if (args.length < 1)
             {
                 throw new RuntimeException("At least one workspace folder is required.");
             }
-            else
-            {
-                if (!args[0].isEmpty())
-                {
-                    planExecutorConfigurationJsonPath = Path.of(args[0]);
-                }
-                Arrays.stream(args).skip(1).forEach(workspaceFolders::add);
-            }
+
+            String planExecutorConfigurationProperty = System.getProperty("legend.planExecutor.configuration", "");
+            Path planExecutorConfigurationJsonPath = planExecutorConfigurationProperty.isEmpty() ? null : Path.of(planExecutorConfigurationProperty);
+            List<String> workspaceFolders = Arrays.asList(args);
 
             ServiceLoader.load(LegendLSPFeature.class).forEach(features::add);
 

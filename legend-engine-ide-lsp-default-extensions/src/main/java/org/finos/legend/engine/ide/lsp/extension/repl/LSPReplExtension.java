@@ -111,6 +111,11 @@ public class LSPReplExtension implements ReplExtension
         }
     }
 
+    private boolean isValidPureFile(Path resolvedPath)
+    {
+        return Files.isReadable(resolvedPath) && resolvedPath.toString().endsWith(".pure");
+    }
+
     private void cacheLegendFile(Path filePath)
     {
         legendFileCache.put(filePath.toAbsolutePath(), readFileContent(filePath));
@@ -166,7 +171,7 @@ public class LSPReplExtension implements ReplExtension
                         {
                             processAllDirectories(resolvedPath, this::registerDirectory);
                         }
-                        else if (Files.isReadable(resolvedPath) && resolvedPath.toString().endsWith(".pure"))
+                        else if (isValidPureFile(resolvedPath))
                         {
                             cacheLegendFile(resolvedPath);
                         }
@@ -189,7 +194,10 @@ public class LSPReplExtension implements ReplExtension
                         break;
 
                     case "ENTRY_MODIFY":
-                        cacheLegendFile(resolvedPath);
+                        if (isValidPureFile(resolvedPath))
+                        {
+                            cacheLegendFile(resolvedPath);
+                        }
                         break;
 
                     default:
