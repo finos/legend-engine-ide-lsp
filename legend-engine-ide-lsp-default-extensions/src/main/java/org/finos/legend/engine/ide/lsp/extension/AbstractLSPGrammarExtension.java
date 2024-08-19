@@ -17,6 +17,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.util.TokenBuffer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -807,5 +808,35 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         Optional<LegendReferenceResolver> profileReference = LegendReferenceResolver.newReferenceResolver(taggedValue.tag.profileSourceInformation, x -> x.resolveProfile(taggedValue.tag.profile, taggedValue.tag.profileSourceInformation));
         Optional<LegendReferenceResolver> tagReference = LegendReferenceResolver.newReferenceResolver(taggedValue.tag.sourceInformation, x -> x.resolveTag(taggedValue.tag.profile, taggedValue.tag.value, taggedValue.tag.profileSourceInformation, taggedValue.tag.sourceInformation));
         return Stream.of(profileReference, tagReference);
+    }
+
+    protected <T> String toProtocolJson(T protocolObject)
+    {
+        try
+        {
+            return this.protocolMapper.writerWithDefaultPrettyPrinter().writeValueAsString(protocolObject);
+        }
+        catch (IOException e)
+        {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    protected <T> T cloneProtocolObject(T toClone)
+    {
+        if (toClone == null)
+        {
+            return null;
+        }
+
+        try (TokenBuffer tb = new TokenBuffer(this.protocolMapper, false))
+        {
+            this.protocolMapper.writeValue(tb, toClone);
+            return (T) this.protocolMapper.readValue(tb.asParser(), toClone.getClass());
+        }
+        catch (IOException e)
+        {
+            throw new UncheckedIOException(e);
+        }
     }
 }

@@ -31,6 +31,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.eclipse.collections.api.RichIterable;
@@ -59,6 +62,9 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.dsl.service.generation.ServicePlanGenerator;
 import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
+import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
+import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
+import org.finos.legend.engine.plan.execution.planHelper.PrimitiveValueSpecificationToObjectVisitor;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
@@ -66,6 +72,7 @@ import org.finos.legend.engine.protocol.Protocol;
 import org.finos.legend.engine.protocol.pure.PureClientVersions;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.context.AlloySDLC;
+import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementType;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
@@ -80,11 +87,14 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.PureMultiExecution;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.PureSingleExecution;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Service;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTest;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
+import org.finos.legend.engine.protocol.pure.v1.model.test.AtomicTest;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
+import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
 import org.finos.legend.engine.test.runner.service.ServiceTestRunner;
 import org.finos.legend.engine.test.runner.shared.TestResult;
@@ -167,6 +177,86 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             return (testSuites == null) ? Lists.fixedSize.empty() : testSuites;
         }
         return super.getTestSuites(element);
+    }
+
+    /**
+     * This is to compensate for how multi-execution handle test cases, so that every test is split by the execution key
+     * This will allow us to better handle and display these parameterized tests in VS Code
+     * </p>
+     * Ideally, we want to have a sub-suite for the actual "test" to allow users to execute all exec parameters at once,
+     * but Engine platform does not support this suite within suite at the moment (suite -> suite (for the test) -> test (per exec param)
+     * @param service Service to fix test cases
+     * @return list of service test cases, fixed for multi-execution services
+     */
+    private List<ServiceTestSuite> fixTestSuitesForMultiExecutions(Service service)
+    {
+        List<ServiceTestSuite> testSuites = service.testSuites;
+
+        if (testSuites != null && service.execution instanceof PureMultiExecution)
+        {
+            PureMultiExecution multiExecution = (PureMultiExecution) service.execution;
+            Optional<List<String>> keys = Optional.ofNullable(multiExecution.executionParameters)
+                    .map(ep -> ep.stream().map(x -> x.key).collect(Collectors.toList()));
+
+            List<ServiceTestSuite> newSuites = new ArrayList<>();
+
+            for (ServiceTestSuite suite : testSuites)
+            {
+                List<AtomicTest> newTests = new ArrayList<>();
+
+                for (AtomicTest atomicTest : suite.tests)
+                {
+                    ServiceTest test = (ServiceTest) atomicTest;
+
+                    List<String> keysOnTest = Optional.ofNullable(test.parameters)
+                            .orElse(List.of())
+                            .stream()
+                            // find exec keys on the test parameters
+                            .filter(parameterValue -> parameterValue.name.equals(multiExecution.executionKey))
+                            .findFirst()
+                            .map(x -> x.value.accept(new PrimitiveValueSpecificationToObjectVisitor()))
+                            .map(x -> x instanceof List ? (List<String>) x : List.of(x.toString()))
+                            // or try to use the exec keys directly on the test
+                            .or(() -> Optional.ofNullable(test.keys))
+                            .filter(Predicate.not(List::isEmpty))
+                            // or use the keys on the service definition
+                            .or(() -> keys)
+                            .orElseThrow(() -> new EngineException("Test '" + suite.id + '.' + test.id + "' on multi-execution service does not have any execution key", test.sourceInformation, EngineErrorType.PARSER));
+
+                    for (String key : keysOnTest)
+                    {
+                        ServiceTest newTest = this.cloneProtocolObject(test);
+                        newTest.id = newTest.id + "[" + key + "]";
+                        newTest.keys = List.of(key);
+                        newTests.add(newTest);
+                    }
+                }
+
+                ServiceTestSuite newSuite = this.cloneProtocolObject(suite);
+                newSuite.tests = newTests;
+                newSuites.add(newSuite);
+            }
+
+            testSuites = newSuites;
+        }
+
+        return (testSuites == null) ? Lists.fixedSize.empty() : testSuites;
+    }
+
+    @Override
+    protected void parse(SectionSourceCode section, Consumer<PackageableElement> elementConsumer, PureGrammarParserContext parserContext)
+    {
+        Consumer<PackageableElement> wrapConsumer = pe ->
+        {
+            if (pe instanceof Service)
+            {
+                Service service = (Service) pe;
+                service.testSuites = fixTestSuitesForMultiExecutions(service);
+            }
+
+            elementConsumer.accept(pe);
+        };
+        this.parser.parse(section, wrapConsumer, parserContext);
     }
 
     @Override
