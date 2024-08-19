@@ -223,7 +223,6 @@ public class LegendLanguageService implements LegendLanguageServiceContract
 
         globalState.removeFolder(LEGEND_VIRTUAL_FS_SCHEME);
 
-        // todo - filter for pure files....
         globalState.findFeatureThatImplements(LegendVirtualFileSystemContentInitializer.class)
                 .map(LegendVirtualFileSystemContentInitializer::getVirtualFilePureGrammars)
                 .flatMap(List::stream)
