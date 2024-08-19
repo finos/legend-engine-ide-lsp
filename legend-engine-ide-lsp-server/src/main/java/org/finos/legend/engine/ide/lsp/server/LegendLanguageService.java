@@ -226,13 +226,13 @@ public class LegendLanguageService implements LegendLanguageServiceContract
         globalState.findFeatureThatImplements(LegendVirtualFileSystemContentInitializer.class)
                 .map(LegendVirtualFileSystemContentInitializer::getVirtualFilePureGrammars)
                 .flatMap(List::stream)
-                .filter(virtualFile -> virtualFile.getPath().endsWith(".pure"))
-                        .forEach(virtualFile ->
-                        {
-                            String uri = LEGEND_VIRTUAL_FS_SCHEME + virtualFile.getPath();
-                            LegendServerGlobalState.LegendServerDocumentState dependenciesDocument = globalState.getOrCreateDocState(uri);
-                            dependenciesDocument.save(virtualFile.getContent());
-                        });
+                .filter(virtualFile -> virtualFile.getPath().toString().endsWith(".pure"))
+                .forEach(virtualFile ->
+                {
+                    String uri = LEGEND_VIRTUAL_FS_SCHEME + virtualFile.getPath();
+                    LegendServerGlobalState.LegendServerDocumentState dependenciesDocument = globalState.getOrCreateDocState(uri);
+                    dependenciesDocument.save(virtualFile.getContent());
+                });
     }
 
     @Override
