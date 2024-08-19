@@ -24,8 +24,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
+import java.util.HashSet;
+import java.util.Optional;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -193,14 +194,20 @@ public class LegendLanguageService implements LegendLanguageServiceContract
         {
             if (uri.startsWith(LEGEND_VIRTUAL_FS_SCHEME))
             {
-                LegendServerGlobalState.LegendServerDocumentState documentState = this.server.getGlobalState().getDocumentState(uri);
-                if (documentState == null)
+                LegendServerGlobalState globalState = this.server.getGlobalState();
+                Optional<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> legendVirtualFile = globalState.findFeatureThatImplements(LegendVirtualFileSystemContentInitializer.class)
+                        .map(LegendVirtualFileSystemContentInitializer::getVirtualFilePureGrammars)
+                        .flatMap(List::stream)
+                        .filter(x -> (LEGEND_VIRTUAL_FS_SCHEME + x.getPath()).equals(uri))
+                        .findAny();
+
+                if (legendVirtualFile.isPresent())
                 {
-                    throw new IllegalArgumentException("Provided URI does not exists on Legend Virtual Filesystem: " + uri);
+                    return legendVirtualFile.get().getContent();
                 }
                 else
                 {
-                    return documentState.getText();
+                    throw new IllegalArgumentException("Provided URI does not exists on Legend Virtual Filesystem: " + uri);
                 }
             }
             else
@@ -219,6 +226,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
         globalState.findFeatureThatImplements(LegendVirtualFileSystemContentInitializer.class)
                 .map(LegendVirtualFileSystemContentInitializer::getVirtualFilePureGrammars)
                 .flatMap(List::stream)
+                .filter(virtualFile -> virtualFile.getPath().toString().endsWith(".pure"))
                 .forEach(virtualFile ->
                 {
                     String uri = LEGEND_VIRTUAL_FS_SCHEME + virtualFile.getPath();
