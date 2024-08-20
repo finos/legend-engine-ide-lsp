@@ -16,12 +16,15 @@
 
 package org.finos.legend.engine.ide.lsp.extension.sdlc;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.collections.impl.block.factory.Comparators;
 import org.eclipse.collections.impl.set.sorted.mutable.TreeSortedSet;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
@@ -30,6 +33,11 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendSDLCFeature;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
+import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.shared.core.ObjectMapperFactory;
+import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.sdlc.domain.model.entity.Entity;
 import org.finos.legend.sdlc.protocol.pure.v1.PureEntitySerializer;
 import org.finos.legend.sdlc.serialization.DefaultJsonEntitySerializer;
@@ -38,12 +46,21 @@ public class LegendSDLCFeatureImpl implements LegendSDLCFeature
 {
     private final PureEntitySerializer pureEntitySerializer = new PureEntitySerializer();
     private final DefaultJsonEntitySerializer jsonEntitySerializer = new DefaultJsonEntitySerializer();
+    private final  ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
+    private final PureGrammarComposer pureGrammarComposer = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().withRenderStyle(RenderStyle.PRETTY).build());
 
     @Override
-    public String entityJsonToPureText(String entityJson) throws IOException
+    public String entityJsonToPureText(String entityJson)
     {
-        Entity entity = this.jsonEntitySerializer.deserialize(entityJson);
-        return this.pureEntitySerializer.serializeToString(entity);
+        try
+        {
+            Entity entity = this.jsonEntitySerializer.deserialize(entityJson);
+            return this.pureEntitySerializer.serializeToString(entity);
+        }
+        catch (IOException e)
+        {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Override
@@ -115,5 +132,13 @@ public class LegendSDLCFeatureImpl implements LegendSDLCFeature
         }
 
         return fileToContentMap;
+    }
+
+    @Override
+    public Map.Entry<String, String> contentToPureText(Map<String, ?> content)
+    {
+        PackageableElement packageableElement = this.objectMapper.convertValue(content, PackageableElement.class);
+        String pureText = this.pureGrammarComposer.render(packageableElement);
+        return Pair.of(packageableElement.getPath(), pureText);
     }
 }

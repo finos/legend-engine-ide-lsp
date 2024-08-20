@@ -16,7 +16,6 @@
 
 package org.finos.legend.engine.ide.lsp.extension.features;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
@@ -38,9 +37,9 @@ public interface LegendSDLCFeature extends LegendLSPFeature
      * Takes a JSON that represent an SDLC Entity, and convert it to Pure grammar text
      * @param entityJson json of the entity to convert
      * @return Pure grammar text from the entityJson
-     * @throws IOException Thrown if failed to read JSON or to write Pure grammar
+     * @throws java.io.UncheckedIOException Thrown if failed to read JSON or to write Pure grammar
      */
-    String entityJsonToPureText(String entityJson) throws IOException;
+    String entityJsonToPureText(String entityJson);
 
     /**
      * Split all the elements on a given document into multiple documents.  The new path of the new documents
@@ -92,4 +91,6 @@ public interface LegendSDLCFeature extends LegendLSPFeature
      * @throws UnsupportedOperationException if the start line of an element is the same as the end line of the previous element
      */
     Map<Path, String> convertToOneElementPerFile(Path rootFolder, DocumentState documentState);
+
+    Map.Entry<String, String> contentToPureText(Map<String, ?> content);
 }
