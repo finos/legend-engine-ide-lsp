@@ -46,6 +46,7 @@ import org.finos.legend.engine.testable.extension.TestableRunnerExtensionLoader;
 import org.finos.legend.engine.testable.model.RunTestsResult;
 import org.finos.legend.engine.testable.model.RunTestsTestableInput;
 import org.finos.legend.engine.testable.model.UniqueTestId;
+import org.finos.legend.engine.testable.service.result.MultiExecutionServiceTestResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -224,6 +225,17 @@ public final class TestableCommandsSupport
             RunTestsResult testsResult = runner.doTests(Collections.singletonList(runTestsTestableInput), compileResult.getPureModel(), compileResult.getPureModelContextData());
             return testsResult.results.stream().map(res ->
             {
+                // todo - is there a way to eliminate this instanceof and normalize test results in Engine platform?
+                // for multi, all test are for one key, so we extract for that key, and use that result instead
+                if (res instanceof MultiExecutionServiceTestResult)
+                {
+                    MultiExecutionServiceTestResult multiExecutionServiceTestResult = (MultiExecutionServiceTestResult) res;
+                    if (multiExecutionServiceTestResult.getKeyIndexedTestResults().size() == 1)
+                    {
+                        res = multiExecutionServiceTestResult.getKeyIndexedTestResults().values().iterator().next();
+                    }
+                }
+
                 if (res instanceof TestError)
                 {
                     TestError testError = (TestError) res;
@@ -273,7 +285,8 @@ public final class TestableCommandsSupport
                 }
                 else
                 {
-                    String message = "Unknown test result type: " + res.getClass().getName();
+                    String resAsJson = this.extension.toProtocolJson(res);
+                    String message = "Unknown test result type: " + res.getClass().getName() + ".  Value: " + resAsJson;
                     LOGGER.warn(message);
                     return LegendTestExecutionResult.unknown(message, entityPath, res.testSuiteId, res.atomicTestId);
                 }

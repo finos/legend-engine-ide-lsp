@@ -19,6 +19,7 @@ package org.finos.legend.engine.ide.lsp.extension.service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
@@ -34,6 +35,9 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Sou
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTestAssertionResult;
+import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
@@ -71,7 +75,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        asserts : [];\n" +
                         "    }\n" +
                         "}\n",
-                LegendDeclaration.builder().withIdentifier("test::services::TestService").withClassifier("meta::legend::service::metamodel::Service").withLocation(DOC_ID_FOR_TEXT,3, 0, 17, 0).build()
+                LegendDeclaration.builder().withIdentifier("test::services::TestService").withClassifier("meta::legend::service::metamodel::Service").withLocation(DOC_ID_FOR_TEXT, 3, 0, 17, 0).build()
         );
     }
 
@@ -99,7 +103,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        asserts : [];\n" +
                         "    }\r\n" +
                         "}\n",
-                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT,5, 12, 5, 17), "Unexpected token", Kind.Error, Source.Parser)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 5, 12, 5, 17), "Unexpected token", Kind.Error, Source.Parser)
         );
     }
 
@@ -126,7 +130,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        asserts : [];\n" +
                         "    }\r\n" +
                         "}\n",
-                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT,10, 18, 10, 44), "Can't find mapping 'test::mappings::TestMapping'", Kind.Error, Source.Compiler)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 10, 18, 10, 44), "Can't find mapping 'test::mappings::TestMapping'", Kind.Error, Source.Compiler)
         );
     }
 
@@ -427,10 +431,473 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         commands.forEach(c -> actualCommands.add(c.getId()));
         Assertions.assertEquals(expectedCommands, actualCommands);
 
-        LegendCommand singleServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("vscodelsp::test::TestService")).findAny().get();
-        LegendCommand multiServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("test::service")).findAny().get();
+        LegendCommand singleServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("vscodelsp::test::TestService")).findAny().orElseThrow();
+        LegendCommand multiServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("test::service")).findAny().orElseThrow();
 
         Assertions.assertEquals(Set.of("src"), singleServiceCommand.getInputParameters().keySet());
         Assertions.assertEquals(Set.of("env", "src"), multiServiceCommand.getInputParameters().keySet());
+    }
+
+    @Test
+    void serviceTestsExecution()
+    {
+        String data =
+                "###Data\n" +
+                        "Data testServiceStoreTestSuites::TestData\n" +
+                        "{\n" +
+                        "   ExternalFormat\n" +
+                        "   #{\n" +
+                        "       contentType: 'application/json';\n" +
+                        "       data: '{\\n  \"sFirm_tbl\": {\\n    \"legalName\": \"legalName 18\",\\n    \"firmId\": 22,\\n    \"ceoId\": 49,\\n    \"addressId\": 88,\\n    \"employees\": {\\n      \"firstName\": \"firstName 69\",\\n      \"lastName\": \"lastName 2\",\\n      \"age\": 14,\\n      \"id\": 52,\\n      \"addressId\": 83,\\n      \"firmId\": 73\\n    }\\n  },\\n  \"sPerson_tbl\": {\\n    \"firstName\": \"firstName 69\",\\n    \"lastName\": \"lastName 4\",\\n    \"age\": 98,\\n    \"id\": 87,\\n    \"addressId\": 46,\\n    \"firmId\": 26\\n  }\\n}';\n" +
+                        "   }#\n" +
+                        "}\n" +
+                        "Data testServiceStoreTestSuites::TestData2\n" +
+                        "{\n" +
+                        "   ExternalFormat\n" +
+                        "   #{\n" +
+                        "       contentType: 'application/json';\n" +
+                        "       data: '{\\n  \"sFirm_tbl\": {\\n    \"legalName\": \"legalName 18\",\\n    \"firmId\": 22,\\n    \"ceoId\": 49,\\n    \"addressId\": 88,\\n    \"employees\": {\\n      \"firstName\": \"firstName 69\",\\n      \"lastName\": \"lastName 2\",\\n      \"age\": 14,\\n      \"id\": 52,\\n      \"addressId\": 83,\\n      \"firmId\": 73\\n    }\\n  },\\n  \"sPerson_tbl\": {\\n    \"firstName\": \"firstName 69\",\\n    \"lastName\": \"lastName 4\",\\n    \"age\": 98,\\n    \"id\": 87,\\n    \"addressId\": 46,\\n    \"firmId\": 26\\n  }\\n}';\n" +
+                        "   }#\n" +
+                        "}\n" +
+                        "Data testServiceStoreTestSuites::TestData3\n" +
+                        "{\n" +
+                        "   ExternalFormat\n" +
+                        "   #{\n" +
+                        "       contentType: 'application/json';\n" +
+                        "       data: '{\\n  \"sFirm_tbl\": {\\n    \"legalName\": \"legalName 19\",\\n    \"firmId\": 22,\\n    \"ceoId\": 49,\\n    \"addressId\": 88,\\n    \"employees\": {\\n      \"firstName\": \"firstName 69\",\\n      \"lastName\": \"lastName 2\",\\n      \"age\": 14,\\n      \"id\": 52,\\n      \"addressId\": 83,\\n      \"firmId\": 73\\n    }\\n  },\\n  \"sPerson_tbl\": {\\n    \"firstName\": \"firstName 69\",\\n    \"lastName\": \"lastName 4\",\\n    \"age\": 98,\\n    \"id\": 87,\\n    \"addressId\": 46,\\n    \"firmId\": 26\\n  }\\n}';\n" +
+                        "   }#\n" +
+                        "}\n";
+
+        String model =
+                "###Pure\n" +
+                        "Class testModelStoreTestSuites::model::Doc\n" +
+                        "{\n" +
+                        "  firm_tbl: testModelStoreTestSuites::model::Firm_TBL[1];\n" +
+                        "  person_tbl: testModelStoreTestSuites::model::Person_TBL[1];\n" +
+                        "}\n" +
+                        "\n" +
+                        "Class testModelStoreTestSuites::model::Firm_TBL\n" +
+                        "{\n" +
+                        "  legalName: String[1];\n" +
+                        "  <<equality.Key>> firmId: Integer[1];\n" +
+                        "  ceoId: Integer[1];\n" +
+                        "  addressId: Integer[1];\n" +
+                        "}\n" +
+                        "\n" +
+                        "Class testModelStoreTestSuites::model::Person_TBL\n" +
+                        "{\n" +
+                        "  firstName: String[1];\n" +
+                        "  lastName: String[1];\n" +
+                        "  age: Integer[1];\n" +
+                        "  <<equality.Key>> id: Integer[1];\n" +
+                        "  addressId: Integer[1];\n" +
+                        "  firmId: Integer[1];\n" +
+                        "}\n" +
+                        "\n" +
+                        "Class testModelStoreTestSuites::model::sDoc\n" +
+                        "{\n" +
+                        "  sFirm_tbl: testModelStoreTestSuites::model::sFirm_TBL[1];\n" +
+                        "  sPerson_tbl: testModelStoreTestSuites::model::sPerson_TBL[1];\n" +
+                        "}\n" +
+                        "\n" +
+                        "Class testModelStoreTestSuites::model::sFirm_TBL\n" +
+                        "{\n" +
+                        "  legalName: String[1];\n" +
+                        "  firmId: Integer[1];\n" +
+                        "  ceoId: Integer[1];\n" +
+                        "  addressId: Integer[1];\n" +
+                        "  employees: testModelStoreTestSuites::model::sPerson_TBL[1];\n" +
+                        "}\n" +
+                        "\n" +
+                        "Class testModelStoreTestSuites::model::sPerson_TBL\n" +
+                        "{\n" +
+                        "  firstName: String[1];\n" +
+                        "  lastName: String[1];\n" +
+                        "  age: Integer[1];\n" +
+                        "  id: Integer[1];\n" +
+                        "  addressId: Integer[1];\n" +
+                        "  firmId: Integer[1];\n" +
+                        "}\n";
+
+        String mapping =
+                "###Mapping\n" +
+                        "Mapping testModelStoreTestSuites::mapping::DocM2MMapping\n" +
+                        "(\n" +
+                        "  *testModelStoreTestSuites::model::Doc: Pure\n" +
+                        "  {\n" +
+                        "    ~src testModelStoreTestSuites::model::sDoc\n" +
+                        "    firm_tbl: $src.sFirm_tbl,\n" +
+                        "    person_tbl: $src.sPerson_tbl\n" +
+                        "  }\n" +
+                        "  *testModelStoreTestSuites::model::Firm_TBL: Pure\n" +
+                        "  {\n" +
+                        "    ~src testModelStoreTestSuites::model::sFirm_TBL\n" +
+                        "    legalName: $src.legalName,\n" +
+                        "    firmId: $src.firmId,\n" +
+                        "    ceoId: $src.ceoId,\n" +
+                        "    addressId: $src.addressId\n" +
+                        "  }\n" +
+                        "  *testModelStoreTestSuites::model::Person_TBL: Pure\n" +
+                        "  {\n" +
+                        "    ~src testModelStoreTestSuites::model::sPerson_TBL\n" +
+                        "    firstName: $src.firstName,\n" +
+                        "    lastName: $src.lastName,\n" +
+                        "    age: $src.age,\n" +
+                        "    id: $src.id,\n" +
+                        "    addressId: $src.addressId,\n" +
+                        "    firmId: $src.firmId\n" +
+                        "  }\n" +
+                        ")\n" +
+                        "\n" +
+                        "Mapping testModelStoreTestSuites::mapping::DocM2MMapping2\n" +
+                        "(\n" +
+                        "  *testModelStoreTestSuites::model::Doc: Pure\n" +
+                        "  {\n" +
+                        "    ~src testModelStoreTestSuites::model::sDoc\n" +
+                        "    firm_tbl: $src.sFirm_tbl,\n" +
+                        "    person_tbl: $src.sPerson_tbl\n" +
+                        "  }\n" +
+                        "  *testModelStoreTestSuites::model::Firm_TBL: Pure\n" +
+                        "  {\n" +
+                        "    ~src testModelStoreTestSuites::model::sFirm_TBL\n" +
+                        "    legalName: $src.legalName->toUpper(),\n" +
+                        "    firmId: $src.firmId,\n" +
+                        "    ceoId: $src.ceoId,\n" +
+                        "    addressId: $src.addressId\n" +
+                        "  }\n" +
+                        "  *testModelStoreTestSuites::model::Person_TBL: Pure\n" +
+                        "  {\n" +
+                        "    ~src testModelStoreTestSuites::model::sPerson_TBL\n" +
+                        "    firstName: $src.firstName,\n" +
+                        "    lastName: $src.lastName,\n" +
+                        "    age: $src.age,\n" +
+                        "    id: $src.id,\n" +
+                        "    addressId: $src.addressId,\n" +
+                        "    firmId: $src.firmId\n" +
+                        "  }\n" +
+                        ")\n";
+
+        String runtime =
+                "###Runtime\n" +
+                        "Runtime testModelStoreTestSuites::runtime::DocM2MRuntime\n" +
+                        "{\n" +
+                        "  mappings:\n" +
+                        "  [\n" +
+                        "    testModelStoreTestSuites::mapping::DocM2MMapping\n" +
+                        "  ];\n" +
+                        "  connections:\n" +
+                        "  [\n" +
+                        "    ModelStore:\n" +
+                        "    [\n" +
+                        "      connection_1:\n" +
+                        "      #{\n" +
+                        "        JsonModelConnection\n" +
+                        "        {\n" +
+                        "          class: testModelStoreTestSuites::model::sDoc;\n" +
+                        "          url: 'executor:default';\n" +
+                        "        }\n" +
+                        "      }#\n" +
+                        "    ]\n" +
+                        "  ];\n" +
+                        "}\n" +
+                        "\n" +
+                        "Runtime testModelStoreTestSuites::runtime::DocM2MRuntime2\n" +
+                        "{\n" +
+                        "  mappings:\n" +
+                        "  [\n" +
+                        "    testModelStoreTestSuites::mapping::DocM2MMapping\n" +
+                        "  ];\n" +
+                        "  connections:\n" +
+                        "  [\n" +
+                        "    ModelStore:\n" +
+                        "    [\n" +
+                        "      connection_1:\n" +
+                        "      #{\n" +
+                        "        JsonModelConnection\n" +
+                        "        {\n" +
+                        "          class: testModelStoreTestSuites::model::sDoc;\n" +
+                        "          url: 'executor:default';\n" +
+                        "        }\n" +
+                        "      }#\n" +
+                        "    ]\n" +
+                        "  ];\n" +
+                        "}\n" +
+                        "\n" +
+                        "Runtime testModelStoreTestSuites::runtime::DocM2MRuntime3\n" +
+                        "{\n" +
+                        "  mappings:\n" +
+                        "  [\n" +
+                        "    testModelStoreTestSuites::mapping::DocM2MMapping\n" +
+                        "  ];\n" +
+                        "  connections:\n" +
+                        "  [\n" +
+                        "    ModelStore:\n" +
+                        "    [\n" +
+                        "      connection_2:\n" +
+                        "      #{\n" +
+                        "        JsonModelConnection\n" +
+                        "        {\n" +
+                        "          class: testModelStoreTestSuites::model::sDoc;\n" +
+                        "          url: 'executor:default';\n" +
+                        "        }\n" +
+                        "      }#\n" +
+                        "    ]\n" +
+                        "  ];\n" +
+                        "}\n";
+
+        String services =
+                "###Service\n" +
+                        "Service testModelStoreTestSuites::service::DocM2MService\n" +
+                        "{\n" +
+                        "  pattern: '/testModelStoreTestSuites/service';\n" +
+                        "  owners:\n" +
+                        "  [\n" +
+                        "    'dummy',\n" +
+                        "    'dummy1'\n" +
+                        "  ];\n" +
+                        "  documentation: 'Service to test refiner flow';\n" +
+                        "  autoActivateUpdates: true;\n" +
+                        "  execution: Multi\n" +
+                        "  {\n" +
+                        "    query: |testModelStoreTestSuites::model::Doc.all()->graphFetchChecked(#{testModelStoreTestSuites::model::Doc{firm_tbl{addressId,firmId,legalName,ceoId},person_tbl{addressId,age,firmId,firstName,id,lastName}}}#)->serialize(#{testModelStoreTestSuites::model::Doc{firm_tbl{addressId,firmId,legalName,ceoId},person_tbl{addressId,age,firmId,firstName,id,lastName}}}#);\n" +
+                        "    key: 'env';\n" +
+                        "    executions['PASS']:\n" +
+                        "    {\n" +
+                        "      mapping: testModelStoreTestSuites::mapping::DocM2MMapping;\n" +
+                        "      runtime: testModelStoreTestSuites::runtime::DocM2MRuntime;\n" +
+                        "    }\n" +
+                        "    executions['FAIL']:\n" +
+                        "    {\n" +
+                        "      mapping: testModelStoreTestSuites::mapping::DocM2MMapping2;\n" +
+                        "      runtime: testModelStoreTestSuites::runtime::DocM2MRuntime2;\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "  testSuites:\n" +
+                        "  [\n" +
+                        "    testSuite1:\n" +
+                        "    {\n" +
+                        "      data:\n" +
+                        "      [\n" +
+                        "        connections:\n" +
+                        "        [\n" +
+                        "          connection_1:\n" +
+                        "            Reference \n" +
+                        "            #{ \n" +
+                        "              testServiceStoreTestSuites::TestData \n" +
+                        "            }#\n" +
+                        "        ]\n" +
+                        "      ]\n" +
+                        "      tests:\n" +
+                        "      [\n" +
+                        "        noParameterTest:\n" +
+                        "        {\n" +
+                        "          serializationFormat: PURE;\n" +
+                        "          asserts:\n" +
+                        "          [\n" +
+                        "            assert1:\n" +
+                        "              EqualToJson\n" +
+                        "              #{\n" +
+                        "                expected:\n" +
+                        "                  ExternalFormat\n" +
+                        "                  #{\n" +
+                        "                    contentType: 'application/json';\n" +
+                        "                    data: '{\"defects\":[],\"source\":{\"defects\":[],\"source\":{\"number\":1,\"record\":\"{\\\\\"sFirm_tbl\\\\\":{\\\\\"legalName\\\\\":\\\\\"legalName 18\\\\\",\\\\\"firmId\\\\\":22,\\\\\"ceoId\\\\\":49,\\\\\"addressId\\\\\":88,\\\\\"employees\\\\\":{\\\\\"firstName\\\\\":\\\\\"firstName 69\\\\\",\\\\\"lastName\\\\\":\\\\\"lastName 2\\\\\",\\\\\"age\\\\\":14,\\\\\"id\\\\\":52,\\\\\"addressId\\\\\":83,\\\\\"firmId\\\\\":73}},\\\\\"sPerson_tbl\\\\\":{\\\\\"firstName\\\\\":\\\\\"firstName 69\\\\\",\\\\\"lastName\\\\\":\\\\\"lastName 4\\\\\",\\\\\"age\\\\\":98,\\\\\"id\\\\\":87,\\\\\"addressId\\\\\":46,\\\\\"firmId\\\\\":26}}\"},\"value\":{\"sFirm_tbl\":{\"addressId\":88,\"firmId\":22,\"legalName\":\"legalName 18\",\"ceoId\":49},\"sPerson_tbl\":{\"addressId\":46,\"age\":98,\"firmId\":26,\"firstName\":\"firstName 69\",\"id\":87,\"lastName\":\"lastName 4\"}}},\"value\":{\"firm_tbl\":{\"addressId\":88,\"firmId\":22,\"legalName\":\"legalName 18\",\"ceoId\":49},\"person_tbl\":{\"addressId\":46,\"age\":98,\"firmId\":26,\"firstName\":\"firstName 69\",\"id\":87,\"lastName\":\"lastName 4\"}}}';\n" +
+                        "                  }#;\n" +
+                        "              }#\n" +
+                        "          ]\n" +
+                        "        },\n" +
+                        "        failEnvParameter:\n" +
+                        "        {\n" +
+                        "          serializationFormat: PURE;\n" +
+                        "          parameters: [ env = 'FAIL' ]\n" +
+                        "          asserts:\n" +
+                        "          [\n" +
+                        "            assert1:\n" +
+                        "              EqualToJson\n" +
+                        "              #{\n" +
+                        "                expected:\n" +
+                        "                  ExternalFormat\n" +
+                        "                  #{\n" +
+                        "                    contentType: 'application/json';\n" +
+                        "                    data: '{\"defects\":[],\"source\":{\"defects\":[],\"source\":{\"number\":1,\"record\":\"{\\\\\"sFirm_tbl\\\\\":{\\\\\"legalName\\\\\":\\\\\"legalName 18\\\\\",\\\\\"firmId\\\\\":22,\\\\\"ceoId\\\\\":49,\\\\\"addressId\\\\\":88,\\\\\"employees\\\\\":{\\\\\"firstName\\\\\":\\\\\"firstName 69\\\\\",\\\\\"lastName\\\\\":\\\\\"lastName 2\\\\\",\\\\\"age\\\\\":14,\\\\\"id\\\\\":52,\\\\\"addressId\\\\\":83,\\\\\"firmId\\\\\":73}},\\\\\"sPerson_tbl\\\\\":{\\\\\"firstName\\\\\":\\\\\"firstName 69\\\\\",\\\\\"lastName\\\\\":\\\\\"lastName 4\\\\\",\\\\\"age\\\\\":98,\\\\\"id\\\\\":87,\\\\\"addressId\\\\\":46,\\\\\"firmId\\\\\":26}}\"},\"value\":{\"sFirm_tbl\":{\"addressId\":88,\"firmId\":22,\"legalName\":\"legalName 18\",\"ceoId\":49},\"sPerson_tbl\":{\"addressId\":46,\"age\":98,\"firmId\":26,\"firstName\":\"firstName 69\",\"id\":87,\"lastName\":\"lastName 4\"}}},\"value\":{\"firm_tbl\":{\"addressId\":88,\"firmId\":22,\"legalName\":\"legalName 18\",\"ceoId\":49},\"person_tbl\":{\"addressId\":46,\"age\":98,\"firmId\":26,\"firstName\":\"firstName 69\",\"id\":87,\"lastName\":\"lastName 4\"}}}';\n" +
+                        "                  }#;\n" +
+                        "              }#\n" +
+                        "          ]\n" +
+                        "        },\n" +
+                        "        multiEnvParameter:\n" +
+                        "        {\n" +
+                        "          serializationFormat: PURE;\n" +
+                        "          parameters: [ env = ['PASS', 'FAIL'] ]\n" +
+                        "          asserts:\n" +
+                        "          [\n" +
+                        "            assert1:\n" +
+                        "              EqualToJson\n" +
+                        "              #{\n" +
+                        "                expected:\n" +
+                        "                  ExternalFormat\n" +
+                        "                  #{\n" +
+                        "                    contentType: 'application/json';\n" +
+                        "                    data: '{\"defects\":[],\"source\":{\"defects\":[],\"source\":{\"number\":1,\"record\":\"{\\\\\"sFirm_tbl\\\\\":{\\\\\"legalName\\\\\":\\\\\"legalName 18\\\\\",\\\\\"firmId\\\\\":22,\\\\\"ceoId\\\\\":49,\\\\\"addressId\\\\\":88,\\\\\"employees\\\\\":{\\\\\"firstName\\\\\":\\\\\"firstName 69\\\\\",\\\\\"lastName\\\\\":\\\\\"lastName 2\\\\\",\\\\\"age\\\\\":14,\\\\\"id\\\\\":52,\\\\\"addressId\\\\\":83,\\\\\"firmId\\\\\":73}},\\\\\"sPerson_tbl\\\\\":{\\\\\"firstName\\\\\":\\\\\"firstName 69\\\\\",\\\\\"lastName\\\\\":\\\\\"lastName 4\\\\\",\\\\\"age\\\\\":98,\\\\\"id\\\\\":87,\\\\\"addressId\\\\\":46,\\\\\"firmId\\\\\":26}}\"},\"value\":{\"sFirm_tbl\":{\"addressId\":88,\"firmId\":22,\"legalName\":\"legalName 18\",\"ceoId\":49},\"sPerson_tbl\":{\"addressId\":46,\"age\":98,\"firmId\":26,\"firstName\":\"firstName 69\",\"id\":87,\"lastName\":\"lastName 4\"}}},\"value\":{\"firm_tbl\":{\"addressId\":88,\"firmId\":22,\"legalName\":\"legalName 18\",\"ceoId\":49},\"person_tbl\":{\"addressId\":46,\"age\":98,\"firmId\":26,\"firstName\":\"firstName 69\",\"id\":87,\"lastName\":\"lastName 4\"}}}';\n" +
+                        "                  }#;\n" +
+                        "              }#\n" +
+                        "          ]\n" +
+                        "        }\n" +
+                        "      ]\n" +
+                        "    }\n" +
+                        "  ]\n" +
+                        "}\n" +
+                        "\n" +
+                        "\n";
+
+        MutableMap<String, String> sections = Maps.mutable.of(
+                "data.pure", data,
+                "mapping.pure", mapping,
+                "model.pure", model,
+                "runtime.pure", runtime
+        ).withKeyValue("service.pure", services);
+
+        List<SectionState> sectionStates = newSectionStates(sections);
+
+        SectionState sectionState = sectionStates.stream().filter(x -> x.getDocumentState().getDocumentId().equals("service.pure")).findAny().orElseThrow();
+
+        TextLocation location = TextLocation.newTextSource("service.pure", TextInterval.newInterval(1, 1, 1, 5));
+
+        String failureExpectedValue = "{\n" +
+                "  \"defects\" : [ ],\n" +
+                "  \"source\" : {\n" +
+                "    \"defects\" : [ ],\n" +
+                "    \"source\" : {\n" +
+                "      \"number\" : 1,\n" +
+                "      \"record\" : \"{\\\"sFirm_tbl\\\":{\\\"legalName\\\":\\\"legalName 18\\\",\\\"firmId\\\":22,\\\"ceoId\\\":49,\\\"addressId\\\":88,\\\"employees\\\":{\\\"firstName\\\":\\\"firstName 69\\\",\\\"lastName\\\":\\\"lastName 2\\\",\\\"age\\\":14,\\\"id\\\":52,\\\"addressId\\\":83,\\\"firmId\\\":73}},\\\"sPerson_tbl\\\":{\\\"firstName\\\":\\\"firstName 69\\\",\\\"lastName\\\":\\\"lastName 4\\\",\\\"age\\\":98,\\\"id\\\":87,\\\"addressId\\\":46,\\\"firmId\\\":26}}\"\n" +
+                "    },\n" +
+                "    \"value\" : {\n" +
+                "      \"sFirm_tbl\" : {\n" +
+                "        \"addressId\" : 88,\n" +
+                "        \"firmId\" : 22,\n" +
+                "        \"legalName\" : \"legalName 18\",\n" +
+                "        \"ceoId\" : 49\n" +
+                "      },\n" +
+                "      \"sPerson_tbl\" : {\n" +
+                "        \"addressId\" : 46,\n" +
+                "        \"age\" : 98,\n" +
+                "        \"firmId\" : 26,\n" +
+                "        \"firstName\" : \"firstName 69\",\n" +
+                "        \"id\" : 87,\n" +
+                "        \"lastName\" : \"lastName 4\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  },\n" +
+                "  \"value\" : {\n" +
+                "    \"firm_tbl\" : {\n" +
+                "      \"addressId\" : 88,\n" +
+                "      \"firmId\" : 22,\n" +
+                "      \"legalName\" : \"legalName 18\",\n" +
+                "      \"ceoId\" : 49\n" +
+                "    },\n" +
+                "    \"person_tbl\" : {\n" +
+                "      \"addressId\" : 46,\n" +
+                "      \"age\" : 98,\n" +
+                "      \"firmId\" : 26,\n" +
+                "      \"firstName\" : \"firstName 69\",\n" +
+                "      \"id\" : 87,\n" +
+                "      \"lastName\" : \"lastName 4\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
+        String failureActualValue = "{\n" +
+                "  \"defects\" : [ ],\n" +
+                "  \"source\" : {\n" +
+                "    \"defects\" : [ ],\n" +
+                "    \"source\" : {\n" +
+                "      \"number\" : 1,\n" +
+                "      \"record\" : \"{\\\"sFirm_tbl\\\":{\\\"legalName\\\":\\\"legalName 18\\\",\\\"firmId\\\":22,\\\"ceoId\\\":49,\\\"addressId\\\":88,\\\"employees\\\":{\\\"firstName\\\":\\\"firstName 69\\\",\\\"lastName\\\":\\\"lastName 2\\\",\\\"age\\\":14,\\\"id\\\":52,\\\"addressId\\\":83,\\\"firmId\\\":73}},\\\"sPerson_tbl\\\":{\\\"firstName\\\":\\\"firstName 69\\\",\\\"lastName\\\":\\\"lastName 4\\\",\\\"age\\\":98,\\\"id\\\":87,\\\"addressId\\\":46,\\\"firmId\\\":26}}\"\n" +
+                "    },\n" +
+                "    \"value\" : {\n" +
+                "      \"sFirm_tbl\" : {\n" +
+                "        \"addressId\" : 88,\n" +
+                "        \"ceoId\" : 49,\n" +
+                "        \"firmId\" : 22,\n" +
+                "        \"legalName\" : \"legalName 18\"\n" +
+                "      },\n" +
+                "      \"sPerson_tbl\" : {\n" +
+                "        \"addressId\" : 46,\n" +
+                "        \"age\" : 98,\n" +
+                "        \"firmId\" : 26,\n" +
+                "        \"firstName\" : \"firstName 69\",\n" +
+                "        \"id\" : 87,\n" +
+                "        \"lastName\" : \"lastName 4\"\n" +
+                "      }\n" +
+                "    }\n" +
+                "  },\n" +
+                "  \"value\" : {\n" +
+                "    \"firm_tbl\" : {\n" +
+                "      \"addressId\" : 88,\n" +
+                "      \"firmId\" : 22,\n" +
+                "      \"legalName\" : \"LEGALNAME 18\",\n" +
+                "      \"ceoId\" : 49\n" +
+                "    },\n" +
+                "    \"person_tbl\" : {\n" +
+                "      \"addressId\" : 46,\n" +
+                "      \"age\" : 98,\n" +
+                "      \"firmId\" : 26,\n" +
+                "      \"firstName\" : \"firstName 69\",\n" +
+                "      \"id\" : 87,\n" +
+                "      \"lastName\" : \"lastName 4\"\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
+
+        LegendTestAssertionResult test1FailAssertionResult = LegendTestAssertionResult.failure("assert1",
+                TextLocation.newTextSource("service.pure", TextInterval.newInterval(49, 14, 57, 15)),
+                "Actual result does not match Expected result",
+                failureExpectedValue.replace("\n", System.lineSeparator()),
+                failureActualValue.replace("\n", System.lineSeparator())
+        );
+
+        LegendTestAssertionResult test2FailAssertionResult = LegendTestAssertionResult.failure("assert1",
+                TextLocation.newTextSource("service.pure", TextInterval.newInterval(67, 14, 75, 15)),
+                "Actual result does not match Expected result",
+                failureExpectedValue.replace("\n", System.lineSeparator()),
+                failureActualValue.replace("\n", System.lineSeparator())
+        );
+
+        LegendTestAssertionResult test3FailAssertionResult = LegendTestAssertionResult.failure("assert1",
+                TextLocation.newTextSource("service.pure", TextInterval.newInterval(85, 14, 93, 15)),
+                "Actual result does not match Expected result",
+                failureExpectedValue.replace("\n", System.lineSeparator()),
+                failureActualValue.replace("\n", System.lineSeparator())
+        );
+
+        LegendTestExecutionResult test1PassResult = LegendTestExecutionResult.success("testModelStoreTestSuites::service::DocM2MService.testSuite1.noParameterTest[PASS]");
+        LegendTestExecutionResult test1FailResult = LegendTestExecutionResult.failures(List.of(test1FailAssertionResult), "testModelStoreTestSuites::service::DocM2MService.testSuite1.noParameterTest[FAIL]");
+        LegendTestExecutionResult test2FailResult = LegendTestExecutionResult.failures(List.of(test2FailAssertionResult), "testModelStoreTestSuites::service::DocM2MService.testSuite1.failEnvParameter[FAIL]");
+        LegendTestExecutionResult test3PassResult = LegendTestExecutionResult.success("testModelStoreTestSuites::service::DocM2MService.testSuite1.multiEnvParameter[PASS]");
+        LegendTestExecutionResult test3FailResult = LegendTestExecutionResult.failures(List.of(test3FailAssertionResult), "testModelStoreTestSuites::service::DocM2MService.testSuite1.multiEnvParameter[FAIL]");
+
+        // all test
+        assertTestExecution("testModelStoreTestSuites::service::DocM2MService", Set.of(), sectionState, location, List.of(test1FailResult, test1PassResult, test2FailResult, test3PassResult, test3FailResult));
+        // skip suite
+        assertTestExecution("testModelStoreTestSuites::service::DocM2MService", Set.of("testModelStoreTestSuites::service::DocM2MService"), sectionState, location, List.of());
+        // skip one test
+        assertTestExecution("testModelStoreTestSuites::service::DocM2MService", Set.of("testModelStoreTestSuites::service::DocM2MService.testSuite1.noParameterTest[FAIL]"), sectionState, location, List.of(test1PassResult, test2FailResult, test3PassResult, test3FailResult));
+        // skip a different test
+        assertTestExecution("testModelStoreTestSuites::service::DocM2MService", Set.of("testModelStoreTestSuites::service::DocM2MService.testSuite1.noParameterTest[PASS]"), sectionState, location, List.of(test1FailResult, test2FailResult, test3PassResult, test3FailResult));
+        // skip two tests
+        assertTestExecution("testModelStoreTestSuites::service::DocM2MService", Set.of("testModelStoreTestSuites::service::DocM2MService.testSuite1.noParameterTest[PASS]", "testModelStoreTestSuites::service::DocM2MService.testSuite1.multiEnvParameter[PASS]"), sectionState, location, List.of(test1FailResult, test2FailResult, test3FailResult));
+        // execute the suite
+        assertTestExecution("testModelStoreTestSuites::service::DocM2MService.testSuite1", Set.of(), sectionState, location, List.of(test1FailResult, test1PassResult, test2FailResult, test3PassResult, test3FailResult));
+        // execute a test directly
+        assertTestExecution("testModelStoreTestSuites::service::DocM2MService.testSuite1.multiEnvParameter[PASS]", Set.of(), sectionState, location, List.of(test3PassResult));
+    }
+
+    private void assertTestExecution(String testId, Set<String> exclusions, SectionState sectionState, TextLocation location, List<LegendTestExecutionResult> expectedResults)
+    {
+        Comparator<LegendTestExecutionResult> executionResultComparator = Comparator.comparing(LegendTestExecutionResult::getId);
+
+        List<LegendTestExecutionResult> legendTestExecutionResults = this.extension.executeTests(sectionState, location, testId, exclusions);
+
+        Assertions.assertEquals(expectedResults.stream().sorted(executionResultComparator).collect(Collectors.toList()),
+                legendTestExecutionResults.stream().sorted(executionResultComparator).collect(Collectors.toList())
+        );
     }
 }
