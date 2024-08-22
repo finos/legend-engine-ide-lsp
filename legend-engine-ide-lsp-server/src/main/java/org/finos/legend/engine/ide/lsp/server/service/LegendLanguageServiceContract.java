@@ -29,6 +29,7 @@ import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
+import org.finos.legend.engine.ide.lsp.server.request.LegendWriteEntityRequest;
 
 @JsonSegment("legend")
 public interface LegendLanguageServiceContract
@@ -66,4 +67,7 @@ public interface LegendLanguageServiceContract
      */
     @JsonRequest("oneEntityPerFileRefactoring")
     CompletableFuture<Void> oneEntityPerFileRefactoring();
+
+    @JsonRequest("writeEntity")
+    CompletableFuture<Void> writeEntity(LegendWriteEntityRequest request);
 }
