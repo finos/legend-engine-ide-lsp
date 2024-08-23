@@ -38,7 +38,7 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
         return "Legend REPL";
     }
 
-    public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders)
+    public Client buildREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders, Path homeDirectory)
     {
         try
         {
@@ -51,7 +51,8 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
                     Lists.mutable.with(
                             new RelationalCompleterExtension()
                     ),
-                    PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features)
+                    PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features),
+                    homeDirectory
             );
             LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
             List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> virtualFilePureGrammars = legendDependencyManagement.getVirtualFilePureGrammars();
@@ -65,9 +66,9 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
     }
 
     @Override
-    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders)
+    public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders, Path homeDirectory)
     {
-        Client client = this.buildREPL(planExecutorConfigurationJsonPath, features, workspaceFolders);
+        Client client = this.buildREPL(planExecutorConfigurationJsonPath, features, workspaceFolders, homeDirectory);
         client.loop();
         client.forceExit();
     }
