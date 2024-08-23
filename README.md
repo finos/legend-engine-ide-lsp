@@ -1,4 +1,5 @@
 [![FINOS - Incubating](https://cdn.jsdelivr.net/gh/finos/contrib-toolbox@master/images/badge-incubating.svg)](https://community.finos.org/docs/governance/Software-Projects/stages/incubating)
+[![Maven Central](https://img.shields.io/maven-central/v/org.finos.legend.engine.ide.lsp/legend-engine-ide-lsp.svg)](https://central.sonatype.com/namespace/org.finos.legend.engine.ide.lsp)
 
 # legend-engine-ide-lsp
 
