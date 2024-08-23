@@ -17,12 +17,11 @@
 package org.finos.legend.engine.ide.lsp.extension.repl;
 
 import org.eclipse.collections.api.factory.Lists;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
-import org.finos.legend.engine.repl.client.Client;
 import org.jline.reader.impl.LineReaderImpl;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -30,8 +29,8 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -42,9 +41,16 @@ public class LegendREPLFeatureTest
 {
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
+    @BeforeEach
+    void setUp()
+    {
+        System.setProperty("legend.repl.testing.disableForceExit", "true");
+    }
+
     @AfterEach
     void tearDown()
     {
+        System.clearProperty("legend.repl.testing.disableForceExit");
         this.executorService.shutdownNow();
     }
 
@@ -63,7 +69,8 @@ public class LegendREPLFeatureTest
                 .build();
         TerminalBuilder.setTerminalOverride(terminalOverride);
 
-        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureTestImpl().startREPL(null, Lists.fixedSize.empty(), Lists.fixedSize.of("src/test/resources/entities/vscodelsp/test/dependency")));
+        Path replHomeDir = Files.createTempDirectory("legend-repl-feature-test");
+        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureImpl().startREPL(null, Lists.fixedSize.empty(), Lists.fixedSize.of("src/test/resources/entities/vscodelsp/test/dependency"), replHomeDir));
 
         read(replFuture, replOutputConsole, "Ready!");
 
@@ -109,16 +116,6 @@ public class LegendREPLFeatureTest
             {
                 break;
             }
-        }
-    }
-
-    private static class LegendREPLFeatureTestImpl extends LegendREPLFeatureImpl
-    {
-        @Override
-        public void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders)
-        {
-            Client client = this.buildREPL(planExecutorConfigurationJsonPath, features, workspaceFolders);
-            client.loop();
         }
     }
 }

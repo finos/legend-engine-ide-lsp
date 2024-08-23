@@ -16,12 +16,14 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
+import org.apache.commons.io.FileUtils;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
 
 import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +50,7 @@ public class LegendREPLTerminal
             }
 
             String planExecutorConfigurationProperty = System.getProperty("legend.planExecutor.configuration", "");
+            String homeDir = System.getProperty("legend.repl.configuration.homeDir");
             Path planExecutorConfigurationJsonPath = planExecutorConfigurationProperty.isEmpty() ? null : Path.of(planExecutorConfigurationProperty);
             List<String> workspaceFolders = Arrays.asList(args);
 
@@ -63,7 +66,7 @@ public class LegendREPLTerminal
             if (repl.isPresent())
             {
                 fireEvent(features, LegendUsageEventConsumer.event("startReplTerminal", startTime, Instant.now(), metadata));
-                repl.get().startREPL(planExecutorConfigurationJsonPath, features, workspaceFolders);
+                repl.get().startREPL(planExecutorConfigurationJsonPath, features, workspaceFolders, homeDir != null ? Paths.get(homeDir) : FileUtils.getUserDirectory().toPath().resolve(".legend/repl"));
                 fireEvent(features, LegendUsageEventConsumer.event("closeReplTerminal", startTime, Instant.now(), metadata));
             }
             else

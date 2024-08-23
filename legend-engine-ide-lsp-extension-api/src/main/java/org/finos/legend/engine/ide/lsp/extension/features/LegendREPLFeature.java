@@ -23,5 +23,5 @@ import java.util.List;
 
 public interface LegendREPLFeature extends LegendLSPFeature
 {
-    void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders);
+    void startREPL(Path planExecutorConfigurationJsonPath, List<LegendLSPFeature> features, List<String> workspaceFolders, Path homeDirectory);
 }

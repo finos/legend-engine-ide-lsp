@@ -50,8 +50,8 @@
 
     <properties>
         
-        <legend.engine.version>4.53.8</legend.engine.version>
-        <legend.sdlc.version>0.171.3</legend.sdlc.version>
+        <legend.engine.version>4.54.0</legend.engine.version>
+        <legend.sdlc.version>0.172.0</legend.sdlc.version>
 
         <logback.version>1.4.14</logback.version>
 
