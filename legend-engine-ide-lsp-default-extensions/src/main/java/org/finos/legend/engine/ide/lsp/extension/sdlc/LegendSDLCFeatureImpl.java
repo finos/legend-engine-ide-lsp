@@ -35,6 +35,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
@@ -138,7 +139,11 @@ public class LegendSDLCFeatureImpl implements LegendSDLCFeature
     public Map.Entry<String, String> contentToPureText(Map<String, ?> content)
     {
         PackageableElement packageableElement = this.objectMapper.convertValue(content, PackageableElement.class);
-        String pureText = this.pureGrammarComposer.render(packageableElement);
-        return Pair.of(packageableElement.getPath(), pureText);
+        String pureText = this.pureGrammarComposer.renderPureModelContextData(PureModelContextData.newBuilder().withElement(packageableElement).build());
+        if (pureText.startsWith("###"))
+        {
+            pureText = pureText.substring(pureText.indexOf('\n') + 1);
+        }
+        return Pair.of(packageableElement.getPath(), pureText.strip());
     }
 }

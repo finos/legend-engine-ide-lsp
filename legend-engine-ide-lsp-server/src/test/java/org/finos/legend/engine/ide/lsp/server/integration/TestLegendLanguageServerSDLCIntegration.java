@@ -492,6 +492,13 @@ public class TestLegendLanguageServerSDLCIntegration
                         "   }\n" +
                         ")");
 
+        Path diagramtPath = extension.addToWorkspace("diagram.pure",
+                "###Diagram\n" +
+                        "Diagram showcase::northwind::model::NorthwindModelDiagram1\n" +
+                        "{\n" +
+                        "}"
+        );
+
         String classEntityToWrite = "{\n" +
                 "  \"_type\": \"class\",\n" +
                 "  \"name\": \"element\",\n" +
@@ -561,8 +568,32 @@ public class TestLegendLanguageServerSDLCIntegration
 
         writeEntity(mappingToWrite);
 
+        String diagramEntityToWrite = "{\n" +
+                "  \"_type\": \"diagram\",\n" +
+                "  \"classViews\": [\n" +
+                "    {\n" +
+                "      \"class\": \"showcase::northwind::model::crm::Customer\",\n" +
+                "      \"id\": \"7b39d77d-e490-4eca-9480-efff9078416d\",\n" +
+                "      \"position\": {\n" +
+                "        \"x\": 250,\n" +
+                "        \"y\": 72\n" +
+                "      },\n" +
+                "      \"rectangle\": {\n" +
+                "        \"height\": 156,\n" +
+                "        \"width\": 236.98681640625\n" +
+                "      }\n" +
+                "    }\n" +
+                "  ],\n" +
+                "  \"generalizationViews\": [],\n" +
+                "  \"name\": \"NorthwindModelDiagram1\",\n" +
+                "  \"package\": \"showcase::northwind::model\",\n" +
+                "  \"propertyViews\": []\n" +
+                "}";
+
+        writeEntity(diagramEntityToWrite);
+
         List<ApplyWorkspaceEditParams> workspaceEdits = extension.getClient().workspaceEdits;
-        Assertions.assertEquals(2, workspaceEdits.size());
+        Assertions.assertEquals(3, workspaceEdits.size());
 
         Assertions.assertEquals("Edit element: one::element", workspaceEdits.get(0).getLabel());
         WorkspaceEdit oneElementEdit = workspaceEdits.get(0).getEdit();
@@ -615,6 +646,32 @@ public class TestLegendLanguageServerSDLCIntegration
                 "    }\n" +
                 "  ]\n" +
                 "}", getJson(mappingElementDocumentChanges));
+
+        Assertions.assertEquals("Edit element: showcase::northwind::model::NorthwindModelDiagram1", workspaceEdits.get(2).getLabel());
+        WorkspaceEdit diagramElementEdit = workspaceEdits.get(2).getEdit();
+        List<Either<TextDocumentEdit, ResourceOperation>> diagramElementDocumentChanges = diagramElementEdit.getDocumentChanges();
+        Assertions.assertEquals(1, diagramElementDocumentChanges.size());
+        Assertions.assertEquals("{\n" +
+                "  \"textDocument\": {\n" +
+                "    \"version\": 0,\n" +
+                "    \"uri\": \"" + diagramtPath.toUri() + "\"\n" +
+                "  },\n" +
+                "  \"edits\": [\n" +
+                "    {\n" +
+                "      \"range\": {\n" +
+                "        \"start\": {\n" +
+                "          \"line\": 1,\n" +
+                "          \"character\": 0\n" +
+                "        },\n" +
+                "        \"end\": {\n" +
+                "          \"line\": 3,\n" +
+                "          \"character\": 1\n" +
+                "        }\n" +
+                "      },\n" +
+                "      \"newText\": \"Diagram showcase::northwind::model::NorthwindModelDiagram1\\n{\\n  classView 7b39d77d-e490-4eca-9480-efff9078416d\\n  {\\n    class: showcase::northwind::model::crm::Customer;\\n    position: (250.0,72.0);\\n    rectangle: (236.98681640625,156.0);\\n  }\\n}\"\n" +
+                "    }\n" +
+                "  ]\n" +
+                "}", getJson(diagramElementDocumentChanges));
     }
 
     private static String getJson(List<Either<TextDocumentEdit, ResourceOperation>> mappingElementDocumentChanges)
