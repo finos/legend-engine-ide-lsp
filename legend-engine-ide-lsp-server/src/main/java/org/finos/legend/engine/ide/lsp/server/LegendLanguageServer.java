@@ -21,65 +21,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import org.eclipse.lsp4j.CodeLensOptions;
-import org.eclipse.lsp4j.CompletionOptions;
-import org.eclipse.lsp4j.ConfigurationItem;
-import org.eclipse.lsp4j.ConfigurationParams;
-import org.eclipse.lsp4j.DiagnosticRegistrationOptions;
-import org.eclipse.lsp4j.ExecuteCommandOptions;
-import org.eclipse.lsp4j.FileOperationFilter;
-import org.eclipse.lsp4j.FileOperationOptions;
-import org.eclipse.lsp4j.FileOperationPattern;
-import org.eclipse.lsp4j.FileOperationPatternKind;
-import org.eclipse.lsp4j.FileOperationsServerCapabilities;
-import org.eclipse.lsp4j.InitializeParams;
-import org.eclipse.lsp4j.InitializeResult;
-import org.eclipse.lsp4j.InitializedParams;
-import org.eclipse.lsp4j.MessageParams;
-import org.eclipse.lsp4j.MessageType;
-import org.eclipse.lsp4j.ProgressParams;
-import org.eclipse.lsp4j.SemanticTokenTypes;
-import org.eclipse.lsp4j.SemanticTokensLegend;
-import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
-import org.eclipse.lsp4j.ServerCapabilities;
-import org.eclipse.lsp4j.ServerInfo;
-import org.eclipse.lsp4j.SetTraceParams;
-import org.eclipse.lsp4j.TextDocumentSyncKind;
-import org.eclipse.lsp4j.WorkDoneProgressBegin;
-import org.eclipse.lsp4j.WorkDoneProgressEnd;
-import org.eclipse.lsp4j.WorkDoneProgressNotification;
-import org.eclipse.lsp4j.WorkDoneProgressReport;
-import org.eclipse.lsp4j.WorkspaceFolder;
-import org.eclipse.lsp4j.WorkspaceFoldersOptions;
-import org.eclipse.lsp4j.WorkspaceServerCapabilities;
+import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -88,10 +30,10 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageServer;
-import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
@@ -101,6 +43,23 @@ import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * {@link LanguageServer} implementation for Legend.
@@ -119,6 +78,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private static final int SHUT_DOWN = 4;
 
     private static final Properties VERSIONS = loadVersions();
+    private final CountDownLatch postInitializationLatch = new CountDownLatch(1);
     private final LegendTextDocumentService textDocumentService;
     private final LegendWorkspaceService workspaceService;
     private final LegendLanguageService legendLanguageService;
@@ -261,6 +221,11 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         return VERSIONS.getProperty("project.version", "-1");
     }
 
+    public CountDownLatch getPostInitializationLatch()
+    {
+        return this.postInitializationLatch;
+    }
+
     @Override
     public void initialized(InitializedParams params)
     {
@@ -338,11 +303,16 @@ public class LegendLanguageServer implements LegendLanguageServerContract
                     languageClient.refreshSemanticTokens();
                 })
                 .thenCompose(x -> this.applyWorkspaceEdits())
-                .whenComplete((v, t) -> this.fireEvent("initialize", start, Collections.emptyMap(), t))
+                .whenComplete((v, t) ->
+                {
+                    this.fireEvent("initialize", start, Collections.emptyMap(), t);
+                    this.postInitializationLatch.countDown();
+                })
                 .exceptionally(x ->
                 {
                     LOGGER.error("Failed during post-initialization", x);
                     logErrorToClient("Failed during post-initialization: " + x.getMessage());
+                    this.postInitializationLatch.countDown();
                     return null;
                 });
     }
@@ -350,7 +320,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private CompletableFuture<Void> applyWorkspaceEdits()
     {
         return CompletableFuture.allOf(
-            this.convertingJsonEntitiesToPureFiles()
+                this.convertingJsonEntitiesToPureFiles()
         );
     }
 
