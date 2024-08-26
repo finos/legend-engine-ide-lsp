@@ -16,39 +16,7 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import java.io.File;
-import java.net.URI;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
-import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
-import org.eclipse.lsp4j.CreateFile;
-import org.eclipse.lsp4j.CreateFileOptions;
-import org.eclipse.lsp4j.DeleteFile;
-import org.eclipse.lsp4j.Position;
-import org.eclipse.lsp4j.Range;
-import org.eclipse.lsp4j.RenameFile;
-import org.eclipse.lsp4j.ResourceOperation;
-import org.eclipse.lsp4j.TextDocumentEdit;
-import org.eclipse.lsp4j.TextDocumentIdentifier;
-import org.eclipse.lsp4j.TextEdit;
-import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
-import org.eclipse.lsp4j.WorkspaceEdit;
+import org.eclipse.lsp4j.*;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
@@ -70,6 +38,17 @@ import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContr
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.net.URI;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class LegendLanguageService implements LegendLanguageServiceContract
 {
@@ -125,34 +104,52 @@ public class LegendLanguageService implements LegendLanguageServiceContract
     @Override
     public CompletableFuture<String> replClasspath()
     {
-        return this.server.supplyPossiblyAsync(() ->
+        try
         {
-            String classpath = System.getProperty("java.class.path");
-            ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
-            if (contextClassLoader instanceof URLClassLoader)
+            return this.server.supplyPossiblyAsync(() ->
             {
-                URLClassLoader urlClassLoader = (URLClassLoader) contextClassLoader;
-
-                if ("legend-lsp".equals(urlClassLoader.getName()))
+                try
                 {
-                    classpath = classpath + File.pathSeparator + Arrays.stream(urlClassLoader.getURLs())
-                            .map(x ->
-                            {
-                                try
-                                {
-                                    return Path.of(x.toURI()).toAbsolutePath().toString();
-                                }
-                                catch (Exception e)
-                                {
-                                    throw new RuntimeException(e);
-                                }
-                            })
-                            .collect(Collectors.joining(File.pathSeparator));
+                    // Wait for post-initialization to complete before collecting the classpath for REPL
+                    server.getPostInitializationLatch().await();
+                    return null;
                 }
-            }
-
-            return classpath;
-        });
+                catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }).thenComposeAsync(x ->
+                    this.server.supplyPossiblyAsync(() ->
+                    {
+                        String classpath = System.getProperty("java.class.path");
+                        ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+                        if (contextClassLoader instanceof URLClassLoader)
+                        {
+                            URLClassLoader urlClassLoader = (URLClassLoader) contextClassLoader;
+                            if ("legend-lsp".equals(urlClassLoader.getName()))
+                            {
+                                classpath = classpath + File.pathSeparator + Arrays.stream(urlClassLoader.getURLs())
+                                        .map(url ->
+                                        {
+                                            try
+                                            {
+                                                return Path.of(url.toURI()).toAbsolutePath().toString();
+                                            }
+                                            catch (Exception e)
+                                            {
+                                                throw new RuntimeException(e);
+                                            }
+                                        })
+                                        .collect(Collectors.joining(File.pathSeparator));
+                            }
+                        }
+                        return classpath;
+                    }));
+        }
+        catch (Exception ex)
+        {
+            throw new RuntimeException(ex);
+        }
     }
 
     @Override
