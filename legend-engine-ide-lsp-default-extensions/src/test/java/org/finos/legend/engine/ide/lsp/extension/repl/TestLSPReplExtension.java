@@ -16,6 +16,11 @@
 
 package org.finos.legend.engine.ide.lsp.extension.repl;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.util.Objects;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
@@ -24,15 +29,22 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestLSPReplExtension
 {
     @Test
-    public void testInitialize() throws Exception
+    public void testInitialize(@TempDir Path dir) throws Exception
     {
-        String workspaceFolderPath = "src/test/resources/entities/vscodelsp/test/dependency";
-        Path filePath = Path.of(workspaceFolderPath + "/SourceModelTestGrammar.pure");
-        LSPReplExtension lspReplExtension = new LSPReplExtension(Lists.fixedSize.of(workspaceFolderPath));
+        Path filePath = dir.resolve("SourceModelTestGrammar.pure");
+        try (InputStream is = Objects.requireNonNull(TestRelationalStoreExecutorConfigurator.class.getResourceAsStream("/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure"));
+             OutputStream os = Files.newOutputStream(filePath, StandardOpenOption.CREATE)
+        )
+        {
+            is.transferTo(os);
+        }
+
+        LSPReplExtension lspReplExtension = new LSPReplExtension(Lists.fixedSize.of(dir.toString()));
         lspReplExtension.initialize(new Client(Lists.fixedSize.empty(), Lists.fixedSize.empty(), PlanExecutor.newPlanExecutorBuilder().build()));
         MutableList<String> fileContent = lspReplExtension.generateDynamicContent("");
         Assertions.assertEquals(1, fileContent.size());

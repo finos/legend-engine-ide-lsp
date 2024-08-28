@@ -35,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.io.TempDir;
 
 @Timeout(value = 3, unit = TimeUnit.MINUTES)
 public class LegendREPLFeatureTest
@@ -55,7 +56,7 @@ public class LegendREPLFeatureTest
     }
 
     @Test
-    void replStarts() throws Exception
+    void replStarts(@TempDir Path dir) throws Exception
     {
         PipedInputStream replInput = new PipedInputStream();
         OutputStreamWriter replInputConsole = new OutputStreamWriter(new PipedOutputStream(replInput));
@@ -70,7 +71,7 @@ public class LegendREPLFeatureTest
         TerminalBuilder.setTerminalOverride(terminalOverride);
 
         Path replHomeDir = Files.createTempDirectory("legend-repl-feature-test");
-        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureImpl().startREPL(null, Lists.fixedSize.empty(), Lists.fixedSize.of("src/test/resources/entities/vscodelsp/test/dependency"), replHomeDir));
+        Future<?> replFuture = this.executorService.submit(() -> new LegendREPLFeatureImpl().startREPL(null, Lists.fixedSize.empty(), Lists.fixedSize.of(dir.toString()), replHomeDir));
 
         read(replFuture, replOutputConsole, "Ready!");
 

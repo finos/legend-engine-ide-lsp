@@ -16,6 +16,14 @@
 
 package org.finos.legend.engine.ide.lsp.extension.repl;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.relational.RelationalStoreExecutorConfigurator;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
@@ -25,19 +33,20 @@ import org.finos.legend.engine.plan.execution.stores.relational.connection.authe
 import org.finos.legend.engine.plan.execution.stores.relational.plugin.RelationalStoreState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import java.lang.reflect.InvocationTargetException;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
+import org.junit.jupiter.api.io.TempDir;
 
 public class TestRelationalStoreExecutorConfigurator
 {
     @Test
-    public void testBuildRelationalStoreExecutorConfigurator() throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException
+    public void testBuildRelationalStoreExecutorConfigurator(@TempDir Path dir) throws Exception
     {
-        String planExecutorConfigurationJson = "src/test/resources/planExecutorConfiguration.json";
-        Path planExecutorConfigurationJsonPath = Path.of(planExecutorConfigurationJson);
+        Path planExecutorConfigurationJsonPath = dir.resolve("planExecutorConfiguration.json");
+        try (InputStream is = Objects.requireNonNull(TestRelationalStoreExecutorConfigurator.class.getResourceAsStream("/planExecutorConfiguration.json"));
+             OutputStream os = Files.newOutputStream(planExecutorConfigurationJsonPath, StandardOpenOption.CREATE)
+        )
+        {
+            is.transferTo(os);
+        }
         PlanExecutor actualPlanExecutor = PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, List.of(RelationalStoreExecutorConfigurator.class.getDeclaredConstructor().newInstance()));
         Assertions.assertTrue(actualPlanExecutor.getExecutorsOfType(StoreType.Relational)
                 .stream()
