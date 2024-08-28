@@ -19,11 +19,13 @@ package org.finos.legend.engine.ide.lsp.server.integration;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 
 @Timeout(value = 3, unit = TimeUnit.MINUTES)
 // all tests should finish but in case of some uncaught deadlock, timeout whole test
@@ -33,7 +35,7 @@ public class TestLegendLanguageServerReplIntegration
     static LegendLanguageServerIntegrationExtension extension = new LegendLanguageServerIntegrationExtension();
 
     @Test
-    void testReplStartWithGivenClasspath() throws Exception
+    void testReplStartWithGivenClasspath(@TempDir Path dir) throws Exception
     {
         String classpath = extension.futureGet(extension.getServer().getLegendLanguageService().replClasspath());
 
@@ -41,7 +43,7 @@ public class TestLegendLanguageServerReplIntegration
                 System.getProperty("java.home") + File.separator + "bin" + File.separator + "java",
                 "org.finos.legend.engine.ide.lsp.server.LegendREPLTerminal",
                 "",
-                "src/test/resources/entities/vscodelsp/test/dependency"
+                dir.toString()
         );
         processBuilder.environment().put("CLASSPATH", classpath);
         processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
