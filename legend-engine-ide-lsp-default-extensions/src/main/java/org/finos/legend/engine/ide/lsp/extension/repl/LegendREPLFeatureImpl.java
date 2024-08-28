@@ -16,19 +16,19 @@
 
 package org.finos.legend.engine.ide.lsp.extension.repl;
 
+import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.eclipse.collections.impl.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
+import org.finos.legend.engine.ide.lsp.extension.repl.extension.LegendREPLExtensionFeature;
 import org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagement;
+import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.client.Client;
-import org.finos.legend.engine.repl.dataCube.DataCubeReplExtension;
-import org.finos.legend.engine.repl.relational.RelationalReplExtension;
-import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
-
-import java.nio.file.Path;
-import java.util.List;
+import org.finos.legend.engine.repl.core.ReplExtension;
 
 public class LegendREPLFeatureImpl implements LegendREPLFeature
 {
@@ -42,15 +42,24 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
     {
         try
         {
+            List<LegendREPLExtensionFeature> extensions = features.stream()
+                    .filter(LegendREPLExtensionFeature.class::isInstance)
+                    .map(LegendREPLExtensionFeature.class::cast)
+                    .collect(Collectors.toList());
+
+            List<ReplExtension> replExtensions = extensions.stream()
+                    .map(LegendREPLExtensionFeature::getReplExtensions)
+                    .flatMap(List::stream)
+                    .collect(Collectors.toList());
+
+            List<CompleterExtension> completerExtensions = extensions.stream()
+                    .map(LegendREPLExtensionFeature::getCompleterExtensions)
+                    .flatMap(List::stream)
+                    .collect(Collectors.toList());
+
             Client client = new Client(
-                    Lists.mutable.with(
-                            new LSPReplExtension(workspaceFolders),
-                            new RelationalReplExtension(),
-                            new DataCubeReplExtension()
-                    ),
-                    Lists.mutable.with(
-                            new RelationalCompleterExtension()
-                    ),
+                    Lists.mutable.withAll(replExtensions).with(new LSPReplExtension(workspaceFolders)),
+                    Lists.mutable.withAll(completerExtensions),
                     PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features),
                     homeDirectory
             );
