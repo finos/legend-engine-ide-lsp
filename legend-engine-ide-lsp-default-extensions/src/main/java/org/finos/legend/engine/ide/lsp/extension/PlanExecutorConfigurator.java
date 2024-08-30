@@ -60,9 +60,12 @@ public interface PlanExecutorConfigurator extends LegendLSPFeature
             if (feature instanceof PlanExecutorConfigurator)
             {
                 StoreExecutorConfiguration storeExecutorConfiguration = ((PlanExecutorConfigurator) feature).configure(planExecutorConfiguration);
-                StoreType storeType = storeExecutorConfiguration.getStoreType();
-                StoreExecutorConfiguration existing = storeTypeStoreExecutorConfigurationMap.put(storeType, storeExecutorConfiguration);
-                Assert.assertTrue(existing == null, () -> "Found multiple configurations for store type: " + storeType);
+                if (storeExecutorConfiguration != null)
+                {
+                    StoreType storeType = storeExecutorConfiguration.getStoreType();
+                    StoreExecutorConfiguration existing = storeTypeStoreExecutorConfigurationMap.put(storeType, storeExecutorConfiguration);
+                    Assert.assertTrue(existing == null, () -> "Found multiple configurations for store type: " + storeType);
+                }
             }
         }
 
