@@ -44,7 +44,6 @@ public class TestDefaultExtensions
                         "Legend TDS Request Handler",
                         "Legend REPL",
                         "SDLC Features",
-                        "Relational Store Executor Configurator",
                         "Handles PCT Report generation",
                         "REPL - Relational",
                         "REPL - DataCube"

@@ -28,7 +28,9 @@ import java.time.temporal.TemporalAccessor;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
+import javax.security.auth.Subject;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -61,6 +63,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.shared.core.identity.Identity;
+import org.finos.legend.engine.shared.core.kerberos.SubjectTools;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
 import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
 import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
@@ -176,13 +179,29 @@ public interface FunctionExecutionSupport
                 PlanExecutor planExecutor = extension.getPlanExecutor();
                 MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
-                collectResults(executionSupport, entityPath, planExecutor.execute(executionPlan, parametersToConstantResult, "localUser", Identity.getAnonymousIdentity(), context), docId, sectionNum, inputParameters, results::add);
+                Identity identity = getIdentity();
+                Result result = planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context);
+                collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, results::add);
             }
         }
         catch (Exception e)
         {
             results.add(extension.errorResult(e, entityPath));
         }
+    }
+
+    private static Identity getIdentity()
+    {
+        Subject subject = null;
+        try
+        {
+            subject = SubjectTools.getLocalSubject();
+        }
+        catch (Exception e)
+        {
+            LOGGER.warn("Unable to get local subject", e);
+        }
+        return Optional.ofNullable(subject).map(Identity::makeIdentity).orElseGet(Identity::getAnonymousIdentity);
     }
 
     private static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, Consumer<? super LegendExecutionResult> consumer)

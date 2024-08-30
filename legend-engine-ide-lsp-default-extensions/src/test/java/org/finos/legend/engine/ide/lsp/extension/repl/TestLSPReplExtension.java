@@ -37,7 +37,7 @@ public class TestLSPReplExtension
     public void testInitialize(@TempDir Path dir) throws Exception
     {
         Path filePath = dir.resolve("SourceModelTestGrammar.pure");
-        try (InputStream is = Objects.requireNonNull(TestRelationalStoreExecutorConfigurator.class.getResourceAsStream("/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure"));
+        try (InputStream is = Objects.requireNonNull(TestLSPReplExtension.class.getResourceAsStream("/entities/vscodelsp/test/dependency/SourceModelTestGrammar.pure"));
              OutputStream os = Files.newOutputStream(filePath, StandardOpenOption.CREATE)
         )
         {
