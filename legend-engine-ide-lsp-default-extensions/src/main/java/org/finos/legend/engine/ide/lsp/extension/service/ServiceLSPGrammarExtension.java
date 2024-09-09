@@ -363,7 +363,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                 singleExecution,
                 null,
                 pureModel,
-                null,
+                "vX_X_X",
                 PlanPlatform.JAVA,
                 routerExtensions,
                 planTransformers
