@@ -19,9 +19,69 @@ package org.finos.legend.engine.ide.lsp.server;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
-import org.eclipse.lsp4j.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.file.FileVisitOption;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.eclipse.lsp4j.CodeLensOptions;
+import org.eclipse.lsp4j.CompletionOptions;
+import org.eclipse.lsp4j.ConfigurationItem;
+import org.eclipse.lsp4j.ConfigurationParams;
+import org.eclipse.lsp4j.DiagnosticRegistrationOptions;
+import org.eclipse.lsp4j.ExecuteCommandOptions;
+import org.eclipse.lsp4j.FileOperationFilter;
+import org.eclipse.lsp4j.FileOperationOptions;
+import org.eclipse.lsp4j.FileOperationPattern;
+import org.eclipse.lsp4j.FileOperationPatternKind;
+import org.eclipse.lsp4j.FileOperationsServerCapabilities;
+import org.eclipse.lsp4j.InitializeParams;
+import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.InitializedParams;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.ProgressParams;
+import org.eclipse.lsp4j.SemanticTokenTypes;
+import org.eclipse.lsp4j.SemanticTokensLegend;
+import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
+import org.eclipse.lsp4j.ServerCapabilities;
+import org.eclipse.lsp4j.ServerInfo;
+import org.eclipse.lsp4j.SetTraceParams;
+import org.eclipse.lsp4j.TextDocumentSyncKind;
+import org.eclipse.lsp4j.WorkDoneProgressBegin;
+import org.eclipse.lsp4j.WorkDoneProgressEnd;
+import org.eclipse.lsp4j.WorkDoneProgressNotification;
+import org.eclipse.lsp4j.WorkDoneProgressReport;
+import org.eclipse.lsp4j.WorkspaceFolder;
+import org.eclipse.lsp4j.WorkspaceFoldersOptions;
+import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -43,23 +103,6 @@ import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.nio.file.FileVisitOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * {@link LanguageServer} implementation for Legend.
@@ -92,7 +135,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
     final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
-    private final Map<String, Object> settings = new ConcurrentHashMap<>();
+    private final Map<String, String> settings = new ConcurrentHashMap<>();
 
     private LegendLanguageServer(boolean async, Executor executor, ClasspathFactory classpathFactory, LegendLSPGrammarLibrary grammars, Collection<LegendLSPFeature> features)
     {
@@ -238,29 +281,33 @@ public class LegendLanguageServer implements LegendLanguageServerContract
 
     private CompletableFuture<Void> initializeSettings()
     {
-        ConfigurationItem urlConfig = new ConfigurationItem();
-        urlConfig.setSection(Constants.LEGEND_ENGINE_SERVER_CONFIG_PATH);
+        String section = "legend";
 
-        ConfigurationItem planExecutorConfig = new ConfigurationItem();
-        planExecutorConfig.setSection(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+        ConfigurationItem legend = new ConfigurationItem();
+        legend.setSection(section);
 
-        ConfigurationParams configurationParams = new ConfigurationParams(Arrays.asList(
-                urlConfig,
-                planExecutorConfig
-        ));
+        ConfigurationParams configurationParams = new ConfigurationParams(List.of(legend));
         return this.getLanguageClient().configuration(configurationParams).thenAccept(x ->
         {
-            String url = this.extractValueAs(x.get(0), String.class);
-            String planExecutorConfigPathString = this.extractValueAs(x.get(1), String.class);
-            if (url != null)
-            {
-                settings.put(Constants.LEGEND_ENGINE_SERVER_CONFIG_PATH, url);
-            }
-            if (planExecutorConfigPathString != null && !planExecutorConfigPathString.isEmpty())
-            {
-                settings.put(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH, Path.of(planExecutorConfigPathString));
-            }
+            this.flattenObject(section, x.get(0), this.settings);
         });
+    }
+
+    private void flattenObject(String current, Object x, Map<String, String> result)
+    {
+        if (x instanceof JsonPrimitive)
+        {
+            String value = this.extractValueAs(x, String.class);
+            if (value != null && !value.isBlank())
+            {
+                result.put(current, value);
+            }
+        }
+        else if (x instanceof JsonObject)
+        {
+            JsonObject object = (JsonObject) x;
+            object.keySet().forEach(k -> this.flattenObject(current + "." + k, object.get(k), result));
+        }
     }
 
     private void initializeEngineServerUrl()
@@ -370,9 +417,9 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         return this.extensionGuard.getForkJoinPool();
     }
 
-    public <T> T getSetting(String settingKey)
+    public String getSetting(String settingKey)
     {
-        return (T) settings.get(settingKey);
+        return this.settings.get(settingKey);
     }
 
     private void reprocessDocuments()

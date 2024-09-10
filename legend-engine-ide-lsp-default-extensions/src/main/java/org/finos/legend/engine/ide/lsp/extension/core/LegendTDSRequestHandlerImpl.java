@@ -22,6 +22,7 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.LegendTDSRequestLambdaBuilder;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;
@@ -30,6 +31,7 @@ import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendTDSRequestHandler;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
@@ -79,8 +81,9 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
             newLambda.body = LegendTDSRequestLambdaBuilder.buildLambdaExpressions(lambda.body, request);
             newLambda.parameters = lambda.parameters;
 
-            SingleExecutionPlan executionPlan = functionExecutionSupport.getExecutionPlan(packageableElement, newLambda, pureModel, inputParameters);
-            FunctionExecutionSupport.executePlan(functionExecutionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, null, entityPath, inputParameters, results);
+            GlobalState globalState = section.getDocumentState().getGlobalState();
+            SingleExecutionPlan executionPlan = functionExecutionSupport.getExecutionPlan(packageableElement, newLambda, pureModel, inputParameters, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
+            FunctionExecutionSupport.executePlan(globalState, functionExecutionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, null, entityPath, inputParameters, results);
         }
         catch (Exception e)
         {
