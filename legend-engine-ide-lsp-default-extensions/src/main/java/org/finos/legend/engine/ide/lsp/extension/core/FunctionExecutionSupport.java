@@ -40,6 +40,7 @@ import org.eclipse.collections.impl.tuple.Tuples;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
@@ -87,7 +88,7 @@ public interface FunctionExecutionSupport
         return "";
     }
 
-    SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args);
+    SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String version);
 
     static void collectFunctionExecutionCommand(FunctionExecutionSupport executionSupport, PackageableElement element, CompileResult compileResult, CommandConsumer consumer)
     {
@@ -135,7 +136,7 @@ public interface FunctionExecutionSupport
             {
                 Lambda lambda = executionSupport.getLambda(element);
                 PureModel pureModel = compileResult.getPureModel();
-                SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(element, lambda, pureModel, inputParameters);
+                SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(element, lambda, pureModel, inputParameters, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
                 PlanExecutionContext planExecutionContext = null;
                 try
                 {
@@ -148,7 +149,7 @@ public interface FunctionExecutionSupport
 
                 return Tuples.pair(executionPlan, planExecutionContext);
             });
-            executePlan(executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlanAndContext.getOne(), executionPlanAndContext.getTwo(), entityPath, inputParameters, results);
+            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlanAndContext.getOne(), executionPlanAndContext.getTwo(), entityPath, inputParameters, results);
         }
         catch (Exception e)
         {
@@ -157,13 +158,14 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static void executePlan(FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
+    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
         try
         {
-            if (extension.isEngineServerConfigured())
+            if (extension.isEngineServerConfigured()
+                    && Boolean.parseBoolean(globalState.getSetting(Constants.LEGEND_ENGINE_SERVER_REMOTE_EXECUTION)))
             {
                 ExecutionRequest executionRequest = new ExecutionRequest(executionPlan, inputParameters);
                 LegendExecutionResult legendExecutionResult = extension.postEngineServer("/executionPlan/v1/execution/executeRequest?serializationFormat=DEFAULT", executionRequest, is ->

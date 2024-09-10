@@ -40,6 +40,7 @@ import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
@@ -348,7 +349,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     }
 
     @Override
-    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args)
+    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String clientVersion)
     {
         Function function = (Function) element;
         FunctionDefinition<?> functionDefinition;
@@ -362,7 +363,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, "vX_X_X", PlanPlatform.JAVA, null, routerExtensions, planTransformers);
+        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
     }
 
     @Override
@@ -558,9 +559,9 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         PureModelContextData pmcd = PureModelContextData.newBuilder().withElements(elements).build();
         PureModel pureModel = Compiler.compile(pmcd, DeploymentMode.PROD, Identity.getAnonymousIdentity().getName());
         PackageableElement element = elements.get(0);
-        SingleExecutionPlan executionPlan = this.getExecutionPlan(element, this.getLambda(element), pureModel, Map.of());
+        SingleExecutionPlan executionPlan = this.getExecutionPlan(element, this.getLambda(element), pureModel, Map.of(), globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        FunctionExecutionSupport.executePlan(this, "memory", -1, executionPlan, null, element.getPath(), Map.of(), results);
+        FunctionExecutionSupport.executePlan(globalState, this, "memory", -1, executionPlan, null, element.getPath(), Map.of(), results);
     }
 
     @Override

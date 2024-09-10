@@ -23,6 +23,8 @@ public class Constants
     public static final String LEGEND_EXTENSIONS_DEPENDENCIES_POM_CONFIG_PATH = "legend.extensions.dependencies.pom";
     public static final String LEGEND_EXTENSIONS_OTHER_DEPENDENCIES_CONFIG_PATH = "legend.extensions.other.dependencies";
     public static final String LEGEND_ENGINE_SERVER_CONFIG_PATH = "legend.engine.server.url";
+    public static final String LEGEND_PROTOCOL_VERSION = "legend.protocol.version";
     public static final String LEGEND_SDLC_SERVER_CONFIG_PATH = "legend.sdlc.server.url";
     public static final String LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH = "legend.planExecutor.configuration";
+    public static final String LEGEND_ENGINE_SERVER_REMOTE_EXECUTION = "legend.engine.serve.remoteExecution";
 }

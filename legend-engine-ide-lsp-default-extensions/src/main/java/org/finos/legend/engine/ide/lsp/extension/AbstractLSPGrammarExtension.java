@@ -416,7 +416,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     @Override
     public void startup(GlobalState globalState)
     {
-        Path planExecutorConfigPath = globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH);
+        Path planExecutorConfigPath = Optional.ofNullable(globalState.getSetting(Constants.LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH)).map(Path::of).orElse(null);
         planExecutor = PlanExecutorConfigurator.create(planExecutorConfigPath, (List<LegendLSPFeature>) globalState.getAvailableLegendLSPFeatures());
     }
 
