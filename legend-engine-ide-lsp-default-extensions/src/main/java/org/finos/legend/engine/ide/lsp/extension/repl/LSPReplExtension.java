@@ -19,6 +19,8 @@ package org.finos.legend.engine.ide.lsp.extension.repl;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
+import org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagement;
 import org.finos.legend.engine.plan.execution.result.Result;
 import org.finos.legend.engine.repl.client.Client;
 import org.finos.legend.engine.repl.core.Command;
@@ -66,6 +68,9 @@ public class LSPReplExtension implements ReplExtension
     @Override
     public void initialize(Client client)
     {
+        LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
+        List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> virtualFilePureGrammars = legendDependencyManagement.getVirtualFilePureGrammars();
+        virtualFilePureGrammars.forEach(g -> client.getModelState().addElement(g.getContent()));
         workspaceFolders.forEach(workspaceFolder -> processAllDirectories(Path.of(workspaceFolder), this::registerDirectory));
     }
 

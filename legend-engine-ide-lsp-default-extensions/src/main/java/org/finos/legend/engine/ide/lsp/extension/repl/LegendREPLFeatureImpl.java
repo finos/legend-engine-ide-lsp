@@ -23,9 +23,7 @@ import org.eclipse.collections.impl.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.PlanExecutorConfigurator;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendREPLFeature;
-import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
 import org.finos.legend.engine.ide.lsp.extension.repl.extension.LegendREPLExtensionFeature;
-import org.finos.legend.engine.ide.lsp.extension.sdlc.LegendDependencyManagement;
 import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.client.Client;
 import org.finos.legend.engine.repl.core.ReplExtension;
@@ -57,16 +55,12 @@ public class LegendREPLFeatureImpl implements LegendREPLFeature
                     .flatMap(List::stream)
                     .collect(Collectors.toList());
 
-            Client client = new Client(
+            return new Client(
                     Lists.mutable.withAll(replExtensions).with(new LSPReplExtension(workspaceFolders)),
                     Lists.mutable.withAll(completerExtensions),
                     PlanExecutorConfigurator.create(planExecutorConfigurationJsonPath, features),
                     homeDirectory
             );
-            LegendDependencyManagement legendDependencyManagement = new LegendDependencyManagement();
-            List<LegendVirtualFileSystemContentInitializer.LegendVirtualFile> virtualFilePureGrammars = legendDependencyManagement.getVirtualFilePureGrammars();
-            virtualFilePureGrammars.forEach(g -> client.getModelState().addElement(g.getContent()));
-            return client;
         }
         catch (Exception e)
         {

@@ -26,5 +26,5 @@ public class Constants
     public static final String LEGEND_PROTOCOL_VERSION = "legend.protocol.version";
     public static final String LEGEND_SDLC_SERVER_CONFIG_PATH = "legend.sdlc.server.url";
     public static final String LEGEND_PLAN_EXECUTOR_CONFIGURATION_CONFIG_PATH = "legend.planExecutor.configuration";
-    public static final String LEGEND_ENGINE_SERVER_REMOTE_EXECUTION = "legend.engine.serve.remoteExecution";
+    public static final String LEGEND_ENGINE_SERVER_REMOTE_EXECUTION = "legend.engine.server.remoteExecution";
 }
