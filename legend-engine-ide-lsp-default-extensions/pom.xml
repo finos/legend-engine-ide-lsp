@@ -382,6 +382,16 @@
             <artifactId>legend-engine-xt-data-space-protocol</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-diagram-protocol</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-diagram-grammar</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- LEGEND ENGINE -->
 
         <dependency>
