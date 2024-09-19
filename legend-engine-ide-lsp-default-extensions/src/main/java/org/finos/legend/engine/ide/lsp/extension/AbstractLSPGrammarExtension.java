@@ -280,7 +280,16 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
 
     public LegendExecutionResult errorResult(Throwable t, String entityPath)
     {
-        return errorResult(t, null, entityPath, (t instanceof EngineException) ? SourceInformationUtil.toLocation(((EngineException) t).getSourceInformation()) : null);
+        TextLocation location = null;
+        if (t instanceof EngineException)
+        {
+            EngineException engineException = (EngineException) t;
+            if (SourceInformationUtil.isValidSourceInfo(engineException.getSourceInformation()))
+            {
+                location = SourceInformationUtil.toLocation(engineException.getSourceInformation());
+            }
+        }
+        return errorResult(t, null, entityPath, location);
     }
 
     protected LegendExecutionResult errorResult(Throwable t, String entityPath, TextLocation location)
