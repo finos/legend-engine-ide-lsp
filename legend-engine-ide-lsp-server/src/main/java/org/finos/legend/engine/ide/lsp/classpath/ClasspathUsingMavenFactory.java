@@ -436,6 +436,13 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
         dependencies.add(snowflakePCTDependency);
 
+        Dependency analyticsMappingDependency = new Dependency();
+        analyticsMappingDependency.setGroupId("org.finos.legend.engine");
+        analyticsMappingDependency.setArtifactId("legend-engine-xt-analytics-mapping-pure");
+        analyticsMappingDependency.setVersion(engineVersion);
+
+        dependencies.add(analyticsMappingDependency);
+
         return dependencies;
     }
 
