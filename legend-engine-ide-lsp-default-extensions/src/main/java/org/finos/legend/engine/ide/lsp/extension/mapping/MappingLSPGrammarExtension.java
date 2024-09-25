@@ -28,7 +28,6 @@ import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
 import org.finos.legend.engine.ide.lsp.extension.*;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
-import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
@@ -252,9 +251,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     private List<? extends LegendExecutionResult> analyzeMappingModelCoverage(SectionState section, String entityPath)
     {
         PackageableElement element = getParseResult(section).getElement(entityPath);
-        FunctionExecutionSupport functionExecutionSupport = (FunctionExecutionSupport) section.getExtension();
-        AbstractLSPGrammarExtension extension = functionExecutionSupport.getExtension();
-        CompileResult compileResult = extension.getCompileResult(section);
+        CompileResult compileResult = this.getCompileResult(section);
         if (compileResult.hasException())
         {
             return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
