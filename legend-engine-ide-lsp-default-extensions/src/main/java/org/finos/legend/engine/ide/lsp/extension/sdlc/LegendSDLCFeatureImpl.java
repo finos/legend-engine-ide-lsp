@@ -24,9 +24,14 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.tuple.Pair;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.impl.block.factory.Comparators;
 import org.eclipse.collections.impl.set.sorted.mutable.TreeSortedSet;
+import org.eclipse.collections.impl.utility.LazyIterate;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
@@ -35,6 +40,8 @@ import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
+import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
+import org.finos.legend.engine.protocol.pure.v1.extension.PureProtocolExtensionLoader;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
@@ -145,5 +152,33 @@ public class LegendSDLCFeatureImpl implements LegendSDLCFeature
             pureText = pureText.substring(pureText.indexOf('\n') + 1);
         }
         return Pair.of(packageableElement.getPath(), pureText.strip());
+    }
+
+    @Override
+    public String getClassifierPathMap()
+    {
+        Map<Class<? extends PackageableElement>, String> classifierPathMap = ProtocolToClassifierPathLoader.getProtocolClassToClassifierMap();
+        Map<String, String> result = Maps.mutable.empty();
+        PureProtocolExtensionLoader.extensions().forEach(extension ->
+                LazyIterate.flatCollect(extension.getExtraProtocolSubTypeInfoCollectors(), Function0::value).forEach(info ->
+                {
+                    info.getSubTypes().forEach(subType ->
+                    {
+                        if (PackageableElement.class.isAssignableFrom(subType.getOne()) && classifierPathMap.containsKey(subType.getOne()))
+                        {
+                            if (result.containsKey(subType.getTwo()))
+                            {
+                                // ignore duplications
+                                return;
+                            }
+                            result.put(subType.getTwo(), classifierPathMap.get(subType.getOne()));
+                        }
+                    });
+                }));
+        return "[" +
+                result.entrySet().stream()
+                        .map(entry -> "{\"type\":\"" + entry.getKey() + "\",\"classifierPath\":\"" + entry.getValue() + "\"}")
+                        .collect(Collectors.joining(",")) +
+                "]";
     }
 }

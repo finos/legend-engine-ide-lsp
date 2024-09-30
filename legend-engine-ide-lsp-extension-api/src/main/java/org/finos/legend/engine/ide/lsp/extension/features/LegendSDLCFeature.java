@@ -93,4 +93,11 @@ public interface LegendSDLCFeature extends LegendLSPFeature
     Map<Path, String> convertToOneElementPerFile(Path rootFolder, DocumentState documentState);
 
     Map.Entry<String, String> contentToPureText(Map<String, ?> content);
+
+    /**
+     * Return the mapping of type to classifier path.
+     *
+     * @return Legend classifier path mapping
+     */
+    String getClassifierPathMap();
 }
