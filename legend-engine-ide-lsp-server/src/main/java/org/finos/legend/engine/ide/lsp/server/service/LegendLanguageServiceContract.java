@@ -70,4 +70,7 @@ public interface LegendLanguageServiceContract
 
     @JsonRequest("writeEntity")
     CompletableFuture<Void> writeEntity(LegendWriteEntityRequest request);
+
+    @JsonRequest("getClassifierPathMap")
+    CompletableFuture<String> getClassifierPathMap();
 }
