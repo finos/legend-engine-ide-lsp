@@ -510,4 +510,21 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                     return null;
                 });
     }
+
+    public CompletableFuture<String> getClassifierPathMap()
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            try
+            {
+                LegendSDLCFeature handler = this.getSDLCHandler();
+                return handler.getClassifierPathMap();
+            }
+            catch (Throwable e)
+            {
+                this.server.logInfoToClient(e.getMessage());
+                return "Get classifier path map request failed.";
+            }
+        });
+    }
 }
