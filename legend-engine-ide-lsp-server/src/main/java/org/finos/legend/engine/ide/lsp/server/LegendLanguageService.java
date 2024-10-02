@@ -522,8 +522,27 @@ public class LegendLanguageService implements LegendLanguageServiceContract
             }
             catch (Throwable e)
             {
-                this.server.logInfoToClient(e.getMessage());
-                return "Get classifier path map request failed.";
+                LOGGER.error("Error while getting classifier path map", e);
+                this.server.showErrorToClient("Error while getting classifier path map: " + e.getMessage());
+                return null;
+            }
+        });
+    }
+
+    public CompletableFuture<LegendSDLCFeature.SubtypeInfoResult> getSubtypeInfo()
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            try
+            {
+                LegendSDLCFeature handler = this.getSDLCHandler();
+                return handler.getSubtypeInfo();
+            }
+            catch (Throwable e)
+            {
+                LOGGER.error("Error while getting subtype info", e);
+                this.server.showErrorToClient("Error while getting subtype info: " + e.getMessage());
+                return null;
             }
         });
     }

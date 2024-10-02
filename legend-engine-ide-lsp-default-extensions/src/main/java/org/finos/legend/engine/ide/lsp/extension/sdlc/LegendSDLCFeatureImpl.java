@@ -17,18 +17,11 @@
 package org.finos.legend.engine.ide.lsp.extension.sdlc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.stream.Collectors;
-
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.collections.api.block.function.Function0;
 import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.factory.Sets;
+import org.eclipse.collections.api.set.MutableSet;
 import org.eclipse.collections.impl.block.factory.Comparators;
 import org.eclipse.collections.impl.set.sorted.mutable.TreeSortedSet;
 import org.eclipse.collections.impl.utility.LazyIterate;
@@ -40,15 +33,26 @@ import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
+import org.finos.legend.engine.protocol.functionActivator.metamodel.FunctionActivator;
 import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
 import org.finos.legend.engine.protocol.pure.v1.extension.PureProtocolExtensionLoader;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.Store;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.sdlc.domain.model.entity.Entity;
 import org.finos.legend.sdlc.protocol.pure.v1.PureEntitySerializer;
 import org.finos.legend.sdlc.serialization.DefaultJsonEntitySerializer;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class LegendSDLCFeatureImpl implements LegendSDLCFeature
 {
@@ -180,5 +184,49 @@ public class LegendSDLCFeatureImpl implements LegendSDLCFeature
                         .map(entry -> "{\"type\":\"" + entry.getKey() + "\",\"classifierPath\":\"" + entry.getValue() + "\"}")
                         .collect(Collectors.joining(",")) +
                 "]";
+    }
+
+    @Override
+    public SubtypeInfoResult getSubtypeInfo()
+    {
+        SubtypeInfoResult result = new SubtypeInfoResult();
+        MutableSet<String> storeSubtypes = Sets.mutable.empty();
+        PureProtocolExtensionLoader.extensions().forEach(extension ->
+                LazyIterate.flatCollect(extension.getExtraProtocolSubTypeInfoCollectors(), Function0::value).forEach(info ->
+                {
+                    info.getSubTypes().forEach(subType ->
+                    {
+                        if (Store.class.isAssignableFrom(subType.getOne()))
+                        {
+                            if (storeSubtypes.contains(subType.getTwo()))
+                            {
+                                // ignore duplications
+                                return;
+                            }
+                            storeSubtypes.add(subType.getTwo());
+                        }
+                    });
+                }));
+        result.storeSubtypes = storeSubtypes.toList();
+
+        MutableSet<String> functionActivatorSubtypes = Sets.mutable.empty();
+        PureProtocolExtensionLoader.extensions().forEach(extension ->
+                LazyIterate.flatCollect(extension.getExtraProtocolSubTypeInfoCollectors(), Function0::value).forEach(info ->
+                {
+                    info.getSubTypes().forEach(subType ->
+                    {
+                        if (FunctionActivator.class.isAssignableFrom(subType.getOne()))
+                        {
+                            if (functionActivatorSubtypes.contains(subType.getTwo()))
+                            {
+                                // ignore duplications
+                                return;
+                            }
+                            functionActivatorSubtypes.add(subType.getTwo());
+                        }
+                    });
+                }));
+        result.functionActivatorSubtypes = functionActivatorSubtypes.toList();
+        return result;
     }
 }

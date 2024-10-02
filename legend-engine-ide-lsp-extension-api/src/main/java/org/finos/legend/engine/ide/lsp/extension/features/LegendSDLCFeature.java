@@ -17,6 +17,7 @@
 package org.finos.legend.engine.ide.lsp.extension.features;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
@@ -100,4 +101,17 @@ public interface LegendSDLCFeature extends LegendLSPFeature
      * @return Legend classifier path mapping
      */
     String getClassifierPathMap();
+
+    /**
+     * Return the subtype information for the protocol serialization.
+     *
+     * @return Legend subtype information
+     */
+    SubtypeInfoResult getSubtypeInfo();
+
+    class SubtypeInfoResult
+    {
+        public List<String> storeSubtypes;
+        public List<String> functionActivatorSubtypes;
+    }
 }
