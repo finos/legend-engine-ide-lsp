@@ -36,6 +36,16 @@ public interface GrammarSection
     String getGrammar();
 
     /**
+     * Get the text interval of the section.
+     *
+     * @return section text interval
+     */
+    default TextInterval getTextInterval()
+    {
+        return TextInterval.newInterval(this.getStartLine(), 0, this.getEndLine(), this.getLineLength(this.getEndLine()));
+    }
+
+    /**
      * Get the start line of the section. Note that this uses zero-based line numbering.
      *
      * @return section start line

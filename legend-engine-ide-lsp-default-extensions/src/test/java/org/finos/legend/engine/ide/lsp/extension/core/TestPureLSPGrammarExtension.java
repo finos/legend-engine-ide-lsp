@@ -172,6 +172,16 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Test
+    public void testDiagnostics_unknownParserError()
+    {
+        // missing island close and trailing new line leads to bad source info from Engine ParserErrorListener
+        testDiagnostics(
+                "function hello::world():Any[1] {#>{db.table}->select()}\n",
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 0, 0, 1, 0), "Unexpected token", Kind.Error, Source.Parser)
+        );
+    }
+
+    @Test
     public void testDiagnostics_compilerError()
     {
         testDiagnostics(
