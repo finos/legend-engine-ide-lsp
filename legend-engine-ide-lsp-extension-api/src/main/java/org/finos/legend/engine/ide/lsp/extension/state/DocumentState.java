@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.extension.state;
 
 import java.util.function.Consumer;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 
 /**
  * The state of a particular document.
@@ -146,5 +147,12 @@ public interface DocumentState extends State
     default void logError(String message)
     {
         getGlobalState().logError(message);
+    }
+
+    default TextLocation getTextLocation()
+    {
+        int lineCount = this.getLineCount();
+        int endColumn = lineCount == 0 ? 0 : this.getLine(lineCount - 1).length();
+        return TextLocation.newTextSource(this.getDocumentId(), 0, 0, lineCount, endColumn);
     }
 }
