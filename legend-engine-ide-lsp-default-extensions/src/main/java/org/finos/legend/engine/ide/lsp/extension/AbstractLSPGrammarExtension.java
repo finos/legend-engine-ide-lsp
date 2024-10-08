@@ -166,14 +166,16 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         {
             EngineException e = parseResult.getEngineException();
             SourceInformation sourceInfo = e.getSourceInformation();
+            TextLocation location;
             if (SourceInformationUtil.isValidSourceInfo(sourceInfo))
             {
-                consumer.accept(LegendDiagnostic.newDiagnostic(SourceInformationUtil.toLocation(sourceInfo), e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser));
+                location = SourceInformationUtil.toLocation(sourceInfo);
             }
             else
             {
-                LOGGER.warn("Invalid source information in parser exception in section {} of {}: cannot create diagnostic", sectionState.getSectionNumber(), sectionState.getDocumentState().getDocumentId(), e);
+                location = TextLocation.newTextSource(sectionState.getDocumentState().getDocumentId(), sectionState.getSection().getTextInterval());
             }
+            consumer.accept(LegendDiagnostic.newDiagnostic(location, e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser));
         }
     }
 
@@ -188,9 +190,10 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
                 SourceInformation sourceInfo = e.getSourceInformation();
                 if (!SourceInformationUtil.isValidSourceInfo(sourceInfo))
                 {
-                    if ((sourceInfo != null) && docId.equals(sourceInfo.sourceId))
+                    if (sourceInfo == null || sourceInfo.sourceId == null || docId.equals(sourceInfo.sourceId))
                     {
-                        LOGGER.warn("Invalid source information in compiler exception in {}: cannot create diagnostic", docId, e);
+                        TextLocation location = sectionState.getDocumentState().getTextLocation();
+                        consumer.accept(LegendDiagnostic.newDiagnostic(location, e.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler));
                     }
                 }
                 else if (docId.equals(sourceInfo.sourceId))
