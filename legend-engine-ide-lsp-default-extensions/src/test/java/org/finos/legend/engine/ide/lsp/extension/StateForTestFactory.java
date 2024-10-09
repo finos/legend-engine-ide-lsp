@@ -44,6 +44,7 @@ public class StateForTestFactory
     {
         this.legendLSPGrammarExtensions = loadAvailableExtensions();
         this.features = loadAvailableFeatures();
+        this.getLegendLSPGrammarExtensions().forEach(x -> x.startup(new TestGlobalState()));
     }
 
     public List<LegendLSPGrammarExtension> getLegendLSPGrammarExtensions()
@@ -83,12 +84,28 @@ public class StateForTestFactory
         return features;
     }
 
+    public GlobalState newGlobalState()
+    {
+        return new TestGlobalState();
+    }
+
     public SectionState newSectionState(String docId, String text)
     {
-        LineIndexedText indexedText = LineIndexedText.index(text);
+        return this.newSectionState(docId, text, "Pure");
+    }
+
+    public SectionState newSectionState(String docId, String text, String grammar)
+    {
         TestGlobalState globalState = new TestGlobalState();
+        return this.newSectionState(globalState, docId, text, grammar);
+    }
+
+    public SectionState newSectionState(GlobalState gs, String docId, String text, String grammar)
+    {
+        TestGlobalState globalState = (TestGlobalState) gs;
+        LineIndexedText indexedText = LineIndexedText.index(text);
         TestDocumentState docState = new TestDocumentState(globalState, docId, indexedText);
-        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText));
+        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText, grammar));
 
         globalState.docStates.put(docId, docState);
         docState.sectionStates.add(sectionState);
@@ -97,6 +114,11 @@ public class StateForTestFactory
     }
 
     protected static GrammarSection newGrammarSection(LineIndexedText indexedText)
+    {
+        return newGrammarSection(indexedText, "Pure");
+    }
+
+    protected static GrammarSection newGrammarSection(LineIndexedText indexedText, String defaultGrammar)
     {
         Matcher matcher = GRAMMAR_LINE_PATTERN.matcher(indexedText.getText());
         boolean hasGrammarLine;
@@ -113,7 +135,7 @@ public class StateForTestFactory
         else
         {
             hasGrammarLine = false;
-            grammar = "Pure";
+            grammar = defaultGrammar;
             startLine = 0;
             endLine = indexedText.getLineCount() - 1;
         }

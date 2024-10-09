@@ -8,3 +8,4 @@ org.finos.legend.engine.ide.lsp.extension.functionActivator.SnowflakeLSPGrammarE
 org.finos.legend.engine.ide.lsp.extension.functionActivator.HostedServiceLSPGrammarExtension
 org.finos.legend.engine.ide.lsp.extension.dataSpace.DataSpaceLSPGrammarExtension
 org.finos.legend.engine.ide.lsp.extension.diagram.DiagramLSPGrammarExtension
+org.finos.legend.engine.ide.lsp.extension.notebook.PureBookLSPGrammarExtension

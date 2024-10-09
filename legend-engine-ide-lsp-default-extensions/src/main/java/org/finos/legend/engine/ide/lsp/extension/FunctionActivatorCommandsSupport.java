@@ -79,7 +79,7 @@ public final class FunctionActivatorCommandsSupport implements CommandsSupport
         String entityPath = element.getPath();
 
         CompileResult compileResult = this.extension.getCompileResult(section);
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return Collections.singletonList(this.extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
         }

@@ -23,6 +23,17 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
+import javax.security.auth.Subject;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -31,7 +42,10 @@ import org.eclipse.collections.api.tuple.Pair;
 import org.eclipse.collections.impl.map.mutable.MapAdapter;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.eclipse.collections.impl.utility.Iterate;
-import org.finos.legend.engine.ide.lsp.extension.*;
+import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
+import org.finos.legend.engine.ide.lsp.extension.CompileResult;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
@@ -76,18 +90,8 @@ import org.finos.legend.pure.generated.Root_meta_core_runtime_Runtime;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.FunctionDefinition;
-import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
-import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.security.auth.Subject;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.temporal.TemporalAccessor;
-import java.util.*;
-import java.util.function.Consumer;
 
 public interface FunctionExecutionSupport
 {
@@ -189,7 +193,7 @@ public interface FunctionExecutionSupport
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
         CompileResult compileResult = extension.getCompileResult(section);
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
@@ -392,7 +396,9 @@ public interface FunctionExecutionSupport
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
         {
-            Map<String, Lambda> lambdas = objectMapper.readValue(executableArgs.get("lambdas"), new TypeReference<>() {});
+            Map<String, Lambda> lambdas = objectMapper.readValue(executableArgs.get("lambdas"), new TypeReference<>()
+            {
+            });
             RenderStyle renderStyle = RenderStyle.valueOf(executableArgs.get("renderStyle"));
             Map<String, Object> result = org.eclipse.collections.api.factory.Maps.mutable.empty();
             MapAdapter.adapt(lambdas).forEachKeyValue((key, value) ->
@@ -520,16 +526,6 @@ public interface FunctionExecutionSupport
         if (value == null)
         {
             return "[]";
-        }
-        if (value instanceof Iterable)
-        {
-            StringBuilder builder = new StringBuilder();
-            ((Iterable<?>) value).forEach(v -> builder.append((builder.length() == 0) ? "[" : ", ").append(getConstantValueResult(v)));
-            return builder.append("]").toString();
-        }
-        if ((value instanceof String) || (value instanceof Boolean) || (value instanceof Number) || (value instanceof PureDate) || (value instanceof PureStrictTime) || (value instanceof TemporalAccessor))
-        {
-            return value.toString();
         }
         try
         {
@@ -663,5 +659,12 @@ public interface FunctionExecutionSupport
         {
             return this.executionParameters;
         }
+    }
+
+    static SingleExecutionPlan generateSingleExecutionPlan(PureModel pureModel, String clientVersion, FunctionDefinition<?> functionDefinition)
+    {
+        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
+        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
+        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
     }
 }

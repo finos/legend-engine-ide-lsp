@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -35,7 +34,6 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
-import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
@@ -65,10 +63,6 @@ import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
 import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
-import org.finos.legend.engine.plan.generation.PlanGenerator;
-import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
-import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
-import org.finos.legend.engine.plan.platform.PlanPlatform;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
@@ -87,13 +81,11 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.functio
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
-import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
 import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
 import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
 import org.finos.legend.engine.shared.core.identity.Identity;
-import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.constraint.Constraint;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.FunctionDefinition;
 import org.finos.legend.pure.m3.navigation.M3Paths;
@@ -160,7 +152,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         if (element instanceof Function)
         {
             CompileResult compileResult = getCompileResult(sectionState);
-            if (!compileResult.hasException())
+            if (!compileResult.hasEngineException())
             {
                 Function function = (Function) element;
                 SourceInformation sourceInformation = function.sourceInformation;
@@ -361,9 +353,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         {
             functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
         }
-        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
-        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
+        return FunctionExecutionSupport.generateSingleExecutionPlan(pureModel, clientVersion, functionDefinition);
     }
 
     @Override
@@ -521,6 +511,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                     {
                         TextLocation codeBlockLocation = SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcCtx.codeBlock()));
                         String functionExpression = section.getSection().getInterval(codeBlockLocation.getTextInterval().getStart().getLine(), codeBlockLocation.getTextInterval().getStart().getColumn(), autocompleteLocation.getLine(), autocompleteLocation.getColumn());
+                        // todo change so we can pass pure model directly...
                         PureModelContextData pureModelContextData = this.getCompileResult(section).getPureModelContextData();
                         String buildCodeContext = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().build()).renderPureModelContextData(pureModelContextData);
                         return new Completer(buildCodeContext, Lists.mutable.with(new RelationalCompleterExtension())).complete(functionExpression);

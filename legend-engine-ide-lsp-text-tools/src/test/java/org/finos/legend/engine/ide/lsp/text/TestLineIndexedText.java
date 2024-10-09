@@ -227,4 +227,17 @@ public class TestLineIndexedText
         }
         Assertions.assertFalse(indexedText.isValidIndex(indexedText.getText().length()));
     }
+
+    @Test
+    void replace()
+    {
+        Assertions.assertEquals("hello", LineIndexedText.index("").replace("hello", 0, 0, 0, 0).getText(), "insert on empty text");
+        Assertions.assertEquals("hello world", LineIndexedText.index("world").replace("hello ", 0, 0, 0, 0).getText(), "insert at start of text");
+        Assertions.assertEquals("hello world", LineIndexedText.index("hello").replace(" world", 0, 5, 0, 5).getText(), "insert at end of text");
+        Assertions.assertEquals("hello\nworld", LineIndexedText.index("hello\n").replace("world", 1, 0, 1, 0).getText(), "insert at start of second line");
+        Assertions.assertEquals("hello world\nBye!", LineIndexedText.index("hello\nBye!").replace(" world", 0, 5, 0, 5).getText(), "insert at end of first line");
+        Assertions.assertEquals("hello\n", LineIndexedText.index("hello\nBye!").replace("", 1, 0, 1, 4).getText(), "replace end of text");
+        Assertions.assertEquals("hello\nBye!", LineIndexedText.index("hello world\nBye!").replace("", 0, 5, 0, 11).getText(), "replace between line");
+        Assertions.assertEquals("hello\n", LineIndexedText.index("hello world\nBye!\n").replace("", 0, 5, 1, 4).getText(), "replace multi-line");
+    }
 }

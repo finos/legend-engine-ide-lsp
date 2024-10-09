@@ -193,7 +193,7 @@ public final class TestableCommandsSupport
         String entityPath = element.getPath();
         CompileResult compileResult = this.extension.getCompileResult(section);
 
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return List.of(LegendTestExecutionResult.error(compileResult.getCompileErrorResult(), entityPath));
         }
