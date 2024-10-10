@@ -116,7 +116,7 @@ public class TestPureBookLSPGrammarExtension
                 this.extension.execute(emptyNotebook, "notebook", "executeCell", Map.of())
         );
 
-        SectionState cannotCompileNotebook = stateForTestFactory.newSectionState( "notebook.purebook", "1 + 1 +", "purebook");
+        SectionState cannotCompileNotebook = stateForTestFactory.newSectionState("notebook.purebook", "1 + 1 +", "purebook");
         LegendExecutionResult compileFailure = this.extension.execute(cannotCompileNotebook, "notebook", "executeCell", Map.of()).iterator().next();
         Assertions.assertEquals(
                 LegendExecutionResult.Type.ERROR,
