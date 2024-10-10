@@ -67,6 +67,9 @@ import org.eclipse.lsp4j.InitializeResult;
 import org.eclipse.lsp4j.InitializedParams;
 import org.eclipse.lsp4j.MessageParams;
 import org.eclipse.lsp4j.MessageType;
+import org.eclipse.lsp4j.NotebookDocumentSyncRegistrationOptions;
+import org.eclipse.lsp4j.NotebookSelector;
+import org.eclipse.lsp4j.NotebookSelectorCell;
 import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.SemanticTokenTypes;
 import org.eclipse.lsp4j.SemanticTokensLegend;
@@ -90,6 +93,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.launch.LSPLauncher;
 import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.lsp4j.services.LanguageServer;
+import org.eclipse.lsp4j.services.NotebookDocumentService;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathFactory;
 import org.finos.legend.engine.ide.lsp.classpath.ClasspathUsingMavenFactory;
 import org.finos.legend.engine.ide.lsp.classpath.EmbeddedClasspathFactory;
@@ -124,6 +128,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private final CountDownLatch postInitializationLatch = new CountDownLatch(1);
     private final LegendTextDocumentService textDocumentService;
     private final LegendWorkspaceService workspaceService;
+    private final LegendNotebookDocumentService notebookService;
     private final LegendLanguageService legendLanguageService;
     private final AtomicReference<LanguageClient> languageClient = new AtomicReference<>(null);
     private final AtomicInteger state = new AtomicInteger(UNINITIALIZED);
@@ -141,6 +146,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     {
         this.textDocumentService = new LegendTextDocumentService(this);
         this.workspaceService = new LegendWorkspaceService(this);
+        this.notebookService = new LegendNotebookDocumentService(this);
         this.legendLanguageService = new LegendLanguageService(this);
         this.extensionGuard = new ExtensionsGuard(this, grammars, features);
         this.async = async;
@@ -334,10 +340,10 @@ public class LegendLanguageServer implements LegendLanguageServerContract
 
         return this.classpathFactory.create(Collections.unmodifiableSet(this.rootFolders))
                 .thenAccept(this.extensionGuard::initialize)
-                .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
-                .thenRun(this.extensionGuard.wrapOnClasspath(this.legendLanguageService::loadVirtualFileSystemContent))
                 // trigger parsing/compilation/execution
                 .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.getAvailableGrammarExtensions().forEach(x -> x.startup(this.globalState))))
+                .thenRun(this.extensionGuard.wrapOnClasspath(this.legendLanguageService::loadVirtualFileSystemContent))
+                .thenRun(this.extensionGuard.wrapOnClasspath(this::reprocessDocuments))
                 .thenRun(this.extensionGuard.wrapOnClasspath(() -> this.globalState.forEachDocumentState(this.textDocumentService::getLegendDiagnostics)))
                 // tell client to refresh base on diagnostics discovered
                 .thenRun(() ->
@@ -462,6 +468,12 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     public LegendWorkspaceService getWorkspaceService()
     {
         return this.workspaceService;
+    }
+
+    @Override
+    public NotebookDocumentService getNotebookDocumentService()
+    {
+        return this.notebookService;
     }
 
     @Override
@@ -975,7 +987,8 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private ServerCapabilities getServerCapabilities()
     {
         ServerCapabilities capabilities = new ServerCapabilities();
-        capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
+        // TextDocumentSyncOptions
+        capabilities.setTextDocumentSync(TextDocumentSyncKind.Incremental);
         capabilities.setSemanticTokensProvider(new SemanticTokensWithRegistrationOptions(new SemanticTokensLegend(Collections.singletonList(SemanticTokenTypes.Keyword), Collections.emptyList()), false, true));
         capabilities.setWorkspace(getWorkspaceServerCapabilities());
         capabilities.setCompletionProvider(new CompletionOptions(false, List.of()));
@@ -986,7 +999,16 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         capabilities.setDiagnosticProvider(getDiagnosticRegistrationOptions());
         capabilities.setDocumentSymbolProvider(true);
         capabilities.setWorkspaceSymbolProvider(true);
+        capabilities.setNotebookDocumentSync(getNotebookDocumentSyncRegistrationOptions());
         return capabilities;
+    }
+
+    private NotebookDocumentSyncRegistrationOptions getNotebookDocumentSyncRegistrationOptions()
+    {
+        NotebookSelector notebookSelector = new NotebookSelector();
+        notebookSelector.setNotebook("legend-book");
+        notebookSelector.setCells(List.of(new NotebookSelectorCell("legend")));
+        return new NotebookDocumentSyncRegistrationOptions(List.of(notebookSelector), true);
     }
 
     private DiagnosticRegistrationOptions getDiagnosticRegistrationOptions()

@@ -202,6 +202,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
                 }
             }
         }
+
         if (compileResult.getPureModel() != null)
         {
             MutableList<Warning> warnings = compileResult.getPureModel().getWarnings();
@@ -228,7 +229,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     public Iterable<? extends LegendCommand> getCommands(SectionState section)
     {
         ParseResult result = getParseResult(section);
-        if (result.hasException() || result.getElements().isEmpty())
+        if (result.hasEngineException() || result.getElements().isEmpty())
         {
             return Collections.emptyList();
         }
@@ -300,7 +301,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return errorResult(t, null, entityPath, location);
     }
 
-    protected LegendExecutionResult errorResult(Throwable t, String message, String entityPath, TextLocation location)
+    public LegendExecutionResult errorResult(Throwable t, String message, String entityPath, TextLocation location)
     {
         return LegendExecutionResult.errorResult(t, message, entityPath, location);
     }
@@ -524,7 +525,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     public final List<LegendTest> testCases(SectionState section)
     {
         ParseResult result = getParseResult(section);
-        if (result.hasException() || result.getElements().isEmpty())
+        if (result.hasEngineException() || result.getElements().isEmpty())
         {
             return Collections.emptyList();
         }
@@ -581,7 +582,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return SourceInformationUtil.isValidSourceInfo(sourceInformation) && SourceInformationUtil.toLocation(sourceInformation).getTextInterval().includes(position);
     }
 
-    private boolean isValidSourceIdAndSourceInfo(SectionState section, SourceInformation sourceInfo)
+    public static boolean isValidSourceIdAndSourceInfo(SectionState section, SourceInformation sourceInfo)
     {
         return section.getDocumentState().getGlobalState().getDocumentState(sourceInfo.sourceId) != null
                 && SourceInformationUtil.isValidSourceInfo(sourceInfo);
@@ -655,36 +656,16 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
 
         return parseResult.getElements()
                 .stream()
-                .flatMap(packageableElement ->
-                {
-                    Optional<CoreInstance> coreInstance = Optional.ofNullable(pureModel.getPackageableElement(packageableElement.getPath(), packageableElement.sourceInformation));
-                    return this.getReferenceResolvers(sectionState, packageableElement, coreInstance)
-                            .filter(Optional::isPresent)
-                            .map(Optional::get)
-                            .map(reference ->
-                            {
-                                Optional<CoreInstance> referenced = reference.goToReferenced(pureModel.getContext(packageableElement));
-                                return referenced.map(x ->
-                                {
-                                    SourceInformation sourceInfo = SourceInformationHelper.fromM3SourceInformation(x.getSourceInformation());
-                                    if (isValidSourceIdAndSourceInfo(sectionState, sourceInfo))
-                                    {
-                                        TextLocation declarationLocation = SourceInformationUtil.toLocation(sourceInfo);
-                                        if (!reference.getLocation().equals(declarationLocation))
-                                        {
-                                            return LegendReference.builder()
-                                                    .withLocation(reference.getLocation())
-                                                    .withDeclarationLocation(declarationLocation)
-                                                    .build();
-                                        }
-                                    }
-
-                                    return null;
-                                });
-                            })
-                            .filter(Optional::isPresent)
-                            .map(Optional::get);
-                });
+                .flatMap(packageableElement -> LegendReferenceResolver.toLegendReference(
+                                sectionState,
+                                this.getReferenceResolvers(
+                                        sectionState,
+                                        packageableElement,
+                                        Optional.ofNullable(pureModel.getPackageableElement(packageableElement.getPath(), packageableElement.sourceInformation))
+                                ),
+                                pureModel.getContext(packageableElement)
+                        )
+                );
     }
 
     private Collection<LegendReferenceResolver> getReferenceResolversResult(SectionState section, PackageableElement packageableElement)
@@ -723,9 +704,9 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     protected static class Result<T>
     {
         protected final T result;
-        protected final Exception e;
+        protected final EngineException e;
 
-        protected Result(T result, Exception e)
+        protected Result(T result, EngineException e)
         {
             this.result = result;
             this.e = e;
@@ -741,30 +722,20 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             return this.result;
         }
 
-        public boolean hasException()
+        public boolean hasEngineException()
         {
             return this.e != null;
         }
 
-        public Exception getException()
-        {
-            return this.e;
-        }
-
-        public boolean hasEngineException()
-        {
-            return this.e instanceof EngineException;
-        }
-
         public EngineException getEngineException()
         {
-            return hasEngineException() ? (EngineException) this.e : null;
+            return this.e;
         }
     }
 
     protected static class ParseResult extends Result<ImmutableList<PackageableElement>>
     {
-        private ParseResult(ImmutableList<PackageableElement> elements, Exception e)
+        private ParseResult(ImmutableList<PackageableElement> elements, EngineException e)
         {
             super(elements, e);
         }

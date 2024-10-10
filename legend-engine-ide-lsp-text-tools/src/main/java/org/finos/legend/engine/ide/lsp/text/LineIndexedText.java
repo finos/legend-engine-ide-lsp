@@ -358,4 +358,32 @@ public class LineIndexedText
     {
         return new LineIndexedText(text);
     }
+
+    public LineIndexedText replace(String toReplace, int startLine, int startCharacter, int endLine, int endCharacter)
+    {
+        // change is up to end of current text
+        if (this.getLineCount() - 1 == endLine
+                && this.getLineLength(endLine) == endCharacter)
+        {
+            // change is at the end of current text
+            if (startLine == endLine && startCharacter == endCharacter)
+            {
+                return LineIndexedText.index(this.getText() + toReplace);
+            }
+            else
+            {
+                int splitIndex = this.getIndex(startLine, startCharacter);
+                String prefix = this.getText().substring(0, splitIndex);
+                return LineIndexedText.index(prefix + toReplace);
+            }
+        }
+        else
+        {
+            int splitStartIndex = this.getIndex(startLine, startCharacter);
+            int splitEndIndex = this.getIndex(endLine, endCharacter);
+            String prefix = this.getText().substring(0, splitStartIndex);
+            String suffix = this.getText().substring(splitEndIndex);
+            return LineIndexedText.index(prefix + toReplace + suffix);
+        }
+    }
 }

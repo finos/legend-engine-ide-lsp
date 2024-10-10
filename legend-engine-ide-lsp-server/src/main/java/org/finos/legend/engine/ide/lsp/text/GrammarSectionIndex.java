@@ -93,6 +93,12 @@ public class GrammarSectionIndex
         return this.text.getText();
     }
 
+    public LineIndexedText getIndexedText()
+    {
+        return this.text;
+    }
+
+
     /**
      * Get the number of lines in the text.
      *
@@ -255,16 +261,30 @@ public class GrammarSectionIndex
      */
     public static GrammarSectionIndex parse(LineIndexedText text)
     {
+        return parse(text, PURE_GRAMMAR_NAME);
+    }
+
+    /**
+     * Parse the given text document and return the resulting {@link GrammarSectionIndex}.
+     *
+     * If no explicit section is found, will use the provided one
+     *
+     * @param text line indexed text document
+     * @param defaultGrammarName default grammar to use if no explicit section grammar found
+     * @return grammar section index
+     */
+    public static GrammarSectionIndex parse(LineIndexedText text, String defaultGrammarName)
+    {
         Matcher matcher = GRAMMAR_LINE_PATTERN.matcher(text.getText());
         if (!matcher.find())
         {
-            return new GrammarSectionIndex(text, newGrammarSection(text, false, PURE_GRAMMAR_NAME, 0, text.getLineCount() - 1));
+            return new GrammarSectionIndex(text, newGrammarSection(text, false, defaultGrammarName, 0, text.getLineCount() - 1));
         }
 
         List<GrammarSection> sections = new ArrayList<>();
         if ((matcher.start() > 0) && !TextTools.isBlank(text.getText(), 0, matcher.start()))
         {
-            sections.add(newGrammarSection(text, false, PURE_GRAMMAR_NAME, 0, text.getLineNumber(matcher.start() - 1)));
+            sections.add(newGrammarSection(text, false, defaultGrammarName, 0, text.getLineNumber(matcher.start() - 1)));
         }
 
         int index = matcher.start();
