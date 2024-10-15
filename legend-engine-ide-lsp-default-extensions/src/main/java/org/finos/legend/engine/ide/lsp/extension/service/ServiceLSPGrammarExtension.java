@@ -59,6 +59,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.dsl.service.generation.ServicePlanGenerator;
 import org.finos.legend.engine.language.pure.dsl.service.grammar.from.ServiceParserExtension;
@@ -93,6 +94,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.test.AtomicTest;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
@@ -305,6 +307,10 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             {
                 return FunctionExecutionSupport.executeFunction(this, section, entityPath, inputParams);
             }
+            case FunctionExecutionSupport.EXECUTE_QUERY_ID:
+            {
+                return FunctionExecutionSupport.executeQuery(this, section, entityPath, executableArgs, inputParams);
+            }
             default:
             {
                 return super.execute(section, entityPath, commandId, executableArgs);
@@ -364,6 +370,27 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                 null,
                 pureModel,
                 "vX_X_X",
+                PlanPlatform.JAVA,
+                routerExtensions,
+                planTransformers
+        );
+    }
+
+    @Override
+    public SingleExecutionPlan getExecutionPlan(Lambda function, String mapping, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
+    {
+        PureSingleExecution singleExecution = new PureSingleExecution();
+        singleExecution.mapping = mapping;
+        singleExecution.runtime = runtime;
+        singleExecution.func = function;
+
+        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
+        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
+        return ServicePlanGenerator.generateSingleExecutionPlan(
+                singleExecution,
+                HelperValueSpecificationBuilder.processExecutionContext(context, pureModel.getContext()),
+                pureModel,
+                version,
                 PlanPlatform.JAVA,
                 routerExtensions,
                 planTransformers

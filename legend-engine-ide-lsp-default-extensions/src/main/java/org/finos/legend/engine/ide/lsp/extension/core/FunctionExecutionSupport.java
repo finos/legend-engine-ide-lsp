@@ -19,18 +19,9 @@ package org.finos.legend.engine.ide.lsp.extension.core;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.time.temporal.TemporalAccessor;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Consumer;
-import javax.security.auth.Subject;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -61,8 +52,11 @@ import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecut
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Enumeration;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
+import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.shared.core.identity.Identity;
 import org.finos.legend.engine.shared.core.kerberos.SubjectTools;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
@@ -71,12 +65,26 @@ import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.security.auth.Subject;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.temporal.TemporalAccessor;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Consumer;
+
 public interface FunctionExecutionSupport
 {
     Logger LOGGER = LoggerFactory.getLogger(FunctionExecutionSupport.class);
 
     String EXECUTE_COMMAND_ID = "legend.function.execute";
     String EXECUTE_COMMAND_TITLE = "Execute";
+    String EXECUTE_QUERY_ID = "legend.query.execute";
+
+    ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
 
     AbstractLSPGrammarExtension getExtension();
 
@@ -89,6 +97,8 @@ public interface FunctionExecutionSupport
     }
 
     SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String version);
+
+    SingleExecutionPlan getExecutionPlan(Lambda function, String mapping, Runtime runtime, ExecutionContext context, PureModel pureModel, String version);
 
     static void collectFunctionExecutionCommand(FunctionExecutionSupport executionSupport, PackageableElement element, CompileResult compileResult, CommandConsumer consumer)
     {
@@ -150,6 +160,45 @@ public interface FunctionExecutionSupport
                 return Tuples.pair(executionPlan, planExecutionContext);
             });
             executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlanAndContext.getOne(), executionPlanAndContext.getTwo(), entityPath, inputParameters, results);
+        }
+        catch (Exception e)
+        {
+            results.add(extension.errorResult(e, entityPath));
+        }
+        return results;
+    }
+
+    static Iterable<? extends LegendExecutionResult> executeQuery(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        CompileResult compileResult = extension.getCompileResult(section);
+        if (compileResult.hasException())
+        {
+            return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
+        }
+
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+        try
+        {
+            GlobalState globalState = section.getDocumentState().getGlobalState();
+            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            String mapping = executableArgs.get("mapping");
+            Runtime runtime = objectMapper.readValue(executableArgs.get("runtime"), Runtime.class);
+            ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
+            PureModel pureModel = compileResult.getPureModel();
+            SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(lambda, mapping, runtime, context, pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
+
+            PlanExecutionContext planExecutionContext = null;
+            try
+            {
+                planExecutionContext = new PlanExecutionContext(executionPlan, List.of());
+            }
+            catch (JavaCompileException e)
+            {
+                LOGGER.warn("Failed to compile plan");
+            }
+            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, planExecutionContext, entityPath, inputParameters, results);
         }
         catch (Exception e)
         {
