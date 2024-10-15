@@ -309,6 +309,10 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             {
                 return FunctionExecutionSupport.executeQuery(this, section, entityPath, executableArgs, inputParams);
             }
+            case FunctionExecutionSupport.GENERATE_EXECUTION_PLAN:
+            {
+                return FunctionExecutionSupport.generateExecutionPlan(this, section, entityPath, executableArgs, inputParams);
+            }
             default:
             {
                 return super.execute(section, entityPath, commandId, executableArgs);
