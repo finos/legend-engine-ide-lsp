@@ -263,14 +263,16 @@ public interface FunctionExecutionSupport
             MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
             MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
 
-            PlanWithDebug plan = Boolean.parseBoolean(executableArgs.get("debug")) ?
+            boolean debug = Boolean.parseBoolean(executableArgs.get("debug"));
+
+            PlanWithDebug planWithDebug = debug ?
                     PlanGenerator.generateExecutionPlanDebug(lambdaFunction, mapping, runtime, context, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers) :
                     new PlanWithDebug(PlanGenerator.generateExecutionPlan(lambdaFunction, mapping, runtime, context, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers), "");
             results.add(
                     FunctionLegendExecutionResult.newResult(
                             entityPath,
                             LegendExecutionResult.Type.SUCCESS,
-                            objectMapper.writeValueAsString(plan),
+                            objectMapper.writeValueAsString(debug ? planWithDebug : planWithDebug.plan),
                             null,
                             section.getDocumentState().getDocumentId(),
                             section.getSectionNumber(),
