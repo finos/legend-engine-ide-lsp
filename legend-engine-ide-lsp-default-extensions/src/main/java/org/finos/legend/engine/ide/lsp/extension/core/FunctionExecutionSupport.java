@@ -17,6 +17,7 @@
 package org.finos.legend.engine.ide.lsp.extension.core;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,10 +36,12 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRuntimeBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.dsl.service.generation.ServicePlanGenerator;
+import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParser;
 import org.finos.legend.engine.plan.execution.PlanExecutionContext;
 import org.finos.legend.engine.plan.execution.PlanExecutor;
 import org.finos.legend.engine.plan.execution.nodes.helpers.ExecuteNodeParameterTransformationHelper;
@@ -52,7 +55,6 @@ import org.finos.legend.engine.plan.generation.PlanWithDebug;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
-import org.finos.legend.engine.protocol.pure.PureClientVersions;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
@@ -94,7 +96,9 @@ public interface FunctionExecutionSupport
     String EXECUTE_COMMAND_ID = "legend.function.execute";
     String EXECUTE_COMMAND_TITLE = "Execute";
     String EXECUTE_QUERY_ID = "legend.query.execute";
-    String GENERATE_EXECUTION_PLAN = "legend.executionPlan.generate";
+    String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
+    String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
+    String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
 
     ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
 
@@ -237,6 +241,40 @@ public interface FunctionExecutionSupport
         return results;
     }
 
+    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        try
+        {
+            if (extension.isEngineServerConfigured()
+                    && Boolean.parseBoolean(globalState.getSetting(Constants.LEGEND_ENGINE_SERVER_REMOTE_EXECUTION)))
+            {
+                ExecutionRequest executionRequest = new ExecutionRequest(executionPlan, inputParameters);
+                LegendExecutionResult legendExecutionResult = extension.postEngineServer("/executionPlan/v1/execution/executeRequest?serializationFormat=DEFAULT", executionRequest, is ->
+                {
+                    ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
+                    is.transferTo(os);
+                    return FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server", docId, sectionNum, inputParameters);
+                });
+                results.add(legendExecutionResult);
+            }
+            else
+            {
+                PlanExecutor planExecutor = extension.getPlanExecutor();
+                MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
+                ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
+                Identity identity = getIdentity();
+                Result result = planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context);
+                collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, results::add);
+            }
+        }
+        catch (Exception e)
+        {
+            results.add(extension.errorResult(e, entityPath));
+        }
+    }
+
     static Iterable<? extends LegendExecutionResult> generateExecutionPlan(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
@@ -287,38 +325,73 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
+    static Iterable<? extends LegendExecutionResult> convertGrammarToJSONLambda(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
         {
-            if (extension.isEngineServerConfigured()
-                    && Boolean.parseBoolean(globalState.getSetting(Constants.LEGEND_ENGINE_SERVER_REMOTE_EXECUTION)))
-            {
-                ExecutionRequest executionRequest = new ExecutionRequest(executionPlan, inputParameters);
-                LegendExecutionResult legendExecutionResult = extension.postEngineServer("/executionPlan/v1/execution/executeRequest?serializationFormat=DEFAULT", executionRequest, is ->
-                {
-                    ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
-                    is.transferTo(os);
-                    return FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server", docId, sectionNum, inputParameters);
-                });
-                results.add(legendExecutionResult);
-            }
-            else
-            {
-                PlanExecutor planExecutor = extension.getPlanExecutor();
-                MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
-                ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
-                Identity identity = getIdentity();
-                Result result = planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context);
-                collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, results::add);
-            }
+            String sourceId = executableArgs.getOrDefault("sourceId", "");
+            int lineOffset = Integer.parseInt(executableArgs.getOrDefault("lineOffset", "0"));
+            int columnOffset = Integer.parseInt(executableArgs.getOrDefault("columnOffset", "0"));
+            boolean returnSourceInformation = Boolean.parseBoolean(executableArgs.getOrDefault("returnSourceInformation", "true"));
+            Lambda lambda = PureGrammarParser.newInstance().parseLambda(executableArgs.get("code"), sourceId, lineOffset, columnOffset, returnSourceInformation);
+            results.add(
+                    FunctionLegendExecutionResult.newResult(
+                            entityPath,
+                            LegendExecutionResult.Type.SUCCESS,
+                            objectMapper.writeValueAsString(lambda),
+                            null,
+                            section.getDocumentState().getDocumentId(),
+                            section.getSectionNumber(),
+                            inputParameters
+                    )
+            );
         }
-        catch (Exception e)
+        catch (JsonProcessingException e)
         {
             results.add(extension.errorResult(e, entityPath));
         }
+        return results;
+    }
+
+    static Iterable<? extends LegendExecutionResult> getLambdaReturnType(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        CompileResult compileResult = extension.getCompileResult(section);
+        if (compileResult.hasException())
+        {
+            return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
+        }
+
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+        try
+        {
+            PureModel pureModel = compileResult.getPureModel();
+            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            String typeName = Compiler.getLambdaReturnType(lambda, pureModel);
+            // This is an object in case we want to add more information on the lambda.
+            Map<String, String> result = new HashMap<>();
+            result.put("returnType", typeName);
+            results.add(
+                    FunctionLegendExecutionResult.newResult(
+                            entityPath,
+                            LegendExecutionResult.Type.SUCCESS,
+                            objectMapper.writeValueAsString(result),
+                            null,
+                            section.getDocumentState().getDocumentId(),
+                            section.getSectionNumber(),
+                            inputParameters
+                    )
+            );
+        }
+        catch (JsonProcessingException e)
+        {
+            results.add(extension.errorResult(e, entityPath));
+        }
+        return results;
     }
 
     private static Identity getIdentity()
