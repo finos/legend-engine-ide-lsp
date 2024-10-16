@@ -331,7 +331,7 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static Iterable<? extends LegendExecutionResult> convertGrammarToJSONLambda(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    static Iterable<? extends LegendExecutionResult> convertGrammarToJSON_lambda(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
