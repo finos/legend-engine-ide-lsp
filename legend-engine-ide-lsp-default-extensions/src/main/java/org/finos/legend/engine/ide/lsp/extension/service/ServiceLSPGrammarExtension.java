@@ -315,7 +315,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             }
             case FunctionExecutionSupport.GRAMMAR_TO_JSON_LAMBDA_ID:
             {
-                return FunctionExecutionSupport.convertGrammarToJSONLambda(this, section, entityPath, executableArgs, inputParams);
+                return FunctionExecutionSupport.convertGrammarToJSON_lambda(this, section, entityPath, executableArgs, inputParams);
             }
             case FunctionExecutionSupport.JSON_TO_GRAMMAR_LAMBDA_ID:
             {
