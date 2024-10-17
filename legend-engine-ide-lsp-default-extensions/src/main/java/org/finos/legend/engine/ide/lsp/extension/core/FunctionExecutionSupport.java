@@ -225,6 +225,7 @@ public interface FunctionExecutionSupport
             String mapping = executableArgs.get("mapping");
             Runtime runtime = objectMapper.readValue(executableArgs.get("runtime"), Runtime.class);
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
+            SerializationFormat format = SerializationFormat.valueOf(executableArgs.getOrDefault("serializationFormat", SerializationFormat.DEFAULT.name()));
             PureModel pureModel = compileResult.getPureModel();
             SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(lambda, mapping, runtime, context, pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
 
@@ -237,7 +238,7 @@ public interface FunctionExecutionSupport
             {
                 LOGGER.warn("Failed to compile plan");
             }
-            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, planExecutionContext, entityPath, inputParameters, results);
+            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, planExecutionContext, entityPath, inputParameters, format, results);
         }
         catch (Exception e)
         {
@@ -247,6 +248,12 @@ public interface FunctionExecutionSupport
     }
 
     static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
+    {
+        executePlan(globalState, executionSupport, docId, sectionNum, executionPlan, context, entityPath, inputParameters, SerializationFormat.DEFAULT, results);
+    }
+
+
+    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, SerializationFormat format, MutableList<LegendExecutionResult> results)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -271,7 +278,7 @@ public interface FunctionExecutionSupport
                 ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
                 Identity identity = getIdentity();
                 Result result = planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context);
-                collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, results::add);
+                collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, format, results::add);
             }
         }
         catch (Exception e)
@@ -473,7 +480,7 @@ public interface FunctionExecutionSupport
         return Optional.ofNullable(subject).map(Identity::makeIdentity).orElseGet(Identity::getAnonymousIdentity);
     }
 
-    private static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, Consumer<? super LegendExecutionResult> consumer)
+    private static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, SerializationFormat format, Consumer<? super LegendExecutionResult> consumer)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -494,7 +501,7 @@ public interface FunctionExecutionSupport
             ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1024);
             try
             {
-                ((StreamingResult) result).getSerializer(SerializationFormat.DEFAULT).stream(byteStream);
+                ((StreamingResult) result).getSerializer(format).stream(byteStream);
             }
             catch (IOException e)
             {
