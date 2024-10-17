@@ -370,7 +370,7 @@ public interface FunctionExecutionSupport
         try
         {
             Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
-            RenderStyle renderStyle = objectMapper.readValue(executableArgs.get("renderStyle"), RenderStyle.class);
+            RenderStyle renderStyle = RenderStyle.valueOf(executableArgs.get("renderStyle"));
             String grammar = lambda.accept(DEPRECATED_PureGrammarComposerCore.Builder.newInstance().withRenderStyle(renderStyle).build());
             results.add(
                     FunctionLegendExecutionResult.newResult(
