@@ -17,7 +17,6 @@
 package org.finos.legend.engine.ide.lsp.extension.core;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -384,7 +383,7 @@ public interface FunctionExecutionSupport
                     )
             );
         }
-        catch (JsonProcessingException e)
+        catch (Exception e)
         {
             results.add(extension.errorResult(e, entityPath));
         }
@@ -415,7 +414,7 @@ public interface FunctionExecutionSupport
                     )
             );
         }
-        catch (JsonProcessingException e)
+        catch (Exception e)
         {
             results.add(extension.errorResult(e, entityPath));
         }
@@ -453,7 +452,7 @@ public interface FunctionExecutionSupport
                     )
             );
         }
-        catch (JsonProcessingException e)
+        catch (Exception e)
         {
             results.add(extension.errorResult(e, entityPath));
         }
