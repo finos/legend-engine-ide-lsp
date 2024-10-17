@@ -355,7 +355,7 @@ public interface FunctionExecutionSupport
                     )
             );
         }
-        catch (JsonProcessingException e)
+        catch (Exception e)
         {
             results.add(extension.errorResult(e, entityPath));
         }
