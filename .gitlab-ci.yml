@@ -10,3 +10,4 @@ clm_scan:
     script:
         - /opt/clm/request-clmscan.sh "${CI_PROJECT_DIR}"
 
+# dummy comment
