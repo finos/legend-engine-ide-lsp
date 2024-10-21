@@ -165,7 +165,7 @@
                             <maven.repo.local>${maven.repo.local}</maven.repo.local>
                             <test.maven.settings.path>${test.maven.settings.path}</test.maven.settings.path>
                         </systemPropertyVariables>
-                        <forkCount>1C</forkCount>
+                        <forkCount>1</forkCount>
                         <reuseForks>true</reuseForks>
                     </configuration>
                 </plugin>
