@@ -36,7 +36,7 @@ import org.eclipse.lsp4j.services.LanguageClient;
 public class DummyLanguageClient implements LanguageClient
 {
     private final Map<String, JsonElement> configs;
-
+// dummy comment to trigger pipeline
     public final LinkedBlockingQueue<String> clientLog = new LinkedBlockingQueue();
     public List<ApplyWorkspaceEditParams> workspaceEdits = new ArrayList<>();
 
