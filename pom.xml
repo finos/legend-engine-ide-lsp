@@ -166,7 +166,7 @@
                             <test.maven.settings.path>${test.maven.settings.path}</test.maven.settings.path>
                         </systemPropertyVariables>
                         <forkCount>1C</forkCount>
-                        <reuseForks>false</reuseForks>
+                        <reuseForks>true</reuseForks>
                     </configuration>
                 </plugin>
                 <plugin>
