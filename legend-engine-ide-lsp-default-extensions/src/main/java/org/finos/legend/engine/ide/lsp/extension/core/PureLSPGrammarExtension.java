@@ -354,7 +354,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     }
 
     @Override
-    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String clientVersion)
+    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String version)
     {
         Function function = (Function) element;
         FunctionDefinition<?> functionDefinition;
@@ -368,13 +368,13 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
+        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, version, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
     }
 
     @Override
-    public SingleExecutionPlan getExecutionPlan(Lambda function, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
+    public SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
     {
-        FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(function.body, function.parameters, pureModel.getContext());
+        FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
         Mapping mapping = pureModel.getMapping(mappingPath);
         Root_meta_core_runtime_Runtime pureRuntime = HelperRuntimeBuilder.buildPureRuntime(runtime, pureModel.getContext());
 
@@ -386,7 +386,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                 pureRuntime,
                 HelperValueSpecificationBuilder.processExecutionContext(context, pureModel.getContext()),
                 pureModel,
-                clientVersion,
+                version,
                 PlanPlatform.JAVA,
                 null,
                 routerExtensions,

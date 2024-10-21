@@ -360,7 +360,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda function, PureModel pureModel, Map<String, Object> args, String clientVersion)
+    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda function, PureModel pureModel, Map<String, Object> args, String version)
     {
         PureSingleExecution singleExecution = new PureSingleExecution();
         Service service = (Service) element;
@@ -397,12 +397,12 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    public SingleExecutionPlan getExecutionPlan(Lambda function, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
+    public SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
     {
         PureSingleExecution singleExecution = new PureSingleExecution();
         singleExecution.mapping = mappingPath;
         singleExecution.runtime = runtime;
-        singleExecution.func = function;
+        singleExecution.func = lambda;
 
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
@@ -410,7 +410,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                 singleExecution,
                 HelperValueSpecificationBuilder.processExecutionContext(context, pureModel.getContext()),
                 pureModel,
-                clientVersion,
+                version,
                 PlanPlatform.JAVA,
                 routerExtensions,
                 planTransformers
