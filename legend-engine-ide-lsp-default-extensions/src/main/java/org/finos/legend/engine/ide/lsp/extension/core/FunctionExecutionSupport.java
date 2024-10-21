@@ -117,27 +117,9 @@ public interface FunctionExecutionSupport
         return "";
     }
 
-    SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String version);
+    SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String clientVersion);
 
-    default SingleExecutionPlan getExecutionPlan(Lambda function, String mapping, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
-    {
-        PureSingleExecution singleExecution = new PureSingleExecution();
-        singleExecution.mapping = mapping;
-        singleExecution.runtime = runtime;
-        singleExecution.func = function;
-
-        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
-        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        return ServicePlanGenerator.generateSingleExecutionPlan(
-                singleExecution,
-                HelperValueSpecificationBuilder.processExecutionContext(context, pureModel.getContext()),
-                pureModel,
-                version,
-                PlanPlatform.JAVA,
-                routerExtensions,
-                planTransformers
-        );
-    }
+    SingleExecutionPlan getExecutionPlan(Lambda function, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion);
 
     static void collectFunctionExecutionCommand(FunctionExecutionSupport executionSupport, PackageableElement element, CompileResult compileResult, CommandConsumer consumer)
     {
