@@ -91,7 +91,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: test-results-${{ matrix.os }}
-          path: ${{ github.workspace }}/legend-engine-ide-lsp-test-reports/surefire-reports-aggregate/*.xml
+          path: ${{ github.workspace }}/legend-engine-ide-lsp-test-reports/surefire-reports-aggregate/*
 
       - name: Upload CI Event
         if: always()
