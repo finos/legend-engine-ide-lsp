@@ -41,7 +41,6 @@ import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRuntimeBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
-import org.finos.legend.engine.language.pure.dsl.service.generation.ServicePlanGenerator;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParser;
 import org.finos.legend.engine.language.pure.grammar.to.DEPRECATED_PureGrammarComposerCore;
 import org.finos.legend.engine.plan.execution.PlanExecutionContext;
@@ -64,7 +63,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.Package
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Enumeration;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.PureSingleExecution;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
@@ -76,9 +74,8 @@ import org.finos.legend.engine.shared.core.kerberos.SubjectTools;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
 import org.finos.legend.pure.generated.Root_meta_core_runtime_Runtime;
 import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
-import org.finos.legend.pure.generated.Root_meta_pure_runtime_ExecutionContext;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.LambdaFunction;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.FunctionDefinition;
 import org.finos.legend.pure.m4.coreinstance.primitive.date.PureDate;
 import org.finos.legend.pure.m4.coreinstance.primitive.strictTime.PureStrictTime;
 import org.slf4j.Logger;
@@ -119,7 +116,49 @@ public interface FunctionExecutionSupport
 
     SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String version);
 
-    SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version);
+    default SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
+    {
+        FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
+        Mapping mapping = pureModel.getMapping(mappingPath);
+        Root_meta_core_runtime_Runtime pureRuntime = HelperRuntimeBuilder.buildPureRuntime(runtime, pureModel.getContext());
+
+        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
+        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
+        return PlanGenerator.generateExecutionPlan(
+                functionDefinition,
+                mapping,
+                pureRuntime,
+                HelperValueSpecificationBuilder.processExecutionContext(context, pureModel.getContext()),
+                pureModel,
+                version,
+                PlanPlatform.JAVA,
+                null,
+                routerExtensions,
+                planTransformers
+        );
+    }
+
+    default PlanWithDebug debugExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
+    {
+        FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
+        Mapping mapping = pureModel.getMapping(mappingPath);
+        Root_meta_core_runtime_Runtime pureRuntime = HelperRuntimeBuilder.buildPureRuntime(runtime, pureModel.getContext());
+
+        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
+        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
+        return PlanGenerator.generateExecutionPlanDebug(
+                functionDefinition,
+                mapping,
+                pureRuntime,
+                HelperValueSpecificationBuilder.processExecutionContext(context, pureModel.getContext()),
+                pureModel,
+                version,
+                PlanPlatform.JAVA,
+                null,
+                routerExtensions,
+                planTransformers
+        );
+    }
 
     static void collectFunctionExecutionCommand(FunctionExecutionSupport executionSupport, PackageableElement element, CompileResult compileResult, CommandConsumer consumer)
     {
@@ -284,27 +323,23 @@ public interface FunctionExecutionSupport
         {
             GlobalState globalState = section.getDocumentState().getGlobalState();
 
-            String clientVersion = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
-            PureModel pureModel = compileResult.getPureModel();
             Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
-            LambdaFunction<?> lambdaFunction = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
-            Mapping mapping = executableArgs.get("mapping") == null ? null : pureModel.getMapping(executableArgs.get("mapping"));
-            Root_meta_core_runtime_Runtime runtime = HelperRuntimeBuilder.buildPureRuntime(objectMapper.readValue(executableArgs.get("runtime"), Runtime.class), pureModel.getContext());
-            Root_meta_pure_runtime_ExecutionContext context = HelperValueSpecificationBuilder.processExecutionContext(objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class), pureModel.getContext());
-
-            MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
-            MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
+            String mappingPath = executableArgs.get("mapping");
+            Runtime runtime = objectMapper.readValue(executableArgs.get("runtime"), Runtime.class);
+            ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
+            PureModel pureModel = compileResult.getPureModel();
+            String version = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
 
             boolean debug = Boolean.parseBoolean(executableArgs.get("debug"));
 
-            PlanWithDebug planWithDebug = debug ?
-                    PlanGenerator.generateExecutionPlanDebug(lambdaFunction, mapping, runtime, context, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers) :
-                    new PlanWithDebug(PlanGenerator.generateExecutionPlan(lambdaFunction, mapping, runtime, context, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers), "");
+            String result = objectMapper.writeValueAsString(debug ?
+                    executionSupport.debugExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version) :
+                    executionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version));
             results.add(
                     FunctionLegendExecutionResult.newResult(
                             entityPath,
                             LegendExecutionResult.Type.SUCCESS,
-                            objectMapper.writeValueAsString(debug ? planWithDebug : planWithDebug.plan),
+                            result,
                             null,
                             section.getDocumentState().getDocumentId(),
                             section.getSectionNumber(),
