@@ -16,6 +16,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
@@ -942,5 +943,36 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
         SingleExecutionPlan actualPlan = objectMapper.readValue(result.getMessage(), SingleExecutionPlan.class);
         Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
+    }
+
+    @Test
+    public void testDebugExecutionPlan() throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState = sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement = compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(TEST_SERVICE_DOC_ID)).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        RuntimePointer runtime = new RuntimePointer();
+        ExecutionContext context = new BaseExecutionContext();
+        runtime.runtime = TEST_RUNTIME_DOC_ID;
+        Map<String, String> executableArgs = Map.of(
+                "lambda", objectMapper.writeValueAsString(lambda),
+                "mapping", TEST_MAPPING_DOC_ID,
+                "runtime", objectMapper.writeValueAsString(runtime),
+                "context", objectMapper.writeValueAsString(context),
+                "debug", "true"
+        );
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, TEST_SERVICE_DOC_ID, GENERATE_EXECUTION_PLAN_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {});
+        SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get("plan")), SingleExecutionPlan.class);
+        Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
+        Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp::test::Employee[1] | {Platform> $src.hireType};"));
     }
 }
