@@ -116,7 +116,7 @@ public interface FunctionExecutionSupport
 
     SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String version);
 
-    default SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
+    static SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
     {
         FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
         Mapping mapping = pureModel.getMapping(mappingPath);
@@ -138,7 +138,7 @@ public interface FunctionExecutionSupport
         );
     }
 
-    default PlanWithDebug debugExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
+    static PlanWithDebug debugExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
     {
         FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
         Mapping mapping = pureModel.getMapping(mappingPath);
@@ -248,7 +248,7 @@ public interface FunctionExecutionSupport
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
             SerializationFormat format = SerializationFormat.valueOf(executableArgs.getOrDefault("serializationFormat", SerializationFormat.DEFAULT.name()));
             PureModel pureModel = compileResult.getPureModel();
-            SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
+            SingleExecutionPlan executionPlan = FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
 
             PlanExecutionContext planExecutionContext = null;
             try
@@ -333,8 +333,8 @@ public interface FunctionExecutionSupport
             boolean debug = Boolean.parseBoolean(executableArgs.get("debug"));
 
             String result = objectMapper.writeValueAsString(debug ?
-                    executionSupport.debugExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version) :
-                    executionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version));
+                    FunctionExecutionSupport.debugExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version) :
+                    FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version));
             results.add(
                     FunctionLegendExecutionResult.newResult(
                             entityPath,
