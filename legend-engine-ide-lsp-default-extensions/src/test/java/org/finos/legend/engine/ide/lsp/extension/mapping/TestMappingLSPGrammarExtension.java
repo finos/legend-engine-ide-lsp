@@ -415,9 +415,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "   }\n" +
                         ")");
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
-        SectionState mappingSectionState = sectionStates.stream()
-                .filter(sectionState -> Objects.equals(sectionState.getDocumentState().getDocumentId(), "vscodelsp::test::EmployeeMapping"))
-                .findFirst().orElseThrow();
+        SectionState mappingSectionState = sectionStates.detect(sectionState -> Objects.equals(sectionState.getDocumentState().getDocumentId(), "vscodelsp::test::EmployeeMapping"));
 
         String expected = "{\"mappedEntities\":[{\"info\":null,\"path\":\"vscodelsp::test::Employee\",\"properties\":[{\"mappedPropertyInfo\":null,\"name\":\"hireDate\"},{\"mappedPropertyInfo\":null,\"name\":\"hireType\"},{\"mappedPropertyInfo\":null,\"name\":\"foobar\"}]}]}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(mappingSectionState, "vscodelsp::test::EmployeeMapping", "legend.mapping.analyzeMappingModelCoverage");
