@@ -113,6 +113,11 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
         return this.extension.execute(sectionState, entityPath, command, Maps.fixedSize.empty());
     }
 
+    protected Iterable<? extends LegendExecutionResult> testCommand(SectionState sectionState, String entityPath, String command)
+    {
+        return this.extension.execute(sectionState, entityPath, command, Maps.fixedSize.empty());
+    }
+
     protected SectionState newSectionState(String docId, String text)
     {
         return stateForTestFactory.newSectionState(docId, text);

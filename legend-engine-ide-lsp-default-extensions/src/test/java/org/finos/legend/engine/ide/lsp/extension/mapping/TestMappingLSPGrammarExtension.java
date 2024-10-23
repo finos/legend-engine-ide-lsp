@@ -18,19 +18,25 @@ package org.finos.legend.engine.ide.lsp.extension.mapping;
 
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
+import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.util.Objects;
 
 public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<MappingLSPGrammarExtension>
 {
@@ -373,5 +379,52 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 .withDeclarationLocation(TextLocation.newTextSource(TEST_CLASS_DOC_ID_2, 1, 0, 4, 0))
                 .build();
         testReferenceLookup(codeFiles, TEST_MAPPING_DOC_ID, TextPosition.newPosition(25, 40), mappedClassReference2, "Within the mapping test suite class name has been mapped, referring to class definition");
+    }
+
+    @Test
+    void testAnalyzeMappingModelCoverage()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::Employee",
+                "###Pure\n" +
+                        "Class vscodelsp::test::Employee\n" +
+                        "{\n" +
+                        "    foobar: Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::EmployeeSrc",
+                "###Pure\n" +
+                        "Class vscodelsp::test::EmployeeSrc\n" +
+                        "{\n" +
+                        "    foobar: Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::EmployeeMapping",
+                "###Mapping\n" +
+                        "Mapping vscodelsp::test::EmployeeMapping\n" +
+                        "(\n" +
+                        "   vscodelsp::test::Employee[emp] : Pure\n" +
+                        "   {\n" +
+                        "      ~src vscodelsp::test::EmployeeSrc\n" +
+                        "      hireDate : today(),\n" +
+                        "      hireType : 'FullTime'\n" +
+                        "   }\n" +
+                        ")");
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState mappingSectionState = sectionStates.stream()
+                .filter(sectionState -> Objects.equals(sectionState.getDocumentState().getDocumentId(), "vscodelsp::test::EmployeeMapping"))
+                .findFirst().orElseThrow();
+
+        String expected = "{\"mappedEntities\":[{\"info\":null,\"path\":\"vscodelsp::test::Employee\",\"properties\":[{\"mappedPropertyInfo\":null,\"name\":\"hireDate\"},{\"mappedPropertyInfo\":null,\"name\":\"hireType\"},{\"mappedPropertyInfo\":null,\"name\":\"foobar\"}]}]}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(mappingSectionState, "vscodelsp::test::EmployeeMapping", "legend.mapping.analyzeMappingModelCoverage");
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
     }
 }
