@@ -14,11 +14,6 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
-import java.lang.reflect.ParameterizedType;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -33,6 +28,13 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.lang.reflect.ParameterizedType;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammarExtension>
 {
@@ -116,6 +118,16 @@ public abstract class AbstractLSPGrammarExtensionTest<T extends LegendLSPGrammar
     protected Iterable<? extends LegendExecutionResult> testCommand(SectionState sectionState, String entityPath, String command)
     {
         return this.extension.execute(sectionState, entityPath, command, Maps.fixedSize.empty());
+    }
+
+    protected Iterable<? extends LegendExecutionResult> testCommand(SectionState sectionState, String entityPath, String command, Map<String, String> executableArgs)
+    {
+        return this.extension.execute(sectionState, entityPath, command, executableArgs);
+    }
+
+    protected Iterable<? extends LegendExecutionResult> testCommand(SectionState sectionState, String entityPath, String command, Map<String, String> executableArgs, Map<String, Object> inputParams)
+    {
+        return this.extension.execute(sectionState, entityPath, command, executableArgs, inputParams);
     }
 
     protected SectionState newSectionState(String docId, String text)
