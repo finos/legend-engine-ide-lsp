@@ -243,12 +243,12 @@ public interface FunctionExecutionSupport
         {
             GlobalState globalState = section.getDocumentState().getGlobalState();
             Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
-            String mapping = executableArgs.get("mapping");
+            String mappingPath = executableArgs.get("mapping");
             Runtime runtime = objectMapper.readValue(executableArgs.get("runtime"), Runtime.class);
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
             SerializationFormat format = SerializationFormat.valueOf(executableArgs.getOrDefault("serializationFormat", SerializationFormat.DEFAULT.name()));
             PureModel pureModel = compileResult.getPureModel();
-            SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(lambda, mapping, runtime, context, pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
+            SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
 
             PlanExecutionContext planExecutionContext = null;
             try
