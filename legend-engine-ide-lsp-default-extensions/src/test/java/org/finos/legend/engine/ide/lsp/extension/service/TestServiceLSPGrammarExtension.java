@@ -51,14 +51,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport.GENERATE_EXECUTION_PLAN_ID;
-import static org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport.objectMapper;
+import static org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport.*;
 
 public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<ServiceLSPGrammarExtension>
 {
@@ -290,13 +286,32 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         codeFiles.put(TEST_SERVICE_DOC_ID,
                 "###Service\n" +
-                        "Service vscodelsp::test::TestService\n" +
+                        "Service vscodelsp::test::TestService1\n" +
                         "{\n" +
-                        "    pattern : 'test';\n" +
+                        "    pattern : 'test1';\n" +
                         "    documentation : 'service for testing';\n" +
                         "    execution : Single\n" +
                         "    {\n" +
                         "        query : src:vscodelsp::test::Employee[1] | $src.hireType;\n" +
+                        "        mapping : vscodelsp::test::EmployeeMapping;\n" +
+                        "        runtime : vscodelsp::test::H2Runtime;\n" +
+                        "    }\n" +
+                        "    test : Single" +
+                        "    {\n" +
+                        "        data : '';\n" +
+                        "        asserts : [];\n" +
+                        "    }\n" +
+                        "}\n" +
+                        "Service vscodelsp::test::TestService2\n" +
+                        "{\n" +
+                        "    pattern : 'test2';\n" +
+                        "    documentation : 'service for testing';\n" +
+                        "    execution : Single\n" +
+                        "    {\n" +
+                        "        query : testParam: String[1]|vscodelsp::test::Employee.all()->project(\n" +
+                        "                  [ x|$x.hireType ],\n" +
+                        "                  [ 'Hire Type' ]\n" +
+                        "        );\n" +
                         "        mapping : vscodelsp::test::EmployeeMapping;\n" +
                         "        runtime : vscodelsp::test::H2Runtime;\n" +
                         "    }\n" +
@@ -323,7 +338,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        }\n" +
                         "    }\n" +
                         "}");
-
 
         return codeFiles;
     }
@@ -447,7 +461,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         commands.forEach(c -> actualCommands.add(c.getId()));
         Assertions.assertEquals(expectedCommands, actualCommands);
 
-        LegendCommand singleServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("vscodelsp::test::TestService")).findAny().orElseThrow();
+        LegendCommand singleServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("vscodelsp::test::TestService1")).findAny().orElseThrow();
         LegendCommand multiServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("test::service")).findAny().orElseThrow();
 
         Assertions.assertEquals(Set.of("src"), singleServiceCommand.getInputParameters().keySet());
@@ -974,5 +988,38 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get("plan")), SingleExecutionPlan.class);
         Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
         Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp::test::Employee[1] | {Platform> $src.hireType};"));
+    }
+
+    @Test
+    public void testExecuteQuery() throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState = sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement = compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals("vscodelsp::test::TestService2")).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        RuntimePointer runtime = new RuntimePointer();
+        runtime.runtime = TEST_RUNTIME_DOC_ID;
+        ExecutionContext context = new BaseExecutionContext();
+        Map<String, String> executableArgs = Map.of(
+                "lambda", objectMapper.writeValueAsString(lambda),
+                "mapping", TEST_MAPPING_DOC_ID,
+                "runtime", objectMapper.writeValueAsString(runtime),
+                "context", objectMapper.writeValueAsString(context)
+        );
+        Map<String, Object> inputParameters = Map.of(
+                "testParam", "testValue"
+        );
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, TEST_SERVICE_DOC_ID, EXECUTE_QUERY_ID, executableArgs, inputParameters);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+//        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {});
+//        SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get("plan")), SingleExecutionPlan.class);
+//        Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
+//        Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp::test::Employee[1] | {Platform> $src.hireType};"));
     }
 }
