@@ -40,15 +40,10 @@ import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
-import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementPointer;
-import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementType;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.result.DataTypeResultType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.ConnectionPointer;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.*;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.StoreProviderPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.RuntimePointer;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.BaseExecutionContext;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
@@ -56,7 +51,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport.*;
@@ -1061,6 +1059,43 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "\"startLine\":1}}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
                 GRAMMAR_TO_JSON_LAMBDA_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
+    public void testConvertJSONToGrammar_lambda() {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String lambdaString =
+                "{" +
+                "   \"_type\": \"lambda\"," +
+                "   \"body\": [" +
+                "       {" +
+                "           \"_type\": \"string\"," +
+                "           \"value\": \"testValue\"" +
+                "       }" +
+                "   ]," +
+                "   \"parameters\": [" +
+                "       {" +
+                "           \"_type\": \"var\"," +
+                "           \"name\": \"x\"" +
+                "       }" +
+                "   ]" +
+                "}";
+        Map<String, String> executableArgs = Map.of(
+                "lambda", lambdaString,
+                "renderStyle", "STANDARD"
+        );
+
+        String expected = "x|'testValue'";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                JSON_TO_GRAMMAR_LAMBDA_ID, executableArgs);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
