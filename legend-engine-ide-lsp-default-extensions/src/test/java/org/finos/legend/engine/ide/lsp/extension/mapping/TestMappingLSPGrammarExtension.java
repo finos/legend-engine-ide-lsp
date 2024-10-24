@@ -113,8 +113,7 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "      hireType : [EmployeeDatabase]EmployeeTable.hireType\n" +
                         "   }\n" +
                         ")",
-                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler),
-                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 1, 0, 8, 0), "Error in 'vscodelsp::test::EmployeeMapping': Cannot invoke \"org.finos.legend.pure.m3.coreinstance.meta.relational.mapping.RootRelationalInstanceSetImplementation._mainTableAlias()\" because \"rsi\" is null", Kind.Error, Source.Compiler)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler)
         );
     }
 
@@ -139,8 +138,8 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "   }\n" +
                 ")");
         testDiagnostics(codeFiles, "vscodelsp::test::EmployeeMapping",
-                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping", 3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler),
-                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping", 1, 0, 8, 0), "Error in 'vscodelsp::test::EmployeeMapping': Cannot invoke \"org.finos.legend.pure.m3.coreinstance.meta.relational.mapping.RootRelationalInstanceSetImplementation._mainTableAlias()\" because \"rsi\" is null", Kind.Error, Source.Compiler));
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("vscodelsp::test::EmployeeMapping", 3, 3, 3, 10), "Can't find class 'Employee'", Kind.Error, Source.Compiler)
+        );
     }
 
     @Test
