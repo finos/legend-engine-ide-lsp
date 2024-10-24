@@ -935,25 +935,25 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testGetExecutionPlan() throws Exception
-    {
+    public void testGetExecutionPlan() throws Exception {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
-        SectionState sectionState = sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
         CompileResult compileResult = extension.getCompileResult(sectionState);
-        PackageableElement serviceElement = compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(TEST_SERVICE_DOC_ID)).findFirst().orElseThrow();
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService1")).findFirst().orElseThrow();
         Lambda lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
         ExecutionContext context = new BaseExecutionContext();
         runtime.runtime = TEST_RUNTIME_DOC_ID;
-        Map<String, String> executableArgs = Map.of(
-                "lambda", objectMapper.writeValueAsString(lambda),
-                "mapping", TEST_MAPPING_DOC_ID,
-                "runtime", objectMapper.writeValueAsString(runtime),
-                "context", objectMapper.writeValueAsString(context)
-        );
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                TEST_MAPPING_DOC_ID, "runtime", objectMapper.writeValueAsString(runtime), "context",
+                objectMapper.writeValueAsString(context));
 
-        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, TEST_SERVICE_DOC_ID, GENERATE_EXECUTION_PLAN_ID, executableArgs);
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, TEST_SERVICE_DOC_ID,
+                GENERATE_EXECUTION_PLAN_ID, executableArgs);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
@@ -963,34 +963,36 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testDebugExecutionPlan() throws Exception
-    {
+    public void testDebugExecutionPlan() throws Exception {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
-        SectionState sectionState = sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
         CompileResult compileResult = extension.getCompileResult(sectionState);
-        PackageableElement serviceElement = compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(TEST_SERVICE_DOC_ID)).findFirst().orElseThrow();
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService1")).findFirst().orElseThrow();
         Lambda lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
         ExecutionContext context = new BaseExecutionContext();
         runtime.runtime = TEST_RUNTIME_DOC_ID;
-        Map<String, String> executableArgs = Map.of(
-                "lambda", objectMapper.writeValueAsString(lambda),
-                "mapping", TEST_MAPPING_DOC_ID,
-                "runtime", objectMapper.writeValueAsString(runtime),
-                "context", objectMapper.writeValueAsString(context),
-                "debug", "true"
-        );
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                TEST_MAPPING_DOC_ID, "runtime", objectMapper.writeValueAsString(runtime), "context",
+                objectMapper.writeValueAsString(context), "debug", "true");
 
-        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, TEST_SERVICE_DOC_ID, GENERATE_EXECUTION_PLAN_ID, executableArgs);
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, TEST_SERVICE_DOC_ID,
+                GENERATE_EXECUTION_PLAN_ID, executableArgs);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
-        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {});
-        SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get("plan")), SingleExecutionPlan.class);
+        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {
+        });
+        SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get(
+                "plan")), SingleExecutionPlan.class);
         Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
-        Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp::test::Employee[1] | {Platform> $src.hireType};"));
+        Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp" +
+                "::test::Employee[1] | {Platform> $src.hireType};"));
     }
 
     @Test
@@ -1004,21 +1006,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Lambda lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
         runtime.runtime = TEST_RUNTIME_DOC_ID;
-//        SingleConnectionEngineRuntime runtime = new SingleConnectionEngineRuntime();
-//        runtime.mappings = List.of(new PackageableElementPointer(PackageableElementType.MAPPING, "vscodelsp::test::EmployeeMapping"));
-//        StoreConnections storeConnections = new StoreConnections();
-//        storeConnections.store = new PackageableElementPointer(PackageableElementType.STORE, "vscodelsp::test::TestDB1");
-//        IdentifiedConnection identifiedConnection = new IdentifiedConnection();
-//        identifiedConnection.id = "vscodelsp::test::LocalH2Connection1";
-//        ConnectionPointer connectionPointer = new ConnectionPointer();
-//        connectionPointer.connection = "vscodelsp::test::LocalH2Connection1";
-//        identifiedConnection.connection = connectionPointer;
-//        storeConnections.storeConnections = List.of(identifiedConnection);
-//        runtime.connections = List.of(storeConnections);
-//        ConnectionStores connectionStores = new ConnectionStores();
-//        connectionStores.connectionPointer = connectionPointer;
-//        connectionStores.storePointers = List.of(new StoreProviderPointer(PackageableElementType.STORE, "vscodelsp::test::TestDB1"));
-//        runtime.connectionStores = List.of(connectionStores);
         ExecutionContext context = new BaseExecutionContext();
         Map<String, String> executableArgs = Map.of(
                 "lambda", objectMapper.writeValueAsString(lambda),
@@ -1050,13 +1037,12 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         String grammar = "x|$x.hireType";
         Map<String, String> executableArgs = Map.of("code", grammar);
 
-        String expected = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"property\"," +
-                "\"parameters\":[{\"_type\":\"var\",\"name\":\"x\",\"sourceInformation\":{\"endColumn\":4," +
-                "\"endLine\":1,\"sourceId\":\"\",\"startColumn\":3,\"startLine\":1}}],\"property\":\"hireType\"," +
+        String expected = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"property\"," + "\"parameters\":[{\"_type" +
+                "\":\"var\",\"name\":\"x\",\"sourceInformation\":{\"endColumn\":4," + "\"endLine\":1," +
+                "\"sourceId\":\"\",\"startColumn\":3,\"startLine\":1}}],\"property\":\"hireType\"," +
                 "\"sourceInformation\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":6," +
-                "\"startLine\":1}}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]," +
-                "\"sourceInformation\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":2," +
-                "\"startLine\":1}}";
+                "\"startLine\":1}}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]," + "\"sourceInformation" +
+                "\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":2," + "\"startLine\":1}}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
                 GRAMMAR_TO_JSON_LAMBDA_ID, executableArgs);
 
@@ -1088,10 +1074,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "       }" +
                 "   ]" +
                 "}";
-        Map<String, String> executableArgs = Map.of(
-                "lambda", lambdaString,
-                "renderStyle", "STANDARD"
-        );
+        Map<String, String> executableArgs = Map.of("lambda", lambdaString, "renderStyle", "STANDARD");
 
         String expected = "x|'testValue'";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
@@ -1147,12 +1130,11 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "       }" +
                         "   ]" +
                         "}";
-        Map<String, String> executableArgs = Map.of(
-                "lambdas", "{\"query-builder@projection@1\":" + lambdaString1 + ",\"query-builder@projection@2\":" + lambdaString2 + "}",
-                "renderStyle", "STANDARD"
-        );
+        Map<String, String> executableArgs = Map.of("lambdas", "{\"query-builder@projection@1\":" + lambdaString1 +
+                ",\"query-builder@projection@2\":" + lambdaString2 + "}", "renderStyle", "STANDARD");
 
-        String expected = "{\"query-builder@projection@1\":\"x|'testValue'\",\"query-builder@projection@2\":\"x|$x.hireType\"}";
+        String expected = "{\"query-builder@projection@1\":\"x|'testValue'\",\"query-builder@projection@2\":\"x|$x" +
+                ".hireType\"}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
                 JSON_TO_GRAMMAR_LAMBDA_BATCH_ID, executableArgs);
 
