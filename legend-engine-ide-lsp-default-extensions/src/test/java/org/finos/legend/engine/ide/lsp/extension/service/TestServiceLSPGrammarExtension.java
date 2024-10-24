@@ -40,10 +40,15 @@ import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementType;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.result.DataTypeResultType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.RuntimePointer;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.ConnectionPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.*;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.StoreProviderPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.BaseExecutionContext;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
@@ -1001,6 +1006,21 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Lambda lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
         runtime.runtime = TEST_RUNTIME_DOC_ID;
+//        SingleConnectionEngineRuntime runtime = new SingleConnectionEngineRuntime();
+//        runtime.mappings = List.of(new PackageableElementPointer(PackageableElementType.MAPPING, "vscodelsp::test::EmployeeMapping"));
+//        StoreConnections storeConnections = new StoreConnections();
+//        storeConnections.store = new PackageableElementPointer(PackageableElementType.STORE, "vscodelsp::test::TestDB1");
+//        IdentifiedConnection identifiedConnection = new IdentifiedConnection();
+//        identifiedConnection.id = "vscodelsp::test::LocalH2Connection1";
+//        ConnectionPointer connectionPointer = new ConnectionPointer();
+//        connectionPointer.connection = "vscodelsp::test::LocalH2Connection1";
+//        identifiedConnection.connection = connectionPointer;
+//        storeConnections.storeConnections = List.of(identifiedConnection);
+//        runtime.connections = List.of(storeConnections);
+//        ConnectionStores connectionStores = new ConnectionStores();
+//        connectionStores.connectionPointer = connectionPointer;
+//        connectionStores.storePointers = List.of(new StoreProviderPointer(PackageableElementType.STORE, "vscodelsp::test::TestDB1"));
+//        runtime.connectionStores = List.of(connectionStores);
         ExecutionContext context = new BaseExecutionContext();
         Map<String, String> executableArgs = Map.of(
                 "lambda", objectMapper.writeValueAsString(lambda),
@@ -1012,7 +1032,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "testParam", "testValue"
         );
 
-        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, TEST_SERVICE_DOC_ID, EXECUTE_QUERY_ID, executableArgs, inputParameters);
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2", EXECUTE_QUERY_ID, executableArgs, inputParameters);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
@@ -1021,5 +1041,30 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 //        SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get("plan")), SingleExecutionPlan.class);
 //        Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
 //        Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp::test::Employee[1] | {Platform> $src.hireType};"));
+    }
+
+    @Test
+    public void testConvertGrammarToJSON_lambda() {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String grammar = "x|$x.hireType";
+        Map<String, String> executableArgs = Map.of("code", grammar);
+
+        String expected = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"property\"," +
+                "\"parameters\":[{\"_type\":\"var\",\"name\":\"x\",\"sourceInformation\":{\"endColumn\":4," +
+                "\"endLine\":1,\"sourceId\":\"\",\"startColumn\":3,\"startLine\":1}}],\"property\":\"hireType\"," +
+                "\"sourceInformation\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":6," +
+                "\"startLine\":1}}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]," +
+                "\"sourceInformation\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":2," +
+                "\"startLine\":1}}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                GRAMMAR_TO_JSON_LAMBDA_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
     }
 }
