@@ -29,7 +29,7 @@ public class TestDefaultExtensions
     {
         MutableList<LegendLSPGrammarExtension> extensions = Lists.mutable.withAll(ServiceLoader.load(LegendLSPGrammarExtension.class));
         Assertions.assertEquals(
-                Sets.mutable.with("Pure", "Mapping", "Service", "Runtime", "Relational", "Connection", "Snowflake", "HostedService", "DataSpace", "Diagram"),
+                Sets.mutable.with("Pure", "Mapping", "Service", "Runtime", "Relational", "Connection", "Snowflake", "HostedService", "DataSpace", "Diagram", "purebook"),
                 extensions.collect(LegendLSPExtension::getName, Sets.mutable.empty())
         );
     }

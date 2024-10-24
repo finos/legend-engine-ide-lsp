@@ -114,7 +114,7 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
      */
     default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
     {
-        return Collections.emptyList();
+        return this.execute(section, entityPath, commandId, executableArgs, Map.of());
     }
 
     /**
@@ -127,7 +127,7 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
      */
     default Optional<LegendReference> getLegendReference(SectionState sectionState, TextPosition textPosition)
     {
-        return Optional.empty();
+        return getLegendReferences(sectionState).filter(x -> x.getLocation().getTextInterval().includes(textPosition)).findAny();
     }
 
     /**
