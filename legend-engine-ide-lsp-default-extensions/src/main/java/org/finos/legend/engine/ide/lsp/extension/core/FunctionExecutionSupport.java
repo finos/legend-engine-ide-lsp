@@ -248,7 +248,8 @@ public interface FunctionExecutionSupport
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
             SerializationFormat format = SerializationFormat.valueOf(executableArgs.getOrDefault("serializationFormat", SerializationFormat.DEFAULT.name()));
             PureModel pureModel = compileResult.getPureModel();
-            SingleExecutionPlan executionPlan = FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
+            String version = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
+            SingleExecutionPlan executionPlan = FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version);
 
             PlanExecutionContext planExecutionContext = null;
             try
