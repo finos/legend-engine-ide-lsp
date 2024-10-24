@@ -1102,4 +1102,63 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
         Assertions.assertEquals(expected, result.getMessage());
     }
+
+    @Test
+    public void testConvertJSONToGrammar_lambda_batch() {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String lambdaString1 =
+                "{" +
+                        "   \"_type\": \"lambda\"," +
+                        "   \"body\": [" +
+                        "       {" +
+                        "           \"_type\": \"string\"," +
+                        "           \"value\": \"testValue\"" +
+                        "       }" +
+                        "   ]," +
+                        "   \"parameters\": [" +
+                        "       {" +
+                        "           \"_type\": \"var\"," +
+                        "           \"name\": \"x\"" +
+                        "       }" +
+                        "   ]" +
+                        "}";
+        String lambdaString2 =
+                "{" +
+                        "   \"_type\": \"lambda\"," +
+                        "   \"body\": [" +
+                        "       {" +
+                        "           \"_type\": \"property\"," +
+                        "           \"property\": \"hireType\"," +
+                        "           \"parameters\": [" +
+                        "               {" +
+                        "                   \"_type\": \"var\"," +
+                        "                   \"name\": \"x\"" +
+                        "               }" +
+                        "           ]" +
+                        "       }" +
+                        "   ]," +
+                        "   \"parameters\": [" +
+                        "       {" +
+                        "           \"_type\": \"var\"," +
+                        "           \"name\": \"x\"" +
+                        "       }" +
+                        "   ]" +
+                        "}";
+        Map<String, String> executableArgs = Map.of(
+                "lambdas", "{\"query-builder@projection@1\":" + lambdaString1 + ",\"query-builder@projection@2\":" + lambdaString2 + "}",
+                "renderStyle", "STANDARD"
+        );
+
+        String expected = "{\"query-builder@projection@1\":\"x|'testValue'\",\"query-builder@projection@2\":\"x|$x.hireType\"}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                JSON_TO_GRAMMAR_LAMBDA_BATCH_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
 }
