@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
 import org.finos.legend.engine.ide.lsp.extension.StateForTestFactory;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendSDLCFeature;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DynamicTest;
@@ -161,5 +162,14 @@ class TestLegendSDLCFeature
         String actual = legendSDLCFeature.getClassifierPathMap();
         Assertions.assertTrue(actual.contains("{\"type\":\"association\"," + "\"classifierPath\":\"meta::pure" +
                 "::metamodel::relationship::Association\"}"));
+    }
+
+    @Test
+    public void testGetSubtypeInfo()
+    {
+        LegendSDLCFeatureImpl legendSDLCFeature = new LegendSDLCFeatureImpl();
+        LegendSDLCFeature.SubtypeInfoResult actual = legendSDLCFeature.getSubtypeInfo();
+        Assertions.assertFalse(actual.functionActivatorSubtypes.isEmpty());
+        Assertions.assertFalse(actual.storeSubtypes.isEmpty());
     }
 }
