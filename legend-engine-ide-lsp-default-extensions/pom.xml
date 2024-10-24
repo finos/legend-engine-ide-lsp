@@ -392,6 +392,11 @@
             <artifactId>legend-engine-xt-diagram-grammar</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.finos.legend.engine</groupId>
+            <artifactId>legend-engine-xt-analytics-mapping-pure</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- LEGEND ENGINE -->
 
         <dependency>

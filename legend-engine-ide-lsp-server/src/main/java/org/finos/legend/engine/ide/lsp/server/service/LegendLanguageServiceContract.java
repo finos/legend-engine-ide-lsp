@@ -24,6 +24,7 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.jsonrpc.services.JsonSegment;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.features.LegendSDLCFeature;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
@@ -70,4 +71,10 @@ public interface LegendLanguageServiceContract
 
     @JsonRequest("writeEntity")
     CompletableFuture<Void> writeEntity(LegendWriteEntityRequest request);
+
+    @JsonRequest("getClassifierPathMap")
+    CompletableFuture<String> getClassifierPathMap();
+
+    @JsonRequest("getSubtypeInfo")
+    CompletableFuture<LegendSDLCFeature.SubtypeInfoResult> getSubtypeInfo();
 }

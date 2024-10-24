@@ -16,16 +16,15 @@
 
 package org.finos.legend.engine.ide.lsp.extension.service;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
+import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
@@ -33,6 +32,7 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestAssertionResult;
@@ -40,9 +40,24 @@ import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
+import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.result.DataTypeResultType;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.RuntimePointer;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.BaseExecutionContext;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport.*;
 
 public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<ServiceLSPGrammarExtension>
 {
@@ -274,13 +289,32 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         codeFiles.put(TEST_SERVICE_DOC_ID,
                 "###Service\n" +
-                        "Service vscodelsp::test::TestService\n" +
+                        "Service vscodelsp::test::TestService1\n" +
                         "{\n" +
-                        "    pattern : 'test';\n" +
+                        "    pattern : 'test1';\n" +
                         "    documentation : 'service for testing';\n" +
                         "    execution : Single\n" +
                         "    {\n" +
                         "        query : src:vscodelsp::test::Employee[1] | $src.hireType;\n" +
+                        "        mapping : vscodelsp::test::EmployeeMapping;\n" +
+                        "        runtime : vscodelsp::test::H2Runtime;\n" +
+                        "    }\n" +
+                        "    test : Single" +
+                        "    {\n" +
+                        "        data : '';\n" +
+                        "        asserts : [];\n" +
+                        "    }\n" +
+                        "}\n" +
+                        "Service vscodelsp::test::TestService2\n" +
+                        "{\n" +
+                        "    pattern : 'test2';\n" +
+                        "    documentation : 'service for testing';\n" +
+                        "    execution : Single\n" +
+                        "    {\n" +
+                        "        query : testParam: String[1]|vscodelsp::test::Employee.all()->project(\n" +
+                        "                  [ x|$x.hireType ],\n" +
+                        "                  [ 'Hire Type' ]\n" +
+                        "        );\n" +
                         "        mapping : vscodelsp::test::EmployeeMapping;\n" +
                         "        runtime : vscodelsp::test::H2Runtime;\n" +
                         "    }\n" +
@@ -307,7 +341,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        }\n" +
                         "    }\n" +
                         "}");
-
 
         return codeFiles;
     }
@@ -431,7 +464,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         commands.forEach(c -> actualCommands.add(c.getId()));
         Assertions.assertEquals(expectedCommands, actualCommands);
 
-        LegendCommand singleServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("vscodelsp::test::TestService")).findAny().orElseThrow();
+        LegendCommand singleServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("vscodelsp::test::TestService1")).findAny().orElseThrow();
         LegendCommand multiServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("test::service")).findAny().orElseThrow();
 
         Assertions.assertEquals(Set.of("src"), singleServiceCommand.getInputParameters().keySet());
@@ -899,5 +932,258 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals(expectedResults.stream().sorted(executionResultComparator).collect(Collectors.toList()),
                 legendTestExecutionResults.stream().sorted(executionResultComparator).collect(Collectors.toList())
         );
+    }
+
+    @Test
+    public void testGetExecutionPlan() throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService1")).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        RuntimePointer runtime = new RuntimePointer();
+        runtime.runtime = "vscodelsp::test::H2Runtime";
+        ExecutionContext context = new BaseExecutionContext();
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "vscodelsp::test::EmployeeMapping", "runtime", objectMapper.writeValueAsString(runtime), "context",
+                objectMapper.writeValueAsString(context));
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService1",
+                GENERATE_EXECUTION_PLAN_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        SingleExecutionPlan actualPlan = objectMapper.readValue(result.getMessage(), SingleExecutionPlan.class);
+        Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
+    }
+
+    @Test
+    public void testDebugExecutionPlan() throws Exception {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService1")).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        RuntimePointer runtime = new RuntimePointer();
+        runtime.runtime = "vscodelsp::test::H2Runtime";
+        ExecutionContext context = new BaseExecutionContext();
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "vscodelsp::test::EmployeeMapping", "runtime", objectMapper.writeValueAsString(runtime), "context",
+                objectMapper.writeValueAsString(context), "debug", "true");
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService1",
+                GENERATE_EXECUTION_PLAN_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {
+        });
+        SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get(
+                "plan")), SingleExecutionPlan.class);
+        Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
+        Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp" +
+                "::test::Employee[1] | {Platform> $src.hireType};"));
+    }
+
+    @Test
+    public void testExecuteQuery() throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService1")).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        RuntimePointer runtime = new RuntimePointer();
+        runtime.runtime = "vscodelsp::test::H2Runtime";
+        ExecutionContext context = new BaseExecutionContext();
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "vscodelsp::test::EmployeeMapping", "runtime", objectMapper.writeValueAsString(runtime), "context",
+                objectMapper.writeValueAsString(context));
+        Map<String, Object> inputParameters = Map.of("testParam", "testValue");
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                EXECUTE_QUERY_ID, executableArgs, inputParameters);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+//        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {});
+//        SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get("plan")), SingleExecutionPlan.class);
+//        Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
+//        Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp::test::Employee[1] | {Platform> $src.hireType};"));
+    }
+
+    @Test
+    public void testConvertGrammarToJSON_lambda() {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String grammar = "x|$x.hireType";
+        Map<String, String> executableArgs = Map.of("code", grammar);
+
+        String expected = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"property\"," + "\"parameters\":[{\"_type" +
+                "\":\"var\",\"name\":\"x\",\"sourceInformation\":{\"endColumn\":4," + "\"endLine\":1," +
+                "\"sourceId\":\"\",\"startColumn\":3,\"startLine\":1}}],\"property\":\"hireType\"," +
+                "\"sourceInformation\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":6," +
+                "\"startLine\":1}}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]," + "\"sourceInformation" +
+                "\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":2," + "\"startLine\":1}}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                GRAMMAR_TO_JSON_LAMBDA_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
+    public void testConvertJSONToGrammar_lambda() {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String lambdaString =
+                "{" +
+                "   \"_type\": \"lambda\"," +
+                "   \"body\": [" +
+                "       {" +
+                "           \"_type\": \"string\"," +
+                "           \"value\": \"testValue\"" +
+                "       }" +
+                "   ]," +
+                "   \"parameters\": [" +
+                "       {" +
+                "           \"_type\": \"var\"," +
+                "           \"name\": \"x\"" +
+                "       }" +
+                "   ]" +
+                "}";
+        Map<String, String> executableArgs = Map.of("lambda", lambdaString, "renderStyle", "STANDARD");
+
+        String expected = "x|'testValue'";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                JSON_TO_GRAMMAR_LAMBDA_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
+    public void testConvertJSONToGrammar_lambda_batch() {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String lambdaString1 =
+                "{" +
+                        "   \"_type\": \"lambda\"," +
+                        "   \"body\": [" +
+                        "       {" +
+                        "           \"_type\": \"string\"," +
+                        "           \"value\": \"testValue\"" +
+                        "       }" +
+                        "   ]," +
+                        "   \"parameters\": [" +
+                        "       {" +
+                        "           \"_type\": \"var\"," +
+                        "           \"name\": \"x\"" +
+                        "       }" +
+                        "   ]" +
+                        "}";
+        String lambdaString2 =
+                "{" +
+                        "   \"_type\": \"lambda\"," +
+                        "   \"body\": [" +
+                        "       {" +
+                        "           \"_type\": \"property\"," +
+                        "           \"property\": \"hireType\"," +
+                        "           \"parameters\": [" +
+                        "               {" +
+                        "                   \"_type\": \"var\"," +
+                        "                   \"name\": \"x\"" +
+                        "               }" +
+                        "           ]" +
+                        "       }" +
+                        "   ]," +
+                        "   \"parameters\": [" +
+                        "       {" +
+                        "           \"_type\": \"var\"," +
+                        "           \"name\": \"x\"" +
+                        "       }" +
+                        "   ]" +
+                        "}";
+        Map<String, String> executableArgs = Map.of("lambdas", "{\"query-builder@projection@1\":" + lambdaString1 +
+                ",\"query-builder@projection@2\":" + lambdaString2 + "}", "renderStyle", "STANDARD");
+
+        String expected = "{\"query-builder@projection@1\":\"x|'testValue'\",\"query-builder@projection@2\":\"x|$x" +
+                ".hireType\"}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                JSON_TO_GRAMMAR_LAMBDA_BATCH_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
+    public void testGetLambdaReturnType() {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String lambdaString = "{" +
+                "\"_type\": \"lambda\"," +
+                "\"body\": [" +
+                "{\n\"_type\": \"property\"," +
+                "\"parameters\": [" +
+                "{" +
+                "\"_type\": \"var\"," +
+                "\"name\": \"x\"" +
+                "}" +
+                "]," +
+                "\"property\": \"hireType\"" +
+                "}" +
+                "]," +
+                "\"parameters\": [" +
+                "{" +
+                "\"_type\":\"var\"," +
+                "\"class\": \"vscodelsp::test::Employee\"," +
+                "\"multiplicity\": { " +
+                "\"lowerBound\": 1," +
+                "\"upperBound\": 1" +
+                "}," +
+                "\"name\": \"x\"" +
+                "}" +
+                "]" +
+                "}";
+        Map<String, String> executableArgs = Map.of("lambda", lambdaString);
+
+        String expected = "{\"returnType\":\"String\"}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                GET_LAMBDA_RETURN_TYPE_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
     }
 }
