@@ -153,4 +153,13 @@ class TestLegendSDLCFeature
                         })
         );
     }
+
+    @Test
+    public void testGetClassifierPathMap()
+    {
+        LegendSDLCFeatureImpl legendSDLCFeature = new LegendSDLCFeatureImpl();
+        String actual = legendSDLCFeature.getClassifierPathMap();
+        Assertions.assertTrue(actual.contains("{\"type\":\"association\"," + "\"classifierPath\":\"meta::pure" +
+                "::metamodel::relationship::Association\"}"));
+    }
 }
