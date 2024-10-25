@@ -262,55 +262,29 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
 
         try
         {
-            if (this.isEngineServerConfigured()
-                    && Boolean.parseBoolean(section.getDocumentState().getGlobalState().getSetting(Constants.LEGEND_ENGINE_SERVER_REMOTE_EXECUTION)))
-            {
-                MappingModelCoverageAnalysisRequest request = new MappingModelCoverageAnalysisRequest(
-                        "vX_X_X",
-                        entityPath,
-                        compileResult.getPureModelContextData()
-                );
-                LegendExecutionResult result = this.postEngineServer("/pure/v1/analytics/mapping/modelCoverage", request, is ->
-                {
-                    ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
-                    is.transferTo(os);
-                    return LegendExecutionResult.newResult(
+            final PureModel pureModel = compileResult.getPureModel();
+            final org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping mapping = pureModel.getMapping(entityPath);
+            Root_meta_analytics_mapping_modelCoverage_MappingModelCoverageAnalysisResult analysisResult = core_analytics_mapping_modelCoverage_analytics
+                    .Root_meta_analytics_mapping_modelCoverage_analyze_Mapping_1__Boolean_1__Boolean_1__Boolean_1__MappingModelCoverageAnalysisResult_1_(
+                            mapping,
+                            false,
+                            false,
+                            false,
+                            pureModel.getExecutionSupport()
+                    );
+            String result = core_analytics_mapping_modelCoverage_serializer
+                    .Root_meta_analytics_mapping_modelCoverage_serialization_json_getSerializedMappingModelCoverageAnalysisResult_MappingModelCoverageAnalysisResult_1__String_1_(
+                            analysisResult,
+                            pureModel.getExecutionSupport()
+                    );
+            return Collections.singletonList(
+                    LegendExecutionResult.newResult(
                             entityPath,
                             Type.SUCCESS,
-                            os.toString(StandardCharsets.UTF_8),
-                            "Executed using remote engine server",
+                            result,
                             SourceInformationUtil.toLocation(element.sourceInformation)
-                    );
-                });
-                return Collections.singletonList(result);
-            }
-            else
-            {
-                final PureModel pureModel = compileResult.getPureModel();
-                final org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping mapping = pureModel.getMapping(entityPath);
-                Root_meta_analytics_mapping_modelCoverage_MappingModelCoverageAnalysisResult analysisResult = core_analytics_mapping_modelCoverage_analytics
-                        .Root_meta_analytics_mapping_modelCoverage_analyze_Mapping_1__Boolean_1__Boolean_1__Boolean_1__MappingModelCoverageAnalysisResult_1_(
-                                mapping,
-                                false,
-                                false,
-                                false,
-                                pureModel.getExecutionSupport()
-                        );
-                String result = core_analytics_mapping_modelCoverage_serializer
-                        .Root_meta_analytics_mapping_modelCoverage_serialization_json_getSerializedMappingModelCoverageAnalysisResult_MappingModelCoverageAnalysisResult_1__String_1_(
-                                analysisResult,
-                                pureModel.getExecutionSupport()
-                        );
-                return Collections.singletonList(
-                        LegendExecutionResult.newResult(
-                                entityPath,
-                                Type.SUCCESS,
-                                result,
-                                SourceInformationUtil.toLocation(element.sourceInformation)
-                        )
-                );
-
-            }
+                    )
+            );
         }
         catch (Exception e)
         {
