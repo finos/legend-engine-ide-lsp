@@ -34,6 +34,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
+import org.finos.legend.engine.ide.lsp.extension.state.NotebookDocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
@@ -107,7 +108,13 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
 
     synchronized void deleteDocState(String uri, boolean cleanProperties)
     {
-        this.docs.remove(uri);
+        LegendServerDocumentState documentState = this.docs.remove(uri);
+
+        if (documentState != null)
+        {
+            documentState.destroy();
+        }
+
         if (cleanProperties)
         {
             this.clearProperties();
@@ -374,8 +381,7 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
 
             LOGGER.info("Clearing global and {} properties", this.uri);
             this.sectionIndex = (newText == null) ? null : parse(newText);
-            this.sectionStates = createSectionStates(this.sectionIndex);
-            this.clearProperties();
+            this.recreateSectionStates();
             return true;
         }
 
@@ -386,8 +392,23 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
 
         public synchronized void recreateSectionStates()
         {
+            this.destroy();
             this.sectionStates = createSectionStates(this.sectionIndex);
             this.clearProperties();
+        }
+
+        private void destroy()
+        {
+            if (this.sectionStates != null)
+            {
+                this.sectionStates.forEach(x ->
+                {
+                    if (x.extension != null)
+                    {
+                        x.extension.destroy(x);
+                    }
+                });
+            }
         }
 
         private synchronized List<LegendServerSectionState> createSectionStates(GrammarSectionIndex index)
@@ -464,7 +485,7 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
         }
     }
 
-    private static class LegendServerNotebookDocumentState extends LegendServerDocumentState
+    private static class LegendServerNotebookDocumentState extends LegendServerDocumentState implements NotebookDocumentState
     {
         public LegendServerNotebookDocumentState(LegendServerGlobalState globalState, String uri)
         {

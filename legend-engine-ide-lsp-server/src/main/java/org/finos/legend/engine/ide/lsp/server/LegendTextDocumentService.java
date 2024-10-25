@@ -117,26 +117,26 @@ public class LegendTextDocumentService implements TextDocumentService
         String uri = doc.getUri();
         LOGGER.debug("Changing {} (version {})", uri, doc.getVersion());
 
-        LegendServerDocumentState docState = globalState.getDocumentState(uri);
-        if (docState == null)
+        this.server.runPossiblyAsync(() ->
         {
-            LOGGER.warn("Change to {} (version {}) before it was opened", uri, doc.getVersion());
-            docState = globalState.getOrCreateDocState(uri);
-        }
+            LegendServerDocumentState docState = globalState.getDocumentState(uri);
+            if (docState == null)
+            {
+                LOGGER.warn("Change to {} (version {}) before it was opened", uri, doc.getVersion());
+                docState = globalState.getOrCreateDocState(uri);
+            }
 
-        List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
+            List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
 
-        if (applyChanges(docState, doc.getVersion(), changes))
-        {
-            this.server.runPossiblyAsync(() ->
+            if (applyChanges(docState, doc.getVersion(), changes))
             {
                 globalState.clearProperties();
                 this.server.getLanguageClient().refreshDiagnostics();
                 this.server.getLanguageClient().refreshSemanticTokens();
                 this.server.getLanguageClient().refreshCodeLenses();
                 LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
-            });
-        }
+            }
+        });
     }
 
     public static boolean applyChanges(LegendServerDocumentState finalDocState, Integer version, List<TextDocumentContentChangeEvent> changes)
@@ -443,17 +443,13 @@ public class LegendTextDocumentService implements TextDocumentService
             return Collections.emptyList();
         }
 
-        List<LegendCompletion> completionItems = List.of();
-
         String upToSuggestLocation = sectionState.getSection().getLineUpTo(location);
-        if (upToSuggestLocation.isEmpty() || upToSuggestLocation.startsWith("#"))
-        {
-            completionItems = this.server.getGrammarLibrary()
-                    .getGrammars()
-                    .stream()
-                    .map(x -> new LegendCompletion("Section - " + x, "###" + x))
-                    .collect(Collectors.toList());
-        }
+        List<LegendCompletion> completionItems = this.server.getGrammarLibrary()
+                .getGrammars()
+                .stream()
+                .map(x -> new LegendCompletion("Section - " + x, "###" + x))
+                .filter(x -> x.getSuggestion().startsWith(upToSuggestLocation))
+                .collect(Collectors.toList());
 
         if (sectionState.getExtension() != null)
         {

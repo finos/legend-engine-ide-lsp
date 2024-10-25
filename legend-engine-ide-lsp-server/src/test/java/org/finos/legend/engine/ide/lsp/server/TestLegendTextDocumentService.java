@@ -273,21 +273,19 @@ public class TestLegendTextDocumentService
                     position
             );
             List<CompletionItem> items = service.completion(completionParams).join().getLeft();
-            Assertions.assertEquals(2, items.size());
             Assertions.assertEquals(expected, items.stream().map(CompletionItem::getLabel).collect(Collectors.toSet()));
         };
 
-        Set<String> expected = Set.of("###TestGrammar", "###EmptyGrammar");
         // start of line
-        asserter.accept(new Position(9, 0), expected);
+        asserter.accept(new Position(9, 0), Set.of("###TestGrammar", "###EmptyGrammar"));
         // with # preceding
-        asserter.accept(new Position(9, 1), expected);
+        asserter.accept(new Position(9, 1), Set.of("###TestGrammar", "###EmptyGrammar"));
         // with ## preceding
-        asserter.accept(new Position(9, 2), expected);
+        asserter.accept(new Position(9, 2), Set.of("###TestGrammar", "###EmptyGrammar"));
         // with ### preceding
-        asserter.accept(new Position(9, 3), expected);
+        asserter.accept(new Position(9, 3), Set.of("###TestGrammar", "###EmptyGrammar"));
         // with ###T preceding
-        asserter.accept(new Position(9, 4), expected);
+        asserter.accept(new Position(9, 4), Set.of("###TestGrammar"));
     }
 
     @Test

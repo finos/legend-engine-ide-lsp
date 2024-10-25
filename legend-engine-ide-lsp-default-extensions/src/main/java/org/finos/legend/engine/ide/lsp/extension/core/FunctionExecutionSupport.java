@@ -236,7 +236,7 @@ public interface FunctionExecutionSupport
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
         CompileResult compileResult = extension.getCompileResult(section);
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
@@ -317,7 +317,7 @@ public interface FunctionExecutionSupport
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
         CompileResult compileResult = extension.getCompileResult(section);
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
@@ -427,7 +427,7 @@ public interface FunctionExecutionSupport
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
         CompileResult compileResult = extension.getCompileResult(section);
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
@@ -469,7 +469,7 @@ public interface FunctionExecutionSupport
         }
         catch (Exception e)
         {
-            LOGGER.warn("Unable to get local subject", e);
+            LOGGER.debug("Unable to get local subject", e);
         }
         return Optional.ofNullable(subject).map(Identity::makeIdentity).orElseGet(Identity::getAnonymousIdentity);
     }

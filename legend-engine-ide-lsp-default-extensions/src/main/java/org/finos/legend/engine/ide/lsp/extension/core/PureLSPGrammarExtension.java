@@ -61,8 +61,6 @@ import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainLe
 import org.finos.legend.engine.language.pure.grammar.from.antlr4.domain.DomainParserGrammar;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
-import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposer;
-import org.finos.legend.engine.language.pure.grammar.to.PureGrammarComposerContext;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
@@ -511,10 +509,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                     {
                         TextLocation codeBlockLocation = SourceInformationUtil.toLocation(sectionSourceCode.walkerSourceInformation.getSourceInformation(funcCtx.codeBlock()));
                         String functionExpression = section.getSection().getInterval(codeBlockLocation.getTextInterval().getStart().getLine(), codeBlockLocation.getTextInterval().getStart().getColumn(), autocompleteLocation.getLine(), autocompleteLocation.getColumn());
-                        // todo change so we can pass pure model directly...
-                        PureModelContextData pureModelContextData = this.getCompileResult(section).getPureModelContextData();
-                        String buildCodeContext = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().build()).renderPureModelContextData(pureModelContextData);
-                        return new Completer(buildCodeContext, Lists.mutable.with(new RelationalCompleterExtension())).complete(functionExpression);
+                        PureModel pureModel = this.getCompileResult(section).getPureModel();
+                        return new Completer(pureModel, Lists.mutable.with(new RelationalCompleterExtension())).complete(functionExpression);
                     }).orElse(null);
         }
         catch (Exception e)

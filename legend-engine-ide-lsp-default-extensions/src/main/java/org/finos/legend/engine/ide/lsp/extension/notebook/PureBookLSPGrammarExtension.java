@@ -33,15 +33,19 @@ import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
+import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExpressionNavigator;
 import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
+import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
+import org.finos.legend.engine.ide.lsp.extension.state.NotebookDocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
@@ -52,13 +56,21 @@ import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
+import org.finos.legend.engine.repl.autocomplete.Completer;
+import org.finos.legend.engine.repl.autocomplete.CompletionResult;
+import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.LambdaFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
 {
+    private static final String COMPILE_RESULT_KEY = "_COMPILE_RESULT";
+    private static final String PLAN_EXEC_CONTEXT_KEY = "_PLAN_EXEC_CONTEXT";
     private static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
+    private static final Logger LOGGER = LoggerFactory.getLogger(PureBookLSPGrammarExtension.class);
     private DomainParser domainParser;
     private PureGrammarParserContext parserContext;
     private PureLSPGrammarExtension pureGrammarExtension;
@@ -83,6 +95,15 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     public void initialize(SectionState section)
     {
         this.parse(section);
+    }
+
+    @Override
+    public void destroy(SectionState section)
+    {
+        DocumentState documentState = section.getDocumentState();
+        GlobalState globalState = documentState.getGlobalState();
+        globalState.removeProperty(documentState.getDocumentId() + COMPILE_RESULT_KEY);
+        globalState.removeProperty(documentState.getDocumentId() + PLAN_EXEC_CONTEXT_KEY);
     }
 
     private CompletableFuture<Lambda> parse(SectionState sectionState)
@@ -112,7 +133,9 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private CompletableFuture<? extends LambdaFunction<?>> compile(SectionState sectionState)
     {
-        return sectionState.getProperty("COMPILE_RESULT", () -> tryCompile(sectionState));
+        DocumentState documentState = sectionState.getDocumentState();
+        GlobalState globalState = documentState.getGlobalState();
+        return globalState.getProperty(documentState.getDocumentId() + COMPILE_RESULT_KEY, () -> tryCompile(sectionState));
     }
 
     private CompletableFuture<? extends LambdaFunction<?>> tryCompile(SectionState sectionState)
@@ -134,6 +157,13 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     @Override
     public Iterable<? extends LegendDiagnostic> getDiagnostics(SectionState sectionState)
     {
+        DocumentState documentState = sectionState.getDocumentState();
+        TextLocation sectionLocation = TextLocation.newTextSource(documentState.getDocumentId(), sectionState.getSection().getTextInterval());
+        if (!(documentState instanceof NotebookDocumentState))
+        {
+            return List.of(LegendDiagnostic.newDiagnostic(sectionLocation, "###purebook should not be use outside of Purebooks", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser));
+        }
+
         if (sectionState.getSection().getFullText().isEmpty())
         {
             return List.of();
@@ -160,7 +190,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
             }
             else
             {
-                location = TextLocation.newTextSource(sectionState.getDocumentState().getDocumentId(), sectionState.getSection().getTextInterval());
+                location = sectionLocation;
             }
 
             LegendDiagnostic.Source source = e.getErrorType() == EngineErrorType.PARSER ? LegendDiagnostic.Source.Parser : LegendDiagnostic.Source.Compiler;
@@ -169,8 +199,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         }
         catch (Throwable t)
         {
-            TextLocation location = TextLocation.newTextSource(sectionState.getDocumentState().getDocumentId(), sectionState.getSection().getTextInterval());
-            return List.of(LegendDiagnostic.newDiagnostic(location, t.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler));
+            return List.of(LegendDiagnostic.newDiagnostic(sectionLocation, t.getMessage(), LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler));
         }
 
         return List.of();
@@ -250,7 +279,9 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private CompletableFuture<Pair<SingleExecutionPlan, PlanExecutionContext>> generatePlan(SectionState sectionState)
     {
-        return sectionState.getProperty("PLAN_EXEC_CONTEXT", () -> tryGeneratePlan(sectionState));
+        DocumentState documentState = sectionState.getDocumentState();
+        GlobalState globalState = documentState.getGlobalState();
+        return globalState.getProperty(documentState.getDocumentId() + PLAN_EXEC_CONTEXT_KEY, () -> tryGeneratePlan(sectionState));
     }
 
     private CompletableFuture<Pair<SingleExecutionPlan, PlanExecutionContext>> tryGeneratePlan(SectionState sectionState)
@@ -269,5 +300,24 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
                 throw new RuntimeException(e);
             }
         }, sectionState.getDocumentState().getGlobalState().getForkJoinPool());
+    }
+
+    @Override
+    public Iterable<? extends LegendCompletion> getCompletions(SectionState section, TextPosition location)
+    {
+        try
+        {
+            int column = StrictMath.max(0,  location.getColumn() - 1);
+            String functionExpression = section.getSection().getInterval(section.getSection().getStartLine(), 0, location.getLine(), column).trim();
+            functionExpression = functionExpression.replace("\n", "").replace("\r", "");
+            PureModel pureModel = this.pureGrammarExtension.getCompileResult(section).getPureModel();
+            CompletionResult completionResult = new Completer(pureModel, Lists.mutable.with(new RelationalCompleterExtension())).complete(functionExpression);
+            return completionResult.getCompletion().collect(c -> new LegendCompletion(c.getDisplay(), c.getCompletion()));
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Error fetching autocompletion results", e);
+            return List.of();
+        }
     }
 }
