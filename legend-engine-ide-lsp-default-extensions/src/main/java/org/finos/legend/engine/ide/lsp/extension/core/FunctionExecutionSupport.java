@@ -354,7 +354,7 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static Iterable<? extends LegendExecutionResult> convertGrammarToJSON_lambda(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    static Iterable<? extends LegendExecutionResult> convertGrammarToLambdaJson(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -385,7 +385,7 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static Iterable<? extends LegendExecutionResult> convertJSONToGrammar_lambda_batch(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    static Iterable<? extends LegendExecutionResult> convertLambdaJsonToGrammarBatch(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
