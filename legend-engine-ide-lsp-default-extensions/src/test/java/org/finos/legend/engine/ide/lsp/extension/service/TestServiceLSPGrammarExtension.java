@@ -1197,30 +1197,32 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState sectionState =
                 sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
-        String lambdaString = "{" +
-                "\"_type\": \"lambda\"," +
-                "\"body\": [" +
-                "{\n\"_type\": \"property\"," +
-                "\"parameters\": [" +
+        String lambdaString =
                 "{" +
-                "\"_type\": \"var\"," +
-                "\"name\": \"x\"" +
-                "}" +
-                "]," +
-                "\"property\": \"hireType\"" +
-                "}" +
-                "]," +
-                "\"parameters\": [" +
-                "{" +
-                "\"_type\":\"var\"," +
-                "\"class\": \"vscodelsp::test::Employee\"," +
-                "\"multiplicity\": { " +
-                "\"lowerBound\": 1," +
-                "\"upperBound\": 1" +
-                "}," +
-                "\"name\": \"x\"" +
-                "}" +
-                "]" +
+                "   \"_type\": \"lambda\"," +
+                "   \"body\": [" +
+                "       {" +
+                "           \"_type\": \"property\"," +
+                "           \"parameters\": [" +
+                "               {" +
+                "                   \"_type\": \"var\"," +
+                "                   \"name\": \"x\"" +
+                "               }" +
+                "           ]," +
+                "           \"property\": \"hireType\"" +
+                "       }" +
+                "   ]," +
+                "   \"parameters\": [" +
+                "       {" +
+                "           \"_type\":\"var\"," +
+                "           \"class\": \"vscodelsp::test::Employee\"," +
+                "           \"multiplicity\": { " +
+                "               \"lowerBound\": 1," +
+                "               \"upperBound\": 1" +
+                "           }," +
+                "           \"name\": \"x\"" +
+                "       }" +
+                "   ]" +
                 "}";
         Map<String, String> executableArgs = Map.of("lambda", lambdaString);
 
