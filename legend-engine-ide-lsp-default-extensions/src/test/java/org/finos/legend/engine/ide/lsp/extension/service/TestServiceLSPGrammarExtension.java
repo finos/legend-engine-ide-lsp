@@ -34,6 +34,7 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Sou
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
+import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestAssertionResult;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
@@ -199,6 +200,16 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "    hireType : String[1];\n" +
                         "}");
 
+        codeFiles.put("vscodelsp::test::EmployeeRelational",
+                "###Pure\n" +
+                        "Class vscodelsp::test::EmployeeRelational\n" +
+                        "{\n" +
+                        "    id: Integer[1];\n" +
+                        "    firmId : Integer[1];\n" +
+                        "    firstName : String[1];\n" +
+                        "    lastName : String[1];\n" +
+                        "}");
+
         codeFiles.put(TEST_MAPPING_DOC_ID,
                 "###Mapping\n" +
                         "Mapping vscodelsp::test::EmployeeMapping\n" +
@@ -208,6 +219,21 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "      ~src vscodelsp::test::EmployeeSrc\n" +
                         "      hireDate : today(),\n" +
                         "      hireType : 'FullTime'\n" +
+                        "   }\n" +
+                        ")\n" +
+                        "Mapping vscodelsp::test::EmployeeRelationalMapping\n" +
+                        "(\n" +
+                        "   vscodelsp::test::EmployeeRelational[empRelational] : Relational\n" +
+                        "   {\n" +
+                        "       ~primaryKey\n" +
+                        "       (\n" +
+                        "           [vscodelsp::test::TestDB1]PersonTable.id\n" +
+                        "       )\n" +
+                        "       ~mainTable [vscodelsp::test::TestDB1]PersonTable\n" +
+                        "       id: [vscodelsp::test::TestDB1]PersonTable.id,\n" +
+                        "       firmId: [vscodelsp::test::TestDB1]PersonTable.firm_id,\n" +
+                        "       firstName: [vscodelsp::test::TestDB1]PersonTable.firstName,\n" +
+                        "       lastName: [vscodelsp::test::TestDB1]PersonTable.lastName\n" +
                         "   }\n" +
                         ")");
 
@@ -285,6 +311,24 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "           connection_2: vscodelsp::test::LocalH2Connection2\n" +
                         "       ]\n" +
                         "   ];\n" +
+                        "}\n" +
+                        "Runtime vscodelsp::test::H2RuntimeRelational\n" +
+                        "{\n" +
+                        "   mappings:\n" +
+                        "   [\n" +
+                        "       vscodelsp::test::EmployeeRelationalMapping\n" +
+                        "   ];\n" +
+                        "   connections:\n" +
+                        "   [\n" +
+                        "       vscodelsp::test::TestDB1:\n" +
+                        "       [\n" +
+                        "           connection_1: vscodelsp::test::LocalH2Connection1\n" +
+                        "       ],\n" +
+                        "       vscodelsp::test::TestDB2:\n" +
+                        "       [\n" +
+                        "           connection_2: vscodelsp::test::LocalH2Connection2\n" +
+                        "       ]\n" +
+                        "   ];\n" +
                         "}");
 
         codeFiles.put(TEST_SERVICE_DOC_ID,
@@ -311,17 +355,12 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "    documentation : 'service for testing';\n" +
                         "    execution : Single\n" +
                         "    {\n" +
-                        "        query : testParam: String[1]|vscodelsp::test::Employee.all()->project(\n" +
-                        "                  [ x|$x.hireType ],\n" +
-                        "                  [ 'Hire Type' ]\n" +
+                        "        query : testParam: String[1]|vscodelsp::test::EmployeeRelational.all()->project(\n" +
+                        "                  [ x|$x.firstName ],\n" +
+                        "                  [ 'First Name' ]\n" +
                         "        );\n" +
-                        "        mapping : vscodelsp::test::EmployeeMapping;\n" +
-                        "        runtime : vscodelsp::test::H2Runtime;\n" +
-                        "    }\n" +
-                        "    test : Single" +
-                        "    {\n" +
-                        "        data : '';\n" +
-                        "        asserts : [];\n" +
+                        "        mapping : vscodelsp::test::EmployeeRelationalMapping;\n" +
+                        "        runtime : vscodelsp::test::H2RuntimeRelational;\n" +
                         "    }\n" +
                         "}\n" +
                         "Service test::service\n" +
@@ -964,7 +1003,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testDebugExecutionPlan() throws Exception {
+    public void testDebugExecutionPlan() throws Exception
+    {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState sectionState =
@@ -987,8 +1027,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
-        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {
-        });
+        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {});
         SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get(
                 "plan")), SingleExecutionPlan.class);
         Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
@@ -1001,19 +1040,22 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        // Call extension.startup so the planExecutor is initialized
+        GlobalState globalState = sectionStates.stream().findFirst().orElseThrow().getDocumentState().getGlobalState();
+        extension.startup(globalState);
         SectionState sectionState =
                 sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
         CompileResult compileResult = extension.getCompileResult(sectionState);
         PackageableElement serviceElement =
                 compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
-                        "vscodelsp::test::TestService1")).findFirst().orElseThrow();
+                        "vscodelsp::test::TestService2")).findFirst().orElseThrow();
         Lambda lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
-        runtime.runtime = "vscodelsp::test::H2Runtime";
+        runtime.runtime = "vscodelsp::test::H2RuntimeRelational";
         ExecutionContext context = new BaseExecutionContext();
         Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
-                "vscodelsp::test::EmployeeMapping", "runtime", objectMapper.writeValueAsString(runtime), "context",
-                objectMapper.writeValueAsString(context));
+                "vscodelsp::test::EmployeeRelationalMapping", "runtime", objectMapper.writeValueAsString(runtime),
+                "context", objectMapper.writeValueAsString(context));
         Map<String, Object> inputParameters = Map.of("testParam", "testValue");
 
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
@@ -1022,14 +1064,15 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
-//        Map<String, Object> planAndDebugMap = objectMapper.readValue(result.getMessage(), new TypeReference<>() {});
-//        SingleExecutionPlan actualPlan = objectMapper.readValue(objectMapper.writeValueAsString(planAndDebugMap.get("plan")), SingleExecutionPlan.class);
-//        Assertions.assertInstanceOf(DataTypeResultType.class, actualPlan.rootExecutionNode.resultType);
-//        Assertions.assertTrue(objectMapper.writeValueAsString(planAndDebugMap.get("debug")).contains("src:vscodelsp::test::Employee[1] | {Platform> $src.hireType};"));
+        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"First Name\"," +
+                "\"type\":\"String\",\"relationalType\":\"VARCHAR(200)\"}]}"));
+        Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"First Name\"], \"rows\" : " +
+                "[{\"values\": [\"Doe\"]}]}"));
     }
 
     @Test
-    public void testConvertGrammarToJSON_lambda() {
+    public void testConvertGrammarToJSON_lambda()
+    {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState sectionState =
@@ -1053,7 +1096,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testConvertJSONToGrammar_lambda() {
+    public void testConvertJSONToGrammar_lambda()
+    {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState sectionState =
@@ -1087,7 +1131,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testConvertJSONToGrammar_lambda_batch() {
+    public void testConvertJSONToGrammar_lambda_batch()
+    {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState sectionState =
@@ -1145,7 +1190,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testGetLambdaReturnType() {
+    public void testGetLambdaReturnType()
+    {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState sectionState =
