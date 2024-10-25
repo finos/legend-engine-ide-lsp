@@ -98,7 +98,6 @@ public interface FunctionExecutionSupport
     String EXECUTE_QUERY_ID = "legend.query.execute";
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
     String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
-    String JSON_TO_GRAMMAR_LAMBDA_ID = "legend.jsonToGrammar.lambda";
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
     String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
 
@@ -372,35 +371,6 @@ public interface FunctionExecutionSupport
                             entityPath,
                             LegendExecutionResult.Type.SUCCESS,
                             objectMapper.writeValueAsString(lambda),
-                            null,
-                            section.getDocumentState().getDocumentId(),
-                            section.getSectionNumber(),
-                            inputParameters
-                    )
-            );
-        }
-        catch (Exception e)
-        {
-            results.add(extension.errorResult(e, entityPath));
-        }
-        return results;
-    }
-
-    static Iterable<? extends LegendExecutionResult> convertJSONToGrammar_lambda(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
-    {
-        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
-
-        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        try
-        {
-            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
-            RenderStyle renderStyle = RenderStyle.valueOf(executableArgs.get("renderStyle"));
-            String grammar = lambda.accept(DEPRECATED_PureGrammarComposerCore.Builder.newInstance().withRenderStyle(renderStyle).build());
-            results.add(
-                    FunctionLegendExecutionResult.newResult(
-                            entityPath,
-                            LegendExecutionResult.Type.SUCCESS,
-                            grammar,
                             null,
                             section.getDocumentState().getDocumentId(),
                             section.getSectionNumber(),

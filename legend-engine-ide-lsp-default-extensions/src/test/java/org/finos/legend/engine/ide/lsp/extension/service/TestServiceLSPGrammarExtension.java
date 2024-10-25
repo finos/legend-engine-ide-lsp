@@ -1097,41 +1097,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testConvertJSONToGrammar_lambda()
-    {
-        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
-        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
-        SectionState sectionState =
-                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
-        String lambdaString =
-                "{" +
-                "   \"_type\": \"lambda\"," +
-                "   \"body\": [" +
-                "       {" +
-                "           \"_type\": \"string\"," +
-                "           \"value\": \"testValue\"" +
-                "       }" +
-                "   ]," +
-                "   \"parameters\": [" +
-                "       {" +
-                "           \"_type\": \"var\"," +
-                "           \"name\": \"x\"" +
-                "       }" +
-                "   ]" +
-                "}";
-        Map<String, String> executableArgs = Map.of("lambda", lambdaString, "renderStyle", "STANDARD");
-
-        String expected = "x|'testValue'";
-        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
-                JSON_TO_GRAMMAR_LAMBDA_ID, executableArgs);
-
-        Assertions.assertEquals(1, Iterate.sizeOf(actual));
-        LegendExecutionResult result = actual.iterator().next();
-        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
-        Assertions.assertEquals(expected, result.getMessage());
-    }
-
-    @Test
     public void testConvertJSONToGrammar_lambda_batch()
     {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
