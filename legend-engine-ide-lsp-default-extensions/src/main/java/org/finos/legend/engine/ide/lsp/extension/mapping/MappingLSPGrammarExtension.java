@@ -16,16 +16,6 @@
 
 package org.finos.legend.engine.ide.lsp.extension.mapping;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -36,11 +26,7 @@ import org.eclipse.collections.impl.block.factory.Functions;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
-import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
-import org.finos.legend.engine.ide.lsp.extension.CompileResult;
-import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
-import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
+import org.finos.legend.engine.ide.lsp.extension.*;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
@@ -56,15 +42,7 @@ import org.finos.legend.engine.language.pure.grammar.from.mapping.MappingParser;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.AssociationMapping;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMappingVisitor;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.EnumerationMapping;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.Mapping;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.MappingInclude;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.OperationClassMapping;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.PropertyMapping;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.PropertyMappingVisitor;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.*;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.aggregationAware.AggregationAwareClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.aggregationAware.AggregationAwarePropertyMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.mappingTest.MappingTest;
@@ -80,18 +58,21 @@ import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.test.runner.mapping.MappingTestRunner;
 import org.finos.legend.engine.test.runner.mapping.RichMappingTestResult;
-import org.finos.legend.pure.generated.Root_meta_pure_extension_Extension;
-import org.finos.legend.pure.generated.Root_meta_pure_mapping_metamodel_MappingTestSuite;
+import org.finos.legend.pure.generated.*;
 import org.finos.legend.pure.m3.coreinstance.meta.external.store.model.PureInstanceSetImplementation;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.AssociationImplementation;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.MergeOperationSetImplementation;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.SetImplementation;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.aggregationAware.AggregateSetImplementationContainer;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.aggregationAware.AggregateSpecification;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.aggregationAware.AggregationAwareSetImplementation;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.aggregationAware.AggregationFunctionSpecification;
-import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.aggregationAware.GroupByFunctionSpecification;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.aggregationAware.*;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
+
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Extension for the Mapping grammar.
@@ -104,6 +85,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     private static final String RUN_LEGACY_TEST_COMMAND_ID = "legend.mapping.runLegacyTest";
     private static final String RUN_LEGACY_TEST_COMMAND_TITLE = "Run legacy test";
     private static final String LEGACY_TEST_ID = "legend.mapping.legacyTestId";
+    private static final String ANALYZE_MAPPING_MODEL_COVERAGE_COMMAND_ID = "legend.mapping.analyzeMappingModelCoverage";
 
     private static final ImmutableList<String> STORE_OBJECT_TRIGGERS = Lists.immutable.with("~");
 
@@ -177,6 +159,10 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             case RUN_LEGACY_TEST_COMMAND_ID:
             {
                 return runLegacyMappingTests(section, entityPath, executableArgs.get(LEGACY_TEST_ID));
+            }
+            case ANALYZE_MAPPING_MODEL_COVERAGE_COMMAND_ID:
+            {
+                return analyzeMappingModelCoverage(section, entityPath);
             }
             default:
             {
@@ -262,6 +248,48 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             }
         });
         return results;
+    }
+
+    private List<? extends LegendExecutionResult> analyzeMappingModelCoverage(SectionState section, String entityPath)
+    {
+        PackageableElement element = getParseResult(section).getElement(entityPath);
+        CompileResult compileResult = this.getCompileResult(section);
+
+        if (compileResult.hasException())
+        {
+            return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
+        }
+
+        try
+        {
+            final PureModel pureModel = compileResult.getPureModel();
+            final org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping mapping = pureModel.getMapping(entityPath);
+            Root_meta_analytics_mapping_modelCoverage_MappingModelCoverageAnalysisResult analysisResult = core_analytics_mapping_modelCoverage_analytics
+                    .Root_meta_analytics_mapping_modelCoverage_analyze_Mapping_1__Boolean_1__Boolean_1__Boolean_1__MappingModelCoverageAnalysisResult_1_(
+                            mapping,
+                            false,
+                            false,
+                            false,
+                            pureModel.getExecutionSupport()
+                    );
+            String result = core_analytics_mapping_modelCoverage_serializer
+                    .Root_meta_analytics_mapping_modelCoverage_serialization_json_getSerializedMappingModelCoverageAnalysisResult_MappingModelCoverageAnalysisResult_1__String_1_(
+                            analysisResult,
+                            pureModel.getExecutionSupport()
+                    );
+            return Collections.singletonList(
+                    LegendExecutionResult.newResult(
+                            entityPath,
+                            Type.SUCCESS,
+                            result,
+                            SourceInformationUtil.toLocation(element.sourceInformation)
+                    )
+            );
+        }
+        catch (Exception e)
+        {
+            return Collections.singletonList(errorResult(e, entityPath));
+        }
     }
 
     private List<MappingTest_Legacy> getLegacyMappingTests(Mapping mapping, String testName)
