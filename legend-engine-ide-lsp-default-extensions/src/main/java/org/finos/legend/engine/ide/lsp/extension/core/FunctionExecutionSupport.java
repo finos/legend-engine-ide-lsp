@@ -114,9 +114,9 @@ public interface FunctionExecutionSupport
         return "";
     }
 
-    SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String version);
+    SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String clientVersion);
 
-    static SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
+    static SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
     {
         FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
         Mapping mapping = pureModel.getMapping(mappingPath);
@@ -130,7 +130,7 @@ public interface FunctionExecutionSupport
                 pureRuntime,
                 HelperValueSpecificationBuilder.processExecutionContext(context, pureModel.getContext()),
                 pureModel,
-                version,
+                clientVersion,
                 PlanPlatform.JAVA,
                 null,
                 routerExtensions,
@@ -138,7 +138,7 @@ public interface FunctionExecutionSupport
         );
     }
 
-    static PlanWithDebug debugExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String version)
+    static PlanWithDebug debugExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
     {
         FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
         Mapping mapping = pureModel.getMapping(mappingPath);
@@ -152,7 +152,7 @@ public interface FunctionExecutionSupport
                 pureRuntime,
                 HelperValueSpecificationBuilder.processExecutionContext(context, pureModel.getContext()),
                 pureModel,
-                version,
+                clientVersion,
                 PlanPlatform.JAVA,
                 null,
                 routerExtensions,
@@ -248,8 +248,8 @@ public interface FunctionExecutionSupport
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
             SerializationFormat format = SerializationFormat.valueOf(executableArgs.getOrDefault("serializationFormat", SerializationFormat.DEFAULT.name()));
             PureModel pureModel = compileResult.getPureModel();
-            String version = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
-            SingleExecutionPlan executionPlan = FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version);
+            String clientVersion = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
+            SingleExecutionPlan executionPlan = FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, clientVersion);
 
             PlanExecutionContext planExecutionContext = null;
             try
@@ -329,13 +329,13 @@ public interface FunctionExecutionSupport
             Runtime runtime = objectMapper.readValue(executableArgs.get("runtime"), Runtime.class);
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
             PureModel pureModel = compileResult.getPureModel();
-            String version = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
+            String clientVersion = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
 
             boolean debug = Boolean.parseBoolean(executableArgs.get("debug"));
 
             String result = objectMapper.writeValueAsString(debug ?
-                    FunctionExecutionSupport.debugExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version) :
-                    FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, version));
+                    FunctionExecutionSupport.debugExecutionPlan(lambda, mappingPath, runtime, context, pureModel, clientVersion) :
+                    FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, clientVersion));
             results.add(
                     FunctionLegendExecutionResult.newResult(
                             entityPath,

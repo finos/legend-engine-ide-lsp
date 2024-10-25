@@ -349,7 +349,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     }
 
     @Override
-    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String version)
+    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String clientVersion)
     {
         Function function = (Function) element;
         FunctionDefinition<?> functionDefinition;
@@ -363,7 +363,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         }
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, version, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
+        return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
     }
 
     @Override

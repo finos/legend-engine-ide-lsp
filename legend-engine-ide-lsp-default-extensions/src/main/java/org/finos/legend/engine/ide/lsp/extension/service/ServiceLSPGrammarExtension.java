@@ -358,7 +358,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda function, PureModel pureModel, Map<String, Object> args, String version)
+    public SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda function, PureModel pureModel, Map<String, Object> args, String clientVersion)
     {
         PureSingleExecution singleExecution = new PureSingleExecution();
         Service service = (Service) element;
