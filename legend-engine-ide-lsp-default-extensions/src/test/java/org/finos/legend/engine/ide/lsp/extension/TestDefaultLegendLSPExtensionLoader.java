@@ -61,6 +61,7 @@ class TestDefaultLegendLSPExtensionLoader
         expected.put("HostedService", HostedServiceLSPGrammarExtension.class);
         expected.put("DataSpace", DataSpaceLSPGrammarExtension.class);
         expected.put("Diagram", DiagramLSPGrammarExtension.class);
+        expected.put("ExternalFormat", DefaultLegendLSPExtensionLoader.CatchAllSectionParserLSPGrammarExtension.class);
 
         MutableSet<String> missingOnActual = Sets.adapt(expected.keySet()).difference(Sets.adapt(grammarsMap.keySet()));
         Assertions.assertTrue(missingOnActual.isEmpty(), "Expected but missed on actual: " + missingOnActual);
