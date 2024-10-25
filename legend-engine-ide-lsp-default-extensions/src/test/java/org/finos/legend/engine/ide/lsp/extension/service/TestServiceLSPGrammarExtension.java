@@ -1062,8 +1062,9 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 EXECUTE_QUERY_ID, executableArgs, inputParameters);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
-        LegendExecutionResult result = actual.iterator().next();
+        FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals("testValue", result.getInputParameters().get("testParam"));
         Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"First Name\"," +
                 "\"type\":\"String\",\"relationalType\":\"VARCHAR(200)\"}]}"));
         Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"First Name\"], \"rows\" : " +
