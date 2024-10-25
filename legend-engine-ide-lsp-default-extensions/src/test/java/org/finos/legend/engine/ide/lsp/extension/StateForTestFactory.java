@@ -29,6 +29,7 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
+import org.finos.legend.engine.ide.lsp.extension.state.NotebookDocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.state.State;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
@@ -44,6 +45,7 @@ public class StateForTestFactory
     {
         this.legendLSPGrammarExtensions = loadAvailableExtensions();
         this.features = loadAvailableFeatures();
+        this.getLegendLSPGrammarExtensions().forEach(x -> x.startup(new TestGlobalState()));
     }
 
     public List<LegendLSPGrammarExtension> getLegendLSPGrammarExtensions()
@@ -83,20 +85,56 @@ public class StateForTestFactory
         return features;
     }
 
+    public GlobalState newGlobalState()
+    {
+        return new TestGlobalState();
+    }
+
     public SectionState newSectionState(String docId, String text)
     {
-        LineIndexedText indexedText = LineIndexedText.index(text);
         TestGlobalState globalState = new TestGlobalState();
+        return this.newSectionState(globalState, docId, text);
+    }
+
+    public SectionState newSectionState(GlobalState gs, String docId, String text)
+    {
+        TestGlobalState globalState = (TestGlobalState) gs;
+        LineIndexedText indexedText = LineIndexedText.index(text);
         TestDocumentState docState = new TestDocumentState(globalState, docId, indexedText);
         TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText));
 
         globalState.docStates.put(docId, docState);
         docState.sectionStates.add(sectionState);
+        gs.clearProperties();
+        return sectionState;
+    }
+
+    public SectionState newPureBookSectionState(String docId, String text)
+    {
+        TestGlobalState globalState = new TestGlobalState();
+        return this.newPureBookSectionState(globalState, docId, text);
+    }
+
+    public SectionState newPureBookSectionState(GlobalState gs, String docId, String text)
+    {
+        TestGlobalState globalState = (TestGlobalState) gs;
+        LineIndexedText indexedText = LineIndexedText.index(text);
+        TestDocumentState docState = new TestPureBookDocumentState(globalState, docId, indexedText);
+        TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText, "purebook"));
+
+        globalState.docStates.put(docId, docState);
+        docState.sectionStates.add(sectionState);
+        gs.clearProperties();
 
         return sectionState;
     }
 
     protected static GrammarSection newGrammarSection(LineIndexedText indexedText)
+    {
+        return newGrammarSection(indexedText, "Pure");
+    }
+
+    protected static GrammarSection newGrammarSection(LineIndexedText indexedText, String defaultGrammar)
     {
         Matcher matcher = GRAMMAR_LINE_PATTERN.matcher(indexedText.getText());
         boolean hasGrammarLine;
@@ -113,7 +151,7 @@ public class StateForTestFactory
         else
         {
             hasGrammarLine = false;
-            grammar = "Pure";
+            grammar = defaultGrammar;
             startLine = 0;
             endLine = indexedText.getLineCount() - 1;
         }
@@ -299,6 +337,14 @@ public class StateForTestFactory
         public void forEachSectionState(Consumer<? super SectionState> consumer)
         {
             this.sectionStates.forEach(consumer);
+        }
+    }
+
+    private static class TestPureBookDocumentState extends TestDocumentState implements NotebookDocumentState
+    {
+        private TestPureBookDocumentState(GlobalState globalState, String id, LineIndexedText text)
+        {
+            super(globalState, id, text);
         }
     }
 

@@ -15,6 +15,7 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import java.util.Set;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 
 /**
  * An LSP extension for Legend Engine representing some kind of grammar or DSL.
@@ -36,5 +37,10 @@ public interface LegendLSPExtension
     default Iterable<? extends String> getKeywords()
     {
         return Set.of();
+    }
+
+    default void destroy(SectionState sectionState)
+    {
+
     }
 }

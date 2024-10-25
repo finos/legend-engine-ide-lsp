@@ -220,7 +220,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
         }
 
         CompileResult compileResult = getCompileResult(section);
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
         }

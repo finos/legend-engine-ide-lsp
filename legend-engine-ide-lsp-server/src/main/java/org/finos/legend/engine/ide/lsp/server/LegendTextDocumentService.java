@@ -73,6 +73,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.server.LegendServerGlobalState.LegendServerDocumentState;
+import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.finos.legend.engine.ide.lsp.text.TextTools;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
@@ -116,43 +117,49 @@ public class LegendTextDocumentService implements TextDocumentService
         String uri = doc.getUri();
         LOGGER.debug("Changing {} (version {})", uri, doc.getVersion());
 
-        LegendServerDocumentState docState = globalState.getDocumentState(uri);
-        if (docState == null)
-        {
-            LOGGER.warn("Change to {} (version {}) before it was opened", uri, doc.getVersion());
-            docState = globalState.getOrCreateDocState(uri);
-        }
-
-        List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
-
-        if (changes.size() > 1)
-        {
-            String message = "Expected at most one change to " + uri + ", got " + changes.size() + "; processing only the first";
-            LOGGER.warn(message);
-            this.server.logWarningToClient(message);
-        }
-
-        if (changes.isEmpty())
-        {
-            LOGGER.debug("No changes to {}", uri);
-            docState.change(doc.getVersion());
-            return;
-        }
-
-        LegendServerDocumentState finalDocState = docState;
-
         this.server.runPossiblyAsync(() ->
         {
-            if (finalDocState.change(doc.getVersion(), changes.get(0).getText()))
+            LegendServerDocumentState docState = globalState.getDocumentState(uri);
+            if (docState == null)
+            {
+                LOGGER.warn("Change to {} (version {}) before it was opened", uri, doc.getVersion());
+                docState = globalState.getOrCreateDocState(uri);
+            }
+
+            List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
+
+            if (applyChanges(docState, doc.getVersion(), changes))
             {
                 globalState.clearProperties();
                 this.server.getLanguageClient().refreshDiagnostics();
                 this.server.getLanguageClient().refreshSemanticTokens();
                 this.server.getLanguageClient().refreshCodeLenses();
+                LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
             }
-
-            LOGGER.debug("Changed {} (version {})", uri, doc.getVersion());
         });
+    }
+
+    public static boolean applyChanges(LegendServerDocumentState finalDocState, Integer version, List<TextDocumentContentChangeEvent> changes)
+    {
+        LineIndexedText indexedText = finalDocState.getIndexedText();
+        for (TextDocumentContentChangeEvent changeEvent : changes)
+        {
+            if (changeEvent.getRange() == null)
+            {
+                indexedText = LineIndexedText.index(changeEvent.getText());
+            }
+            else
+            {
+                indexedText = indexedText.replace(
+                        changeEvent.getText(),
+                        changeEvent.getRange().getStart().getLine(),
+                        changeEvent.getRange().getStart().getCharacter(),
+                        changeEvent.getRange().getEnd().getLine(),
+                        changeEvent.getRange().getEnd().getCharacter()
+                );
+            }
+        }
+        return finalDocState.change(version, indexedText);
     }
 
     @Override
@@ -436,17 +443,13 @@ public class LegendTextDocumentService implements TextDocumentService
             return Collections.emptyList();
         }
 
-        List<LegendCompletion> completionItems = List.of();
-
         String upToSuggestLocation = sectionState.getSection().getLineUpTo(location);
-        if (upToSuggestLocation.isEmpty() || upToSuggestLocation.startsWith("#"))
-        {
-            completionItems = this.server.getGrammarLibrary()
-                    .getGrammars()
-                    .stream()
-                    .map(x -> new LegendCompletion("Section - " + x, "###" + x))
-                    .collect(Collectors.toList());
-        }
+        List<LegendCompletion> completionItems = this.server.getGrammarLibrary()
+                .getGrammars()
+                .stream()
+                .map(x -> new LegendCompletion("Section - " + x, "###" + x))
+                .filter(x -> x.getSuggestion().startsWith(upToSuggestLocation))
+                .collect(Collectors.toList());
 
         if (sectionState.getExtension() != null)
         {

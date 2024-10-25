@@ -58,7 +58,7 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
         AbstractLSPGrammarExtension extension = functionExecutionSupport.getExtension();
 
         CompileResult compileResult = extension.getCompileResult(section);
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return extension.errorResult(compileResult.getCompileErrorResult(), entityPath);
         }

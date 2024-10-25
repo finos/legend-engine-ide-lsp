@@ -19,6 +19,9 @@ package org.finos.legend.engine.ide.lsp.extension;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Stream;
+import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
+import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.Locatable;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.CompileContext;
@@ -41,13 +44,42 @@ public class LegendReferenceResolver implements Locatable
         this.gotoResolver = Objects.requireNonNull(gotoResolver);
     }
 
+    public static Stream<LegendReference> toLegendReference(SectionState sectionState, Stream<Optional<LegendReferenceResolver>> referenceResolvers, CompileContext compileContext)
+    {
+        return referenceResolvers.filter(Optional::isPresent)
+            .map(Optional::get)
+            .map(reference ->
+            {
+                Optional<CoreInstance> referenced = reference.goToReferenced(compileContext);
+                return referenced.map(x ->
+                {
+                    SourceInformation sourceInfo = SourceInformationHelper.fromM3SourceInformation(x.getSourceInformation());
+                    if (AbstractLSPGrammarExtension.isValidSourceIdAndSourceInfo(sectionState, sourceInfo))
+                    {
+                        TextLocation declarationLocation = SourceInformationUtil.toLocation(sourceInfo);
+                        if (!reference.getLocation().equals(declarationLocation))
+                        {
+                            return LegendReference.builder()
+                                    .withLocation(reference.getLocation())
+                                    .withDeclarationLocation(declarationLocation)
+                                    .build();
+                        }
+                    }
+
+                    return null;
+                });
+            })
+            .filter(Optional::isPresent)
+            .map(Optional::get);
+    }
+
     @Override
     public TextLocation getLocation()
     {
         return location;
     }
 
-    Optional<CoreInstance> goToReferenced(CompileContext compileContext)
+    public Optional<CoreInstance> goToReferenced(CompileContext compileContext)
     {
         try
         {

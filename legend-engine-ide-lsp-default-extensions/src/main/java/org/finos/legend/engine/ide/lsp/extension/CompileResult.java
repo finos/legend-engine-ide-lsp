@@ -34,7 +34,7 @@ public class CompileResult extends AbstractLSPGrammarExtension.Result<PureModel>
         this.engineExceptions = pureModel.getEngineExceptions();
     }
 
-    CompileResult(Exception e, PureModelContextData pureModelContextData)
+    CompileResult(EngineException e, PureModelContextData pureModelContextData)
     {
         super(null, e);
         this.pureModelContextData = pureModelContextData;
@@ -49,12 +49,6 @@ public class CompileResult extends AbstractLSPGrammarExtension.Result<PureModel>
     public PureModelContextData getPureModelContextData()
     {
         return this.pureModelContextData;
-    }
-
-    @Override
-    public boolean hasException()
-    {
-        return hasEngineException() || this.e != null;
     }
 
     @Override

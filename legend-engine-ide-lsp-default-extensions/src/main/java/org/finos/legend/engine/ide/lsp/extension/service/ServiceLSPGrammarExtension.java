@@ -413,7 +413,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         }
 
         CompileResult compileResult = getCompileResult(section);
-        if (compileResult.hasException())
+        if (compileResult.hasEngineException())
         {
             return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
         }

@@ -34,9 +34,11 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
+import org.finos.legend.engine.ide.lsp.extension.state.NotebookDocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.GrammarSection;
 import org.finos.legend.engine.ide.lsp.text.GrammarSectionIndex;
+import org.finos.legend.engine.ide.lsp.text.LineIndexedText;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,10 +96,29 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
         return this.docs.computeIfAbsent(uri, k -> new LegendServerDocumentState(this, uri));
     }
 
+    public LegendServerDocumentState getOrCreateNotebookDocState(String uri)
+    {
+        return this.docs.computeIfAbsent(uri, k -> new LegendServerNotebookDocumentState(this, uri));
+    }
+
     synchronized void deleteDocState(String uri)
     {
-        this.docs.remove(uri);
-        this.clearProperties();
+        this.deleteDocState(uri, true);
+    }
+
+    synchronized void deleteDocState(String uri, boolean cleanProperties)
+    {
+        LegendServerDocumentState documentState = this.docs.remove(uri);
+
+        if (documentState != null)
+        {
+            documentState.destroy();
+        }
+
+        if (cleanProperties)
+        {
+            this.clearProperties();
+        }
     }
 
     synchronized void renameDoc(String oldUri, String newUri)
@@ -206,6 +227,11 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
             return (this.sectionIndex == null) ? null : this.sectionIndex.getText();
         }
 
+        synchronized LineIndexedText getIndexedText()
+        {
+            return (this.sectionIndex == null) ? null : this.sectionIndex.getIndexedText();
+        }
+
         @Override
         public synchronized int getLineCount()
         {
@@ -290,20 +316,12 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
             this.version = null;
         }
 
-        synchronized void change(int newVersion)
+        synchronized boolean change(int newVersion, LineIndexedText newText)
         {
             if ((this.version != null) && (newVersion < this.version))
             {
-                LOGGER.warn("Changing {} from version {} to {}", this.uri, this.version, newVersion);
-            }
-            this.version = newVersion;
-        }
-
-        synchronized boolean change(int newVersion, String newText)
-        {
-            if ((this.version != null) && (newVersion <= this.version))
-            {
-                LOGGER.warn("Changing {} from version {} to {}", this.uri, this.version, newVersion);
+                LOGGER.warn("Changing {} from version {} to {} (out of order updates?)", this.uri, this.version, newVersion);
+                return false;
             }
             this.version = newVersion;
             return setText(newText);
@@ -350,6 +368,11 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
 
         private synchronized boolean setText(String newText)
         {
+            return this.setText(LineIndexedText.index(newText));
+        }
+
+        private synchronized boolean setText(LineIndexedText newText)
+        {
             if ((this.sectionIndex == null) ? (newText == null) : this.sectionIndex.getText().equals(newText))
             {
                 // text is unchanged
@@ -357,16 +380,35 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
             }
 
             LOGGER.info("Clearing global and {} properties", this.uri);
-            this.sectionIndex = (newText == null) ? null : GrammarSectionIndex.parse(newText);
-            this.sectionStates = createSectionStates(this.sectionIndex);
-            this.clearProperties();
+            this.sectionIndex = (newText == null) ? null : parse(newText);
+            this.recreateSectionStates();
             return true;
+        }
+
+        GrammarSectionIndex parse(LineIndexedText newText)
+        {
+            return GrammarSectionIndex.parse(newText);
         }
 
         public synchronized void recreateSectionStates()
         {
+            this.destroy();
             this.sectionStates = createSectionStates(this.sectionIndex);
             this.clearProperties();
+        }
+
+        private void destroy()
+        {
+            if (this.sectionStates != null)
+            {
+                this.sectionStates.forEach(x ->
+                {
+                    if (x.extension != null)
+                    {
+                        x.extension.destroy(x);
+                    }
+                });
+            }
         }
 
         private synchronized List<LegendServerSectionState> createSectionStates(GrammarSectionIndex index)
@@ -440,6 +482,20 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
         public LegendLSPGrammarExtension getExtension()
         {
             return this.extension;
+        }
+    }
+
+    private static class LegendServerNotebookDocumentState extends LegendServerDocumentState implements NotebookDocumentState
+    {
+        public LegendServerNotebookDocumentState(LegendServerGlobalState globalState, String uri)
+        {
+            super(globalState, uri);
+        }
+
+        @Override
+        GrammarSectionIndex parse(LineIndexedText newText)
+        {
+            return GrammarSectionIndex.parse(newText, "purebook");
         }
     }
 }
