@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
@@ -40,6 +41,7 @@ import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
+import org.finos.legend.engine.ide.lsp.extension.repl.extension.LegendREPLExtensionFeature;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.NotebookDocumentState;
@@ -52,13 +54,16 @@ import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserConte
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
 import org.finos.legend.engine.plan.execution.PlanExecutionContext;
+import org.finos.legend.engine.plan.execution.result.Result;
+import org.finos.legend.engine.plan.execution.result.serialization.SerializationFormat;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.repl.autocomplete.Completer;
+import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
-import org.finos.legend.engine.repl.relational.autocomplete.RelationalCompleterExtension;
+import org.finos.legend.engine.repl.core.ReplExtension;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.LambdaFunction;
@@ -74,6 +79,8 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private DomainParser domainParser;
     private PureGrammarParserContext parserContext;
     private PureLSPGrammarExtension pureGrammarExtension;
+    private MutableList<ReplExtension> replExtensions;
+    private MutableList<CompleterExtension> completerExtensions;
 
     @Override
     public String getName()
@@ -89,6 +96,20 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         this.pureGrammarExtension = globalState.findGrammarExtensionThatImplements(PureLSPGrammarExtension.class)
                 .findAny()
                 .orElseThrow(() -> new UnsupportedOperationException("Notebook requires pure grammar extension"));
+
+        List<LegendREPLExtensionFeature> replFeatures = globalState
+                .findFeatureThatImplements(LegendREPLExtensionFeature.class)
+                .collect(Collectors.toList());
+
+        this.replExtensions = replFeatures.stream()
+                .map(LegendREPLExtensionFeature::getReplExtensions)
+                .flatMap(List::stream)
+                .collect(Collectors.toCollection(Lists.mutable::empty));
+
+        this.completerExtensions = replFeatures.stream()
+                .map(LegendREPLExtensionFeature::getCompleterExtensions)
+                .flatMap(List::stream)
+                .collect(Collectors.toCollection(Lists.mutable::empty));
     }
 
     @Override
@@ -219,9 +240,9 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
                     pureModel.getContext()
             );
         }
-        catch (Exception ignore)
+        catch (Exception e)
         {
-            // ignore for now...
+            LOGGER.warn("Failed to compute references", e);
         }
         return Stream.empty();
     }
@@ -273,7 +294,25 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private MutableList<LegendExecutionResult> executePlan(SectionState section, Pair<SingleExecutionPlan, PlanExecutionContext> planContext, Map<String, Object> inputParameters)
     {
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        FunctionExecutionSupport.executePlan(section.getDocumentState().getGlobalState(), this.pureGrammarExtension, section.getDocumentState().getDocumentId(), section.getSectionNumber(), planContext.getOne(), planContext.getTwo(), "notebook_cell", inputParameters, results);
+        Result result = FunctionExecutionSupport.executePlan(planContext.getOne(), planContext.getTwo(), inputParameters, this.pureGrammarExtension);
+
+        Optional<ReplExtension> extension = this.replExtensions
+                .stream()
+                .filter(x -> x.supports(result))
+                .findAny();
+
+        String docId = section.getDocumentState().getDocumentId();
+        int secNum = section.getSectionNumber();
+
+        if (extension.isPresent())
+        {
+            results.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, extension.get().print(result), null, docId, secNum, inputParameters, "text"));
+        }
+        else
+        {
+            FunctionExecutionSupport.collectResults(this.pureGrammarExtension, "notebook_cell", result, docId, secNum, inputParameters, SerializationFormat.DEFAULT, results::add);
+        }
+
         return results;
     }
 
@@ -311,7 +350,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
             String functionExpression = section.getSection().getInterval(section.getSection().getStartLine(), 0, location.getLine(), column).trim();
             functionExpression = functionExpression.replace("\n", "").replace("\r", "");
             PureModel pureModel = this.pureGrammarExtension.getCompileResult(section).getPureModel();
-            CompletionResult completionResult = new Completer(pureModel, Lists.mutable.with(new RelationalCompleterExtension())).complete(functionExpression);
+            CompletionResult completionResult = new Completer(pureModel, this.completerExtensions).complete(functionExpression);
             return completionResult.getCompletion().collect(c -> new LegendCompletion(c.getDisplay(), c.getCompletion()));
         }
         catch (Exception e)

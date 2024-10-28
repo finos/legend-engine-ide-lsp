@@ -298,11 +298,7 @@ public interface FunctionExecutionSupport
             }
             else
             {
-                PlanExecutor planExecutor = extension.getPlanExecutor();
-                MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
-                ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
-                Identity identity = getIdentity();
-                Result result = planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context);
+                Result result = executePlan(executionPlan, context, inputParameters, extension);
                 collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, format, results::add);
             }
         }
@@ -310,6 +306,15 @@ public interface FunctionExecutionSupport
         {
             results.add(extension.errorResult(e, entityPath));
         }
+    }
+
+    static Result executePlan(SingleExecutionPlan executionPlan, PlanExecutionContext context, Map<String, Object> inputParameters, AbstractLSPGrammarExtension extension)
+    {
+        PlanExecutor planExecutor = extension.getPlanExecutor();
+        MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
+        ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
+        Identity identity = getIdentity();
+        return planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context);
     }
 
     static Iterable<? extends LegendExecutionResult> generateExecutionPlan(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
@@ -474,7 +479,7 @@ public interface FunctionExecutionSupport
         return Optional.ofNullable(subject).map(Identity::makeIdentity).orElseGet(Identity::getAnonymousIdentity);
     }
 
-    private static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, SerializationFormat format, Consumer<? super LegendExecutionResult> consumer)
+    static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, SerializationFormat format, Consumer<? super LegendExecutionResult> consumer)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -544,9 +549,9 @@ public interface FunctionExecutionSupport
         private final int sectionNum;
         private final Map<String, Object> inputParameters;
 
-        public FunctionLegendExecutionResult(List<String> ids, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters)
+        private FunctionLegendExecutionResult(List<String> ids, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters, String messageType)
         {
-            super(ids, type, message, logMessage, null);
+            super(ids, type, message, logMessage, null, messageType);
             this.uri = uri;
             this.sectionNum = sectionNum;
             this.inputParameters = inputParameters;
@@ -567,9 +572,14 @@ public interface FunctionExecutionSupport
             return inputParameters;
         }
 
+        public static FunctionLegendExecutionResult newResult(String id, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters, String messageType)
+        {
+            return new FunctionLegendExecutionResult(Collections.singletonList(id), type, message, logMessage, uri, sectionNum, inputParameters, messageType);
+        }
+
         public static FunctionLegendExecutionResult newResult(String id, Type type, String message, String logMessage, String uri, int sectionNum, Map<String, Object> inputParameters)
         {
-            return new FunctionLegendExecutionResult(Collections.singletonList(id), type, message, logMessage, uri, sectionNum, inputParameters);
+            return newResult(id, type, message, logMessage, uri, sectionNum, inputParameters, "json");
         }
     }
 

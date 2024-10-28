@@ -29,10 +29,11 @@ public class LegendExecutionResult
     private final List<String> ids;
     private final Type type;
     private final String message;
+    private final String messageType;
     private final String logMessage;
     private final TextLocation location;
 
-    protected LegendExecutionResult(List<String> ids, Type type, String message, String logMessage, TextLocation location)
+    protected LegendExecutionResult(List<String> ids, Type type, String message, String logMessage, TextLocation location, String messageType)
     {
         Objects.requireNonNull(ids, "ids may not be null").forEach(id -> Objects.requireNonNull(id, "id may not be null"));
         if (ids.isEmpty())
@@ -42,6 +43,7 @@ public class LegendExecutionResult
         this.ids = ids;
         this.type = Objects.requireNonNull(type, "type is required");
         this.message = Objects.requireNonNull(message, "message is required");
+        this.messageType = messageType;
         this.logMessage = logMessage;
         this.location = location;
     }
@@ -55,6 +57,11 @@ public class LegendExecutionResult
     public TextLocation getLocation()
     {
         return this.location;
+    }
+
+    public String getMessageType()
+    {
+        return messageType;
     }
 
     public static LegendExecutionResult errorResult(Throwable t, String message, String entityPath, TextLocation location)
@@ -182,7 +189,7 @@ public class LegendExecutionResult
      */
     public static LegendExecutionResult newResult(List<String> ids, Type type, String message, String logMessage, TextLocation location)
     {
-        return new LegendExecutionResult(ids, type, message, logMessage, location);
+        return new LegendExecutionResult(ids, type, message, logMessage, location, null);
     }
 
     /**
