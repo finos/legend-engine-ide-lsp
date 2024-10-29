@@ -23,17 +23,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.function.Consumer;
-import javax.security.auth.Subject;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -42,6 +31,11 @@ import org.eclipse.collections.api.tuple.Pair;
 import org.eclipse.collections.impl.map.mutable.MapAdapter;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.LazyIterate;
+import org.finos.legend.engine.entitlement.model.entitlementReport.DatasetEntitlementReport;
+import org.finos.legend.engine.entitlement.model.specification.DatasetSpecification;
+import org.finos.legend.engine.entitlement.services.EntitlementServiceExtension;
+import org.finos.legend.engine.entitlement.services.EntitlementServiceExtensionLoader;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
@@ -71,6 +65,7 @@ import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContext;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
@@ -93,6 +88,13 @@ import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.Functi
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.security.auth.Subject;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.function.Consumer;
+
 public interface FunctionExecutionSupport
 {
     Logger LOGGER = LoggerFactory.getLogger(FunctionExecutionSupport.class);
@@ -104,6 +106,7 @@ public interface FunctionExecutionSupport
     String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
     String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
+    String CHECK_DATASET_ENTITLEMENTS_ID = "legend.entitlements.checkDatasetEntitlements";
 
     ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
 
@@ -457,6 +460,37 @@ public interface FunctionExecutionSupport
                             inputParameters
                     )
             );
+        }
+        catch (Exception e)
+        {
+            results.add(extension.errorResult(e, entityPath));
+        }
+        return results;
+    }
+
+    static Iterable<? extends LegendExecutionResult> generateEntitlementReports(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        CompileResult compileResult = extension.getCompileResult(section);
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+        try
+        {
+            List<EntitlementServiceExtension> entitlementServiceExtensions = EntitlementServiceExtensionLoader.extensions();
+            PureModel pureModel = compileResult.getPureModel();
+            PureModelContext pureModelContext = compileResult.getPureModelContextData();
+            String mappingPath = executableArgs.get("mapping");
+            Mapping mapping = pureModel.getMapping(mappingPath);
+            String runtimePath = executableArgs.get("runtime");
+            Root_meta_core_runtime_Runtime runtime = pureModel.getRuntime(runtimePath);
+            Lambda query = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            List<DatasetSpecification> reports = objectMapper.readValue(executableArgs.get("reports"), new TypeReference<>() {});
+            List<DatasetEntitlementReport> result = LazyIterate.flatCollect(entitlementServiceExtensions,
+                    entitlementExtension -> entitlementExtension.generateDatasetEntitlementReports(reports, query,
+                            runtimePath, runtime, mappingPath, mapping, pureModelContext, pureModel, null)).toList();
+            results.add(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
+                    objectMapper.writeValueAsString(result), null, section.getDocumentState().getDocumentId(),
+                    section.getSectionNumber(), inputParameters));
         }
         catch (Exception e)
         {

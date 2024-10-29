@@ -325,6 +325,10 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             {
                 return FunctionExecutionSupport.getLambdaReturnType(this, section, entityPath, executableArgs, inputParams);
             }
+            case FunctionExecutionSupport.CHECK_DATASET_ENTITLEMENTS_ID:
+            {
+                return FunctionExecutionSupport.generateEntitlementReports(this, section, entityPath, executableArgs, inputParams);
+            }
             default:
             {
                 return super.execute(section, entityPath, commandId, executableArgs);
