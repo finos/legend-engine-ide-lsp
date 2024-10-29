@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.type.CollectionType;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -34,6 +35,7 @@ import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.LazyIterate;
 import org.finos.legend.engine.entitlement.model.entitlementReport.DatasetEntitlementReport;
 import org.finos.legend.engine.entitlement.model.specification.DatasetSpecification;
+import org.finos.legend.engine.entitlement.services.EntitlementModelObjectMapperFactory;
 import org.finos.legend.engine.entitlement.services.EntitlementServiceExtension;
 import org.finos.legend.engine.entitlement.services.EntitlementServiceExtensionLoader;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
@@ -106,9 +108,11 @@ public interface FunctionExecutionSupport
     String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
     String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
+    String SURVEY_DATASETS_ID = "legend.entitlements.surveyDatasets";
     String CHECK_DATASET_ENTITLEMENTS_ID = "legend.entitlements.checkDatasetEntitlements";
 
     ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
+    ObjectMapper entitlementModelObjectMapper = EntitlementModelObjectMapperFactory.getNewObjectMapper();
 
     AbstractLSPGrammarExtension getExtension();
 
@@ -404,9 +408,7 @@ public interface FunctionExecutionSupport
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
         {
-            Map<String, Lambda> lambdas = objectMapper.readValue(executableArgs.get("lambdas"), new TypeReference<>()
-            {
-            });
+            Map<String, Lambda> lambdas = objectMapper.readValue(executableArgs.get("lambdas"), new TypeReference<>() {});
             RenderStyle renderStyle = RenderStyle.valueOf(executableArgs.get("renderStyle"));
             Map<String, Object> result = org.eclipse.collections.api.factory.Maps.mutable.empty();
             MapAdapter.adapt(lambdas).forEachKeyValue((key, value) ->
@@ -468,6 +470,39 @@ public interface FunctionExecutionSupport
         return results;
     }
 
+    static Iterable<? extends LegendExecutionResult> generateDatasetSpecifications(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        CompileResult compileResult = extension.getCompileResult(section);
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+        try
+        {
+            List<EntitlementServiceExtension> entitlementServiceExtensions =
+                    EntitlementServiceExtensionLoader.extensions();
+            PureModel pureModel = compileResult.getPureModel();
+            PureModelContext pureModelContext = compileResult.getPureModelContextData();
+            String mappingPath = executableArgs.get("mapping");
+            Mapping mapping = pureModel.getMapping(mappingPath);
+            String runtimePath = executableArgs.get("runtime");
+            Root_meta_core_runtime_Runtime runtime = pureModel.getRuntime(runtimePath);
+            Lambda query = entitlementModelObjectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            List<DatasetSpecification> datasets = LazyIterate.flatCollect(entitlementServiceExtensions,
+                    entitlementExtension -> entitlementExtension.generateDatasetSpecifications(query, runtimePath,
+                            runtime, mappingPath, mapping, pureModelContext, pureModel)).toList();
+            CollectionType datasetSpecificationListType =
+                    entitlementModelObjectMapper.getTypeFactory().constructCollectionType(List.class,
+                            DatasetSpecification.class);
+            results.add(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
+                    entitlementModelObjectMapper.writer().forType(datasetSpecificationListType).writeValueAsString(datasets), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
+        }
+        catch (Exception e)
+        {
+            results.add(extension.errorResult(e, entityPath));
+        }
+        return results;
+    }
+
     static Iterable<? extends LegendExecutionResult> generateEntitlementReports(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
@@ -476,21 +511,24 @@ public interface FunctionExecutionSupport
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
         {
-            List<EntitlementServiceExtension> entitlementServiceExtensions = EntitlementServiceExtensionLoader.extensions();
+            List<EntitlementServiceExtension> entitlementServiceExtensions =
+                    EntitlementServiceExtensionLoader.extensions();
             PureModel pureModel = compileResult.getPureModel();
             PureModelContext pureModelContext = compileResult.getPureModelContextData();
             String mappingPath = executableArgs.get("mapping");
             Mapping mapping = pureModel.getMapping(mappingPath);
             String runtimePath = executableArgs.get("runtime");
             Root_meta_core_runtime_Runtime runtime = pureModel.getRuntime(runtimePath);
-            Lambda query = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
-            List<DatasetSpecification> reports = objectMapper.readValue(executableArgs.get("reports"), new TypeReference<>() {});
+            Lambda query = entitlementModelObjectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            List<DatasetSpecification> reports = entitlementModelObjectMapper.readValue(executableArgs.get("reports"), new TypeReference<>() {});
             List<DatasetEntitlementReport> result = LazyIterate.flatCollect(entitlementServiceExtensions,
                     entitlementExtension -> entitlementExtension.generateDatasetEntitlementReports(reports, query,
                             runtimePath, runtime, mappingPath, mapping, pureModelContext, pureModel, null)).toList();
+            CollectionType datasetEntitlementReportListType =
+                    entitlementModelObjectMapper.getTypeFactory().constructCollectionType(List.class,
+                            DatasetEntitlementReport.class);
             results.add(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
-                    objectMapper.writeValueAsString(result), null, section.getDocumentState().getDocumentId(),
-                    section.getSectionNumber(), inputParameters));
+                    entitlementModelObjectMapper.writer().forType(datasetEntitlementReportListType).writeValueAsString(result), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
         }
         catch (Exception e)
         {
