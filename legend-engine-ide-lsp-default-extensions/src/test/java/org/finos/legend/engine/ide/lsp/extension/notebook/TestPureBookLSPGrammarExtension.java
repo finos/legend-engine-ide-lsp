@@ -159,6 +159,72 @@ public class TestPureBookLSPGrammarExtension
     }
 
     @Test
+    void relationRendering()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        stateForTestFactory.newSectionState(gs, "database.pure",
+                "###Relational\n" +
+                        "Database test::h2Store\n" +
+                        "(\n" +
+                        "    Table personTable\n" +
+                        "    (\n" +
+                        "     fullName VARCHAR(100),\n" +
+                        "     firmName VARCHAR(100),\n" +
+                        "     addressName VARCHAR(100)\n" +
+                        "    )\n" +
+                        "    Table anotherPersonTable\n" +
+                        "    (\n" +
+                        "     fullName VARCHAR(100),\n" +
+                        "     firmName VARCHAR(100),\n" +
+                        "     addressName VARCHAR(100)\n" +
+                        "    )\n" +
+                        ")");
+
+        stateForTestFactory.newSectionState(gs, "connection.pure",
+                "###Connection\n" +
+                        "RelationalDatabaseConnection test::h2Conn\n" +
+                        "{\n" +
+                        "    store: test::h2Store; \n" +
+                        "    type: H2;\n" +
+                        "    specification: LocalH2\n" +
+                        "    {\n" +
+                        "        testDataSetupCSV: 'default\\npersonTable\\nfullName,firmName,addressName\\nP1,F1,A1\\nP2,F2,A2\\nP3,,\\nP4,,A3\\nP5,F1,A1\\n---';\n" +
+                        "    };\n" +
+                        "    auth: DefaultH2;\n" +
+                        "}");
+
+        stateForTestFactory.newSectionState(gs, "runtime.pure",
+                "###Runtime\n" +
+                        "Runtime  test::h2Runtime\n" +
+                        "{\n" +
+                        "    mappings: [];\n" +
+                        "    connectionStores:\n" +
+                        "    [\n" +
+                        "        test::h2Conn: [ test::h2Store ]\n" +
+                        "    ];\n" +
+                        "}");
+
+        Assertions.assertEquals(
+                List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS,
+                        "+--------------+--------------+--------------+\n" +
+                        "|   fullName   |   firmName   | addressName  |\n" +
+                        "| VARCHAR(100) | VARCHAR(100) | VARCHAR(100) |\n" +
+                        "+--------------+--------------+--------------+\n" +
+                        "|      P1      |      F1      |      A1      |\n" +
+                        "|      P2      |      F2      |      A2      |\n" +
+                        "|      P3      |              |              |\n" +
+                        "|      P4      |              |      A3      |\n" +
+                        "|      P5      |      F1      |      A1      |\n" +
+                        "+--------------+--------------+--------------+\n" +
+                        "5 rows -- 3 columns", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
+                this.extension.execute(notebook, "notebook", "executeCell", Map.of())
+        );
+
+
+    }
+
+    @Test
     void completions()
     {
         SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>");
