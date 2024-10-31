@@ -323,10 +323,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "       vscodelsp::test::TestDB1:\n" +
                         "       [\n" +
                         "           connection_1: vscodelsp::test::LocalH2Connection1\n" +
-                        "       ],\n" +
-                        "       vscodelsp::test::TestDB2:\n" +
-                        "       [\n" +
-                        "           connection_2: vscodelsp::test::LocalH2Connection2\n" +
                         "       ]\n" +
                         "   ];\n" +
                         "}");
@@ -1199,5 +1195,59 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         LegendExecutionResult result = actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
         Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
+    public void testGenerateDatasetSpecifications() throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService2")).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "vscodelsp::test::EmployeeRelationalMapping", "runtime", "vscodelsp::test::H2RuntimeRelational");
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                SURVEY_DATASETS_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals("[{\"_type\":\"relationalDatabaseTable\",\"name\":\"default.PersonTable\"," +
+                "\"type\":\"H2\",\"database\":\"TestDB1\",\"schema\":\"default\",\"table\":\"PersonTable\"}]",
+                result.getMessage());
+    }
+
+    @Test
+    public void testGenerateEntitlementReports() throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService2")).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "vscodelsp::test::EmployeeRelationalMapping", "runtime", "vscodelsp::test::H2RuntimeRelational",
+                "reports", "[{\"_type\":\"relationalDatabaseTable\",\"name\":\"default.PersonTable\"," + "\"type" +
+                        "\":\"H2\",\"database\":\"TestDB1\",\"schema\":\"default\",\"table\":\"PersonTable\"}]");
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                CHECK_DATASET_ENTITLEMENTS_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals("[{\"_type\":\"accessGranted\",\"dataset\":{\"_type\":\"relationalDatabaseTable\"," +
+                "\"name\":\"default.PersonTable\",\"type\":\"H2\",\"database\":\"TestDB1\",\"schema\":\"default\"," +
+                "\"table\":\"PersonTable\"}}]", result.getMessage());
     }
 }
