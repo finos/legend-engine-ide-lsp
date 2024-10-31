@@ -1222,4 +1222,32 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "\"type\":\"H2\",\"database\":\"TestDB1\",\"schema\":\"default\",\"table\":\"PersonTable\"}]",
                 result.getMessage());
     }
+
+    @Test
+    public void testGenerateEntitlementReports() throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService2")).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "vscodelsp::test::EmployeeRelationalMapping", "runtime", "vscodelsp::test::H2RuntimeRelational",
+                "reports", "[{\"_type\":\"relationalDatabaseTable\",\"name\":\"default.PersonTable\"," + "\"type" +
+                        "\":\"H2\",\"database\":\"TestDB1\",\"schema\":\"default\",\"table\":\"PersonTable\"}]");
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                CHECK_DATASET_ENTITLEMENTS_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals("[{\"_type\":\"accessGranted\",\"dataset\":{\"_type\":\"relationalDatabaseTable\"," +
+                "\"name\":\"default.PersonTable\",\"type\":\"H2\",\"database\":\"TestDB1\",\"schema\":\"default\"," +
+                "\"table\":\"PersonTable\"}}]", result.getMessage());
+    }
 }
