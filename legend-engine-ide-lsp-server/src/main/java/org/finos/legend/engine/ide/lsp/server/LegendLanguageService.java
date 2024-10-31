@@ -546,21 +546,4 @@ public class LegendLanguageService implements LegendLanguageServiceContract
             }
         });
     }
-
-    public CompletableFuture<String> getCurrentUserId()
-    {
-        return this.server.supplyPossiblyAsync(() ->
-        {
-            try
-            {
-                return System.getProperty("user.name");
-            }
-            catch (Throwable e)
-            {
-                LOGGER.error("Error while getting current user ID", e);
-                this.server.showErrorToClient("Error while getting current user ID: " + e.getMessage());
-                return null;
-            }
-        });
-    }
 }
