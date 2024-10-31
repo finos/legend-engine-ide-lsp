@@ -443,13 +443,6 @@ public class ClasspathUsingMavenFactory implements ClasspathFactory
 
         dependencies.add(analyticsMappingDependency);
 
-        Dependency entitlementsServiceExtensionDependency = new Dependency();
-        entitlementsServiceExtensionDependency.setGroupId("org.finos.legend.engine");
-        entitlementsServiceExtensionDependency.setArtifactId("legend-engine-xt-analytics-store-entitlement");
-        entitlementsServiceExtensionDependency.setVersion(engineVersion);
-
-        dependencies.add(entitlementsServiceExtensionDependency);
-
         return dependencies;
     }
 
