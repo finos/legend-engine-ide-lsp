@@ -77,4 +77,7 @@ public interface LegendLanguageServiceContract
 
     @JsonRequest("getSubtypeInfo")
     CompletableFuture<LegendSDLCFeature.SubtypeInfoResult> getSubtypeInfo();
+
+    @JsonRequest("getCurrentUserId")
+    CompletableFuture<String> getCurrentUserId();
 }
