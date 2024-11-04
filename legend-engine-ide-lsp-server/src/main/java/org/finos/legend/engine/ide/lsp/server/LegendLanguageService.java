@@ -28,6 +28,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
@@ -542,6 +543,27 @@ public class LegendLanguageService implements LegendLanguageServiceContract
             {
                 LOGGER.error("Error while getting subtype info", e);
                 this.server.showErrorToClient("Error while getting subtype info: " + e.getMessage());
+                return null;
+            }
+        });
+    }
+
+    public CompletableFuture<Integer> getSectionIndexFromTextLocation(TextLocation location)
+    {
+        return this.server.supplyPossiblyAsync(() ->
+        {
+            try
+            {
+                LegendServerGlobalState globalState = this.server.getGlobalState();
+                String uri = location.getDocumentId();
+                TextInterval interval = location.getTextInterval();
+                LegendServerGlobalState.LegendServerDocumentState docState = globalState.getDocumentState(uri);
+                return docState.getSectionStateAtLine(interval.getStart().getLine()).getSectionNumber();
+            }
+            catch (Throwable e)
+            {
+                LOGGER.error("Error while getting section index from text location", e);
+                this.server.showErrorToClient("Error while getting section index from text location: " + e.getMessage());
                 return null;
             }
         });

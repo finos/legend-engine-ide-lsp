@@ -28,6 +28,7 @@ import org.finos.legend.engine.ide.lsp.extension.features.LegendSDLCFeature;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.server.request.LegendWriteEntityRequest;
@@ -77,4 +78,7 @@ public interface LegendLanguageServiceContract
 
     @JsonRequest("getSubtypeInfo")
     CompletableFuture<LegendSDLCFeature.SubtypeInfoResult> getSubtypeInfo();
+
+    @JsonRequest("getSectionIndexFromTextLocation")
+    CompletableFuture<Integer> getSectionIndexFromTextLocation(TextLocation location);
 }
