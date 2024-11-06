@@ -335,7 +335,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             }
             default:
             {
-                return super.execute(section, entityPath, commandId, executableArgs);
+                return super.execute(section, entityPath, commandId, executableArgs, Map.of());
             }
         }
     }

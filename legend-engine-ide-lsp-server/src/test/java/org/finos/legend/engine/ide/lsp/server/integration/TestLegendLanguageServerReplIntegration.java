@@ -19,11 +19,15 @@ package org.finos.legend.engine.ide.lsp.server.integration;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -39,13 +43,26 @@ public class TestLegendLanguageServerReplIntegration
     {
         String classpath = extension.futureGet(extension.getServer().getLegendLanguageService().replClasspath());
 
+        if (OS.WINDOWS.isCurrentOs())
+        {
+            classpath = classpath.replace(File.separator, "/");
+        }
+        if (classpath.contains(" "))
+        {
+            classpath = Arrays.stream(classpath.split(File.pathSeparator)).map(x -> String.format("\"%s\"", x)).collect(Collectors.joining(File.pathSeparator));
+        }
+
+        Path classpathFile = Files.writeString(dir.resolve("classpath"), classpath);
+
         ProcessBuilder processBuilder = new ProcessBuilder(
                 System.getProperty("java.home") + File.separator + "bin" + File.separator + "java",
+                "-cp",
+                "@" + classpathFile.toString(),
                 "org.finos.legend.engine.ide.lsp.server.LegendREPLTerminal",
-                "",
                 dir.toString()
         );
-        processBuilder.environment().put("CLASSPATH", classpath);
+
+        processBuilder.directory(dir.toFile());
         processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
         Process process = null;
         try
@@ -53,6 +70,10 @@ public class TestLegendLanguageServerReplIntegration
             process = processBuilder.start();
             Assertions.assertTrue(process.isAlive());
             read(process.getInputStream(), "Ready!");
+        }
+        catch (Exception e)
+        {
+            Assertions.fail("Failed to run process with args:" + String.join(" ", processBuilder.command()), e);
         }
         finally
         {

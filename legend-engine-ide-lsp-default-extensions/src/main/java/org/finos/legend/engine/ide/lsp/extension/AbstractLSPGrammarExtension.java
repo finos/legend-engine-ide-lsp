@@ -36,7 +36,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.collections.api.factory.Lists;
-import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
@@ -252,12 +251,6 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
     {
         this.commandsSupports.forEach(x -> x.collectCommands(sectionState, element, consumer));
-    }
-
-    @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
-    {
-        return execute(section, entityPath, commandId, executableArgs, Maps.mutable.empty());
     }
 
     @Override

@@ -188,7 +188,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             }
             default:
             {
-                return super.execute(section, entityPath, commandId, executableArgs);
+                return super.execute(section, entityPath, commandId, executableArgs, Map.of());
             }
         }
     }
