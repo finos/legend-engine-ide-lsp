@@ -94,7 +94,7 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
 
             try
             {
-                results = extension.execute(sectionState, entity, id, executableArgs, inputParameters);
+                results = inputParameters.isEmpty() ? extension.execute(sectionState, entity, id, executableArgs) : extension.execute(sectionState, entity, id, executableArgs, inputParameters);
             }
             catch (Throwable e)
             {
@@ -140,7 +140,7 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
 
             try
             {
-                results = extension.execute(sectionState, entity, id, executableArgs, inputParameters);
+                results = inputParameters.isEmpty() ? extension.execute(sectionState, entity, id, executableArgs) : extension.execute(sectionState, entity, id, executableArgs, inputParameters);
             }
             catch (Throwable e)
             {
