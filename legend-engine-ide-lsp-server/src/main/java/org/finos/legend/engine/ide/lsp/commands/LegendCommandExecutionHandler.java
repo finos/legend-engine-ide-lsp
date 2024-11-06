@@ -16,6 +16,7 @@
 
 package org.finos.legend.engine.ide.lsp.commands;
 
+import com.google.gson.JsonObject;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,8 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
+import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
 public class LegendCommandExecutionHandler implements CommandExecutionHandler
@@ -50,6 +53,18 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
     {
         List<Object> args = params.getArguments();
 
+        if (args.get(0) instanceof JsonObject)
+        {
+            return this.executeCommandWithTextLocation(progressToken, args);
+        }
+        else
+        {
+            return this.executeCommandWithDocumentAndSection(progressToken, args);
+        }
+    }
+
+    private Iterable<? extends LegendExecutionResult> executeCommandWithDocumentAndSection(Either<String, Integer> progressToken, List<Object> args)
+    {
         String uri = this.server.extractValueAs(args.get(0), String.class);
         int section = this.server.extractValueAs(args.get(1), Integer.class);
         String entity = this.server.extractValueAs(args.get(2), String.class);
@@ -79,7 +94,53 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
 
             try
             {
-                results = inputParameters.isEmpty() ? extension.execute(sectionState, entity, id, executableArgs) : extension.execute(sectionState, entity, id, executableArgs, inputParameters);
+                results = extension.execute(sectionState, entity, id, executableArgs, inputParameters);
+            }
+            catch (Throwable e)
+            {
+                String message = "Command execution " + id + " for entity " + entity + " in section " + sectionState.getSectionNumber() + " of " + uri + " failed.";
+                results = Collections.singletonList(LegendExecutionResult.errorResult(new Exception(message, e), message, entity, null));
+            }
+
+            return results;
+        });
+    }
+
+    private Iterable<? extends LegendExecutionResult> executeCommandWithTextLocation(Either<String, Integer> progressToken, List<Object> args)
+    {
+        TextLocation textLocation = this.server.extractValueAs(args.get(0), TextLocation.class);
+        String id = this.server.extractValueAs(args.get(1), String.class);
+        Map<String, String> executableArgs = ((args.size() < 3) || (args.get(2) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(2), String.class, String.class);
+        Map<String, Object> inputParameters = ((args.size() < 4) || (args.get(3) == null)) ? Collections.emptyMap() : this.server.extractValueAsMap(args.get(3), String.class, Object.class);
+
+        String uri = textLocation.getDocumentId();
+
+        return this.server.runAndFireEvent(id, () ->
+        {
+            Iterable<? extends LegendExecutionResult> results;
+
+            GlobalState globalState = this.server.getGlobalState();
+            DocumentState docState = globalState.getDocumentState(uri);
+            if (docState == null)
+            {
+                throw new RuntimeException("Unknown document: " + uri);
+            }
+
+            TextPosition start = textLocation.getTextInterval().getStart();
+            SectionState sectionState = docState.getSectionStateAtLine(start.getLine());
+            LegendLSPGrammarExtension extension = sectionState.getExtension();
+            if (extension == null)
+            {
+                throw new RuntimeException("Could not execute command " + id + " @ " + textLocation + ": no extension found");
+            }
+
+            String entity = extension.getDeclaration(sectionState, start).orElseThrow(() -> new RuntimeException("Could not execute command " + id + " @ " + textLocation + ": no entity found")).getIdentifier();
+
+            this.server.notifyBegin(progressToken, entity);
+
+            try
+            {
+                results = extension.execute(sectionState, entity, id, executableArgs, inputParameters);
             }
             catch (Throwable e)
             {
