@@ -118,6 +118,21 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     }
 
     /**
+     * Execute a Legend command on an entity in a section.
+     *
+     * @param section    grammar section state
+     * @param entityPath entity path
+     * @param commandId  command id
+     * @param executableArgs executable Arguments
+     * @param inputParameters input Parameters
+     * @return execution results
+     */
+    default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        return Collections.emptyList();
+    }
+
+    /**
      * If the given text position refers to another element, this returns the location where the reference (needs to include the text position),
      * and the location where the referenced is defined, enabling navigation from one to the other. If a reference cannot be resolved, an empty optional should be returned.
      *
@@ -141,21 +156,6 @@ public interface LegendLSPGrammarExtension extends LegendLSPExtension
     default Stream<LegendReference> getLegendReferences(SectionState sectionState)
     {
         return Stream.empty();
-    }
-    
-    /**
-     * Execute a Legend command on an entity in a section.
-     *
-     * @param section    grammar section state
-     * @param entityPath entity path
-     * @param commandId  command id
-     * @param executableArgs executable Arguments
-     * @param inputParameters input Parameters
-     * @return execution results
-     */
-    default Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
-    {
-        return Collections.emptyList();
     }
 
     default List<LegendTest> testCases(SectionState section)
