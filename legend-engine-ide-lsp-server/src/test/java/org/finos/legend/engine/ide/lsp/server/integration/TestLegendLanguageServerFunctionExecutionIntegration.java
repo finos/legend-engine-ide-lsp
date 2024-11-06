@@ -26,8 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.ExecuteCommandParams;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
 import org.eclipse.lsp4j.jsonrpc.json.adapters.EnumTypeAdapter;
 import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
+import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FilterOperation;
@@ -37,6 +39,7 @@ import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSortOrder;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.junit.jupiter.api.Assertions;
@@ -138,7 +141,7 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
     }
 
     @Test
-    void testFunctionWithMultiplicityOneParameters() throws Exception
+    void testFunctionWithMultiplicityOneParametersUsingSection() throws Exception
     {
         String code =
                 "function sample::sum(a : Integer[1], b: Integer[1]): Integer[1]\n" +
@@ -147,11 +150,24 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
                         "}\n" +
                         "\n";
 
-        testFunctionExecution(code, "sample::sum_Integer_1__Integer_1__Integer_1_", Map.of("a", 1, "b", 2), "3");
+        testFunctionExecutionUsingSection(code, "sample::sum_Integer_1__Integer_1__Integer_1_", Map.of("a", 1, "b", 2), "3");
     }
 
     @Test
-    void testFunctionWithMultiplicityManyParameters() throws Exception
+    void testFunctionWithMultiplicityOneParametersUsingLocation() throws Exception
+    {
+        String code =
+                "function sample::sum(a : Integer[1], b: Integer[1]): Integer[1]\n" +
+                        "{\n" +
+                        "  $a + $b;\n" +
+                        "}\n" +
+                        "\n";
+
+        testFunctionExecutionUsingLocation(code, Map.of("a", 1, "b", 2), "3");
+    }
+
+    @Test
+    void testFunctionWithMultiplicityManyParametersUsingSection() throws Exception
     {
         String code =
                 "function sample::sum(a : Integer[*]): Integer[1]\n" +
@@ -160,7 +176,20 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
                         "}\n" +
                         "\n";
 
-        testFunctionExecution(code, "sample::sum_Integer_MANY__Integer_1_", Map.of("a", new int[]{1, 2, 3}), "6");
+        testFunctionExecutionUsingSection(code, "sample::sum_Integer_MANY__Integer_1_", Map.of("a", new int[]{1, 2, 3}), "6");
+    }
+
+    @Test
+    void testFunctionWithMultiplicityManyParametersUsingLocation() throws Exception
+    {
+        String code =
+                "function sample::sum(a : Integer[*]): Integer[1]\n" +
+                        "{\n" +
+                        "  sum($a);\n" +
+                        "}\n" +
+                        "\n";
+
+        testFunctionExecutionUsingLocation(code, Map.of("a", new int[]{1, 2, 3}), "6");
     }
 
     @Test
@@ -173,10 +202,10 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
                         "}\n" +
                         "\n";
 
-        testFunctionExecution(code, "sample::mult_Integer_1__Float_1__Number_1_", Map.of("a", 2, "b", 3.5), "7.0");
+        testFunctionExecutionUsingSection(code, "sample::mult_Integer_1__Float_1__Number_1_", Map.of("a", 2, "b", 3.5), "7.0");
     }
 
-    private static void testFunctionExecution(String code, String function, Map<String, Object> funcArgs, String funcOutput) throws Exception
+    private static void testFunctionExecutionUsingSection(String code, String function, Map<String, Object> funcArgs, String funcOutput) throws Exception
     {
 
         Path path = extension.addToWorkspace("file1.pure", code);
@@ -187,6 +216,32 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
             path.toUri().toString(),
                 0,
                 function,
+                "legend.function.execute",
+                Map.of(),
+                funcArgs
+        ));
+
+        Gson gson = new GsonBuilder().registerTypeAdapterFactory(new EnumTypeAdapter.Factory()).create();
+        Object result = extension.futureGet(extension.getServer().getWorkspaceService().executeCommand(params));
+        LegendExecutionResult[] executionResults = (LegendExecutionResult[]) gson.fromJson(gson.toJsonTree(result), TypeToken.getArray(LegendExecutionResult.class));
+
+        Assertions.assertEquals(1, executionResults.length, "Expect one result: " + result);
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, executionResults[0].getType(), "Execution did not succeed: " + executionResults[0]);
+        Assertions.assertEquals(funcOutput, executionResults[0].getMessage());
+    }
+
+    private static void testFunctionExecutionUsingLocation(String code, Map<String, Object> funcArgs, String funcOutput) throws Exception
+    {
+        Path path = extension.addToWorkspace("file1.pure", code);
+
+        List<LegendEntity> entities = extension.futureGet(extension.getServer().getLegendLanguageService().entities(new LegendEntitiesRequest(List.of(new TextDocumentIdentifier(path.toUri().toString())))));
+
+        Assertions.assertEquals(1, entities.size());
+
+        ExecuteCommandParams params = new ExecuteCommandParams();
+        params.setCommand(LegendCommandExecutionHandler.LEGEND_COMMAND_ID);
+        params.setArguments(List.of(
+                entities.get(0).getLocation(),
                 "legend.function.execute",
                 Map.of(),
                 funcArgs
