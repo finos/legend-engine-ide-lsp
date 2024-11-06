@@ -90,7 +90,7 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams)
     {
         return GENERATE_DB_COMMAND_ID.equals(commandId) ?
                 generateDBFromConnection(section, entityPath) :

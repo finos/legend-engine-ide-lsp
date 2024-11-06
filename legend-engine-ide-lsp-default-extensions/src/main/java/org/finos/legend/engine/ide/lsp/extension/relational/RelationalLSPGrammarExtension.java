@@ -203,7 +203,7 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams)
     {
         return GENERATE_MODEL_MAPPING_COMMAND_ID.equals(commandId) ?
                 generateModelsFromDatabaseSpecification(section, entityPath) :
