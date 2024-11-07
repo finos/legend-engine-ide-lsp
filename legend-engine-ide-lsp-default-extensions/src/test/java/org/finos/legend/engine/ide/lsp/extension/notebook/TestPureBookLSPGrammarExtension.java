@@ -118,7 +118,7 @@ public class TestPureBookLSPGrammarExtension
         SectionState notebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "hello::world()");
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "2", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(notebook, "notebook", "executeCell", Map.of())
+                this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of())
         );
 
         // update code
@@ -126,17 +126,17 @@ public class TestPureBookLSPGrammarExtension
 
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "3", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(notebook, "notebook", "executeCell", Map.of())
+                this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of())
         );
 
         SectionState emptyNotebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "");
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "[]", "Nothing to execute!", emptyNotebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(emptyNotebook, "notebook", "executeCell", Map.of())
+                this.extension.execute(emptyNotebook, "notebook", "executeCell", Map.of(), Map.of())
         );
 
         SectionState cannotCompileNotebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "1 + 1 +");
-        LegendExecutionResult compileFailure = this.extension.execute(cannotCompileNotebook, "notebook", "executeCell", Map.of()).iterator().next();
+        LegendExecutionResult compileFailure = this.extension.execute(cannotCompileNotebook, "notebook", "executeCell", Map.of(), Map.of()).iterator().next();
         Assertions.assertEquals(
                 LegendExecutionResult.Type.ERROR,
                 compileFailure.getType()
@@ -147,7 +147,7 @@ public class TestPureBookLSPGrammarExtension
         );
 
         SectionState failExecNotebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "let a = hello::world();\nlet b = hello::world();");
-        LegendExecutionResult planGenFailure = this.extension.execute(failExecNotebook, "notebook", "executeCell", Map.of()).iterator().next();
+        LegendExecutionResult planGenFailure = this.extension.execute(failExecNotebook, "notebook", "executeCell", Map.of(), Map.of()).iterator().next();
         Assertions.assertEquals(
                 LegendExecutionResult.Type.ERROR,
                 planGenFailure.getType()
@@ -218,7 +218,7 @@ public class TestPureBookLSPGrammarExtension
                         "|      P5      |      F1      |      A1      |\n" +
                         "+--------------+--------------+--------------+\n" +
                         "5 rows -- 3 columns", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(notebook, "notebook", "executeCell", Map.of())
+                this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of())
         );
 
 
