@@ -17,7 +17,6 @@
 package org.finos.legend.engine.ide.lsp.extension.sdlc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.collections.api.block.function.Function0;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.factory.Sets;
@@ -147,7 +146,7 @@ public class LegendSDLCFeatureImpl implements LegendSDLCFeature
     }
 
     @Override
-    public Map.Entry<String, String> contentToPureText(Map<String, ?> content)
+    public String contentToPureText(Map<String, ?> content)
     {
         PackageableElement packageableElement = this.objectMapper.convertValue(content, PackageableElement.class);
         String pureText = this.pureGrammarComposer.renderPureModelContextData(PureModelContextData.newBuilder().withElement(packageableElement).build());
@@ -155,7 +154,7 @@ public class LegendSDLCFeatureImpl implements LegendSDLCFeature
         {
             pureText = pureText.substring(pureText.indexOf('\n') + 1);
         }
-        return Pair.of(packageableElement.getPath(), pureText.strip());
+        return pureText.strip();
     }
 
     @Override

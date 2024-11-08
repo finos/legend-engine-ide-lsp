@@ -523,7 +523,7 @@ public class TestLegendLanguageServerSDLCIntegration
                 "  \"package\": \"one\"\n" +
                 "}";
 
-        writeEntity(classEntityToWrite);
+        writeEntity("one::element", classEntityToWrite);
 
         String mappingToWrite = "{\n" +
                 "  \"_type\": \"mapping\",\n" +
@@ -566,7 +566,7 @@ public class TestLegendLanguageServerSDLCIntegration
                 "  \"package\": \"vscodelsp::test\"\n" +
                 "}";
 
-        writeEntity(mappingToWrite);
+        writeEntity("vscodelsp::test::EmployeeMapping", mappingToWrite);
 
         String diagramEntityToWrite = "{\n" +
                 "  \"_type\": \"diagram\",\n" +
@@ -590,7 +590,7 @@ public class TestLegendLanguageServerSDLCIntegration
                 "  \"propertyViews\": []\n" +
                 "}";
 
-        writeEntity(diagramEntityToWrite);
+        writeEntity("showcase::northwind::model::NorthwindModelDiagram1", diagramEntityToWrite);
 
         List<ApplyWorkspaceEditParams> workspaceEdits = extension.getClient().workspaceEdits;
         Assertions.assertEquals(3, workspaceEdits.size());
@@ -679,10 +679,10 @@ public class TestLegendLanguageServerSDLCIntegration
         return new GsonBuilder().setPrettyPrinting().create().toJson(mappingElementDocumentChanges.get(0).getLeft());
     }
 
-    private static void writeEntity(String classEntityToWrite) throws Exception
+    private static void writeEntity(String entityPath, String classEntityToWrite) throws Exception
     {
         Map<String, ?> entityContent = new Gson().fromJson(classEntityToWrite, Map.class);
-        LegendWriteEntityRequest request = new LegendWriteEntityRequest(entityContent);
+        LegendWriteEntityRequest request = new LegendWriteEntityRequest(entityPath, entityContent);
         extension.futureGet(extension.getServer().getLegendLanguageService().writeEntity(request));
     }
 }

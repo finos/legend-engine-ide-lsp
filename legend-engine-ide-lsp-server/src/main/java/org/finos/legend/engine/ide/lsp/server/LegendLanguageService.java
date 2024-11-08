@@ -451,10 +451,8 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                 {
                     LegendSDLCFeature handler = this.getSDLCHandler();
 
-                    Map.Entry<String, String> pathToText = handler.contentToPureText(request.getContent());
-
-                    String path = pathToText.getKey();
-                    String pureText = pathToText.getValue();
+                    String path = request.getEntityPath();
+                    String pureText = handler.contentToPureText(request.getContent());
 
                     LegendEntity entity = entities.stream().filter(x -> x.getPath().equals(path)).findAny().orElseThrow(() -> new RuntimeException("Element not found in project: " + path));
                     TextLocation location = entity.getLocation();
