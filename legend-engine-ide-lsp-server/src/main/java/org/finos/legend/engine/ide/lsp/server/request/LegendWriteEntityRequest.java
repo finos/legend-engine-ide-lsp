@@ -20,6 +20,7 @@ import java.util.Map;
 
 public class LegendWriteEntityRequest
 {
+    private String entityPath;
     private Map<String, ?> content;
 
     public LegendWriteEntityRequest()
@@ -27,9 +28,15 @@ public class LegendWriteEntityRequest
 
     }
 
-    public LegendWriteEntityRequest(Map<String, ?> content)
+    public LegendWriteEntityRequest(String entityPath, Map<String, ?> content)
     {
+        this.entityPath = entityPath;
         this.content = content;
+    }
+
+    public String getEntityPath()
+    {
+        return entityPath;
     }
 
     public Map<String, ?> getContent()
