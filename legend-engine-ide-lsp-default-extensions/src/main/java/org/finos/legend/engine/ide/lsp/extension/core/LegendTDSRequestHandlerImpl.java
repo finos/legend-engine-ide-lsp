@@ -83,7 +83,7 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
 
             GlobalState globalState = section.getDocumentState().getGlobalState();
             SingleExecutionPlan executionPlan = functionExecutionSupport.getExecutionPlan(packageableElement, newLambda, pureModel, inputParameters, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
-            FunctionExecutionSupport.executePlan(globalState, functionExecutionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, null, entityPath, inputParameters, results);
+            FunctionExecutionSupport.executePlan(globalState, extension, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, null, entityPath, inputParameters, results);
         }
         catch (Exception e)
         {

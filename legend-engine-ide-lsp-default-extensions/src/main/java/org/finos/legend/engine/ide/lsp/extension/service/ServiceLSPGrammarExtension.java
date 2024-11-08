@@ -305,37 +305,9 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             {
                 return FunctionExecutionSupport.executeFunction(this, section, entityPath, inputParams);
             }
-            case FunctionExecutionSupport.EXECUTE_QUERY_ID:
-            {
-                return FunctionExecutionSupport.executeQuery(this, section, entityPath, executableArgs, inputParams);
-            }
-            case FunctionExecutionSupport.GENERATE_EXECUTION_PLAN_ID:
-            {
-                return FunctionExecutionSupport.generateExecutionPlan(this, section, entityPath, executableArgs, inputParams);
-            }
-            case FunctionExecutionSupport.GRAMMAR_TO_JSON_LAMBDA_ID:
-            {
-                return FunctionExecutionSupport.convertGrammarToLambdaJson(this, section, entityPath, executableArgs, inputParams);
-            }
-            case FunctionExecutionSupport.JSON_TO_GRAMMAR_LAMBDA_BATCH_ID:
-            {
-                return FunctionExecutionSupport.convertLambdaJsonToGrammarBatch(this, section, entityPath, executableArgs, inputParams);
-            }
-            case FunctionExecutionSupport.GET_LAMBDA_RETURN_TYPE_ID:
-            {
-                return FunctionExecutionSupport.getLambdaReturnType(this, section, entityPath, executableArgs, inputParams);
-            }
-            case FunctionExecutionSupport.SURVEY_DATASETS_ID:
-            {
-                return FunctionExecutionSupport.generateDatasetSpecifications(this, section, entityPath, executableArgs, inputParams);
-            }
-            case FunctionExecutionSupport.CHECK_DATASET_ENTITLEMENTS_ID:
-            {
-                return FunctionExecutionSupport.generateEntitlementReports(this, section, entityPath, executableArgs, inputParams);
-            }
             default:
             {
-                return super.execute(section, entityPath, commandId, executableArgs, Map.of());
+                return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParams);
             }
         }
     }

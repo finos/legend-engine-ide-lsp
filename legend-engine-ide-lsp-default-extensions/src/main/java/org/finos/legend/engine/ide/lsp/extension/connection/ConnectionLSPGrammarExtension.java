@@ -31,6 +31,7 @@ import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
@@ -92,7 +93,9 @@ public class ConnectionLSPGrammarExtension extends AbstractLegacyParserLSPGramma
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams)
     {
-        return GENERATE_DB_COMMAND_ID.equals(commandId) ? generateDBFromConnection(section, entityPath) : super.execute(section, entityPath, commandId, executableArgs, Map.of());
+        return GENERATE_DB_COMMAND_ID.equals(commandId)
+               ? generateDBFromConnection(section, entityPath)
+               : FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParams);
     }
 
     @Override

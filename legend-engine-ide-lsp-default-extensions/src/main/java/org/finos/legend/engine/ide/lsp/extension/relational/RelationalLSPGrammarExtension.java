@@ -34,6 +34,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarProvider;
+import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtension;
@@ -205,7 +206,9 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams)
     {
-        return GENERATE_MODEL_MAPPING_COMMAND_ID.equals(commandId) ? generateModelsFromDatabaseSpecification(section, entityPath) : super.execute(section, entityPath, commandId, executableArgs, Map.of());
+        return GENERATE_MODEL_MAPPING_COMMAND_ID.equals(commandId)
+               ? generateModelsFromDatabaseSpecification(section, entityPath)
+               : FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParams);
     }
 
     private Iterable<? extends LegendExecutionResult> generateModelsFromDatabaseSpecification(SectionState section, String entityPath)
