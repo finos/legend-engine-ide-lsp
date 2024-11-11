@@ -346,7 +346,7 @@ public interface FunctionExecutionSupport
             else
             {
                 Result result = executePlan(executionPlan, context, inputParameters, extension);
-                collectResults(extension, entityPath, result, docId, sectionNum, inputParameters, format, results::add);
+                collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, format, results::add);
             }
         }
         catch (Exception e)
@@ -590,8 +590,10 @@ public interface FunctionExecutionSupport
         return Optional.ofNullable(subject).map(Identity::makeIdentity).orElseGet(Identity::getAnonymousIdentity);
     }
 
-    static void collectResults(AbstractLSPGrammarExtension extension, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, SerializationFormat format, Consumer<? super LegendExecutionResult> consumer)
+    static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, SerializationFormat format, Consumer<? super LegendExecutionResult> consumer)
     {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
         // TODO also collect results from activities
         if (result instanceof ErrorResult)
         {
