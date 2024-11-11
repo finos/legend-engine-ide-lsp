@@ -253,11 +253,6 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         this.commandsSupports.forEach(x -> x.collectCommands(sectionState, element, consumer));
     }
 
-    public Iterable<? extends LegendExecutionResult> defaultExecute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
-    {
-        return this.execute(section, entityPath, commandId, executableArgs, inputParameters);
-    }
-
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {

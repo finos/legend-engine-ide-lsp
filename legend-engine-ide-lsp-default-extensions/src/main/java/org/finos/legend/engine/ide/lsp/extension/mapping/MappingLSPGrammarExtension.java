@@ -42,7 +42,6 @@ import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
-import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
@@ -189,7 +188,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             }
             default:
             {
-                return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParams);
+                return super.execute(section, entityPath, commandId, executableArgs, Map.of());
             }
         }
     }

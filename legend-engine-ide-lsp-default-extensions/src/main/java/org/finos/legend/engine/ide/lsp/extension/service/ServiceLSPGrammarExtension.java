@@ -301,10 +301,6 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             {
                 return registerService(section, entityPath);
             }
-            case FunctionExecutionSupport.EXECUTE_COMMAND_ID:
-            {
-                return FunctionExecutionSupport.executeFunction(this, section, entityPath, inputParams);
-            }
             default:
             {
                 return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParams);
