@@ -316,7 +316,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
-        return commandId.equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID)
+        return FunctionExecutionSupport.EXECUTE_COMMAND_ID.equals(commandId)
                ? FunctionExecutionSupport.executeFunction(this, section, entityPath, inputParameters)
                : FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs,
                        inputParameters);
