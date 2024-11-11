@@ -546,6 +546,7 @@ public interface FunctionExecutionSupport
     static Iterable<? extends LegendExecutionResult> generateEntitlementReports(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
         CompileResult compileResult = extension.getCompileResult(section);
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
