@@ -184,7 +184,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             }
             case ANALYZE_MAPPING_MODEL_COVERAGE_COMMAND_ID:
             {
-                return analyzeMappingModelCoverage(section, entityPath);
+                return analyzeMappingModelCoverage(section, entityPath, Boolean.parseBoolean(executableArgs.get("returnLightGraph")));
             }
             default:
             {
@@ -272,7 +272,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
         return results;
     }
 
-    private List<? extends LegendExecutionResult> analyzeMappingModelCoverage(SectionState section, String entityPath)
+    private List<? extends LegendExecutionResult> analyzeMappingModelCoverage(SectionState section, String entityPath, boolean returnLightGraph)
     {
         PackageableElement element = getParseResult(section).getElement(entityPath);
         CompileResult compileResult = this.getCompileResult(section);
@@ -284,9 +284,9 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             Root_meta_analytics_mapping_modelCoverage_MappingModelCoverageAnalysisResult analysisResult = core_analytics_mapping_modelCoverage_analytics
                     .Root_meta_analytics_mapping_modelCoverage_analyze_Mapping_1__Boolean_1__Boolean_1__Boolean_1__MappingModelCoverageAnalysisResult_1_(
                             mapping,
+                            returnLightGraph,
                             false,
-                            false,
-                            false,
+                            returnLightGraph,
                             pureModel.getExecutionSupport()
                     );
             String result = core_analytics_mapping_modelCoverage_serializer
