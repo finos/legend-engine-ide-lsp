@@ -38,10 +38,7 @@ import org.finos.legend.engine.entitlement.model.specification.DatasetSpecificat
 import org.finos.legend.engine.entitlement.services.EntitlementModelObjectMapperFactory;
 import org.finos.legend.engine.entitlement.services.EntitlementServiceExtension;
 import org.finos.legend.engine.entitlement.services.EntitlementServiceExtensionLoader;
-import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
-import org.finos.legend.engine.ide.lsp.extension.CompileResult;
-import org.finos.legend.engine.ide.lsp.extension.Constants;
+import org.finos.legend.engine.ide.lsp.extension.*;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
@@ -122,6 +119,49 @@ public interface FunctionExecutionSupport
     default String getExecutionKey(PackageableElement element, Map<String, Object> args)
     {
         return "";
+    }
+
+    static Iterable<? extends LegendExecutionResult> execute(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        switch (commandId)
+        {
+            case FunctionExecutionSupport.EXECUTE_COMMAND_ID:
+            {
+                return FunctionExecutionSupport.executeFunction(executionSupport, section, entityPath, inputParameters);
+            }
+            case FunctionExecutionSupport.EXECUTE_QUERY_ID:
+            {
+                return FunctionExecutionSupport.executeQuery(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            case FunctionExecutionSupport.GENERATE_EXECUTION_PLAN_ID:
+            {
+                return FunctionExecutionSupport.generateExecutionPlan(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            case FunctionExecutionSupport.GRAMMAR_TO_JSON_LAMBDA_ID:
+            {
+                return FunctionExecutionSupport.convertGrammarToLambdaJson(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            case FunctionExecutionSupport.JSON_TO_GRAMMAR_LAMBDA_BATCH_ID:
+            {
+                return FunctionExecutionSupport.convertLambdaJsonToGrammarBatch(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            case FunctionExecutionSupport.GET_LAMBDA_RETURN_TYPE_ID:
+            {
+                return FunctionExecutionSupport.getLambdaReturnType(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            case FunctionExecutionSupport.SURVEY_DATASETS_ID:
+            {
+                return FunctionExecutionSupport.generateDatasetSpecifications(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            case FunctionExecutionSupport.CHECK_DATASET_ENTITLEMENTS_ID:
+            {
+                return FunctionExecutionSupport.generateEntitlementReports(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            default:
+            {
+                throw new UnsupportedOperationException("Unsupported command: " + commandId);
+            }
+        }
     }
 
     SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String clientVersion);
