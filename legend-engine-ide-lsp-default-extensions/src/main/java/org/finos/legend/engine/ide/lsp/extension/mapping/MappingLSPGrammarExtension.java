@@ -285,7 +285,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                     .Root_meta_analytics_mapping_modelCoverage_analyze_Mapping_1__Boolean_1__Boolean_1__Boolean_1__MappingModelCoverageAnalysisResult_1_(
                             mapping,
                             returnLightGraph,
-                            false,
+                            returnLightGraph,
                             returnLightGraph,
                             pureModel.getExecutionSupport()
                     );
