@@ -52,6 +52,7 @@ import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
@@ -118,6 +119,9 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
 
     static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
     private static final String REGISTER_SERVICE_COMMAND_TITLE = "Register service";
+
+    private static final String EDIT_SERVICE_QUERY_COMMAND_ID = "legend.edit.service.query";
+    private static final String EDIT_SERVICE_QUERY_COMMAND_TITLE = "Edit/Execute in QueryBuilder";
 
     private static final ImmutableList<String> FUNCTIONS_TRIGGERS = Lists.immutable.with("->");
 
@@ -267,6 +271,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         {
             Service service = (Service) element;
             this.collectExecCommand(service, this.getCompileResult(sectionState), consumer);
+            consumer.accept(EDIT_SERVICE_QUERY_COMMAND_ID, EDIT_SERVICE_QUERY_COMMAND_TITLE, service.sourceInformation, LegendCommandType.CLIENT);
             if (isEngineServerConfigured())
             {
                 consumer.accept(REGISTER_SERVICE_COMMAND_ID, REGISTER_SERVICE_COMMAND_TITLE, service.sourceInformation);
