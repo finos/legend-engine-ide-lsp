@@ -100,6 +100,8 @@ public interface FunctionExecutionSupport
 
     String EXECUTE_COMMAND_ID = "legend.function.execute";
     String EXECUTE_COMMAND_TITLE = "Execute";
+    String EDIT_IN_QUERYBUILDER_COMMAND_ID = "legend.editInQueryBuilder";
+    String EDIT_IN_QUERYBUILDER_COMMAND_TITLE = "Edit/Execute in QueryBuilder";
     String EXECUTE_QUERY_ID = "legend.query.execute";
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
     String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
@@ -231,6 +233,7 @@ public interface FunctionExecutionSupport
             });
         }
         consumer.accept(EXECUTE_COMMAND_ID, EXECUTE_COMMAND_TITLE, element.sourceInformation, Collections.emptyMap(), parameters, LegendCommandType.CLIENT);
+        consumer.accept(EDIT_IN_QUERYBUILDER_COMMAND_ID, EDIT_IN_QUERYBUILDER_COMMAND_TITLE, element.sourceInformation, LegendCommandType.CLIENT);
     }
 
     List<Variable> getParameters(PackageableElement element);
