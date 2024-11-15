@@ -494,7 +494,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
 
         List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionState))
                 .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
-        Set<String> expectedCommands = Set.of(FunctionExecutionSupport.EXECUTE_COMMAND_ID, ServiceLSPGrammarExtension.RUN_LEGACY_TESTS_COMMAND_ID);
+        Set<String> expectedCommands = Set.of(FunctionExecutionSupport.EXECUTE_COMMAND_ID, ServiceLSPGrammarExtension.RUN_LEGACY_TESTS_COMMAND_ID, EDIT_IN_QUERYBUILDER_COMMAND_ID);
         Set<String> actualCommands = Sets.mutable.empty();
         commands.forEach(c -> actualCommands.add(c.getId()));
         Assertions.assertEquals(expectedCommands, actualCommands);
