@@ -24,8 +24,11 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
 import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
+import org.eclipse.lsp4j.DidOpenNotebookDocumentParams;
+import org.eclipse.lsp4j.NotebookDocument;
 import org.eclipse.lsp4j.ResourceOperation;
 import org.eclipse.lsp4j.TextDocumentEdit;
+import org.eclipse.lsp4j.TextDocumentItem;
 import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageService;
@@ -155,8 +158,13 @@ public class TestLegendLanguageServerSDLCIntegration
     @Test
     void oneEntityPerFileRefactoring() throws Exception
     {
+        extension.getServer().getNotebookDocumentService().didOpen(new DidOpenNotebookDocumentParams(
+                new NotebookDocument("_not_used_", "legend-book", 1, List.of()),
+                List.of(new TextDocumentItem("vscode-notebook-cell://cell1.purebook", "legend", 1, "1"))
+        ));
+
         // one file with one element and good name - no edits will happen
-        Path oneFileWithOneElementNoEdit = extension.addToWorkspace("one/element.pure",
+        extension.addToWorkspace("one/element.pure",
                 "###Pure\n" +
                         "Class one::element\n" +
                         "{\n" +
@@ -164,7 +172,7 @@ public class TestLegendLanguageServerSDLCIntegration
                         "}");
 
         // one file with one element and bad name - delete current, create/edit new one
-        Path oneFileWithOneElementWrongElementName = extension.addToWorkspace("one/element/wrongfile.pure",
+        extension.addToWorkspace("one/element/wrongfile.pure",
                 "###Pure\n" +
                         "Class another::one::element\n" +
                         "{\n" +
@@ -190,7 +198,7 @@ public class TestLegendLanguageServerSDLCIntegration
         );
 
         // one file with multiple elements - create/edit new files, delete existing file
-        Path manyElementsNoElementCorrectPath = extension.addToWorkspace("entities" + LegendLanguageService.PURE_FILE_DIRECTORY + "another/many/elements.pure",
+        extension.addToWorkspace("entities" + LegendLanguageService.PURE_FILE_DIRECTORY + "another/many/elements.pure",
                 "###Relational\n" +
                         "// A comment here will be kept\n" +
                         "Database my::database()\n" +

@@ -55,6 +55,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageService.class);
 
     private static final String LEGEND_VIRTUAL_FS_SCHEME = "legend-vfs:/";
+    private static final String FILE_FS_SCHEME = "file:/";
     private static final String JSON_ENTITY_DIRECTORY = "/src/main/legend/";
     public static final String PURE_FILE_DIRECTORY = "/src/main/pure/";
 
@@ -336,7 +337,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
 
                     this.server.getGlobalState().forEachDocumentState(documentState ->
                             {
-                                if (!documentState.getDocumentId().startsWith(LEGEND_VIRTUAL_FS_SCHEME))
+                                if (documentState.getDocumentId().startsWith(FILE_FS_SCHEME))
                                 {
                                     docStatesToRefactor.put(Path.of(URI.create(documentState.getDocumentId())), documentState);
                                 }
