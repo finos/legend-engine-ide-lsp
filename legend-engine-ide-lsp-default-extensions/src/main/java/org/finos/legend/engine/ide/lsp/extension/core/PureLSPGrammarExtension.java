@@ -77,6 +77,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.StoreTestData;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
+import org.finos.legend.engine.protocol.pure.v1.model.type.PackageableType;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.repl.autocomplete.Completer;
@@ -256,7 +257,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
     private Stream<Optional<LegendReferenceResolver>> toReferences(Property property)
     {
-        Optional<LegendReferenceResolver> propertyReference = LegendReferenceResolver.newReferenceResolver(property.propertyTypeSourceInformation, x -> x.resolvePackageableElement(property.type, property.propertyTypeSourceInformation));
+        PackageableType type = (PackageableType) property.genericType.rawType;
+        Optional<LegendReferenceResolver> propertyReference = LegendReferenceResolver.newReferenceResolver(type.sourceInformation, x -> x.resolvePackageableElement(type.fullPath, type.sourceInformation));
         Stream<Optional<LegendReferenceResolver>> stereotypeReferences = toStereotypeReferences(property.stereotypes);
         Stream<Optional<LegendReferenceResolver>> taggedValueReferences = toTaggedValueReferences(property.taggedValues);
         return Stream.of(Stream.of(propertyReference), stereotypeReferences, taggedValueReferences)
@@ -426,7 +428,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
             {
                 builder.append(',');
             }
-            builder.append(p._class).append(":[");
+            builder.append(((PackageableType) p.genericType.rawType).fullPath).append(":[");
             Multiplicity mult = p.multiplicity;
             int lower = mult.lowerBound;
             Integer upper = mult.getUpperBound();

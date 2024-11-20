@@ -547,7 +547,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
 
         codeFiles.put("Pure",
                 "###Pure\n" +
-                "function showcase::model::testFunction(name: String[1], isTrue: Boolean[*]): meta::pure::store::RelationStoreAccessor[*]\n" +
+                "function showcase::model::testFunction(name: String[1], isTrue: Boolean[*]): meta::pure::store::RelationStoreAccessor<Any>[*]\n" +
                 "{\n" +
                 "  #>{showcase::model::Test.FirmTable}#->filter(x | $x.id == 1);\n" +
                 "}");
