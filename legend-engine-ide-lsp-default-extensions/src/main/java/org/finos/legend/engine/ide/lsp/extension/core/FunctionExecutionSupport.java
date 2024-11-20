@@ -71,6 +71,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.Package
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Enumeration;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
+import org.finos.legend.engine.protocol.pure.v1.model.type.PackageableType;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
@@ -219,7 +220,7 @@ public interface FunctionExecutionSupport
         {
             funcParameters.forEach(p ->
             {
-                PackageableElement paramElement = elements.stream().filter(e -> e.getPath().equals(p._class)).findFirst().orElse(null);
+                PackageableElement paramElement = elements.stream().filter(e -> e.getPath().equals(((PackageableType) p.genericType.rawType).fullPath)).findFirst().orElse(null);
                 if (paramElement instanceof Enumeration)
                 {
                     parameters.put(p.name, LegendFunctionInputParameter.newFunctionParameter(p, paramElement));
@@ -742,7 +743,7 @@ public interface FunctionExecutionSupport
 
         public static LegendVariable create(Variable variable)
         {
-            return new LegendVariable(variable.name, variable.multiplicity, variable._class.path);
+            return new LegendVariable(variable.name, variable.multiplicity, ((PackageableType) variable.genericType.rawType).fullPath);
         }
 
         public String getName()

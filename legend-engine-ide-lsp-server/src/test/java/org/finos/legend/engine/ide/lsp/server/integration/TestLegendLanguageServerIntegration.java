@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.javacrumbs.jsonunit.JsonAssert;
+import net.javacrumbs.jsonunit.core.Configuration;
 import net.javacrumbs.jsonunit.core.Option;
 import org.eclipse.lsp4j.CodeLens;
 import org.eclipse.lsp4j.CodeLensParams;
@@ -474,20 +475,676 @@ public class TestLegendLanguageServerIntegration
         entities.sort(Comparator.comparing(LegendEntity::getPath));
         String json = new Gson().toJson(entities);
 
+        Configuration jsonAssertConfig = JsonAssert.when(Option.IGNORING_EXTRA_FIELDS).whenIgnoringPaths(
+                "[*].location.documentId",
+                "[*].content.sourceInformation.sourceId",
+                "[*].content.properties[*].sourceInformation.sourceId",
+                "[*].content.properties[*].genericType.rawType.sourceInformation.sourceId",
+                "[*].content.values[*].sourceInformation.sourceId"
+        );
         JsonAssert.assertJsonEquals(
-                "[" +
-                        "   {\"path\":\"abc::abc\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
-                        "   {\"path\":\"abc::abc2\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc2\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
-                        "   {\"path\":\"abc::abc3\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc3\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
-                        "   {\"path\":\"test::model::TestEnumeration\",\"classifierPath\":\"meta::pure::metamodel::type::Enumeration\",\"content\":{\"_type\":\"Enumeration\",\"name\":\"TestEnumeration\",\"values\":[{\"value\":\"VAL1\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL2\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL3\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL4\",\"stereotypes\":[],\"taggedValues\":[]}],\"stereotypes\":[],\"taggedValues\":[],\"package\":\"test::model\"}}," +
-                        "   {\"path\":\"vscodelsp::test::dependency::Employee\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"Employee\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"foobar1\",\"type\":\"Float\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]},{\"name\":\"foobar2\",\"type\":\"Float\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"vscodelsp::test::dependency\"}}," +
-                        "   {\"path\":\"vscodelsp::test::dependency::StaticConnection\",\"classifierPath\":\"meta::pure::runtime::PackageableConnection\",\"content\":{\"_type\":\"connection\",\"name\":\"StaticConnection\",\"connectionValue\":{\"_type\":\"RelationalDatabaseConnection\",\"type\":\"H2\",\"postProcessorWithParameter\":[],\"datasourceSpecification\":{\"_type\":\"h2Local\"},\"authenticationStrategy\":{\"_type\":\"h2Default\"},\"databaseType\":\"H2\"},\"package\":\"vscodelsp::test::dependency\"}}," +
-                        "   {\"path\":\"xyz::abc\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"xyz\"}}," +
-                        "   {\"path\":\"xyz::abc2\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc2\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"xyz\"}}," +
-                        "   {\"path\":\"xyz::abc3\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc3\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"xyz\"}}" +
+                "[\n" +
+                        "  {\n" +
+                        "    \"path\": \"abc::abc\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 2.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 5.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 4.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 4.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"abc\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 1,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 4,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"abc::abc2\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc2\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 6.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 9.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 8.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 8.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 8.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 8.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"abc\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 5,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 8,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"abc::abc3\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc3\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 10.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 13.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 12.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 12.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 12.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 12.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"abc\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 9,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 12,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"test::model::TestEnumeration\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Enumeration\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"Enumeration\",\n" +
+                        "      \"name\": \"TestEnumeration\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 1.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 5.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"values\": [\n" +
+                        "        {\n" +
+                        "          \"value\": \"VAL1\",\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 3.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 3.0,\n" +
+                        "            \"endColumn\": 6.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"value\": \"VAL2\",\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 3.0,\n" +
+                        "            \"startColumn\": 9.0,\n" +
+                        "            \"endLine\": 3.0,\n" +
+                        "            \"endColumn\": 12.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"value\": \"VAL3\",\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 6.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"value\": \"VAL4\",\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 9.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 12.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"package\": \"test::model\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 0,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 4,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"vscodelsp::test::dependency::Employee\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"Employee\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "        \"startLine\": 4.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 8.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"foobar1\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "                \"startLine\": 6.0,\n" +
+                        "                \"startColumn\": 12.0,\n" +
+                        "                \"endLine\": 6.0,\n" +
+                        "                \"endColumn\": 16.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"Float\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "            \"startLine\": 6.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 6.0,\n" +
+                        "            \"endColumn\": 20.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"name\": \"foobar2\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "                \"startLine\": 7.0,\n" +
+                        "                \"startColumn\": 12.0,\n" +
+                        "                \"endLine\": 7.0,\n" +
+                        "                \"endColumn\": 16.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"Float\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "            \"startLine\": 7.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 7.0,\n" +
+                        "            \"endColumn\": 20.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"vscodelsp::test::dependency\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 3,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 7,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"vscodelsp::test::dependency::StaticConnection\",\n" +
+                        "    \"classifierPath\": \"meta::pure::runtime::PackageableConnection\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"connection\",\n" +
+                        "      \"name\": \"StaticConnection\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "        \"startLine\": 11.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 18.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"connectionValue\": {\n" +
+                        "        \"_type\": \"RelationalDatabaseConnection\",\n" +
+                        "        \"sourceInformation\": {\n" +
+                        "          \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "          \"startLine\": 11.0,\n" +
+                        "          \"startColumn\": 1.0,\n" +
+                        "          \"endLine\": 18.0,\n" +
+                        "          \"endColumn\": 1.0\n" +
+                        "        },\n" +
+                        "        \"type\": \"H2\",\n" +
+                        "        \"postProcessorWithParameter\": [],\n" +
+                        "        \"datasourceSpecification\": {\n" +
+                        "          \"_type\": \"h2Local\",\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "            \"startLine\": 14.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 16.0,\n" +
+                        "            \"endColumn\": 4.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        \"authenticationStrategy\": {\n" +
+                        "          \"_type\": \"h2Default\",\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "            \"startLine\": 17.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 17.0,\n" +
+                        "            \"endColumn\": 18.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        \"databaseType\": \"H2\"\n" +
+                        "      },\n" +
+                        "      \"package\": \"vscodelsp::test::dependency\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"legend-vfs:/dependencies.pure\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 10,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 17,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"xyz::abc\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 2.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 5.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 4.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 4.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"xyz\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 1,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 4,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"xyz::abc2\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc2\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 6.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 9.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 8.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 8.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 8.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 8.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"xyz\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 5,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 8,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"xyz::abc3\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc3\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 10.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 13.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 12.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 12.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 12.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 12.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"xyz\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 9,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 12,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
                         "]",
                 json,
-                JsonAssert.when(Option.IGNORING_EXTRA_FIELDS).whenIgnoringPaths("[*].location")
+                jsonAssertConfig
         );
 
         List<LegendEntity> entitiesPerFile = extension.futureGet(extension.getServer().getLegendLanguageService().entities(
@@ -505,14 +1162,298 @@ public class TestLegendLanguageServerIntegration
         String jsonPerFile = new Gson().toJson(entitiesPerFile);
 
         JsonAssert.assertJsonEquals(
-                "[" +
-                        "   {\"path\":\"abc::abc\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
-                        "   {\"path\":\"abc::abc2\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc2\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
-                        "   {\"path\":\"abc::abc3\",\"classifierPath\":\"meta::pure::metamodel::type::Class\",\"content\":{\"_type\":\"class\",\"name\":\"abc3\",\"superTypes\":[],\"originalMilestonedProperties\":[],\"properties\":[{\"name\":\"abc\",\"type\":\"String\",\"multiplicity\":{\"lowerBound\":1.0,\"upperBound\":1.0},\"stereotypes\":[],\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[],\"taggedValues\":[],\"constraints\":[],\"package\":\"abc\"}}," +
-                        "   {\"path\":\"test::model::TestEnumeration\",\"classifierPath\":\"meta::pure::metamodel::type::Enumeration\",\"content\":{\"_type\":\"Enumeration\",\"name\":\"TestEnumeration\",\"values\":[{\"value\":\"VAL1\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL2\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL3\",\"stereotypes\":[],\"taggedValues\":[]},{\"value\":\"VAL4\",\"stereotypes\":[],\"taggedValues\":[]}],\"stereotypes\":[],\"taggedValues\":[],\"package\":\"test::model\"}}" +
+                "[\n" +
+                        "  {\n" +
+                        "    \"path\": \"abc::abc\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 2.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 5.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 4.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 4.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"abc\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 1,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 4,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"abc::abc2\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc2\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 6.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 9.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 8.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 8.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 8.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 8.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"abc\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 5,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 8,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"abc::abc3\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc3\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 10.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 13.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 12.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 12.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 12.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 12.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"abc\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 9,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 12,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"test::model::TestEnumeration\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Enumeration\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"Enumeration\",\n" +
+                        "      \"name\": \"TestEnumeration\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 1.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 5.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"values\": [\n" +
+                        "        {\n" +
+                        "          \"value\": \"VAL1\",\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 3.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 3.0,\n" +
+                        "            \"endColumn\": 6.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"value\": \"VAL2\",\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 3.0,\n" +
+                        "            \"startColumn\": 9.0,\n" +
+                        "            \"endLine\": 3.0,\n" +
+                        "            \"endColumn\": 12.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"value\": \"VAL3\",\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 6.0\n" +
+                        "          }\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"value\": \"VAL4\",\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 9.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 12.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"package\": \"test::model\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 0,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 4,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
                         "]",
                 jsonPerFile,
-                JsonAssert.when(Option.IGNORING_EXTRA_FIELDS).whenIgnoringPaths("[*].location")
+                jsonAssertConfig
         );
     }
 

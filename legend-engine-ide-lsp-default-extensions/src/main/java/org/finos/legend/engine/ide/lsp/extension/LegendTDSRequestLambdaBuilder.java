@@ -16,32 +16,33 @@
 
 package org.finos.legend.engine.ide.lsp.extension;
 
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.eclipse.collections.api.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;
-import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
-import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.FilterOperation;
+import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSAggregation;
+import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
+import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedFunction;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedProperty;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.PrimitiveValueSpecification;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.CString;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.CBoolean;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.CDateTime;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.CDecimal;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.CStrictDate;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.CInteger;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.CFloat;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Collection;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CBoolean;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CDateTime;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CDecimal;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CFloat;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CInteger;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CStrictDate;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CString;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.PrimitiveValueSpecification;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class LegendTDSRequestLambdaBuilder 
 {
@@ -224,10 +225,10 @@ public class LegendTDSRequestLambdaBuilder
         // Projecting the columns when there is an aggregation because that would end up projecting just the aggregation column
         if (groupByOperation.getGroupKeys().size() == groupByOperation.getColumns().size() && groupByOperation.getAggregations().size() > 0)
         {
-            List<String> aggColumns = groupByOperation.getAggregations().stream().map(agg -> agg.getColumn()).collect(Collectors.toList());
+            List<String> aggColumns = groupByOperation.getAggregations().stream().map(TDSAggregation::getColumn).collect(Collectors.toList());
             columns.forEach(column ->
             {
-                if (aggColumns.contains(column) == false)
+                if (!aggColumns.contains(column))
                 {
                     groupByCollection.values.add(new CString(column));
                 }
