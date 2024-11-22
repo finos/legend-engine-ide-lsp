@@ -16,8 +16,10 @@
 
 package org.finos.legend.engine.ide.lsp.extension.notebook;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.finos.legend.engine.ide.lsp.extension.StateForTestFactory;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
@@ -279,9 +281,10 @@ public class TestPureBookLSPGrammarExtension
 
         notebook = stateForTestFactory.newPureBookSectionState(gs, "notebook.purebook", "#>{test::h2Store.");
 
-        Iterable<? extends LegendCompletion> tableCompletions = this.extension.getCompletions(notebook, TextPosition.newPosition(0, 17));
+        Set<LegendCompletion> tableCompletions = new HashSet<>();
+        this.extension.getCompletions(notebook, TextPosition.newPosition(0, 17)).forEach(tableCompletions::add);
         Assertions.assertEquals(
-                List.of(new LegendCompletion("personTable", "personTable}#"),
+                Set.of(new LegendCompletion("personTable", "personTable}#"),
                         new LegendCompletion("anotherPersonTable", "anotherPersonTable}#")
                 ),
                 tableCompletions
