@@ -281,8 +281,8 @@ public class TestPureBookLSPGrammarExtension
 
         Iterable<? extends LegendCompletion> tableCompletions = this.extension.getCompletions(notebook, TextPosition.newPosition(0, 17));
         Assertions.assertEquals(
-                List.of(new LegendCompletion("personTable", "personTable}"),
-                        new LegendCompletion("anotherPersonTable", "anotherPersonTable}")
+                List.of(new LegendCompletion("personTable", "personTable}#"),
+                        new LegendCompletion("anotherPersonTable", "anotherPersonTable}#")
                 ),
                 tableCompletions
         );
