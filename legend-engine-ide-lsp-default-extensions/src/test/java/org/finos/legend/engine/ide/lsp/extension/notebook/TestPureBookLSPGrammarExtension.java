@@ -273,7 +273,7 @@ public class TestPureBookLSPGrammarExtension
 
         Iterable<? extends LegendCompletion> storeCompletions = this.extension.getCompletions(notebook, TextPosition.newPosition(0, 2));
         Assertions.assertEquals(
-                List.of(new LegendCompletion("test::h2Store", ">{test::h2Store")),
+                List.of(new LegendCompletion("test::h2Store", ">{test::h2Store.")),
                 storeCompletions
         );
 
