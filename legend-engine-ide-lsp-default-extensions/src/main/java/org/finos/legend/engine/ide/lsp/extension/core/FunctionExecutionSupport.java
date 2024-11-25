@@ -86,6 +86,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.type.PackageableType;
+import org.finos.legend.engine.protocol.pure.v1.model.type.relationType.RelationType;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
@@ -114,6 +115,7 @@ public interface FunctionExecutionSupport
     String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
     String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
+    String GET_LAMBDA_RELATION_TYPE_ID = "legend.lambda.relationType";
     String SURVEY_DATASETS_ID = "legend.entitlements.surveyDatasets";
     String CHECK_DATASET_ENTITLEMENTS_ID = "legend.entitlements.checkDatasetEntitlements";
 
@@ -157,6 +159,10 @@ public interface FunctionExecutionSupport
             case FunctionExecutionSupport.GET_LAMBDA_RETURN_TYPE_ID:
             {
                 return FunctionExecutionSupport.getLambdaReturnType(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            case FunctionExecutionSupport.GET_LAMBDA_RELATION_TYPE_ID:
+            {
+                return FunctionExecutionSupport.getLambdaRelationType(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
             case FunctionExecutionSupport.SURVEY_DATASETS_ID:
             {
@@ -512,6 +518,41 @@ public interface FunctionExecutionSupport
                             entityPath,
                             LegendExecutionResult.Type.SUCCESS,
                             objectMapper.writeValueAsString(result),
+                            null,
+                            section.getDocumentState().getDocumentId(),
+                            section.getSectionNumber(),
+                            inputParameters
+                    )
+            );
+        }
+        catch (Exception e)
+        {
+            results.add(extension.errorResult(e, entityPath));
+        }
+        return results;
+    }
+
+    static Iterable<? extends LegendExecutionResult> getLambdaRelationType(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        CompileResult compileResult = extension.getCompileResult(section);
+        if (compileResult.hasEngineException())
+        {
+            return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
+        }
+
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+        try
+        {
+            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            PureModel pureModel = compileResult.getPureModel();
+            RelationType relationType = org.finos.legend.engine.language.pure.compiler.Compiler.getLambdaRelationType(lambda, pureModel);
+            results.add(
+                    FunctionLegendExecutionResult.newResult(
+                            entityPath,
+                            LegendExecutionResult.Type.SUCCESS,
+                            objectMapper.writeValueAsString(relationType),
                             null,
                             section.getDocumentState().getDocumentId(),
                             section.getSectionNumber(),
