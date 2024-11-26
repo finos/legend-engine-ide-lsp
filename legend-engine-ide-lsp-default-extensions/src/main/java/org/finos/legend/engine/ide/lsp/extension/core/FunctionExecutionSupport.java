@@ -39,6 +39,7 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.tuple.Pair;
 import org.eclipse.collections.impl.map.mutable.MapAdapter;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.LazyIterate;
@@ -87,11 +88,13 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.type.PackageableType;
 import org.finos.legend.engine.protocol.pure.v1.model.type.relationType.RelationType;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
+import org.finos.legend.engine.shared.core.api.grammar.GrammarAPI;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.api.request.RequestContext;
 import org.finos.legend.engine.shared.core.identity.Identity;
@@ -114,6 +117,7 @@ public interface FunctionExecutionSupport
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
     String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
+    String GRAMMAR_TO_JSON_VALUE_SPECIFICATION_BATCH_ID = "legend.grammarToJson.valueSpecification.batch";
     String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
     String GET_LAMBDA_RELATION_TYPE_ID = "legend.lambda.relationType";
     String SURVEY_DATASETS_ID = "legend.entitlements.surveyDatasets";
@@ -155,6 +159,10 @@ public interface FunctionExecutionSupport
             case FunctionExecutionSupport.JSON_TO_GRAMMAR_LAMBDA_BATCH_ID:
             {
                 return FunctionExecutionSupport.convertLambdaJsonToGrammarBatch(executionSupport, section, entityPath, executableArgs, inputParameters);
+            }
+            case FunctionExecutionSupport.GRAMMAR_TO_JSON_VALUE_SPECIFICATION_BATCH_ID:
+            {
+                return FunctionExecutionSupport.convertGrammarToValueSpecificationJsonBatch(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
             case FunctionExecutionSupport.GET_LAMBDA_RETURN_TYPE_ID:
             {
@@ -486,6 +494,44 @@ public interface FunctionExecutionSupport
                             inputParameters
                     )
             );
+        }
+        catch (Exception e)
+        {
+            results.add(extension.errorResult(e, entityPath));
+        }
+        return results;
+    }
+
+    static Iterable<? extends LegendExecutionResult> convertGrammarToValueSpecificationJsonBatch(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+        try
+        {
+            Map<String, GrammarAPI.ParserInput> input = objectMapper.readValue(executableArgs.get("input"),
+                                                                               new TypeReference<>() {}
+            );
+            Map<String, ValueSpecification> result = new TypedMapVS();
+
+            MapAdapter.adapt(input).forEachKeyValue((key, value) -> result.put(key,
+                                                                               PureGrammarParser.newInstance().parseValueSpecification(
+                                                                                       value.value,
+                                                                                       value.sourceInformationOffset == null ? "" : value.sourceInformationOffset.sourceId,
+                                                                                       value.sourceInformationOffset == null ? 0 : value.sourceInformationOffset.lineOffset,
+                                                                                       value.sourceInformationOffset == null ? 0 : value.sourceInformationOffset.columnOffset,
+                                                                                       value.returnSourceInformation
+                                                                               )
+            ));
+
+            results.add(FunctionLegendExecutionResult.newResult(entityPath,
+                                                                LegendExecutionResult.Type.SUCCESS,
+                                                                objectMapper.writeValueAsString(result),
+                                                                null,
+                                                                section.getDocumentState().getDocumentId(),
+                                                                section.getSectionNumber(),
+                                                                inputParameters
+            ));
         }
         catch (Exception e)
         {
@@ -843,5 +889,13 @@ public interface FunctionExecutionSupport
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
         return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
+    }
+
+    // Required so that Jackson properly includes _type for the top level element
+    class TypedMapVS extends UnifiedMap<String, ValueSpecification>
+    {
+        public TypedMapVS()
+        {
+        }
     }
 }
