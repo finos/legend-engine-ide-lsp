@@ -547,7 +547,7 @@ public interface FunctionExecutionSupport
         {
             Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
             PureModel pureModel = compileResult.getPureModel();
-            RelationType relationType = org.finos.legend.engine.language.pure.compiler.Compiler.getLambdaRelationType(lambda, pureModel);
+            RelationType relationType = Compiler.getLambdaRelationType(lambda, pureModel);
             results.add(
                     FunctionLegendExecutionResult.newResult(
                             entityPath,
