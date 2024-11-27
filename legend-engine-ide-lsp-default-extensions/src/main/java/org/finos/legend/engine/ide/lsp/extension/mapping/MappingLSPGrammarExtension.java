@@ -26,6 +26,8 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.ImmutableList;
@@ -36,11 +38,7 @@ import org.eclipse.collections.impl.block.factory.Functions;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.ListIterate;
-import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
-import org.finos.legend.engine.ide.lsp.extension.CompileResult;
-import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
-import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
+import org.finos.legend.engine.ide.lsp.extension.*;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
@@ -55,6 +53,9 @@ import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarP
 import org.finos.legend.engine.language.pure.grammar.from.mapping.MappingParser;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
+import org.finos.legend.engine.protocol.analytics.model.MappingModelCoverageAnalysisLightGraphBuilder;
+import org.finos.legend.engine.protocol.analytics.model.MappingModelCoverageAnalysisResult;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.AssociationMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
@@ -78,6 +79,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.m
 import org.finos.legend.engine.protocol.pure.v1.model.test.AtomicTest;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
+import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.test.runner.mapping.MappingTestRunner;
 import org.finos.legend.engine.test.runner.mapping.RichMappingTestResult;
 import org.finos.legend.pure.generated.Root_meta_analytics_mapping_modelCoverage_MappingModelCoverageAnalysisResult;
@@ -130,6 +132,8 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                     ")\n");
 
     private final ListIterable<String> keywords;
+
+    private final ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
 
     public MappingLSPGrammarExtension()
     {
@@ -289,16 +293,23 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
                             returnLightGraph,
                             pureModel.getExecutionSupport()
                     );
-            String result = core_analytics_mapping_modelCoverage_serializer
-                    .Root_meta_analytics_mapping_modelCoverage_serialization_json_getSerializedMappingModelCoverageAnalysisResult_MappingModelCoverageAnalysisResult_1__String_1_(
+            MappingModelCoverageAnalysisResult result = this.objectMapper.readValue(
+                    core_analytics_mapping_modelCoverage_serializer.Root_meta_analytics_mapping_modelCoverage_serialization_json_getSerializedMappingModelCoverageAnalysisResult_MappingModelCoverageAnalysisResult_1__String_1_(
                             analysisResult,
                             pureModel.getExecutionSupport()
-                    );
+                    ), MappingModelCoverageAnalysisResult.class);
+            if (returnLightGraph)
+            {
+                final PureModelContextData pureModelContextData = compileResult.getPureModelContextData();
+                GlobalState globalState = section.getDocumentState().getGlobalState();
+                String clientVersion = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
+                result.model = MappingModelCoverageAnalysisLightGraphBuilder.buildLightGraph(analysisResult, pureModel, pureModelContextData, clientVersion);
+            }
             return Collections.singletonList(
                     LegendExecutionResult.newResult(
                             entityPath,
                             Type.SUCCESS,
-                            result,
+                            objectMapper.writeValueAsString(result),
                             SourceInformationUtil.toLocation(element.sourceInformation)
                     )
             );
