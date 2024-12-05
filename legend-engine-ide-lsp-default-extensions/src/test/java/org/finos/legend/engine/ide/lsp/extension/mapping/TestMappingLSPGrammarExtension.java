@@ -36,6 +36,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
 import java.util.Objects;
 
 public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionTest<MappingLSPGrammarExtension>
@@ -417,8 +418,79 @@ public class TestMappingLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState mappingSectionState = sectionStates.detect(sectionState -> Objects.equals(sectionState.getDocumentState().getDocumentId(), "vscodelsp::test::EmployeeMapping"));
 
-        String expected = "{\"mappedEntities\":[{\"info\":null,\"path\":\"vscodelsp::test::Employee\",\"properties\":[{\"mappedPropertyInfo\":null,\"name\":\"hireDate\"},{\"mappedPropertyInfo\":null,\"name\":\"hireType\"},{\"mappedPropertyInfo\":null,\"name\":\"foobar\"}]}]}";
+        String expected = "{\"mappedEntities\":[{\"path\":\"vscodelsp::test::Employee\",\"properties\":[{\"_type\":\"MappedProperty\",\"name\":\"hireDate\"},{\"_type\":\"MappedProperty\",\"name\":\"hireType\"},{\"_type\":\"MappedProperty\",\"name\":\"foobar\"}]}]}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(mappingSectionState, "vscodelsp::test::EmployeeMapping", "legend.mapping.analyzeMappingModelCoverage");
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
+    void testAnalyzeMappingModelCoverage_withLightGraph()
+    {
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("vscodelsp::test::Employee",
+                "###Pure\n" +
+                        "Class vscodelsp::test::Employee\n" +
+                        "{\n" +
+                        "    foobar: Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::EmployeeSrc",
+                "###Pure\n" +
+                        "Class vscodelsp::test::EmployeeSrc\n" +
+                        "{\n" +
+                        "    foobar: Float[1];\n" +
+                        "    hireDate : Date[1];\n" +
+                        "    hireType : String[1];\n" +
+                        "}");
+
+        codeFiles.put("vscodelsp::test::EmployeeMapping",
+                "###Mapping\n" +
+                        "Mapping vscodelsp::test::EmployeeMapping\n" +
+                        "(\n" +
+                        "   vscodelsp::test::Employee[emp] : Pure\n" +
+                        "   {\n" +
+                        "      ~src vscodelsp::test::EmployeeSrc\n" +
+                        "      hireDate : today(),\n" +
+                        "      hireType : 'FullTime'\n" +
+                        "   }\n" +
+                        ")");
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState mappingSectionState = sectionStates.detect(sectionState -> Objects.equals(sectionState.getDocumentState().getDocumentId(), "vscodelsp::test::EmployeeMapping"));
+        Map<String, String> executableArgs = Map.of("returnLightGraph", "true");
+
+        String expected = "{\"mappedEntities\":[{\"info\":{\"classPath\":\"vscodelsp::test::Employee\"," +
+                "\"isRootEntity\":true,\"subClasses\":[]},\"path\":\"vscodelsp::test::Employee\"," +
+                "\"properties\":[{\"_type\":\"MappedProperty\"," +
+                "\"mappedPropertyInfo\":{\"multiplicity\":{\"lowerBound\":1,\"upperBound\":1}," +
+                "\"propertyType\":\"DateTime\"},\"name\":\"hireDate\"},{\"_type\":\"MappedProperty\"," +
+                "\"mappedPropertyInfo\":{\"multiplicity\":{\"lowerBound\":1,\"upperBound\":1}," +
+                "\"propertyType\":\"String\"},\"name\":\"hireType\"},{\"_type\":\"MappedProperty\"," +
+                "\"mappedPropertyInfo\":{\"multiplicity\":{\"lowerBound\":1,\"upperBound\":1}," +
+                "\"propertyType\":\"Float\"},\"name\":\"foobar\"}]}]," +
+                "\"modelEntities\":[{\"classifierPath\":\"meta::pure::metamodel::type::Class\"," +
+                "\"content\":{\"_type\":\"class\",\"constraints\":[],\"name\":\"Employee\"," +
+                "\"originalMilestonedProperties\":[],\"package\":\"vscodelsp::test\"," +
+                "\"properties\":[{\"genericType\":{\"multiplicityArguments\":[]," +
+                "\"rawType\":{\"_type\":\"packageableType\",\"fullPath\":\"Float\"},\"typeArguments\":[]," +
+                "\"typeVariableValues\":[]},\"multiplicity\":{\"lowerBound\":1,\"upperBound\":1},\"name\":\"foobar\"," +
+                "\"stereotypes\":[],\"taggedValues\":[]},{\"genericType\":{\"multiplicityArguments\":[]," +
+                "\"rawType\":{\"_type\":\"packageableType\",\"fullPath\":\"Date\"},\"typeArguments\":[]," +
+                "\"typeVariableValues\":[]},\"multiplicity\":{\"lowerBound\":1,\"upperBound\":1}," +
+                "\"name\":\"hireDate\",\"stereotypes\":[],\"taggedValues\":[]}," +
+                "{\"genericType\":{\"multiplicityArguments\":[],\"rawType\":{\"_type\":\"packageableType\"," +
+                "\"fullPath\":\"String\"},\"typeArguments\":[],\"typeVariableValues\":[]}," +
+                "\"multiplicity\":{\"lowerBound\":1,\"upperBound\":1},\"name\":\"hireType\",\"stereotypes\":[]," +
+                "\"taggedValues\":[]}],\"qualifiedProperties\":[],\"stereotypes\":[]," +
+                "\"superTypes\":[{\"path\":\"meta::pure::metamodel::type::Any\"}],\"taggedValues\":[]}," +
+                "\"path\":\"vscodelsp::test::Employee\"}]}";
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(mappingSectionState, "vscodelsp::test::EmployeeMapping", "legend.mapping.analyzeMappingModelCoverage", executableArgs);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
