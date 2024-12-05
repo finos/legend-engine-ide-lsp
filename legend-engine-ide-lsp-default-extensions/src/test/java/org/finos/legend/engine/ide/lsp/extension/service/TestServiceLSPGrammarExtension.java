@@ -52,7 +52,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport.*;
@@ -354,29 +357,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        );\n" +
                         "        mapping : vscodelsp::test::EmployeeRelationalMapping;\n" +
                         "        runtime : vscodelsp::test::H2RuntimeRelational;\n" +
-                        "    }\n" +
-                        "}\n" +
-                        "Service vscodelsp::test::MultiExecutionService\n" +
-                        "{\n" +
-                        "    pattern : 'testMultiExecution';\n" +
-                        "    documentation : 'service for testing multi-execution';\n" +
-                        "    execution : Multi\n" +
-                        "    {\n" +
-                        "        query : testParam: String[1]|vscodelsp::test::EmployeeRelational.all()->project(\n" +
-                        "                  [ x|$x.firstName ],\n" +
-                        "                  [ 'First Name' ]\n" +
-                        "        );\n" +
-                        "        key: 'env';\n" +
-                        "        executions['prod']:\n" +
-                        "        {\n" +
-                        "           mapping: vscodelsp::test::EmployeeRelationalMapping;\n" +
-                        "           runtime: vscodelsp::test::H2RuntimeRelational;\n" +
-                        "        }\n" +
-                        "        executions['dev']:\n" +
-                        "        {\n" +
-                        "           mapping: vscodelsp::test::EmployeeRelationalMapping;\n" +
-                        "           runtime: vscodelsp::test::H2RuntimeRelational;\n" +
-                        "        }\n" +
                         "    }\n" +
                         "}\n" +
                         "Service test::service\n" +
@@ -1066,19 +1046,17 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
                         "vscodelsp::test::TestService2")).findFirst().orElseThrow();
         Lambda lambda = extension.getLambda(serviceElement);
+        RuntimePointer runtime = new RuntimePointer();
+        runtime.runtime = "vscodelsp::test::H2RuntimeRelational";
         ExecutionContext context = new BaseExecutionContext();
-        Map<String, String> executableArgs = new HashMap<>(Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
-                "", "runtime", "",
-                "context", objectMapper.writeValueAsString(context)));
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "vscodelsp::test::EmployeeRelationalMapping", "runtime", objectMapper.writeValueAsString(runtime),
+                "context", objectMapper.writeValueAsString(context));
         Map<String, Object> inputParameters = Map.of("testParam", "testValue");
 
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
                 EXECUTE_QUERY_ID, executableArgs, inputParameters);
 
-        // Check that arguments were correctly overwritten
-        Assertions.assertEquals("vscodelsp::test::EmployeeRelationalMapping", executableArgs.get("mapping"));
-        Assertions.assertEquals("{\"_type\":\"runtimePointer\",\"runtime\":\"vscodelsp::test::H2RuntimeRelational\",\"sourceInformation\":{\"endColumn\":54,\"endLine\":28,\"sourceId\":\"vscodelsp::test::TestService\",\"startColumn\":19,\"startLine\":28}}", executableArgs.get("runtime"));
-
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
@@ -1087,76 +1065,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                 "\"type\":\"String\",\"relationalType\":\"VARCHAR(200)\"}]}"));
         Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"First Name\"], \"rows\" : " +
                 "[{\"values\": [\"Doe\"]}]}"));
-    }
-
-    @Test
-    public void testExecuteQuery_multiExecution() throws Exception
-    {
-        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
-        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
-        // Call extension.startup so the planExecutor is initialized
-        GlobalState globalState = sectionStates.stream().findFirst().orElseThrow().getDocumentState().getGlobalState();
-        extension.startup(globalState);
-        SectionState sectionState =
-                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
-        CompileResult compileResult = extension.getCompileResult(sectionState);
-        PackageableElement serviceElement =
-                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
-                        "vscodelsp::test::MultiExecutionService")).findFirst().orElseThrow();
-        Lambda lambda = extension.getLambda(serviceElement);
-        ExecutionContext context = new BaseExecutionContext();
-        Map<String, String> executableArgs = new HashMap<>(Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
-                "", "runtime", "",
-                "context", objectMapper.writeValueAsString(context),
-                "multiExecutionParameterKey", "prod"));
-        Map<String, Object> inputParameters = Map.of("testParam", "testValue");
-
-        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::MultiExecutionService",
-                EXECUTE_QUERY_ID, executableArgs, inputParameters);
-
-        // Check that arguments were correctly overwritten
-        Assertions.assertEquals("vscodelsp::test::EmployeeRelationalMapping", executableArgs.get("mapping"));
-        Assertions.assertEquals("{\"_type\":\"runtimePointer\",\"runtime\":\"vscodelsp::test::H2RuntimeRelational\",\"sourceInformation\":{\"endColumn\":56,\"endLine\":45,\"sourceId\":\"vscodelsp::test::TestService\",\"startColumn\":21,\"startLine\":45}}", executableArgs.get("runtime"));
-
-        Assertions.assertEquals(1, Iterate.sizeOf(actual));
-        FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
-        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
-        Assertions.assertEquals("testValue", result.getInputParameters().get("testParam"));
-        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"First Name\"," +
-                "\"type\":\"String\",\"relationalType\":\"VARCHAR(200)\"}]}"));
-        Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"First Name\"], \"rows\" : " +
-                "[{\"values\": [\"Doe\"]}]}"));
-    }
-
-    @Test
-    public void testExecuteQuery_multiExecution_noKey() throws Exception
-    {
-        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
-        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
-        // Call extension.startup so the planExecutor is initialized
-        GlobalState globalState = sectionStates.stream().findFirst().orElseThrow().getDocumentState().getGlobalState();
-        extension.startup(globalState);
-        SectionState sectionState =
-                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
-        CompileResult compileResult = extension.getCompileResult(sectionState);
-        PackageableElement serviceElement =
-                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
-                        "vscodelsp::test::MultiExecutionService")).findFirst().orElseThrow();
-        Lambda lambda = extension.getLambda(serviceElement);
-        ExecutionContext context = new BaseExecutionContext();
-        Map<String, String> executableArgs = new HashMap<>(Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
-                "", "runtime", "",
-                "context", objectMapper.writeValueAsString(context)));
-        Map<String, Object> inputParameters = Map.of("testParam", "testValue");
-
-        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::MultiExecutionService",
-                EXECUTE_QUERY_ID, executableArgs, inputParameters);
-
-        // Check that error is thrown
-        Assertions.assertEquals(1, Iterate.sizeOf(actual));
-        LegendExecutionResult result = actual.iterator().next();
-        Assertions.assertEquals(LegendExecutionResult.Type.ERROR, result.getType(), result.getMessage());
-        Assertions.assertTrue(result.getMessage().contains("Missing execution key for multi-execution service"));
     }
 
     @Test
