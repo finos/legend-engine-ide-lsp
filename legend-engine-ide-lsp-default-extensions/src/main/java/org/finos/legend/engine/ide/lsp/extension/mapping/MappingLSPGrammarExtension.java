@@ -271,18 +271,18 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping mapping = pureModel.getMapping(entityPath);
             GlobalState globalState = section.getDocumentState().getGlobalState();
             String clientVersion = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
-            MappingModelCoverageAnalysisResult result = MappingModelCoverageAnalysis.analyze(mapping, pureModel, pureModelContextData, clientVersion, this.objectMapper, returnLightGraph, returnLightGraph, returnLightGraph);
-            LSPMappingModelCoverageAnalysisResult finalResult = new LSPMappingModelCoverageAnalysisResult();
-            finalResult.mappedEntities = result.mappedEntities;
-            if (result.model != null)
+            MappingModelCoverageAnalysisResult analysisResult = MappingModelCoverageAnalysis.analyze(mapping, pureModel, pureModelContextData, clientVersion, this.objectMapper, returnLightGraph, returnLightGraph, returnLightGraph);
+            LSPMappingModelCoverageAnalysisResult result = new LSPMappingModelCoverageAnalysisResult();
+            result.mappedEntities = analysisResult.mappedEntities;
+            if (analysisResult.model != null)
             {
-                finalResult.modelEntities = result.model.getElements().stream().map(this::toEntity).collect(Collectors.toList());
+                result.modelEntities = analysisResult.model.getElements().stream().map(this::toEntity).collect(Collectors.toList());
             }
             return Collections.singletonList(
                     LegendExecutionResult.newResult(
                             entityPath,
                             Type.SUCCESS,
-                            objectMapper.writeValueAsString(finalResult),
+                            objectMapper.writeValueAsString(result),
                             SourceInformationUtil.toLocation(element.sourceInformation)
                     )
             );
