@@ -52,10 +52,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport.*;
@@ -1049,13 +1046,17 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         RuntimePointer runtime = new RuntimePointer();
         runtime.runtime = "vscodelsp::test::H2RuntimeRelational";
         ExecutionContext context = new BaseExecutionContext();
-        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
-                "vscodelsp::test::EmployeeRelationalMapping", "runtime", objectMapper.writeValueAsString(runtime),
-                "context", objectMapper.writeValueAsString(context));
+        Map<String, String> executableArgs = new HashMap<>(Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "", "runtime", "",
+                "context", objectMapper.writeValueAsString(context)));
         Map<String, Object> inputParameters = Map.of("testParam", "testValue");
 
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
                 EXECUTE_QUERY_ID, executableArgs, inputParameters);
+
+        // Check that arguments were correctly overwritten
+        Assertions.assertEquals("vscodelsp::test::EmployeeRelationalMapping", executableArgs.get("mapping"));
+        Assertions.assertEquals("{\"_type\":\"runtimePointer\",\"runtime\":\"vscodelsp::test::H2RuntimeRelational\",\"sourceInformation\":{\"endColumn\":54,\"endLine\":28,\"sourceId\":\"vscodelsp::test::TestService\",\"startColumn\":19,\"startLine\":28}}", executableArgs.get("runtime"));
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
