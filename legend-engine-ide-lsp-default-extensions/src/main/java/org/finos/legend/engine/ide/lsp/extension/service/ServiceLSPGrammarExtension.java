@@ -311,12 +311,27 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
                 try
                 {
                     Service service = (Service) getParseResult(section).getElement(entityPath);
-                    if (!(service.execution instanceof PureSingleExecution))
+                    if (service.execution instanceof PureSingleExecution)
                     {
-                        throw new UnsupportedOperationException("Multi-execution is not supported");
+                        executableArgs.put("mapping", ((PureSingleExecution) service.execution).mapping);
+                        executableArgs.put("runtime",
+                                objectMapper.writeValueAsString(((PureSingleExecution) service.execution).runtime));
                     }
-                    executableArgs.put("mapping", ((PureSingleExecution)service.execution).mapping);
-                    executableArgs.put("runtime", objectMapper.writeValueAsString(((PureSingleExecution)service.execution).runtime));
+                    else if (service.execution instanceof PureMultiExecution)
+                    {
+                        if (!executableArgs.containsKey("multiExecutionParameterKey"))
+                        {
+                            throw new IllegalArgumentException("Missing execution key for multi-execution service");
+                        }
+                        KeyedExecutionParameter executionParameter =
+                                ((PureMultiExecution) service.execution).executionParameters
+                                        .stream()
+                                        .filter(param -> Objects.equals(param.key, executableArgs.get("multiExecutionParameterKey")))
+                                        .findFirst()
+                                        .orElseThrow(() -> new IllegalArgumentException("No execution found with key: " + executableArgs.get("multiExecutionParameterKey")));
+                        executableArgs.put("mapping", executionParameter.mapping);
+                        executableArgs.put("runtime", objectMapper.writeValueAsString(executionParameter.runtime));
+                    }
                     return FunctionExecutionSupport.executeQuery(this, section, entityPath, executableArgs, inputParams);
                 }
                 catch (Exception e)
