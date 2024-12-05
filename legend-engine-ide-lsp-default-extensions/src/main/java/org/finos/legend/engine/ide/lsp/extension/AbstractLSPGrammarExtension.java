@@ -677,7 +677,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     {
         ParseResult parseResult = this.getParseResult(sectionState);
         return parseResult.getElements()
-                .collect(this::toEntity);
+                .collect(this::toLegendEntity);
     }
 
     private static LegendEngineServerClient newEngineServerClient()
@@ -766,10 +766,15 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         }
     }
 
-    private LegendEntity toEntity(PackageableElement element)
+    private LegendEntity toLegendEntity(PackageableElement element)
     {
         Entity sdlcEntity = this.entityConverter.toEntity(element);
         return new LegendEntity(sdlcEntity.getPath(), sdlcEntity.getClassifierPath(), sdlcEntity.getContent(), SourceInformationUtil.toLocation(element.sourceInformation));
+    }
+
+    protected Entity toEntity(PackageableElement element)
+    {
+        return this.entityConverter.toEntity(element);
     }
 
     protected static Stream<Optional<LegendReferenceResolver>> toReferences(StereotypePtr stereotypePtr)

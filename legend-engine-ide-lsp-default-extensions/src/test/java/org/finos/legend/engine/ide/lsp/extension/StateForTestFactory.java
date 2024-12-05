@@ -273,6 +273,10 @@ public class StateForTestFactory
         @Override
         public String getSetting(String key)
         {
+            if (key.equals(Constants.LEGEND_PROTOCOL_VERSION))
+            {
+                return "vX_X_X";
+            }
             return null;
         }
     }
