@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -47,6 +48,7 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.functionActivator.FunctionActivatorLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
@@ -316,9 +318,9 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
-        return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParameters);
+        return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParameters, requestId);
     }
 
     @Override
@@ -547,7 +549,10 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         PackageableElement element = elements.get(0);
         SingleExecutionPlan executionPlan = this.getExecutionPlan(element, this.getLambda(element), pureModel, Map.of(), globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        FunctionExecutionSupport.executePlan(globalState, this, "memory", -1, executionPlan, null, element.getPath(), Map.of(), results);
+        try (CancellationToken requestId = globalState.cancellationToken(UUID.randomUUID().toString()))
+        {
+            FunctionExecutionSupport.executePlan(globalState, this, "memory", -1, executionPlan, null, element.getPath(), Map.of(), results, requestId);
+        }
     }
 
     @Override

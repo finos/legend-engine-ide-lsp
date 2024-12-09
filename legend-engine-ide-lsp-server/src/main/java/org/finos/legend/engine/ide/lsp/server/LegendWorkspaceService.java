@@ -47,7 +47,9 @@ import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.finos.legend.engine.ide.lsp.commands.CommandExecutionHandler;
+import org.finos.legend.engine.ide.lsp.commands.LegendCancelCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
+import org.finos.legend.engine.ide.lsp.commands.LegendCommandV2ExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -67,6 +69,8 @@ public class LegendWorkspaceService implements WorkspaceService
     {
         this.server = server;
         this.addCommandExecutionHandler(new LegendCommandExecutionHandler(server));
+        this.addCommandExecutionHandler(new LegendCommandV2ExecutionHandler(server));
+        this.addCommandExecutionHandler(new LegendCancelCommandExecutionHandler(server));
     }
 
     private void addCommandExecutionHandler(CommandExecutionHandler legendCommandExecutionHandler)
@@ -118,20 +122,7 @@ public class LegendWorkspaceService implements WorkspaceService
                     switch (result.getType())
                     {
                         case SUCCESS:
-                        {
-                            String message = result.getMessage();
-                            String logMessage = result.getLogMessage();
-                            if ((logMessage == null) || logMessage.equals(message))
-                            {
-                                this.server.logInfoToClient(message);
-                            }
-                            else
-                            {
-                                this.server.showInfoToClient(message);
-                                this.server.logInfoToClient(logMessage);
-                            }
                             break;
-                        }
                         case FAILURE:
                         case WARNING:
                         {

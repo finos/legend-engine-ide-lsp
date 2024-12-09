@@ -15,19 +15,25 @@
 package org.finos.legend.engine.ide.lsp.extension;
 
 import java.io.InputStream;
+import java.util.function.Consumer;
 import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
 
 public interface LegendEngineServerClient
 {
+    Consumer<Runnable> NO_CANCEL_LISTENER = x ->
+    {
+
+    };
+
     default boolean isServerConfigured()
     {
         return false;
     }
 
-    default <T> T post(String path, String payload, ThrowingFunction<InputStream, T> consumer)
+    default <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> consumer)
     {
-        return post(path, payload, "application/json", consumer);
+        return post(path, payload, contentType, consumer, NO_CANCEL_LISTENER);
     }
 
-    <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> consumer);
+    <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> consumer, Consumer<Runnable> cancelListener);
 }

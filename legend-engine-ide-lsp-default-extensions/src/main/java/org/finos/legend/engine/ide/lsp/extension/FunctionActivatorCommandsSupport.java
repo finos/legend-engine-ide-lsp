@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.protocol.functionActivator.metamodel.FunctionActivator;
@@ -73,7 +74,7 @@ public final class FunctionActivatorCommandsSupport implements CommandsSupport
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> executeCommand(SectionState section, PackageableElement element, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    public Iterable<? extends LegendExecutionResult> executeCommand(SectionState section, PackageableElement element, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         TextLocation location = SourceInformationUtil.toLocation(element.sourceInformation);
         String entityPath = element.getPath();

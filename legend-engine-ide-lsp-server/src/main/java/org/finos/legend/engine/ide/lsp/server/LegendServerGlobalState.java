@@ -32,6 +32,7 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.NotebookDocumentState;
@@ -47,6 +48,7 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendServerGlobalState.class);
 
     private final Map<String, LegendServerDocumentState> docs = new ConcurrentHashMap<>();
+    private final Map<String, CancellationToken> cancellationTokens = new ConcurrentHashMap<>();
     private final LegendLanguageServer server;
 
     LegendServerGlobalState(LegendLanguageServer server)
@@ -193,6 +195,12 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
     public String getSetting(String key)
     {
         return this.server.getSetting(key);
+    }
+
+    @Override
+    public CancellationToken cancellationToken(String requestId)
+    {
+        return this.cancellationTokens.computeIfAbsent(requestId, x -> new CancellationToken(x, this.cancellationTokens::remove));
     }
 
     static class LegendServerDocumentState extends AbstractState implements DocumentState

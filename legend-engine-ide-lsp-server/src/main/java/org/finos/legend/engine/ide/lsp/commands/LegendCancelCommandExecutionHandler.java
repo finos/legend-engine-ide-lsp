@@ -16,33 +16,34 @@
 
 package org.finos.legend.engine.ide.lsp.commands;
 
-import java.util.UUID;
+import java.util.List;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
-public class LegendCommandExecutionHandler implements CommandExecutionHandler
+public class LegendCancelCommandExecutionHandler implements CommandExecutionHandler
 {
-    public static final String LEGEND_COMMAND_ID = "legend.command";
+    public static final String LEGEND_CANCEL_COMMAND_ID = "legend.cancel.command";
 
-    private final LegendCommandV2ExecutionHandler impl;
+    private final LegendLanguageServer server;
 
-    public LegendCommandExecutionHandler(LegendLanguageServer server)
+    public LegendCancelCommandExecutionHandler(LegendLanguageServer server)
     {
-        this.impl = new LegendCommandV2ExecutionHandler(server);
+        this.server = server;
     }
 
     @Override
     public String getCommandId()
     {
-        return LEGEND_COMMAND_ID;
+        return LEGEND_CANCEL_COMMAND_ID;
     }
 
     @Override
     public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params)
     {
-        params.getArguments().add(0, UUID.randomUUID().toString());
-        return this.impl.executeCommand(progressToken, params);
+        String requestId = this.server.extractValueAs(params.getArguments().get(0), String.class);
+        this.server.getGlobalState().cancellationToken(requestId).cancel();
+        return List.of();
     }
 }

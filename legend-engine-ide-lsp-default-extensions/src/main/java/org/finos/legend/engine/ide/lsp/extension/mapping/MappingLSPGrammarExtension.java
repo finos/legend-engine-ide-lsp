@@ -31,6 +31,7 @@ import org.finos.legend.engine.ide.lsp.extension.*;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
@@ -157,7 +158,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams, CancellationToken requestId)
     {
         switch (commandId)
         {
@@ -175,7 +176,7 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             }
             default:
             {
-                return super.execute(section, entityPath, commandId, executableArgs, Map.of());
+                return super.execute(section, entityPath, commandId, executableArgs, Map.of(), requestId);
             }
         }
     }

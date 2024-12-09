@@ -17,6 +17,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.util.function.Consumer;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
@@ -41,12 +42,12 @@ class DefaultLegendEngineServerClient implements LegendEngineServerClient
     }
 
     @Override
-    public <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> processor)
+    public <T> T post(String path, String payload, String contentType, ThrowingFunction<InputStream, T> processor, Consumer<Runnable> cancelListener)
     {
-        return post(path, new StringEntity(payload, ContentType.getByMimeType(contentType)), processor);
+        return post(path, new StringEntity(payload, ContentType.getByMimeType(contentType)), processor, cancelListener);
     }
 
-    private <T> T post(String path, HttpEntity payload, ThrowingFunction<InputStream, T> processor)
+    private <T> T post(String path, HttpEntity payload, ThrowingFunction<InputStream, T> processor, Consumer<Runnable> cancelListener)
     {
         if (!isServerConfigured())
         {
@@ -57,6 +58,8 @@ class DefaultLegendEngineServerClient implements LegendEngineServerClient
         {
             HttpPost httpPost = new HttpPost(url);
             httpPost.setEntity(payload);
+
+            cancelListener.accept(httpPost::abort);
 
             try (CloseableHttpClient client = HttpClientBuilder.create().build();
                  CloseableHttpResponse response = client.execute(httpPost))

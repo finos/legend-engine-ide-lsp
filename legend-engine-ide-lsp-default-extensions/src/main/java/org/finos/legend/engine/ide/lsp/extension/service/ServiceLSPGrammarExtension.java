@@ -55,6 +55,7 @@ import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
@@ -289,7 +290,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams, CancellationToken requestId)
     {
         switch (commandId)
         {
@@ -303,7 +304,7 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
             }
             default:
             {
-                return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParams);
+                return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParams, requestId);
             }
         }
     }

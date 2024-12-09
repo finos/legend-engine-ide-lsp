@@ -27,12 +27,14 @@ public class FunctionTDSRequest
     private final String uri;
     private final int sectionNum;
     private final String entity;
+    private final String id;
     @JsonAdapter(LegendTypeAdapterFactory.class)
     private TDSRequest request;
     private Map<String, Object> inputParameters;
 
-    public FunctionTDSRequest(String uri, int sectionNum, String entity, TDSRequest request, Map<String, Object> inputParameters)
+    public FunctionTDSRequest(String id, String uri, int sectionNum, String entity, TDSRequest request, Map<String, Object> inputParameters)
     {
+        this.id = id;
         this.uri = Objects.requireNonNull(uri);
         this.sectionNum = Objects.requireNonNull(sectionNum);
         this.entity = Objects.requireNonNull(entity);
@@ -88,5 +90,10 @@ public class FunctionTDSRequest
     public Map<String, Object> getInputParameters()
     {
         return inputParameters;
+    }
+
+    public String getId()
+    {
+        return this.id;
     }
 }

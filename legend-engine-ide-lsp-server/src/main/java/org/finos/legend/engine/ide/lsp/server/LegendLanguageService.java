@@ -24,6 +24,7 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.features.LegendSDLCFeature;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendTDSRequestHandler;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendVirtualFileSystemContentInitializer;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
@@ -77,6 +78,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                     String uri = request.getUri();
                     int sectionNum = request.getSectionNum();
                     String entity = request.getEntity();
+                    CancellationToken requestId = this.server.getGlobalState().cancellationToken(Optional.ofNullable(request.getId()).orElseGet(() -> UUID.randomUUID().toString()));
                     DocumentState docState = globalState.getDocumentState(uri);
                     if (docState == null)
                     {
@@ -88,7 +90,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                     {
                         LegendTDSRequestHandler handler = globalState.findFeatureThatImplements(LegendTDSRequestHandler.class).findAny().orElseThrow(() -> new RuntimeException("Could not execute legend TDS request for entity " + entity + " in section " + sectionNum + " of " + uri + ": no extension found"));
                         SectionState sectionState = docState.getSectionState(sectionNum);
-                        result = handler.executeLegendTDSRequest(sectionState, entity, request.getRequest(), request.getInputParameters());
+                        result = handler.executeLegendTDSRequest(sectionState, entity, request.getRequest(), request.getInputParameters(), requestId);
                     }
                     catch (Throwable e)
                     {

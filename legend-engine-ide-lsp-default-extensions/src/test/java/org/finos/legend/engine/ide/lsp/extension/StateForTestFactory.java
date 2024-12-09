@@ -19,6 +19,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -27,6 +28,8 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.impl.map.mutable.ConcurrentHashMap;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.NotebookDocumentState;
@@ -245,6 +248,7 @@ public class StateForTestFactory
     private class TestGlobalState extends AbstractState implements GlobalState
     {
         private final MutableMap<String, DocumentState> docStates = Maps.mutable.empty();
+        private final Map<String, CancellationToken> cancellationTokens = new ConcurrentHashMap<>();
 
         @Override
         public DocumentState getDocumentState(String id)
@@ -278,6 +282,12 @@ public class StateForTestFactory
                 return "vX_X_X";
             }
             return null;
+        }
+
+        @Override
+        public CancellationToken cancellationToken(String requestId)
+        {
+            return this.cancellationTokens.computeIfAbsent(requestId, x -> new CancellationToken(x, this.cancellationTokens::remove));
         }
     }
 
