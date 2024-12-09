@@ -1456,6 +1456,273 @@ public class TestLegendLanguageServerIntegration
                 jsonPerFile,
                 jsonAssertConfig
         );
+
+        List<LegendEntity> entitiesPerPath = extension.futureGet(extension.getServer().getLegendLanguageService().entities(
+                        new LegendEntitiesRequest(
+                                List.of(),
+                                List.of("abc::abc", "xyz::abc")
+                        )
+                )
+        );
+
+        Assertions.assertEquals(2, entitiesPerPath.size());
+        entitiesPerPath.sort(Comparator.comparing(LegendEntity::getPath));
+        String jsonPerPath = new Gson().toJson(entitiesPerPath);
+
+        JsonAssert.assertJsonEquals(
+                "[\n" +
+                        "  {\n" +
+                        "    \"path\": \"abc::abc\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 2.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 5.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 4.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 4.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"abc\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 1,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 4,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  },\n" +
+                        "  {\n" +
+                        "    \"path\": \"xyz::abc\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 2.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 5.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 4.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 4.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"xyz\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 1,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 4,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "]",
+                jsonPerPath,
+                jsonAssertConfig
+        );
+
+        List<LegendEntity> entitiesPerFileAndPath = extension.futureGet(extension.getServer().getLegendLanguageService().entities(
+                        new LegendEntitiesRequest(
+                                List.of(
+                                        new TextDocumentIdentifier(file1Path.toUri().toString())
+                                ),
+                                List.of("abc::abc", "xyz::abc")
+                        )
+                )
+        );
+
+        Assertions.assertEquals(1, entitiesPerFileAndPath.size());
+        entitiesPerFileAndPath.sort(Comparator.comparing(LegendEntity::getPath));
+        String jsonPerFileAndPath = new Gson().toJson(entitiesPerFileAndPath);
+
+        JsonAssert.assertJsonEquals(
+                "[\n" +
+                        "  {\n" +
+                        "    \"path\": \"abc::abc\",\n" +
+                        "    \"classifierPath\": \"meta::pure::metamodel::type::Class\",\n" +
+                        "    \"content\": {\n" +
+                        "      \"_type\": \"class\",\n" +
+                        "      \"name\": \"abc\",\n" +
+                        "      \"sourceInformation\": {\n" +
+                        "        \"sourceId\": \"\",\n" +
+                        "        \"startLine\": 2.0,\n" +
+                        "        \"startColumn\": 1.0,\n" +
+                        "        \"endLine\": 5.0,\n" +
+                        "        \"endColumn\": 1.0\n" +
+                        "      },\n" +
+                        "      \"superTypes\": [],\n" +
+                        "      \"originalMilestonedProperties\": [],\n" +
+                        "      \"properties\": [\n" +
+                        "        {\n" +
+                        "          \"name\": \"abc\",\n" +
+                        "          \"genericType\": {\n" +
+                        "            \"rawType\": {\n" +
+                        "              \"_type\": \"packageableType\",\n" +
+                        "              \"sourceInformation\": {\n" +
+                        "                \"sourceId\": \"\",\n" +
+                        "                \"startLine\": 4.0,\n" +
+                        "                \"startColumn\": 8.0,\n" +
+                        "                \"endLine\": 4.0,\n" +
+                        "                \"endColumn\": 13.0\n" +
+                        "              },\n" +
+                        "              \"fullPath\": \"String\"\n" +
+                        "            },\n" +
+                        "            \"typeArguments\": [],\n" +
+                        "            \"multiplicityArguments\": [],\n" +
+                        "            \"typeVariableValues\": []\n" +
+                        "          },\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1.0,\n" +
+                        "            \"upperBound\": 1.0\n" +
+                        "          },\n" +
+                        "          \"stereotypes\": [],\n" +
+                        "          \"taggedValues\": [],\n" +
+                        "          \"sourceInformation\": {\n" +
+                        "            \"sourceId\": \"\",\n" +
+                        "            \"startLine\": 4.0,\n" +
+                        "            \"startColumn\": 3.0,\n" +
+                        "            \"endLine\": 4.0,\n" +
+                        "            \"endColumn\": 17.0\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ],\n" +
+                        "      \"qualifiedProperties\": [],\n" +
+                        "      \"stereotypes\": [],\n" +
+                        "      \"taggedValues\": [],\n" +
+                        "      \"constraints\": [],\n" +
+                        "      \"package\": \"abc\"\n" +
+                        "    },\n" +
+                        "    \"location\": {\n" +
+                        "      \"documentId\": \"\",\n" +
+                        "      \"textInterval\": {\n" +
+                        "        \"start\": {\n" +
+                        "          \"line\": 1,\n" +
+                        "          \"column\": 0\n" +
+                        "        },\n" +
+                        "        \"end\": {\n" +
+                        "          \"line\": 4,\n" +
+                        "          \"column\": 0\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "]",
+                jsonPerFileAndPath,
+                jsonAssertConfig
+        );
+
+        List<LegendEntity> entitiesPerFileAndPathNoMatch = extension.futureGet(extension.getServer().getLegendLanguageService().entities(
+                        new LegendEntitiesRequest(
+                                List.of(
+                                        new TextDocumentIdentifier(file1Path.toUri().toString())
+                                ),
+                                List.of("xyz::abc")
+                        )
+                )
+        );
+
+        Assertions.assertEquals(0, entitiesPerFileAndPathNoMatch.size());
+        entitiesPerFileAndPathNoMatch.sort(Comparator.comparing(LegendEntity::getPath));
+        String jsonPerFileAndPathNoMatch = new Gson().toJson(entitiesPerFileAndPathNoMatch);
+
+        JsonAssert.assertJsonEquals(
+                "[]",
+                jsonPerFileAndPathNoMatch,
+                jsonAssertConfig
+        );
     }
 
     @Test
