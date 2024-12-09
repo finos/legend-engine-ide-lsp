@@ -99,7 +99,7 @@ public interface GlobalState extends State
             };
             forkJoinWorkerThread.setContextClassLoader(Thread.currentThread().getContextClassLoader());
             return forkJoinWorkerThread;
-        }, null,  false);
+        }, null, false);
     }
 
     /**
@@ -109,4 +109,6 @@ public interface GlobalState extends State
      * @return setting value or null
      */
     String getSetting(String key);
+
+    CancellationToken cancellationToken(String requestId);
 }

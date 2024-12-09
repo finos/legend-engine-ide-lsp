@@ -31,6 +31,7 @@ import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendTDSRequestHandler;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
@@ -47,7 +48,7 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
     }
 
     @Override
-    public LegendExecutionResult executeLegendTDSRequest(SectionState section, String entityPath, TDSRequest request, Map<String, Object> inputParameters)
+    public LegendExecutionResult executeLegendTDSRequest(SectionState section, String entityPath, TDSRequest request, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         if (!(section.getExtension() instanceof FunctionExecutionSupport))
         {
@@ -83,7 +84,7 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
 
             GlobalState globalState = section.getDocumentState().getGlobalState();
             SingleExecutionPlan executionPlan = functionExecutionSupport.getExecutionPlan(packageableElement, newLambda, pureModel, inputParameters, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
-            FunctionExecutionSupport.executePlan(globalState, functionExecutionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, null, entityPath, inputParameters, results);
+            FunctionExecutionSupport.executePlan(globalState, functionExecutionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, null, entityPath, inputParameters, results, requestId);
         }
         catch (Exception e)
         {

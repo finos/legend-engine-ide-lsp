@@ -24,6 +24,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.type.CollectionType;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.function.Consumer;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -38,10 +47,14 @@ import org.finos.legend.engine.entitlement.model.specification.DatasetSpecificat
 import org.finos.legend.engine.entitlement.services.EntitlementModelObjectMapperFactory;
 import org.finos.legend.engine.entitlement.services.EntitlementServiceExtension;
 import org.finos.legend.engine.entitlement.services.EntitlementServiceExtensionLoader;
-import org.finos.legend.engine.ide.lsp.extension.*;
+import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
+import org.finos.legend.engine.ide.lsp.extension.CompileResult;
+import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.Compiler;
@@ -58,6 +71,7 @@ import org.finos.legend.engine.plan.execution.result.ErrorResult;
 import org.finos.legend.engine.plan.execution.result.Result;
 import org.finos.legend.engine.plan.execution.result.StreamingResult;
 import org.finos.legend.engine.plan.execution.result.serialization.SerializationFormat;
+import org.finos.legend.engine.plan.execution.stores.StoreExecutableManager;
 import org.finos.legend.engine.plan.generation.PlanGenerator;
 import org.finos.legend.engine.plan.generation.PlanWithDebug;
 import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
@@ -78,6 +92,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.exe
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
+import org.finos.legend.engine.shared.core.api.request.RequestContext;
 import org.finos.legend.engine.shared.core.identity.Identity;
 import org.finos.legend.engine.shared.core.kerberos.SubjectTools;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
@@ -87,13 +102,6 @@ import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.Mapping;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.FunctionDefinition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.security.auth.Subject;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.function.Consumer;
 
 public interface FunctionExecutionSupport
 {
@@ -122,17 +130,17 @@ public interface FunctionExecutionSupport
         return "";
     }
 
-    static Iterable<? extends LegendExecutionResult> execute(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    static Iterable<? extends LegendExecutionResult> execute(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         switch (commandId)
         {
             case FunctionExecutionSupport.EXECUTE_COMMAND_ID:
             {
-                return FunctionExecutionSupport.executeFunction(executionSupport, section, entityPath, inputParameters);
+                return FunctionExecutionSupport.executeFunction(executionSupport, section, entityPath, inputParameters, requestId);
             }
             case FunctionExecutionSupport.EXECUTE_QUERY_ID:
             {
-                return FunctionExecutionSupport.executeQuery(executionSupport, section, entityPath, executableArgs, inputParameters);
+                return FunctionExecutionSupport.executeQuery(executionSupport, section, entityPath, executableArgs, inputParameters, requestId);
             }
             case FunctionExecutionSupport.GENERATE_EXECUTION_PLAN_ID:
             {
@@ -236,7 +244,7 @@ public interface FunctionExecutionSupport
 
     List<Variable> getParameters(PackageableElement element);
 
-    static Iterable<? extends LegendExecutionResult> executeFunction(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, Object> inputParameters)
+    static Iterable<? extends LegendExecutionResult> executeFunction(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -270,7 +278,7 @@ public interface FunctionExecutionSupport
 
                 return Tuples.pair(executionPlan, planExecutionContext);
             });
-            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlanAndContext.getOne(), executionPlanAndContext.getTwo(), entityPath, inputParameters, results);
+            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlanAndContext.getOne(), executionPlanAndContext.getTwo(), entityPath, inputParameters, results, requestId);
         }
         catch (Exception e)
         {
@@ -279,7 +287,7 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static Iterable<? extends LegendExecutionResult> executeQuery(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    static Iterable<? extends LegendExecutionResult> executeQuery(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -311,7 +319,7 @@ public interface FunctionExecutionSupport
             {
                 LOGGER.warn("Failed to compile plan");
             }
-            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, planExecutionContext, entityPath, inputParameters, format, results);
+            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, planExecutionContext, entityPath, inputParameters, format, results, requestId);
         }
         catch (Exception e)
         {
@@ -320,13 +328,12 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results)
+    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results, CancellationToken requestId)
     {
-        executePlan(globalState, executionSupport, docId, sectionNum, executionPlan, context, entityPath, inputParameters, SerializationFormat.DEFAULT, results);
+        executePlan(globalState, executionSupport, docId, sectionNum, executionPlan, context, entityPath, inputParameters, SerializationFormat.DEFAULT, results, requestId);
     }
 
-
-    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, SerializationFormat format, MutableList<LegendExecutionResult> results)
+    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, SerializationFormat format, MutableList<LegendExecutionResult> results, CancellationToken requestId)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -341,13 +348,16 @@ public interface FunctionExecutionSupport
                     ByteArrayOutputStream os = new ByteArrayOutputStream(1024);
                     is.transferTo(os);
                     return FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, os.toString(StandardCharsets.UTF_8), "Executed using remote engine server", docId, sectionNum, inputParameters);
-                });
+                }, x -> requestId.listener(x::run));
                 results.add(legendExecutionResult);
             }
             else
             {
-                Result result = executePlan(executionPlan, context, inputParameters, extension);
-                collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, format, results::add);
+                try (Result result = executePlan(executionPlan, context, inputParameters, extension, requestId))
+                {
+                    requestId.listener(result::close);
+                    collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, format, results::add);
+                }
             }
         }
         catch (Exception e)
@@ -356,13 +366,18 @@ public interface FunctionExecutionSupport
         }
     }
 
-    static Result executePlan(SingleExecutionPlan executionPlan, PlanExecutionContext context, Map<String, Object> inputParameters, AbstractLSPGrammarExtension extension)
+    static Result executePlan(SingleExecutionPlan executionPlan, PlanExecutionContext context, Map<String, Object> inputParameters, AbstractLSPGrammarExtension extension, CancellationToken requestId)
     {
         PlanExecutor planExecutor = extension.getPlanExecutor();
         MutableMap<String, Result> parametersToConstantResult = Maps.mutable.empty();
         ExecuteNodeParameterTransformationHelper.buildParameterToConstantResult(executionPlan, inputParameters, parametersToConstantResult);
         Identity identity = getIdentity();
-        return planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context);
+
+        StoreExecutableManager.INSTANCE.registerManager();
+        RequestContext requestContext = new RequestContext(requestId.getId(), "local-lsp", requestId.getId());
+        requestId.listener(() -> StoreExecutableManager.INSTANCE.cancelExecutablesOnSession(requestId.getId()));
+
+        return planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context, requestContext);
     }
 
     static Iterable<? extends LegendExecutionResult> generateExecutionPlan(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
@@ -580,16 +595,14 @@ public interface FunctionExecutionSupport
 
     private static Identity getIdentity()
     {
-        Subject subject = null;
         try
         {
-            subject = SubjectTools.getLocalSubject();
+            return Identity.makeIdentity(SubjectTools.getLocalSubject());
         }
         catch (Exception e)
         {
-            LOGGER.debug("Unable to get local subject", e);
+            return Identity.getAnonymousIdentity();
         }
-        return Optional.ofNullable(subject).map(Identity::makeIdentity).orElseGet(Identity::getAnonymousIdentity);
     }
 
     static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, SerializationFormat format, Consumer<? super LegendExecutionResult> consumer)

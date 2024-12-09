@@ -20,6 +20,7 @@ import java.util.Map;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 
 public interface LegendTDSRequestHandler extends LegendLSPFeature
@@ -27,11 +28,12 @@ public interface LegendTDSRequestHandler extends LegendLSPFeature
     /**
      * Return the Legend execution result for the given tds request by client.
      *
-     * @param section grammar section state
-     * @param entityPath the function entity path
-     * @param request the ag-grid tds request
+     * @param section         grammar section state
+     * @param entityPath      the function entity path
+     * @param request         the ag-grid tds request
      * @param inputParameters input parameters to the function
+     * @param requestId request id in the form of cancellation token to allow expensive operations on this request to be cancelled
      * @return Legend execution result
      */
-    LegendExecutionResult executeLegendTDSRequest(SectionState section, String entityPath, TDSRequest request, Map<String, Object> inputParameters);
+    LegendExecutionResult executeLegendTDSRequest(SectionState section, String entityPath, TDSRequest request, Map<String, Object> inputParameters, CancellationToken requestId);
 }

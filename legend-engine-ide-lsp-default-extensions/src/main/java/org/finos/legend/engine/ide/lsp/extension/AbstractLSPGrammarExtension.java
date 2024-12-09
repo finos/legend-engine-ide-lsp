@@ -50,6 +50,7 @@ import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -254,7 +255,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         ParseResult parseResult = getParseResult(section);
         PackageableElement element = parseResult.getElement(entityPath);
@@ -267,7 +268,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         return this.commandsSupports.stream()
                 .filter(x -> x.getSupportedCommands().contains(commandId))
                 .findAny()
-                .map(x -> x.executeCommand(section, element, commandId, executableArgs, inputParameters))
+                .map(x -> x.executeCommand(section, element, commandId, executableArgs, inputParameters, requestId))
                 .orElseGet(() ->
                 {
                     LOGGER.warn("Unknown command id for {}: {}", entityPath, commandId);
@@ -443,15 +444,20 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             stream.transferTo(bytes);
             return bytes.toString(StandardCharsets.UTF_8);
-        });
+        }, LegendEngineServerClient.NO_CANCEL_LISTENER);
     }
 
     protected <T> T postEngineServer(String path, Object payload, Class<T> responseType)
     {
-        return postEngineServer(path, payload, stream -> getProtocolMapper().readValue(stream, responseType));
+        return postEngineServer(path, payload, stream -> getProtocolMapper().readValue(stream, responseType), LegendEngineServerClient.NO_CANCEL_LISTENER);
     }
 
     public <T> T postEngineServer(String path, Object payload, ThrowingFunction<InputStream, T> consumer)
+    {
+        return postEngineServer(path, payload, consumer, LegendEngineServerClient.NO_CANCEL_LISTENER);
+    }
+
+    public <T> T postEngineServer(String path, Object payload, ThrowingFunction<InputStream, T> consumer, Consumer<Runnable> cancelListener)
     {
         if (!isEngineServerConfigured())
         {
@@ -462,7 +468,7 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
         {
             JsonMapper mapper = getProtocolMapper();
             String payloadJson = mapper.writeValueAsString(payload);
-            return this.engineServerClient.post(path, payloadJson, consumer);
+            return this.engineServerClient.post(path, payloadJson, "application/json", consumer, cancelListener);
         }
         catch (IOException e)
         {

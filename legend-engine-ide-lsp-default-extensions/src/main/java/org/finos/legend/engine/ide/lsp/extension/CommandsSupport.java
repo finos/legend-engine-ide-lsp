@@ -19,6 +19,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import java.util.Map;
 import java.util.Set;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
 
@@ -28,5 +29,5 @@ interface CommandsSupport
 
     void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer);
 
-    Iterable<? extends LegendExecutionResult> executeCommand(SectionState section, PackageableElement element, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters);
+    Iterable<? extends LegendExecutionResult> executeCommand(SectionState section, PackageableElement element, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId);
 }

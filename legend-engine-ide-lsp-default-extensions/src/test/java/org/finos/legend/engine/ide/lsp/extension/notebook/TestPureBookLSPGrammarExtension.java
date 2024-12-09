@@ -27,6 +27,7 @@ import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
@@ -120,7 +121,7 @@ public class TestPureBookLSPGrammarExtension
         SectionState notebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "hello::world()");
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "2", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of())
+                this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test"))
         );
 
         // update code
@@ -128,17 +129,17 @@ public class TestPureBookLSPGrammarExtension
 
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "3", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of())
+                this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test"))
         );
 
         SectionState emptyNotebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "");
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "[]", "Nothing to execute!", emptyNotebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(emptyNotebook, "notebook", "executeCell", Map.of(), Map.of())
+                this.extension.execute(emptyNotebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test"))
         );
 
         SectionState cannotCompileNotebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "1 + 1 +");
-        LegendExecutionResult compileFailure = this.extension.execute(cannotCompileNotebook, "notebook", "executeCell", Map.of(), Map.of()).iterator().next();
+        LegendExecutionResult compileFailure = this.extension.execute(cannotCompileNotebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test")).iterator().next();
         Assertions.assertEquals(
                 LegendExecutionResult.Type.ERROR,
                 compileFailure.getType()
@@ -149,7 +150,7 @@ public class TestPureBookLSPGrammarExtension
         );
 
         SectionState failExecNotebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "let a = hello::world();\nlet b = hello::world();");
-        LegendExecutionResult planGenFailure = this.extension.execute(failExecNotebook, "notebook", "executeCell", Map.of(), Map.of()).iterator().next();
+        LegendExecutionResult planGenFailure = this.extension.execute(failExecNotebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test")).iterator().next();
         Assertions.assertEquals(
                 LegendExecutionResult.Type.ERROR,
                 planGenFailure.getType()
@@ -220,10 +221,8 @@ public class TestPureBookLSPGrammarExtension
                         "|      P5      |      F1      |      A1      |\n" +
                         "+--------------+--------------+--------------+\n" +
                         "5 rows -- 3 columns", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of())
+                this.extension.execute(notebook, "notebook", "executeCell", Map.of("requestId", "123456"), Map.of(), notebook.getDocumentState().getGlobalState().cancellationToken("test"))
         );
-
-
     }
 
     @Test
@@ -289,5 +288,61 @@ public class TestPureBookLSPGrammarExtension
                 ),
                 tableCompletions
         );
+    }
+
+    @Test
+    void cancel()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        stateForTestFactory.newSectionState(gs, "database.pure",
+                "###Relational\n" +
+                        "Database test::h2Store\n" +
+                        "(\n" +
+                        "    Table personTable\n" +
+                        "    (\n" +
+                        "     fullName VARCHAR(100),\n" +
+                        "     firmName VARCHAR(100),\n" +
+                        "     addressName VARCHAR(100)\n" +
+                        "    )\n" +
+                        "    Table anotherPersonTable\n" +
+                        "    (\n" +
+                        "     fullName VARCHAR(100),\n" +
+                        "     firmName VARCHAR(100),\n" +
+                        "     addressName VARCHAR(100)\n" +
+                        "    )\n" +
+                        ")");
+
+        stateForTestFactory.newSectionState(gs, "connection.pure",
+                "###Connection\n" +
+                        "RelationalDatabaseConnection test::h2Conn\n" +
+                        "{\n" +
+                        "    store: test::h2Store; \n" +
+                        "    type: H2;\n" +
+                        "    specification: LocalH2\n" +
+                        "    {\n" +
+                        "        testDataSetupCSV: 'default\\npersonTable\\nfullName,firmName,addressName\\nP1,F1,A1\\nP2,F2,A2\\nP3,,\\nP4,,A3\\nP5,F1,A1\\n---';\n" +
+                        "    };\n" +
+                        "    auth: DefaultH2;\n" +
+                        "}");
+
+        stateForTestFactory.newSectionState(gs, "runtime.pure",
+                "###Runtime\n" +
+                        "Runtime  test::h2Runtime\n" +
+                        "{\n" +
+                        "    mappings: [];\n" +
+                        "    connectionStores:\n" +
+                        "    [\n" +
+                        "        test::h2Conn: [ test::h2Store ]\n" +
+                        "    ];\n" +
+                        "}");
+
+        // it's hard to test the cancel,
+        // hence we will trigger the cancellation 1st
+        // and when the actual execution request runs should fail as its already canceled.
+        CancellationToken requestId = notebook.getDocumentState().getGlobalState().cancellationToken("test");
+        requestId.cancel();
+        RuntimeException runtimeException = Assertions.assertThrows(RuntimeException.class, () -> this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of(), requestId));
+        Assertions.assertTrue(runtimeException.toString().contains("The object is already closed [90007-214]"));
     }
 }

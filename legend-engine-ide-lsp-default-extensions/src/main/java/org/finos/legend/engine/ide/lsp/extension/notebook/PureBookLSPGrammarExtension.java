@@ -35,6 +35,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExpressionNavigator;
 import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
@@ -248,18 +249,18 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         switch (commandId)
         {
             case "executeCell":
-                return this.executeCell(section, inputParameters);
+                return this.executeCell(section, inputParameters, requestId);
             default:
-                return List.of();
+                throw new UnsupportedOperationException("Command not supported by purebook: " + commandId);
         }
     }
 
-    private Iterable<? extends LegendExecutionResult> executeCell(SectionState section, Map<String, Object> inputParameters)
+    private Iterable<? extends LegendExecutionResult> executeCell(SectionState section, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         if (section.getSection().getFullText().isEmpty())
         {
@@ -288,32 +289,36 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
             return Lists.mutable.with(this.pureGrammarExtension.getExtension().errorResult(e, "Cannot generate an execution plan for given expression.  Likely the expression is not supported yet...", "notebook_cell", section.getDocumentState().getTextLocation()));
         }
 
-        return this.executePlan(section, planExecutionContextPair, inputParameters);
+        return this.executePlan(section, planExecutionContextPair, inputParameters, requestId);
     }
 
-    private MutableList<LegendExecutionResult> executePlan(SectionState section, Pair<SingleExecutionPlan, PlanExecutionContext> planContext, Map<String, Object> inputParameters)
+    private MutableList<LegendExecutionResult> executePlan(SectionState section, Pair<SingleExecutionPlan, PlanExecutionContext> planContext, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        Result result = FunctionExecutionSupport.executePlan(planContext.getOne(), planContext.getTwo(), inputParameters, this.pureGrammarExtension);
 
-        Optional<ReplExtension> extension = this.replExtensions
-                .stream()
-                .filter(x -> x.supports(result))
-                .findAny();
-
-        String docId = section.getDocumentState().getDocumentId();
-        int secNum = section.getSectionNumber();
-
-        if (extension.isPresent())
+        try (Result result = FunctionExecutionSupport.executePlan(planContext.getOne(), planContext.getTwo(), inputParameters, this.pureGrammarExtension, requestId))
         {
-            results.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, extension.get().print(result), null, docId, secNum, inputParameters, "text"));
-        }
-        else
-        {
-            FunctionExecutionSupport.collectResults(this.pureGrammarExtension, "notebook_cell", result, docId, secNum, inputParameters, SerializationFormat.DEFAULT, results::add);
-        }
+            requestId.listener(result::close);
 
-        return results;
+            Optional<ReplExtension> extension = this.replExtensions
+                    .stream()
+                    .filter(x -> x.supports(result))
+                    .findAny();
+
+            String docId = section.getDocumentState().getDocumentId();
+            int secNum = section.getSectionNumber();
+
+            if (extension.isPresent())
+            {
+                results.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, extension.get().print(result), null, docId, secNum, inputParameters, "text"));
+            }
+            else
+            {
+                FunctionExecutionSupport.collectResults(this.pureGrammarExtension, "notebook_cell", result, docId, secNum, inputParameters, SerializationFormat.DEFAULT, results::add);
+            }
+
+            return results;
+        }
     }
 
     private CompletableFuture<Pair<SingleExecutionPlan, PlanExecutionContext>> generatePlan(SectionState sectionState)
@@ -346,7 +351,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     {
         try
         {
-            int column = StrictMath.max(0,  location.getColumn() - 1);
+            int column = StrictMath.max(0, location.getColumn() - 1);
             String functionExpression = section.getSection().getInterval(section.getSection().getStartLine(), 0, location.getLine(), column).trim();
             functionExpression = functionExpression.replace("\n", "").replace("\r", "");
             PureModel pureModel = this.pureGrammarExtension.getCompileResult(section).getPureModel();

@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
@@ -269,7 +270,7 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
         List<TDSAggregation> aggregations = new ArrayList<>();
         TDSGroupBy groupBy = new TDSGroupBy(groupByColumns, groupKeys, aggregations);
         TDSRequest request = new TDSRequest(0, 0, columns, filter, sort, groupBy);
-        FunctionTDSRequest functionTDSRequest = new FunctionTDSRequest(uri, sectionNum, entity, request, Collections.emptyMap());
+        FunctionTDSRequest functionTDSRequest = new FunctionTDSRequest(UUID.randomUUID().toString(), uri, sectionNum, entity, request, Collections.emptyMap());
 
         // No push down operations
         Object resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
