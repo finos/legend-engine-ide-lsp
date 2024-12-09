@@ -251,7 +251,13 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                 LegendLSPGrammarExtension extension = sectionState.getExtension();
                 if (extension != null)
                 {
-                    extension.getEntities(sectionState).forEach(entities::add);
+                    extension.getEntities(sectionState).forEach(entity ->
+                    {
+                        if (request.getEntityPaths().isEmpty() || request.getEntityPaths().contains(entity.getPath()))
+                        {
+                            entities.add(entity);
+                        }
+                    });
                 }
             });
 
