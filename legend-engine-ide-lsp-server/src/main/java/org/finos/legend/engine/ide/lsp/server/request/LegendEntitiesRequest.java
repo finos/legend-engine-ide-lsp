@@ -26,14 +26,18 @@ public class LegendEntitiesRequest
     @NonNull
     private List<TextDocumentIdentifier> textDocuments;
 
+    @NonNull
+    private List<String> entityPaths;
+
     public LegendEntitiesRequest()
     {
-        this(List.of());
+        this(List.of(), List.of());
     }
 
-    public LegendEntitiesRequest(@NonNull List<TextDocumentIdentifier> textDocuments)
+    public LegendEntitiesRequest(@NonNull List<TextDocumentIdentifier> textDocuments, @NonNull List<String> entityPaths)
     {
         this.setTextDocuments(textDocuments);
+        this.setEntityPaths(entityPaths);
     }
 
     public List<TextDocumentIdentifier> getTextDocuments()
@@ -44,5 +48,15 @@ public class LegendEntitiesRequest
     public void setTextDocuments(@NonNull List<TextDocumentIdentifier> textDocument)
     {
         this.textDocuments = Preconditions.checkNotNull(textDocument, "textDocuments");
+    }
+
+    public List<String> getEntityPaths()
+    {
+        return this.entityPaths;
+    }
+
+    public void setEntityPaths(@NonNull List<String> entityPaths)
+    {
+        this.entityPaths = Preconditions.checkNotNull(entityPaths, "entityPaths");
     }
 }

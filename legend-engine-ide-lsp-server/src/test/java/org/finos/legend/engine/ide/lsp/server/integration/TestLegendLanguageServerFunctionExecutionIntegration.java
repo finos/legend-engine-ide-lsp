@@ -235,7 +235,7 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
     {
         Path path = extension.addToWorkspace("file1.pure", code);
 
-        List<LegendEntity> entities = extension.futureGet(extension.getServer().getLegendLanguageService().entities(new LegendEntitiesRequest(List.of(new TextDocumentIdentifier(path.toUri().toString())))));
+        List<LegendEntity> entities = extension.futureGet(extension.getServer().getLegendLanguageService().entities(new LegendEntitiesRequest(List.of(new TextDocumentIdentifier(path.toUri().toString())), List.of())));
 
         Assertions.assertEquals(1, entities.size());
 
