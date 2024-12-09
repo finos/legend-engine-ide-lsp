@@ -122,20 +122,7 @@ public class LegendWorkspaceService implements WorkspaceService
                     switch (result.getType())
                     {
                         case SUCCESS:
-                        {
-                            String message = result.getMessage();
-                            String logMessage = result.getLogMessage();
-                            if ((logMessage == null) || logMessage.equals(message))
-                            {
-                                this.server.logInfoToClient(message);
-                            }
-                            else
-                            {
-                                this.server.showInfoToClient(message);
-                                this.server.logInfoToClient(logMessage);
-                            }
                             break;
-                        }
                         case FAILURE:
                         case WARNING:
                         {
