@@ -1152,7 +1152,8 @@ public class TestLegendLanguageServerIntegration
                                 List.of(
                                         new TextDocumentIdentifier(enumPath.toUri().toString()),
                                         new TextDocumentIdentifier(file1Path.toUri().toString())
-                                )
+                                ),
+                                List.of()
                         )
                 )
         );
