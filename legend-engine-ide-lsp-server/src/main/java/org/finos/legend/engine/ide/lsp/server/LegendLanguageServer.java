@@ -1160,7 +1160,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
             @Override
             public boolean cancel(boolean mayInterruptIfRunning)
             {
-                LOGGER.debug("Cancelling request: " + token.getId());
+                LOGGER.debug("Cancelling request: {}", token.getId());
                 token.cancel();
                 return completableFuture.cancel(mayInterruptIfRunning);
             }
