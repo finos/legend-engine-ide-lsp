@@ -1244,6 +1244,108 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
+    public void testGetLambdaRelationType()
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String lambdaString =
+                "{\n" +
+                        "  \"_type\": \"lambda\",\n" +
+                        "  \"body\": [\n" +
+                        "    {\n" +
+                        "      \"_type\": \"func\",\n" +
+                        "      \"function\": \"project\",\n" +
+                        "      \"parameters\": [\n" +
+                        "        {\n" +
+                        "          \"_type\": \"func\",\n" +
+                        "          \"function\": \"getAll\",\n" +
+                        "          \"parameters\": [\n" +
+                        "            {\n" +
+                        "              \"_type\": \"packageableElementPtr\",\n" +
+                        "              \"fullPath\": \"vscodelsp::test::EmployeeRelational\"\n" +
+                        "            }\n" +
+                        "          ]\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"_type\": \"classInstance\",\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1,\n" +
+                        "            \"upperBound\": 1\n" +
+                        "          },\n" +
+                        "          \"type\": \"colSpecArray\",\n" +
+                        "          \"value\": {\n" +
+                        "            \"colSpecs\": [\n" +
+                        "              {\n" +
+                        "                \"function1\": {\n" +
+                        "                  \"_type\": \"lambda\",\n" +
+                        "                  \"body\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"property\",\n" +
+                        "                      \"parameters\": [\n" +
+                        "                        {\n" +
+                        "                          \"_type\": \"var\",\n" +
+                        "                          \"name\": \"x\"\n" +
+                        "                        }\n" +
+                        "                      ],\n" +
+                        "                      \"property\": \"id\"\n" +
+                        "                    }\n" +
+                        "                  ],\n" +
+                        "                  \"parameters\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"var\",\n" +
+                        "                      \"name\": \"x\"\n" +
+                        "                    }\n" +
+                        "                  ]\n" +
+                        "                },\n" +
+                        "                \"name\": \"ID\"\n" +
+                        "              },\n" +
+                        "              {\n" +
+                        "                \"function1\": {\n" +
+                        "                  \"_type\": \"lambda\",\n" +
+                        "                  \"body\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"property\",\n" +
+                        "                      \"parameters\": [\n" +
+                        "                        {\n" +
+                        "                          \"_type\": \"var\",\n" +
+                        "                          \"name\": \"x\"\n" +
+                        "                        }\n" +
+                        "                      ],\n" +
+                        "                      \"property\": \"firstName\"\n" +
+                        "                    }\n" +
+                        "                  ],\n" +
+                        "                  \"parameters\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"var\",\n" +
+                        "                      \"name\": \"x\"\n" +
+                        "                    }\n" +
+                        "                  ]\n" +
+                        "                },\n" +
+                        "                \"name\": \"First Name\"\n" +
+                        "              }\n" +
+                        "            ]\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ]\n" +
+                        "    }\n" +
+                        "  ],\n" +
+                        "  \"parameters\": []\n" +
+                        "}\n";
+        Map<String, String> executableArgs = Map.of("lambda", lambdaString);
+
+        String expected = "{\"_type\":\"relationType\",\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\"},{\"name\":\"First Name\",\"type\":\"String\"}]}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                GET_LAMBDA_RELATION_TYPE_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
     public void testGenerateDatasetSpecifications() throws Exception
     {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
