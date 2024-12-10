@@ -192,7 +192,7 @@ public interface FunctionExecutionSupport
     static SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
     {
         FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
-        Mapping mapping = pureModel.getMapping(mappingPath);
+        Mapping mapping = mappingPath == null ? null : pureModel.getMapping(mappingPath);
         Root_meta_core_runtime_Runtime pureRuntime = HelperRuntimeBuilder.buildPureRuntime(runtime, pureModel.getContext());
 
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
@@ -317,7 +317,7 @@ public interface FunctionExecutionSupport
             GlobalState globalState = section.getDocumentState().getGlobalState();
             Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
             String mappingPath = executableArgs.get("mapping");
-            Runtime runtime = objectMapper.readValue(executableArgs.get("runtime"), Runtime.class);
+            Runtime runtime = executableArgs.get("runtime") != null ? objectMapper.readValue(executableArgs.get("runtime"), Runtime.class) : null;
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
             SerializationFormat format = SerializationFormat.valueOf(executableArgs.getOrDefault("serializationFormat", SerializationFormat.DEFAULT.name()));
             PureModel pureModel = compileResult.getPureModel();
