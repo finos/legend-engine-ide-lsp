@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -287,6 +288,7 @@ public class StateForTestFactory
         @Override
         public CancellationToken cancellationToken(String requestId)
         {
+            requestId = requestId == null ? UUID.randomUUID().toString() : requestId;
             return this.cancellationTokens.computeIfAbsent(requestId, x -> new CancellationToken(x, this.cancellationTokens::remove));
         }
     }

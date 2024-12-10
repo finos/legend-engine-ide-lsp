@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -103,6 +104,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
@@ -1149,6 +1151,41 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     public static Builder builder()
     {
         return new Builder();
+    }
+
+    <T> CompletableFuture<T> completableFutureWithCancelSupport(CompletableFuture<T> completableFuture, CancellationToken token)
+    {
+        CompletableFuture<T> withCancelSupport = new CompletableFuture<>()
+        {
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning)
+            {
+                LOGGER.debug("Cancelling request: " + token.getId());
+                token.cancel();
+                return completableFuture.cancel(mayInterruptIfRunning);
+            }
+        };
+
+        completableFuture.whenComplete((x, e) ->
+        {
+            token.close();
+
+            // if is cancelled, trigger LSP cancel flow, and avoid noise with other type of errors
+            if (e != null && token.isCancelled())
+            {
+                withCancelSupport.completeExceptionally(new CancellationException());
+            }
+            else if (e != null)
+            {
+                withCancelSupport.completeExceptionally(e);
+            }
+            else
+            {
+                withCancelSupport.complete(x);
+            }
+        });
+
+        return withCancelSupport;
     }
 
     /**

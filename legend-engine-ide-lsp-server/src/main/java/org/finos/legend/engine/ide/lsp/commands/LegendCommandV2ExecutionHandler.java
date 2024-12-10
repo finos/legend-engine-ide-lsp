@@ -50,26 +50,23 @@ public class LegendCommandV2ExecutionHandler implements CommandExecutionHandler
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params)
+    public String requestId(ExecuteCommandParams params)
     {
-        String requestId = this.server.extractValueAs(params.getArguments().get(0), String.class);
-        try (CancellationToken token = this.server.getGlobalState().cancellationToken(requestId))
-        {
-            return this.executeCommand(progressToken, params, token);
-        }
+        return this.server.extractValueAs(params.getArguments().get(0), String.class);
     }
 
-    private Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params, CancellationToken token)
+    @Override
+    public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params, CancellationToken cancellationToken)
     {
         List<Object> args = params.getArguments();
 
         if (args.get(1) instanceof JsonObject)
         {
-            return this.executeCommandWithTextLocation(progressToken, args, token);
+            return this.executeCommandWithTextLocation(progressToken, args, cancellationToken);
         }
         else
         {
-            return this.executeCommandWithDocumentAndSection(progressToken, args, token);
+            return this.executeCommandWithDocumentAndSection(progressToken, args, cancellationToken);
         }
     }
 

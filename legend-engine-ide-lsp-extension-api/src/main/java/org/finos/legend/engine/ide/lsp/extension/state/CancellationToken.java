@@ -69,7 +69,7 @@ public final class CancellationToken implements AutoCloseable
     }
 
     @Override
-    public void close()
+    public synchronized void close()
     {
         this.onClose.accept(this.id);
     }
