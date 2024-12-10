@@ -20,6 +20,7 @@ import java.util.List;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
 public class LegendCancelCommandExecutionHandler implements CommandExecutionHandler
@@ -40,7 +41,7 @@ public class LegendCancelCommandExecutionHandler implements CommandExecutionHand
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params)
+    public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params, CancellationToken cancellationToken)
     {
         String requestId = this.server.extractValueAs(params.getArguments().get(0), String.class);
         this.server.getGlobalState().cancellationToken(requestId).cancel();

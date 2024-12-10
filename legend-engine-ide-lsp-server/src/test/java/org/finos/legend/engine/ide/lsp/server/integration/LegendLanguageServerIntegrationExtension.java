@@ -95,6 +95,7 @@ public class LegendLanguageServerIntegrationExtension implements
     private Future<Void> serverFuture;
     private Path workspaceFolderPath;
     private final Path pomOverride;
+    private GlobalState globalState;
 
     public LegendLanguageServerIntegrationExtension(Path pomOverride)
     {
@@ -216,8 +217,13 @@ public class LegendLanguageServerIntegrationExtension implements
         server.initialized(new InitializedParams());
         waitForAllTaskToComplete();
 
-        GlobalState globalState = serverImpl.getGlobalState();
+        this.globalState = serverImpl.getGlobalState();
         Assertions.assertFalse(globalState.getAvailableGrammarExtensions().isEmpty(), "No grammar extensions discovered during initialization.  Check logs for errors (maybe corrupted pom, failures during maven execution)");
+    }
+
+    public GlobalState getGlobalState()
+    {
+        return this.globalState;
     }
 
     public void waitForAllTaskToComplete() throws InterruptedException, TimeoutException
