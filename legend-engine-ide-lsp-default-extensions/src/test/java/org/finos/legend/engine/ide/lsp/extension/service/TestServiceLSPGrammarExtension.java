@@ -1093,6 +1093,52 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
+    public void testConvertGrammarToJSON_valueSpecification_batch()
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String grammar = "~['Company Titles','Country','Address']->select()";
+        Map<String, String> executableArgs = Map.of("input", "{\"valueSpec\":{\"value\":\"" + grammar + "\",\"returnSourceInformation\": false}}");
+
+        String expected =
+            "{" +
+                "\"valueSpec\":{" +
+                    "\"_type\":\"func\"," +
+                    "\"function\":\"select\"," +
+                    "\"parameters\":[" +
+                        "{" +
+                            "\"_type\":\"classInstance\"," +
+                            "\"type\":\"colSpecArray\"," +
+                            "\"value\":{" +
+                                "\"colSpecs\":[" +
+                                    "{" +
+                                        "\"name\":\"Company Titles\"" +
+                                    "}," +
+                                    "{" +
+                                        "\"name\":\"Country\"" +
+                                    "}," +
+                                    "{" +
+                                        "\"name\":\"Address\"" +
+                                    "}" +
+                                "]" +
+                            "}" +
+                        "}" +
+                    "]" +
+                "}" +
+            "}";
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                GRAMMAR_TO_JSON_VALUE_SPECIFICATION_BATCH_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
     public void testConvertJSONToGrammar_lambda_batch()
     {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
