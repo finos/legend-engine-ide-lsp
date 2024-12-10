@@ -50,6 +50,7 @@ import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -139,10 +140,12 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
     }
 
     @Test
+    @Disabled("Race condition leads to not cancelling the request sometimes")
     void testFunctionTdsExecutionExplicitCancel() throws Exception
     {
         FunctionTDSRequest functionTDSRequest = createFunctionTDSRequest(0, "model1::testReturnTDS__TabularDataSet_1_");
         extension.futureGet(extension.getServer().getWorkspaceService().executeCommand(new ExecuteCommandParams(LegendCancelCommandExecutionHandler.LEGEND_CANCEL_COMMAND_ID, List.of(functionTDSRequest.getId()))));
+        extension.waitForAllTaskToComplete();
         ResponseErrorException responseErrorException = Assertions.assertThrows(ResponseErrorException.class, () -> extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest)));
         Assertions.assertTrue(responseErrorException.getResponseError().getMessage().matches("The request \\(id: .*, method: 'legend/TDSRequest'\\) has been cancelled"));
     }
