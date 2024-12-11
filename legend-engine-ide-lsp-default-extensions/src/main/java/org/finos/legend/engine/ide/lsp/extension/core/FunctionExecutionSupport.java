@@ -434,7 +434,7 @@ public interface FunctionExecutionSupport
         try
         {
             Map<String, GrammarAPI.ParserInput> input = objectMapper.readValue(executableArgs.get("input"), new TypeReference<>() {});
-            Map<String, Lambda> result = new TypedMapLambda();
+            Map<String, Lambda> result = new UnifiedMap<>();
 
             MapAdapter.adapt(input).forEachKeyValue((key, value) -> result.put(key,
                     PureGrammarParser.newInstance().parseLambda(
@@ -811,13 +811,5 @@ public interface FunctionExecutionSupport
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
         return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
-    }
-
-    // Required so that Jackson properly includes _type for the top level element
-    class TypedMapLambda extends UnifiedMap<String, Lambda>
-    {
-        public TypedMapLambda()
-        {
-        }
     }
 }
