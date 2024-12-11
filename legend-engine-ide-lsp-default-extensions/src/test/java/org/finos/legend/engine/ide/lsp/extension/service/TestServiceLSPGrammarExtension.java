@@ -1231,21 +1231,21 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testConvertGrammarToJSON_lambda()
+    public void testConvertGrammarToJSON_lambda_batch()
     {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState sectionState =
                 sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
-        String grammar = "x|$x.hireType";
-        Map<String, String> executableArgs = Map.of("code", grammar);
+        String grammar1 = "x|$x.hireType";
+        String grammar2 = "x|5";
+        Map<String, String> executableArgs = Map.of("input", "{\"code1\": {\"value\": \"" + grammar1 + "\", \"returnSourceInformation\": false}," +
+                "\"code2\": {\"value\": \"" + grammar2 + "\", \"returnSourceInformation\": false}}");
 
-        String expected = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"property\"," + "\"parameters\":[{\"_type" +
-                "\":\"var\",\"name\":\"x\",\"sourceInformation\":{\"endColumn\":4," + "\"endLine\":1," +
-                "\"sourceId\":\"\",\"startColumn\":3,\"startLine\":1}}],\"property\":\"hireType\"," +
-                "\"sourceInformation\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":6," +
-                "\"startLine\":1}}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]," + "\"sourceInformation" +
-                "\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":2," + "\"startLine\":1}}";
+        String expected = "{\"code1\":{\"_type\":\"lambda\",\"body\":[{\"_type\":\"property\"," +
+                "\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}],\"property\":\"hireType\"}]," +
+                "\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]},\"code2\":{\"_type\":\"lambda\"," +
+                "\"body\":[{\"_type\":\"integer\",\"value\":5}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]}}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2", GRAMMAR_TO_JSON_LAMBDA_BATCH_ID, executableArgs);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
