@@ -1229,6 +1229,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"ID\",\"First Name\"], \"rows\" : " +
                 "[{\"values\": [1,\"Doe\"]}]}"));
     }
+
     @Test
     public void testConvertGrammarToJSON_lambda()
     {
