@@ -1068,23 +1068,185 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testConvertGrammarToJSON_lambda()
+    public void testExecuteQueryNoMappingOrRuntime() throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        // Call extension.startup so the planExecutor is initialized
+        GlobalState globalState = sectionStates.stream().findFirst().orElseThrow().getDocumentState().getGlobalState();
+        extension.startup(globalState);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService2")).findFirst().orElseThrow();
+        String lambda =
+                "{\n" +
+                        "  \"_type\": \"lambda\",\n" +
+                        "  \"body\": [\n" +
+                        "    {\n" +
+                        "      \"_type\": \"func\",\n" +
+                        "      \"function\": \"meta::pure::mapping::from\",\n" +
+                        "      \"parameters\": [\n" +
+                        "        {\n" +
+                        "          \"_type\": \"func\",\n" +
+                        "          \"function\": \"slice\",\n" +
+                        "          \"parameters\": [\n" +
+                        "            {\n" +
+                        "              \"_type\": \"func\",\n" +
+                        "              \"function\": \"select\",\n" +
+                        "              \"parameters\": [\n" +
+                        "                {\n" +
+                        "                  \"_type\": \"func\",\n" +
+                        "                  \"function\": \"project\",\n" +
+                        "                  \"parameters\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"func\",\n" +
+                        "                      \"function\": \"getAll\",\n" +
+                        "                      \"parameters\": [\n" +
+                        "                        {\n" +
+                        "                          \"_type\": \"packageableElementPtr\",\n" +
+                        "                          \"fullPath\": \"vscodelsp::test::EmployeeRelational\"\n" +
+                        "                        }\n" +
+                        "                      ]\n" +
+                        "                    },\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"classInstance\",\n" +
+                        "                      \"multiplicity\": {\n" +
+                        "                        \"lowerBound\": 1,\n" +
+                        "                        \"upperBound\": 1\n" +
+                        "                      },\n" +
+                        "                      \"type\": \"colSpecArray\",\n" +
+                        "                      \"value\": {\n" +
+                        "                        \"colSpecs\": [\n" +
+                        "                          {\n" +
+                        "                            \"function1\": {\n" +
+                        "                              \"_type\": \"lambda\",\n" +
+                        "                              \"body\": [\n" +
+                        "                                {\n" +
+                        "                                  \"_type\": \"property\",\n" +
+                        "                                  \"parameters\": [\n" +
+                        "                                    {\n" +
+                        "                                      \"_type\": \"var\",\n" +
+                        "                                      \"name\": \"x\"\n" +
+                        "                                    }\n" +
+                        "                                  ],\n" +
+                        "                                  \"property\": \"id\"\n" +
+                        "                                }\n" +
+                        "                              ],\n" +
+                        "                              \"parameters\": [\n" +
+                        "                                {\n" +
+                        "                                  \"_type\": \"var\",\n" +
+                        "                                  \"name\": \"x\"\n" +
+                        "                                }\n" +
+                        "                              ]\n" +
+                        "                            },\n" +
+                        "                            \"name\": \"ID\"\n" +
+                        "                          },\n" +
+                        "                          {\n" +
+                        "                            \"function1\": {\n" +
+                        "                              \"_type\": \"lambda\",\n" +
+                        "                              \"body\": [\n" +
+                        "                                {\n" +
+                        "                                  \"_type\": \"property\",\n" +
+                        "                                  \"parameters\": [\n" +
+                        "                                    {\n" +
+                        "                                      \"_type\": \"var\",\n" +
+                        "                                      \"name\": \"x\"\n" +
+                        "                                    }\n" +
+                        "                                  ],\n" +
+                        "                                  \"property\": \"firstName\"\n" +
+                        "                                }\n" +
+                        "                              ],\n" +
+                        "                              \"parameters\": [\n" +
+                        "                                {\n" +
+                        "                                  \"_type\": \"var\",\n" +
+                        "                                  \"name\": \"x\"\n" +
+                        "                                }\n" +
+                        "                              ]\n" +
+                        "                            },\n" +
+                        "                            \"name\": \"First Name\"\n" +
+                        "                          }\n" +
+                        "                        ]\n" +
+                        "                      }\n" +
+                        "                    }\n" +
+                        "                  ]\n" +
+                        "                },\n" +
+                        "                {\n" +
+                        "                  \"_type\": \"classInstance\",\n" +
+                        "                  \"multiplicity\": {\n" +
+                        "                    \"lowerBound\": 1,\n" +
+                        "                    \"upperBound\": 1\n" +
+                        "                  },\n" +
+                        "                  \"type\": \"colSpecArray\",\n" +
+                        "                  \"value\": {\n" +
+                        "                    \"colSpecs\": [\n" +
+                        "                      {\n" +
+                        "                        \"name\": \"ID\"\n" +
+                        "                      },\n" +
+                        "                      {\n" +
+                        "                        \"name\": \"First Name\"\n" +
+                        "                      }\n" +
+                        "                    ]\n" +
+                        "                  }\n" +
+                        "                }\n" +
+                        "              ]\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"_type\": \"integer\",\n" +
+                        "              \"value\": 0\n" +
+                        "            },\n" +
+                        "            {\n" +
+                        "              \"_type\": \"integer\",\n" +
+                        "              \"value\": 500\n" +
+                        "            }\n" +
+                        "          ]\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"_type\": \"packageableElementPtr\",\n" +
+                        "          \"fullPath\": \"vscodelsp::test::EmployeeRelationalMapping\"\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"_type\": \"packageableElementPtr\",\n" +
+                        "          \"fullPath\": \"vscodelsp::test::H2RuntimeRelational\"\n" +
+                        "        }\n" +
+                        "      ]\n" +
+                        "    }\n" +
+                        "  ],\n" +
+                        "  \"parameters\": []\n" +
+                        "}\n";
+        ExecutionContext context = new BaseExecutionContext();
+        Map<String, String> executableArgs = Map.of("lambda", lambda, "context", objectMapper.writeValueAsString(context));
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                EXECUTE_QUERY_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\"},{\"name\":\"First Name\",\"type\":\"String\"}]"));
+        Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"ID\",\"First Name\"], \"rows\" : " +
+                "[{\"values\": [1,\"Doe\"]}]}"));
+    }
+
+    @Test
+    public void testConvertGrammarToJSON_lambda_batch()
     {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
         SectionState sectionState =
                 sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
-        String grammar = "x|$x.hireType";
-        Map<String, String> executableArgs = Map.of("code", grammar);
+        String grammar1 = "x|$x.hireType";
+        String grammar2 = "x|5";
+        Map<String, String> executableArgs = Map.of("input", "{\"code1\": {\"value\": \"" + grammar1 + "\", \"returnSourceInformation\": false}," +
+                "\"code2\": {\"value\": \"" + grammar2 + "\", \"returnSourceInformation\": false}}");
 
-        String expected = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"property\"," + "\"parameters\":[{\"_type" +
-                "\":\"var\",\"name\":\"x\",\"sourceInformation\":{\"endColumn\":4," + "\"endLine\":1," +
-                "\"sourceId\":\"\",\"startColumn\":3,\"startLine\":1}}],\"property\":\"hireType\"," +
-                "\"sourceInformation\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":6," +
-                "\"startLine\":1}}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]," + "\"sourceInformation" +
-                "\":{\"endColumn\":13,\"endLine\":1,\"sourceId\":\"\",\"startColumn\":2," + "\"startLine\":1}}";
-        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
-                GRAMMAR_TO_JSON_LAMBDA_ID, executableArgs);
+        String expected = "{\"code1\":{\"body\":[{\"_type\":\"property\",\"parameters\":[{\"_type\":\"var\"," +
+                "\"name\":\"x\"}],\"property\":\"hireType\"}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]}," +
+                "\"code2\":{\"body\":[{\"_type\":\"integer\",\"value\":5}],\"parameters\":[{\"_type\":\"var\"," +
+                "\"name\":\"x\"}]}}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2", GRAMMAR_TO_JSON_LAMBDA_BATCH_ID, executableArgs);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
@@ -1188,6 +1350,108 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Map<String, String> executableArgs = Map.of("lambda", lambdaString);
 
         String expected = "{\"returnType\":\"String\"}";
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                GET_LAMBDA_RETURN_TYPE_ID, executableArgs);
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expected, result.getMessage());
+    }
+
+    @Test
+    public void testGetLambdaReturnTypeWithRelation()
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        String lambdaString =
+                "{\n" +
+                        "  \"_type\": \"lambda\",\n" +
+                        "  \"body\": [\n" +
+                        "    {\n" +
+                        "      \"_type\": \"func\",\n" +
+                        "      \"function\": \"project\",\n" +
+                        "      \"parameters\": [\n" +
+                        "        {\n" +
+                        "          \"_type\": \"func\",\n" +
+                        "          \"function\": \"getAll\",\n" +
+                        "          \"parameters\": [\n" +
+                        "            {\n" +
+                        "              \"_type\": \"packageableElementPtr\",\n" +
+                        "              \"fullPath\": \"vscodelsp::test::EmployeeRelational\"\n" +
+                        "            }\n" +
+                        "          ]\n" +
+                        "        },\n" +
+                        "        {\n" +
+                        "          \"_type\": \"classInstance\",\n" +
+                        "          \"multiplicity\": {\n" +
+                        "            \"lowerBound\": 1,\n" +
+                        "            \"upperBound\": 1\n" +
+                        "          },\n" +
+                        "          \"type\": \"colSpecArray\",\n" +
+                        "          \"value\": {\n" +
+                        "            \"colSpecs\": [\n" +
+                        "              {\n" +
+                        "                \"function1\": {\n" +
+                        "                  \"_type\": \"lambda\",\n" +
+                        "                  \"body\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"property\",\n" +
+                        "                      \"parameters\": [\n" +
+                        "                        {\n" +
+                        "                          \"_type\": \"var\",\n" +
+                        "                          \"name\": \"x\"\n" +
+                        "                        }\n" +
+                        "                      ],\n" +
+                        "                      \"property\": \"id\"\n" +
+                        "                    }\n" +
+                        "                  ],\n" +
+                        "                  \"parameters\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"var\",\n" +
+                        "                      \"name\": \"x\"\n" +
+                        "                    }\n" +
+                        "                  ]\n" +
+                        "                },\n" +
+                        "                \"name\": \"ID\"\n" +
+                        "              },\n" +
+                        "              {\n" +
+                        "                \"function1\": {\n" +
+                        "                  \"_type\": \"lambda\",\n" +
+                        "                  \"body\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"property\",\n" +
+                        "                      \"parameters\": [\n" +
+                        "                        {\n" +
+                        "                          \"_type\": \"var\",\n" +
+                        "                          \"name\": \"x\"\n" +
+                        "                        }\n" +
+                        "                      ],\n" +
+                        "                      \"property\": \"firstName\"\n" +
+                        "                    }\n" +
+                        "                  ],\n" +
+                        "                  \"parameters\": [\n" +
+                        "                    {\n" +
+                        "                      \"_type\": \"var\",\n" +
+                        "                      \"name\": \"x\"\n" +
+                        "                    }\n" +
+                        "                  ]\n" +
+                        "                },\n" +
+                        "                \"name\": \"First Name\"\n" +
+                        "              }\n" +
+                        "            ]\n" +
+                        "          }\n" +
+                        "        }\n" +
+                        "      ]\n" +
+                        "    }\n" +
+                        "  ],\n" +
+                        "  \"parameters\": []\n" +
+                        "}\n";
+        Map<String, String> executableArgs = Map.of("lambda", lambdaString);
+
+        String expected = "{\"relationType\":{\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\"},{\"name\":\"First Name\",\"type\":\"String\"}]},\"returnType\":\"meta::pure::metamodel::relation::Relation\"}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
                 GET_LAMBDA_RETURN_TYPE_ID, executableArgs);
 

@@ -27,11 +27,7 @@ import com.fasterxml.jackson.databind.type.CollectionType;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
+import java.util.*;
 import java.util.function.Consumer;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
@@ -39,6 +35,7 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.tuple.Pair;
 import org.eclipse.collections.impl.map.mutable.MapAdapter;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.LazyIterate;
@@ -86,11 +83,14 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.type.PackageableType;
+import org.finos.legend.engine.protocol.pure.v1.model.type.relationType.RelationType;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
+import org.finos.legend.engine.shared.core.api.grammar.GrammarAPI;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.api.request.RequestContext;
 import org.finos.legend.engine.shared.core.identity.Identity;
@@ -111,7 +111,7 @@ public interface FunctionExecutionSupport
     String EXECUTE_COMMAND_TITLE = "Execute";
     String EXECUTE_QUERY_ID = "legend.query.execute";
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
-    String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
+    String GRAMMAR_TO_JSON_LAMBDA_BATCH_ID = "legend.grammarToJson.lambda.batch";
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
     String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
     String SURVEY_DATASETS_ID = "legend.entitlements.surveyDatasets";
@@ -146,9 +146,9 @@ public interface FunctionExecutionSupport
             {
                 return FunctionExecutionSupport.generateExecutionPlan(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
-            case FunctionExecutionSupport.GRAMMAR_TO_JSON_LAMBDA_ID:
+            case FunctionExecutionSupport.GRAMMAR_TO_JSON_LAMBDA_BATCH_ID:
             {
-                return FunctionExecutionSupport.convertGrammarToLambdaJson(executionSupport, section, entityPath, executableArgs, inputParameters);
+                return FunctionExecutionSupport.convertGrammarToLambdaJsonBatch(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
             case FunctionExecutionSupport.JSON_TO_GRAMMAR_LAMBDA_BATCH_ID:
             {
@@ -178,7 +178,7 @@ public interface FunctionExecutionSupport
     static SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
     {
         FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
-        Mapping mapping = pureModel.getMapping(mappingPath);
+        Mapping mapping = mappingPath == null ? null : pureModel.getMapping(mappingPath);
         Root_meta_core_runtime_Runtime pureRuntime = HelperRuntimeBuilder.buildPureRuntime(runtime, pureModel.getContext());
 
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
@@ -303,7 +303,7 @@ public interface FunctionExecutionSupport
             GlobalState globalState = section.getDocumentState().getGlobalState();
             Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
             String mappingPath = executableArgs.get("mapping");
-            Runtime runtime = objectMapper.readValue(executableArgs.get("runtime"), Runtime.class);
+            Runtime runtime = executableArgs.get("runtime") != null ? objectMapper.readValue(executableArgs.get("runtime"), Runtime.class) : null;
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
             SerializationFormat format = SerializationFormat.valueOf(executableArgs.getOrDefault("serializationFormat", SerializationFormat.DEFAULT.name()));
             PureModel pureModel = compileResult.getPureModel();
@@ -426,29 +426,34 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static Iterable<? extends LegendExecutionResult> convertGrammarToLambdaJson(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    static Iterable<? extends LegendExecutionResult> convertGrammarToLambdaJsonBatch(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
         {
-            String sourceId = executableArgs.getOrDefault("sourceId", "");
-            int lineOffset = Integer.parseInt(executableArgs.getOrDefault("lineOffset", "0"));
-            int columnOffset = Integer.parseInt(executableArgs.getOrDefault("columnOffset", "0"));
-            boolean returnSourceInformation = Boolean.parseBoolean(executableArgs.getOrDefault("returnSourceInformation", "true"));
-            Lambda lambda = PureGrammarParser.newInstance().parseLambda(executableArgs.get("code"), sourceId, lineOffset, columnOffset, returnSourceInformation);
-            results.add(
-                    FunctionLegendExecutionResult.newResult(
-                            entityPath,
-                            LegendExecutionResult.Type.SUCCESS,
-                            objectMapper.writeValueAsString(lambda),
-                            null,
-                            section.getDocumentState().getDocumentId(),
-                            section.getSectionNumber(),
-                            inputParameters
+            Map<String, GrammarAPI.ParserInput> input = objectMapper.readValue(executableArgs.get("input"), new TypeReference<>() {});
+            Map<String, Lambda> result = new UnifiedMap<>();
+
+            MapAdapter.adapt(input).forEachKeyValue((key, value) -> result.put(key,
+                    PureGrammarParser.newInstance().parseLambda(
+                            value.value,
+                            value.sourceInformationOffset == null ? "" : value.sourceInformationOffset.sourceId,
+                            value.sourceInformationOffset == null ? 0 : value.sourceInformationOffset.lineOffset,
+                            value.sourceInformationOffset == null ? 0 : value.sourceInformationOffset.columnOffset,
+                            value.returnSourceInformation
                     )
-            );
+            ));
+
+            results.add(FunctionLegendExecutionResult.newResult(entityPath,
+                    LegendExecutionResult.Type.SUCCESS,
+                    objectMapper.writeValueAsString(result),
+                    null,
+                    section.getDocumentState().getDocumentId(),
+                    section.getSectionNumber(),
+                    inputParameters
+            ));
         }
         catch (Exception e)
         {
@@ -504,9 +509,13 @@ public interface FunctionExecutionSupport
             PureModel pureModel = compileResult.getPureModel();
             Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
             String typeName = Compiler.getLambdaReturnType(lambda, pureModel);
-            // This is an object in case we want to add more information on the lambda.
-            Map<String, String> result = new HashMap<>();
+            Map<String, Object> result = new HashMap<>();
             result.put("returnType", typeName);
+            if (Objects.equals(typeName, "meta::pure::metamodel::relation::Relation"))
+            {
+                RelationType relationType = Compiler.getLambdaRelationType(lambda, pureModel);
+                result.put("relationType", relationType);
+            }
             results.add(
                     FunctionLegendExecutionResult.newResult(
                             entityPath,
