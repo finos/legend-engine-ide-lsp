@@ -111,9 +111,8 @@ public interface FunctionExecutionSupport
     String EXECUTE_COMMAND_TITLE = "Execute";
     String EXECUTE_QUERY_ID = "legend.query.execute";
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
-    String GRAMMAR_TO_JSON_LAMBDA_ID = "legend.grammarToJson.lambda";
+    String GRAMMAR_TO_JSON_LAMBDA_BATCH_ID = "legend.grammarToJson.lambda.batch";
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
-    String GRAMMAR_TO_JSON_VALUE_SPECIFICATION_BATCH_ID = "legend.grammarToJson.valueSpecification.batch";
     String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
     String SURVEY_DATASETS_ID = "legend.entitlements.surveyDatasets";
     String CHECK_DATASET_ENTITLEMENTS_ID = "legend.entitlements.checkDatasetEntitlements";
@@ -147,17 +146,13 @@ public interface FunctionExecutionSupport
             {
                 return FunctionExecutionSupport.generateExecutionPlan(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
-            case FunctionExecutionSupport.GRAMMAR_TO_JSON_LAMBDA_ID:
+            case FunctionExecutionSupport.GRAMMAR_TO_JSON_LAMBDA_BATCH_ID:
             {
-                return FunctionExecutionSupport.convertGrammarToLambdaJson(executionSupport, section, entityPath, executableArgs, inputParameters);
+                return FunctionExecutionSupport.convertGrammarToLambdaJsonBatch(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
             case FunctionExecutionSupport.JSON_TO_GRAMMAR_LAMBDA_BATCH_ID:
             {
                 return FunctionExecutionSupport.convertLambdaJsonToGrammarBatch(executionSupport, section, entityPath, executableArgs, inputParameters);
-            }
-            case FunctionExecutionSupport.GRAMMAR_TO_JSON_VALUE_SPECIFICATION_BATCH_ID:
-            {
-                return FunctionExecutionSupport.convertGrammarToValueSpecificationJsonBatch(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
             case FunctionExecutionSupport.GET_LAMBDA_RETURN_TYPE_ID:
             {
@@ -431,29 +426,34 @@ public interface FunctionExecutionSupport
         return results;
     }
 
-    static Iterable<? extends LegendExecutionResult> convertGrammarToLambdaJson(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    static Iterable<? extends LegendExecutionResult> convertGrammarToLambdaJsonBatch(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
         {
-            String sourceId = executableArgs.getOrDefault("sourceId", "");
-            int lineOffset = Integer.parseInt(executableArgs.getOrDefault("lineOffset", "0"));
-            int columnOffset = Integer.parseInt(executableArgs.getOrDefault("columnOffset", "0"));
-            boolean returnSourceInformation = Boolean.parseBoolean(executableArgs.getOrDefault("returnSourceInformation", "true"));
-            Lambda lambda = PureGrammarParser.newInstance().parseLambda(executableArgs.get("code"), sourceId, lineOffset, columnOffset, returnSourceInformation);
-            results.add(
-                    FunctionLegendExecutionResult.newResult(
-                            entityPath,
-                            LegendExecutionResult.Type.SUCCESS,
-                            objectMapper.writeValueAsString(lambda),
-                            null,
-                            section.getDocumentState().getDocumentId(),
-                            section.getSectionNumber(),
-                            inputParameters
+            Map<String, GrammarAPI.ParserInput> input = objectMapper.readValue(executableArgs.get("input"), new TypeReference<>() {});
+            Map<String, Lambda> result = new TypedMapLambda();
+
+            MapAdapter.adapt(input).forEachKeyValue((key, value) -> result.put(key,
+                    PureGrammarParser.newInstance().parseLambda(
+                            value.value,
+                            value.sourceInformationOffset == null ? "" : value.sourceInformationOffset.sourceId,
+                            value.sourceInformationOffset == null ? 0 : value.sourceInformationOffset.lineOffset,
+                            value.sourceInformationOffset == null ? 0 : value.sourceInformationOffset.columnOffset,
+                            value.returnSourceInformation
                     )
-            );
+            ));
+
+            results.add(FunctionLegendExecutionResult.newResult(entityPath,
+                    LegendExecutionResult.Type.SUCCESS,
+                    objectMapper.writeValueAsString(result),
+                    null,
+                    section.getDocumentState().getDocumentId(),
+                    section.getSectionNumber(),
+                    inputParameters
+            ));
         }
         catch (Exception e)
         {
@@ -485,44 +485,6 @@ public interface FunctionExecutionSupport
                             inputParameters
                     )
             );
-        }
-        catch (Exception e)
-        {
-            results.add(extension.errorResult(e, entityPath));
-        }
-        return results;
-    }
-
-    static Iterable<? extends LegendExecutionResult> convertGrammarToValueSpecificationJsonBatch(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
-    {
-        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
-
-        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        try
-        {
-            Map<String, GrammarAPI.ParserInput> input = objectMapper.readValue(executableArgs.get("input"),
-                                                                               new TypeReference<>() {}
-            );
-            Map<String, ValueSpecification> result = new TypedMapVS();
-
-            MapAdapter.adapt(input).forEachKeyValue((key, value) -> result.put(key,
-                                                                               PureGrammarParser.newInstance().parseValueSpecification(
-                                                                                       value.value,
-                                                                                       value.sourceInformationOffset == null ? "" : value.sourceInformationOffset.sourceId,
-                                                                                       value.sourceInformationOffset == null ? 0 : value.sourceInformationOffset.lineOffset,
-                                                                                       value.sourceInformationOffset == null ? 0 : value.sourceInformationOffset.columnOffset,
-                                                                                       value.returnSourceInformation
-                                                                               )
-            ));
-
-            results.add(FunctionLegendExecutionResult.newResult(entityPath,
-                                                                LegendExecutionResult.Type.SUCCESS,
-                                                                objectMapper.writeValueAsString(result),
-                                                                null,
-                                                                section.getDocumentState().getDocumentId(),
-                                                                section.getSectionNumber(),
-                                                                inputParameters
-            ));
         }
         catch (Exception e)
         {
@@ -852,9 +814,9 @@ public interface FunctionExecutionSupport
     }
 
     // Required so that Jackson properly includes _type for the top level element
-    class TypedMapVS extends UnifiedMap<String, ValueSpecification>
+    class TypedMapLambda extends UnifiedMap<String, Lambda>
     {
-        public TypedMapVS()
+        public TypedMapLambda()
         {
         }
     }
