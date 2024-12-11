@@ -19,10 +19,16 @@ package org.finos.legend.engine.ide.lsp.commands;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 
 public interface CommandExecutionHandler
 {
     String getCommandId();
 
-    Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params);
+    Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params, CancellationToken cancellationToken);
+
+    default String requestId(ExecuteCommandParams params)
+    {
+        return null;
+    }
 }

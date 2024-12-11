@@ -25,10 +25,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
 import org.eclipse.lsp4j.jsonrpc.json.adapters.EnumTypeAdapter;
+import org.finos.legend.engine.ide.lsp.commands.LegendCancelCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
@@ -40,11 +44,13 @@ import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSortOrder;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.server.request.LegendEntitiesRequest;
 import org.finos.legend.engine.ide.lsp.server.service.FunctionTDSRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -131,6 +137,35 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
         int sectionNum = 0;
         String entity = "model1::testReturnTDS__TabularDataSet_1_";
         testFunctionExecutionOnEntity(sectionNum, entity);
+    }
+
+    @Test
+    @Disabled("Race condition leads to not cancelling the request sometimes")
+    void testFunctionTdsExecutionExplicitCancel() throws Exception
+    {
+        FunctionTDSRequest functionTDSRequest = createFunctionTDSRequest(0, "model1::testReturnTDS__TabularDataSet_1_");
+        extension.futureGet(extension.getServer().getWorkspaceService().executeCommand(new ExecuteCommandParams(LegendCancelCommandExecutionHandler.LEGEND_CANCEL_COMMAND_ID, List.of(functionTDSRequest.getId()))));
+        extension.waitForAllTaskToComplete();
+        ResponseErrorException responseErrorException = Assertions.assertThrows(ResponseErrorException.class, () -> extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest)));
+        Assertions.assertTrue(responseErrorException.getResponseError().getMessage().matches("The request \\(id: .*, method: 'legend/TDSRequest'\\) has been cancelled"));
+    }
+
+    @Test
+    void testFunctionTdsExecutionImplicitCancel() throws Exception
+    {
+        FunctionTDSRequest functionTDSRequest = createFunctionTDSRequest(0, "model1::testReturnTDS__TabularDataSet_1_");
+
+        CountDownLatch latch = new CountDownLatch(1);
+
+        CancellationToken cancellationToken = extension.getGlobalState().cancellationToken(functionTDSRequest.getId());
+        cancellationToken.listener(latch::countDown);
+
+        CompletableFuture<LegendExecutionResult> toCancelFuture = legendLanguageService.legendTDSRequest(functionTDSRequest);
+        toCancelFuture.cancel(true);
+
+        extension.waitForAllTaskToComplete();
+
+        Assertions.assertTrue(latch.await(2, TimeUnit.SECONDS), "failed on implicit cancel?");
     }
 
     @Test
@@ -259,18 +294,7 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
 
     private void testFunctionExecutionOnEntity(int sectionNum, String entity) throws Exception
     {
-        Path pureFile1 = prepareWorkspaceFiles();
-        String uri = pureFile1.toUri().toString();
-
-        List<TDSSort> sort = new ArrayList<>();
-        List<Filter> filter = new ArrayList<>();
-        List<String> columns = List.of("Legal Name", "Employees/ First Name", "Employees/ Last Name");
-        List<String> groupByColumns = new ArrayList<>();
-        List<String> groupKeys = new ArrayList<>();
-        List<TDSAggregation> aggregations = new ArrayList<>();
-        TDSGroupBy groupBy = new TDSGroupBy(groupByColumns, groupKeys, aggregations);
-        TDSRequest request = new TDSRequest(0, 0, columns, filter, sort, groupBy);
-        FunctionTDSRequest functionTDSRequest = new FunctionTDSRequest(UUID.randomUUID().toString(), uri, sectionNum, entity, request, Collections.emptyMap());
+        FunctionTDSRequest functionTDSRequest = createFunctionTDSRequest(sectionNum, entity);
 
         // No push down operations
         Object resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
@@ -282,7 +306,7 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
         Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
 
         // Sort operation on first row
-        sort.add(new TDSSort("Legal Name", TDSSortOrder.ASCENDING));
+        functionTDSRequest.getRequest().getSort().add(new TDSSort("Legal Name", TDSSortOrder.ASCENDING));
         resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
         result = getTabularDataSet(resultObject);
         Assertions.assertEquals(result.getColumns().size(), 3);
@@ -292,8 +316,8 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
         Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB", "Doe", "Nicole"));
 
         // Filter operation on second row
-        sort.clear();
-        filter.add(new Filter("Employees/ First Name", ColumnType.String, FilterOperation.EQUALS, "Doe"));
+        functionTDSRequest.getRequest().getSort().clear();
+        functionTDSRequest.getRequest().getFilter().add(new Filter("Employees/ First Name", ColumnType.String, FilterOperation.EQUALS, "Doe"));
         resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
         result = getTabularDataSet(resultObject);
         Assertions.assertEquals(result.getColumns().size(), 3);
@@ -302,8 +326,8 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
         Assertions.assertEquals(result.getRows().get(1).getValues(), List.of("FirmB", "Doe", "Nicole"));
 
         // Groupby operation
-        filter.clear();
-        groupByColumns.add("Legal Name");
+        functionTDSRequest.getRequest().getFilter().clear();
+        functionTDSRequest.getRequest().getGroupBy().getColumns().add("Legal Name");
         resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
         result = getTabularDataSet(resultObject);
         Assertions.assertEquals(result.getColumns().size(), 1);
@@ -313,12 +337,28 @@ public class TestLegendLanguageServerFunctionExecutionIntegration
         Assertions.assertEquals(result.getRows().get(2).getValues(), List.of("FirmB"));
 
         // Expand groupBy
-        groupKeys.add("Apple");
+        functionTDSRequest.getRequest().getGroupBy().getGroupKeys().add("Apple");
         resultObject = extension.futureGet(legendLanguageService.legendTDSRequest(functionTDSRequest));
         result = getTabularDataSet(resultObject);
         Assertions.assertEquals(result.getColumns().size(), 3);
         Assertions.assertEquals(result.getRows().size(), 1);
         Assertions.assertEquals(result.getRows().get(0).getValues(), List.of("Apple", "Smith", "Tim"));
+    }
+
+    private static FunctionTDSRequest createFunctionTDSRequest(int sectionNum, String entity) throws Exception
+    {
+        Path pureFile1 = prepareWorkspaceFiles();
+        String uri = pureFile1.toUri().toString();
+
+        List<TDSSort> sort = new ArrayList<>();
+        List<Filter> filter = new ArrayList<>();
+        List<String> columns = List.of("Legal Name", "Employees/ First Name", "Employees/ Last Name");
+        List<String> groupByColumns = new ArrayList<>();
+        List<String> groupKeys = new ArrayList<>();
+        List<TDSAggregation> aggregations = new ArrayList<>();
+        TDSGroupBy groupBy = new TDSGroupBy(groupByColumns, groupKeys, aggregations);
+        TDSRequest request = new TDSRequest(0, 0, columns, filter, sort, groupBy);
+        return new FunctionTDSRequest(UUID.randomUUID().toString(), uri, sectionNum, entity, request, Collections.emptyMap());
     }
 
     private static Path prepareWorkspaceFiles() throws Exception

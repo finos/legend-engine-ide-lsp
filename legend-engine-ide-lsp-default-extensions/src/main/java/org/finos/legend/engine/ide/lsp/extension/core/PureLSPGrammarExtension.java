@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -549,7 +548,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         PackageableElement element = elements.get(0);
         SingleExecutionPlan executionPlan = this.getExecutionPlan(element, this.getLambda(element), pureModel, Map.of(), globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        try (CancellationToken requestId = globalState.cancellationToken(UUID.randomUUID().toString()))
+        try (CancellationToken requestId = globalState.cancellationToken(null))
         {
             FunctionExecutionSupport.executePlan(globalState, this, "memory", -1, executionPlan, null, element.getPath(), Map.of(), results, requestId);
         }

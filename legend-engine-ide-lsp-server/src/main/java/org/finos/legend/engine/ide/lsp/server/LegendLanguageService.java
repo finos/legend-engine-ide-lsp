@@ -16,7 +16,39 @@
 
 package org.finos.legend.engine.ide.lsp.server;
 
-import org.eclipse.lsp4j.*;
+import java.io.File;
+import java.net.URI;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+import org.eclipse.lsp4j.ApplyWorkspaceEditParams;
+import org.eclipse.lsp4j.ApplyWorkspaceEditResponse;
+import org.eclipse.lsp4j.CreateFile;
+import org.eclipse.lsp4j.CreateFileOptions;
+import org.eclipse.lsp4j.DeleteFile;
+import org.eclipse.lsp4j.Position;
+import org.eclipse.lsp4j.Range;
+import org.eclipse.lsp4j.RenameFile;
+import org.eclipse.lsp4j.ResourceOperation;
+import org.eclipse.lsp4j.TextDocumentEdit;
+import org.eclipse.lsp4j.TextDocumentIdentifier;
+import org.eclipse.lsp4j.TextEdit;
+import org.eclipse.lsp4j.VersionedTextDocumentIdentifier;
+import org.eclipse.lsp4j.WorkspaceEdit;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.LegendEntity;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
@@ -40,17 +72,6 @@ import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.net.URI;
-import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-
 public class LegendLanguageService implements LegendLanguageServiceContract
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageService.class);
@@ -71,14 +92,14 @@ public class LegendLanguageService implements LegendLanguageServiceContract
     @Override
     public CompletableFuture<LegendExecutionResult> legendTDSRequest(FunctionTDSRequest request)
     {
-        return this.server.supplyPossiblyAsync(() -> this.server.runAndFireEvent("TDSRequest", () ->
+        CancellationToken requestId = this.server.getGlobalState().cancellationToken(request.getId());
+        CompletableFuture<LegendExecutionResult> completableFuture = this.server.supplyPossiblyAsync(() -> this.server.runAndFireEvent("TDSRequest", () ->
                 {
                     LegendExecutionResult result;
                     LegendServerGlobalState globalState = this.server.getGlobalState();
                     String uri = request.getUri();
                     int sectionNum = request.getSectionNum();
                     String entity = request.getEntity();
-                    CancellationToken requestId = this.server.getGlobalState().cancellationToken(Optional.ofNullable(request.getId()).orElseGet(() -> UUID.randomUUID().toString()));
                     DocumentState docState = globalState.getDocumentState(uri);
                     if (docState == null)
                     {
@@ -102,6 +123,7 @@ public class LegendLanguageService implements LegendLanguageServiceContract
                     return result;
                 }, Map.of("function", request.getEntity()))
         );
+        return this.server.completableFutureWithCancelSupport(completableFuture, requestId);
     }
 
     @Override
