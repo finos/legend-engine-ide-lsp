@@ -53,6 +53,7 @@ import org.finos.legend.engine.ide.lsp.commands.LegendCommandV2ExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.utils.LegendToLSPUtilities;
 import org.slf4j.Logger;
@@ -87,11 +88,19 @@ public class LegendWorkspaceService implements WorkspaceService
     public CompletableFuture<Object> executeCommand(ExecuteCommandParams params)
     {
         LOGGER.debug("Execute command: {} {}", params.getCommand(), params.getArguments());
-        return this.server.supplyPossiblyAsync(() ->
+        CommandExecutionHandler handler = this.commandExecutionHandlers.get(params.getCommand());
+        if (handler == null)
+        {
+            return CompletableFuture.failedFuture(this.server.newResponseErrorException(ResponseErrorCode.InvalidParams, "Unknown command: " + params.getCommand()));
+        }
+
+        String requestId = handler.requestId(params);
+        CancellationToken cancellationToken = this.server.getGlobalState().cancellationToken(requestId);
+        CompletableFuture<Object> completableFuture = this.server.supplyPossiblyAsync(() ->
         {
             try
             {
-                return doExecuteCommand(params);
+                return doExecuteCommand(params, cancellationToken);
             }
             catch (Exception e)
             {
@@ -101,9 +110,10 @@ public class LegendWorkspaceService implements WorkspaceService
                 throw e;
             }
         });
+        return this.server.completableFutureWithCancelSupport(completableFuture, cancellationToken);
     }
 
-    private Object doExecuteCommand(ExecuteCommandParams params)
+    private Object doExecuteCommand(ExecuteCommandParams params, CancellationToken cancellationToken)
     {
         String command = params.getCommand();
         Either<String, Integer> progressToken = this.server.possiblyNewProgressToken(params.getWorkDoneToken());
@@ -113,42 +123,35 @@ public class LegendWorkspaceService implements WorkspaceService
             this.server.logInfoToClient("Execute command: " + command);
 
             CommandExecutionHandler handler = this.commandExecutionHandlers.get(command);
-            if (handler != null)
+            results = handler.executeCommand(progressToken, params, cancellationToken);
+            this.server.notifyResults(progressToken, results);
+            results.forEach(result ->
             {
-                results = handler.executeCommand(progressToken, params);
-                this.server.notifyResults(progressToken, results);
-                results.forEach(result ->
+                switch (result.getType())
                 {
-                    switch (result.getType())
+                    case SUCCESS:
+                        break;
+                    case FAILURE:
+                    case WARNING:
                     {
-                        case SUCCESS:
-                            break;
-                        case FAILURE:
-                        case WARNING:
-                        {
-                            this.server.showWarningToClient(result.getMessage());
-                            this.server.logWarningToClient(result.getLogMessage(true));
-                            break;
-                        }
-                        case ERROR:
-                        {
-                            this.server.showErrorToClient(result.getMessage());
-                            this.server.logErrorToClient(result.getLogMessage(true));
-                            break;
-                        }
-                        default:
-                        {
-                            LOGGER.warn("Unhandled result type: {}", result.getType());
-                            this.server.showInfoToClient(result.getMessage());
-                            this.server.logInfoToClient(result.getLogMessage(true));
-                        }
+                        this.server.showWarningToClient(result.getMessage());
+                        this.server.logWarningToClient(result.getLogMessage(true));
+                        break;
                     }
-                });
-            }
-            else
-            {
-                throw this.server.newResponseErrorException(ResponseErrorCode.InvalidParams, "Unknown command: " + command);
-            }
+                    case ERROR:
+                    {
+                        this.server.showErrorToClient(result.getMessage());
+                        this.server.logErrorToClient(result.getLogMessage(true));
+                        break;
+                    }
+                    default:
+                    {
+                        LOGGER.warn("Unhandled result type: {}", result.getType());
+                        this.server.showInfoToClient(result.getMessage());
+                        this.server.logInfoToClient(result.getLogMessage(true));
+                    }
+                }
+            });
         }
         catch (Exception e)
         {

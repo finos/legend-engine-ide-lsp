@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
@@ -200,6 +201,7 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
     @Override
     public CancellationToken cancellationToken(String requestId)
     {
+        requestId = requestId == null ? UUID.randomUUID().toString() : requestId;
         return this.cancellationTokens.computeIfAbsent(requestId, x -> new CancellationToken(x, this.cancellationTokens::remove));
     }
 

@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -103,6 +104,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
+import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
 import org.finos.legend.engine.ide.lsp.server.service.LegendLanguageServiceContract;
 import org.slf4j.Logger;
@@ -1149,6 +1151,58 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     public static Builder builder()
     {
         return new Builder();
+    }
+
+    <T> CompletableFuture<T> completableFutureWithCancelSupport(CompletableFuture<T> completableFuture, CancellationToken token)
+    {
+        CompletableFuture<T> withCancelSupport = new CompletableFuture<>()
+        {
+            @Override
+            public boolean cancel(boolean mayInterruptIfRunning)
+            {
+                LOGGER.debug("Cancelling request: {}", token.getId());
+                token.cancel();
+                return completableFuture.cancel(mayInterruptIfRunning);
+            }
+        };
+
+        completableFuture.whenComplete((x, e) ->
+        {
+            /*
+                Below we handle the completion of the original future, propagating the result to the future LSP is listening to.
+                As part of this propagation, there are some considerations around the cancellation token, since cancel is
+                implemented as best-effort, and even when the request is cancelled, a result might be produced.
+
+                1. The cancellation token is "close" to clean up any tracking the server have around these
+                2. If the outcome of the original future is an exception, and the request was cancelled, the exception is
+                    replaced with a CancellationException.  This is because the incoming exception might have been caused by
+                    cancel flow prematurely closing resources and leading to IO exceptions, for example.  By replacing this
+                    with CancellationException, LSP will respond to the client with a proper cancel response.
+                3. If the original future completed successfully we propagate that result even when the request was cancelled.
+                    Given cancel is a best-effort action, trampling the successfully computed value might be wasteful, and to
+                    be cautious this leaves it to the LSP client to decide what to do with the result in such scenario.
+             */
+
+            token.close();
+
+            // if is cancelled, trigger LSP cancel flow, and avoid noise with other type of errors
+            if (e != null && token.isCancelled())
+            {
+                withCancelSupport.completeExceptionally(new CancellationException());
+            }
+            // propagate original error if not cancelled
+            else if (e != null)
+            {
+                withCancelSupport.completeExceptionally(e);
+            }
+            // propagate result, regardless if was cancelled or not
+            else
+            {
+                withCancelSupport.complete(x);
+            }
+        });
+
+        return withCancelSupport;
     }
 
     /**
