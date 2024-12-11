@@ -591,8 +591,8 @@ public interface FunctionExecutionSupport
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
         {
-            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
             PureModel pureModel = compileResult.getPureModel();
+            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
             RelationType relationType = Compiler.getLambdaRelationType(lambda, pureModel);
             results.add(
                     FunctionLegendExecutionResult.newResult(
