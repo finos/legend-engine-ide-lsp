@@ -27,11 +27,7 @@ import com.fasterxml.jackson.databind.type.CollectionType;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
+import java.util.*;
 import java.util.function.Consumer;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
@@ -119,7 +115,6 @@ public interface FunctionExecutionSupport
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
     String GRAMMAR_TO_JSON_VALUE_SPECIFICATION_BATCH_ID = "legend.grammarToJson.valueSpecification.batch";
     String GET_LAMBDA_RETURN_TYPE_ID = "legend.lambda.returnType";
-    String GET_LAMBDA_RELATION_TYPE_ID = "legend.lambda.relationType";
     String SURVEY_DATASETS_ID = "legend.entitlements.surveyDatasets";
     String CHECK_DATASET_ENTITLEMENTS_ID = "legend.entitlements.checkDatasetEntitlements";
 
@@ -167,10 +162,6 @@ public interface FunctionExecutionSupport
             case FunctionExecutionSupport.GET_LAMBDA_RETURN_TYPE_ID:
             {
                 return FunctionExecutionSupport.getLambdaReturnType(executionSupport, section, entityPath, executableArgs, inputParameters);
-            }
-            case FunctionExecutionSupport.GET_LAMBDA_RELATION_TYPE_ID:
-            {
-                return FunctionExecutionSupport.getLambdaRelationType(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
             case FunctionExecutionSupport.SURVEY_DATASETS_ID:
             {
@@ -556,49 +547,18 @@ public interface FunctionExecutionSupport
             PureModel pureModel = compileResult.getPureModel();
             Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
             String typeName = Compiler.getLambdaReturnType(lambda, pureModel);
-            // This is an object in case we want to add more information on the lambda.
-            Map<String, String> result = new HashMap<>();
+            Map<String, Object> result = new HashMap<>();
             result.put("returnType", typeName);
+            if (Objects.equals(typeName, "meta::pure::metamodel::relation::Relation"))
+            {
+                RelationType relationType = Compiler.getLambdaRelationType(lambda, pureModel);
+                result.put("relationType", relationType);
+            }
             results.add(
                     FunctionLegendExecutionResult.newResult(
                             entityPath,
                             LegendExecutionResult.Type.SUCCESS,
                             objectMapper.writeValueAsString(result),
-                            null,
-                            section.getDocumentState().getDocumentId(),
-                            section.getSectionNumber(),
-                            inputParameters
-                    )
-            );
-        }
-        catch (Exception e)
-        {
-            results.add(extension.errorResult(e, entityPath));
-        }
-        return results;
-    }
-
-    static Iterable<? extends LegendExecutionResult> getLambdaRelationType(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
-    {
-        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
-
-        CompileResult compileResult = extension.getCompileResult(section);
-        if (compileResult.hasEngineException())
-        {
-            return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
-        }
-
-        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        try
-        {
-            PureModel pureModel = compileResult.getPureModel();
-            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
-            RelationType relationType = Compiler.getLambdaRelationType(lambda, pureModel);
-            results.add(
-                    FunctionLegendExecutionResult.newResult(
-                            entityPath,
-                            LegendExecutionResult.Type.SUCCESS,
-                            objectMapper.writeValueAsString(relationType),
                             null,
                             section.getDocumentState().getDocumentId(),
                             section.getSectionNumber(),

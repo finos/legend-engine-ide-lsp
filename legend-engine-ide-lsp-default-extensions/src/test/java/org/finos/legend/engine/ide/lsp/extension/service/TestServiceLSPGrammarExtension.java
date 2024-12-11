@@ -1407,7 +1407,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testGetLambdaRelationType()
+    public void testGetLambdaReturnTypeWithRelation()
     {
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
@@ -1498,9 +1498,9 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "}\n";
         Map<String, String> executableArgs = Map.of("lambda", lambdaString);
 
-        String expected = "{\"_type\":\"relationType\",\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\"},{\"name\":\"First Name\",\"type\":\"String\"}]}";
+        String expected = "{\"relationType\":{\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\"},{\"name\":\"First Name\",\"type\":\"String\"}]},\"returnType\":\"meta::pure::metamodel::relation::Relation\"}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
-                GET_LAMBDA_RELATION_TYPE_ID, executableArgs);
+                GET_LAMBDA_RETURN_TYPE_ID, executableArgs);
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         LegendExecutionResult result = actual.iterator().next();
