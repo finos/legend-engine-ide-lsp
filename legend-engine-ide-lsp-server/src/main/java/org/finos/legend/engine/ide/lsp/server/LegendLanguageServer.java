@@ -1168,6 +1168,21 @@ public class LegendLanguageServer implements LegendLanguageServerContract
 
         completableFuture.whenComplete((x, e) ->
         {
+            /*
+                Below we handle the completion of the original future, propagating the result to the future LSP is listening to.
+                As part of this propagation, there are some considerations around the cancellation token, since cancel is
+                implemented as best-effort, and even when the request is cancelled, a result might be produced.
+
+                1. The cancellation token is "close" to clean up any tracking the server have around these
+                2. If the outcome of the original future is an exception, and the request was cancelled, the exception is
+                    replaced with a CancellationException.  This is because the incoming exception might have been caused by
+                    cancel flow prematurely closing resources and leading to IO exceptions, for example.  By replacing this
+                    with CancellationException, LSP will respond to the client with a proper cancel response.
+                3. If the original future completed successfully we propagate that result even when the request was cancelled.
+                    Given cancel is a best-effort action, trampling the successfully computed value might be wasteful, and to
+                    be cautious this leaves it to the LSP client to decide what to do with the result in such scenario.
+             */
+
             token.close();
 
             // if is cancelled, trigger LSP cancel flow, and avoid noise with other type of errors
@@ -1175,10 +1190,12 @@ public class LegendLanguageServer implements LegendLanguageServerContract
             {
                 withCancelSupport.completeExceptionally(new CancellationException());
             }
+            // propagate original error if not cancelled
             else if (e != null)
             {
                 withCancelSupport.completeExceptionally(e);
             }
+            // propagate result, regardless if was cancelled or not
             else
             {
                 withCancelSupport.complete(x);
