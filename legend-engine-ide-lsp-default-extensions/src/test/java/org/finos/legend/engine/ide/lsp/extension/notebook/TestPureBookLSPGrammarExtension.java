@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.StateForTestFactory;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
@@ -162,7 +164,7 @@ public class TestPureBookLSPGrammarExtension
     }
 
     @Test
-    void relationRendering()
+    void relationExecuteCellReturnsLambda()
     {
         SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
@@ -208,21 +210,27 @@ public class TestPureBookLSPGrammarExtension
                         "    ];\n" +
                         "}");
 
-        Assertions.assertEquals(
-                List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS,
-                        "+--------------+--------------+--------------+\n" +
-                        "|   fullName   |   firmName   | addressName  |\n" +
-                        "| VARCHAR(100) | VARCHAR(100) | VARCHAR(100) |\n" +
-                        "+--------------+--------------+--------------+\n" +
-                        "|      P1      |      F1      |      A1      |\n" +
-                        "|      P2      |      F2      |      A2      |\n" +
-                        "|      P3      |              |              |\n" +
-                        "|      P4      |              |      A3      |\n" +
-                        "|      P5      |      F1      |      A1      |\n" +
-                        "+--------------+--------------+--------------+\n" +
-                        "5 rows -- 3 columns", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
-                this.extension.execute(notebook, "notebook", "executeCell", Map.of("requestId", "123456"), Map.of(), notebook.getDocumentState().getGlobalState().cancellationToken("test"))
-        );
+        String expectedMessage = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"func\",\"function\":\"from\"," +
+                "\"parameters\":[{\"_type\":\"func\",\"function\":\"select\"," +
+                "\"parameters\":[{\"_type\":\"classInstance\",\"sourceInformation\":{\"endColumn\":30,\"endLine\":1," +
+                "\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1},\"type\":\">\"," +
+                "\"value\":{\"path\":[\"test::h2Store\",\"personTable\"],\"sourceInformation\":{\"endColumn\":30," +
+                "\"endLine\":1,\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1}}}]," +
+                "\"sourceInformation\":{\"endColumn\":38,\"endLine\":1,\"sourceId\":\"notebook.purebook\"," +
+                "\"startColumn\":33,\"startLine\":1}},{\"_type\":\"packageableElementPtr\"," +
+                "\"fullPath\":\"test::h2Runtime\",\"sourceInformation\":{\"endColumn\":62,\"endLine\":1," +
+                "\"sourceId\":\"notebook.purebook\",\"startColumn\":48,\"startLine\":1}}]," +
+                "\"sourceInformation\":{\"endColumn\":46,\"endLine\":1,\"sourceId\":\"notebook.purebook\"," +
+                "\"startColumn\":43,\"startLine\":1}}],\"parameters\":[],\"sourceInformation\":{\"endColumn\":63," +
+                "\"endLine\":1,\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1}}";
+        Iterable<? extends LegendExecutionResult> actual = this.extension.execute(notebook, "notebook", "executeCell"
+                , Map.of("requestId", "123456"), Map.of(),
+                notebook.getDocumentState().getGlobalState().cancellationToken("test"));
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expectedMessage, result.getMessage());
     }
 
     @Test
