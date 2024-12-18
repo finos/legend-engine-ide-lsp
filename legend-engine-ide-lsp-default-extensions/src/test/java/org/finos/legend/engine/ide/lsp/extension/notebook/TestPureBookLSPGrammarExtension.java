@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.StateForTestFactory;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
@@ -163,12 +165,10 @@ public class TestPureBookLSPGrammarExtension
         );
     }
 
-    @Test
-    void relationExecuteCellReturnsLambda()
+    private MutableMap<String, String> getCodeFilesThatParseCompile()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
-        GlobalState gs = notebook.getDocumentState().getGlobalState();
-        stateForTestFactory.newSectionState(gs, "database.pure",
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("database.pure",
                 "###Relational\n" +
                         "Database test::h2Store\n" +
                         "(\n" +
@@ -186,7 +186,7 @@ public class TestPureBookLSPGrammarExtension
                         "    )\n" +
                         ")");
 
-        stateForTestFactory.newSectionState(gs, "connection.pure",
+        codeFiles.put("connection.pure",
                 "###Connection\n" +
                         "RelationalDatabaseConnection test::h2Conn\n" +
                         "{\n" +
@@ -199,7 +199,7 @@ public class TestPureBookLSPGrammarExtension
                         "    auth: DefaultH2;\n" +
                         "}");
 
-        stateForTestFactory.newSectionState(gs, "runtime.pure",
+        codeFiles.put("runtime.pure",
                 "###Runtime\n" +
                         "Runtime  test::h2Runtime\n" +
                         "{\n" +
@@ -209,6 +209,16 @@ public class TestPureBookLSPGrammarExtension
                         "        test::h2Conn: [ test::h2Store ]\n" +
                         "    ];\n" +
                         "}");
+        return codeFiles;
+    }
+
+    @Test
+    void relationExecuteCellReturnsLambda()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
 
         String expectedMessage = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"func\",\"function\":\"from\"," +
                 "\"parameters\":[{\"_type\":\"func\",\"function\":\"select\"," +
