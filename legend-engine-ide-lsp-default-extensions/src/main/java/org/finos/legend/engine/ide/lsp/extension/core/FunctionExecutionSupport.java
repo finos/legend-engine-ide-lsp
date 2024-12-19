@@ -84,7 +84,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.domain.
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.type.PackageableType;
 import org.finos.legend.engine.protocol.pure.v1.model.type.relationType.RelationType;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
@@ -511,7 +510,7 @@ public interface FunctionExecutionSupport
             String typeName = Compiler.getLambdaReturnType(lambda, pureModel);
             Map<String, Object> result = new HashMap<>();
             result.put("returnType", typeName);
-            if (Objects.equals(typeName, "meta::pure::metamodel::relation::Relation"))
+            if (Objects.equals(typeName, "meta::pure::metamodel::relation::Relation") || Objects.equals(typeName, "meta::pure::store::RelationStoreAccessor"))
             {
                 RelationType relationType = Compiler.getLambdaRelationType(lambda, pureModel);
                 result.put("relationType", relationType);

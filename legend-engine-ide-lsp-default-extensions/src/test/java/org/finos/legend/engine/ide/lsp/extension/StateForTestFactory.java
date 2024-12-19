@@ -232,6 +232,12 @@ public class StateForTestFactory
     public MutableList<SectionState> newSectionStates(MutableMap<String, String> files)
     {
         TestGlobalState globalState = new TestGlobalState();
+        return newSectionStates(globalState, files);
+    }
+
+    public MutableList<SectionState> newSectionStates(GlobalState gs, MutableMap<String, String> files)
+    {
+        TestGlobalState globalState = (TestGlobalState) gs;
         MutableList<SectionState> sectionStates = Lists.mutable.empty();
         files.forEach((docId, text) ->
         {
