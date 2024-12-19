@@ -301,10 +301,8 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void cancel()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
-        GlobalState gs = notebook.getDocumentState().getGlobalState();
-        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
-        stateForTestFactory.newSectionStates(gs, codeFiles);
+        SectionState pureCode = stateForTestFactory.newSectionState("func.pure", "function hello::world():Any[1]{ 1 + 1 }");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "hello::world()");
 
         // it's hard to test the cancel,
         // hence we will trigger the cancellation 1st
