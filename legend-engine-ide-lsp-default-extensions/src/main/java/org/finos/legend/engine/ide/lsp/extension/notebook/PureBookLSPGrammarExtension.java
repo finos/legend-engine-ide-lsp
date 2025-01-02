@@ -394,26 +394,16 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
 
     Iterable<? extends LegendExecutionResult> getQueryTypeahead(SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
     {
-        PureModelContextData pureModelContextData = this.pureGrammarExtension.getCompileResult(section).getPureModelContextData();
+        PureModel pureModel = this.pureGrammarExtension.getCompileResult(section).getPureModel();
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
 
         try
         {
-            String graphCode = "";
-            if (pureModelContextData != null)
-            {
-                PureModelContextData newData = PureModelContextData.newBuilder()
-                        .withOrigin(pureModelContextData.getOrigin())
-                        .withSerializer(pureModelContextData.getSerializer())
-                        .withElements(ListIterate.select(pureModelContextData.getElements(), el -> !el.getPath().equals(REPL_RUN_FUNCTION_QUALIFIED_PATH)))
-                        .build();
-                graphCode = PureGrammarComposer.newInstance(PureGrammarComposerContext.Builder.newInstance().build()).renderPureModelContextData(newData);
-            }
             String code = executableArgs.get("code");
             Lambda baseQuery = objectMapper.readValue(executableArgs.get("baseQuery"), Lambda.class);
             String baseQueryCode = baseQuery != null ? baseQuery.body.get(0).accept(DEPRECATED_PureGrammarComposerCore.Builder.newInstance().withRenderStyle(RenderStyle.STANDARD).build()) : null;
             String queryCode = (baseQueryCode != null ? baseQueryCode : "") + code;
-            Completer completer = new Completer(graphCode, this.completerExtensions);
+            Completer completer = new Completer(pureModel, this.completerExtensions);
             CompletionResult result = completer.complete(queryCode);
             results.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
                 objectMapper.writeValueAsString(result), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
