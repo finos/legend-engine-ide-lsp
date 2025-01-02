@@ -293,8 +293,8 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
             return Lists.mutable.with(this.pureGrammarExtension.getExtension().errorResult(e, "Cannot generate an execution plan for given expression.  Likely the expression is not supported yet...", "notebook_cell", section.getDocumentState().getTextLocation()));
         }
 
-        boolean enableDatacube = Boolean.parseBoolean(executableArgs.getOrDefault("enableDatacube", "false"));
-        if (enableDatacube)
+        boolean enableDataCube = Boolean.parseBoolean(executableArgs.getOrDefault("enableDataCube", "false"));
+        if (enableDataCube)
         {
             GenericType lambdaReturnType = planGenerationResult.getLambdaFunction()._expressionSequence().getLast()._genericType()._typeArguments().getFirst();
             if (lambdaReturnType != null && lambdaReturnType._rawType() instanceof RelationType)

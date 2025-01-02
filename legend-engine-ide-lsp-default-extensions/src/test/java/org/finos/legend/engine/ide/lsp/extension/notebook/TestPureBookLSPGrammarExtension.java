@@ -259,7 +259,7 @@ public class TestPureBookLSPGrammarExtension
                 "\"startColumn\":43,\"startLine\":1}}],\"parameters\":[],\"sourceInformation\":{\"endColumn\":63," +
                 "\"endLine\":1,\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1}}";
         Iterable<? extends LegendExecutionResult> actual = this.extension.execute(notebook, "notebook", "executeCell",
-                Map.of("requestId", "123456", "enableDatacube", "true"), Map.of(),
+                Map.of("requestId", "123456", "enableDataCube", "true"), Map.of(),
                 notebook.getDocumentState().getGlobalState().cancellationToken("test"));
 
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
