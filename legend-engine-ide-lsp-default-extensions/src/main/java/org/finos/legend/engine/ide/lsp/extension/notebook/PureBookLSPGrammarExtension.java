@@ -262,7 +262,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         switch (commandId)
         {
             case "executeCell":
-                return this.executeCell(section, inputParameters, requestId);
+                return this.executeCell(section, executableArgs, inputParameters, requestId);
             case "legend.query.typeahead":
                 return this.getQueryTypeahead(section, entityPath, executableArgs, inputParameters);
             default:
@@ -270,7 +270,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
-    private Iterable<? extends LegendExecutionResult> executeCell(SectionState section, Map<String, Object> inputParameters, CancellationToken requestId)
+    private Iterable<? extends LegendExecutionResult> executeCell(SectionState section, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         if (section.getSection().getFullText().isEmpty())
         {
@@ -299,16 +299,20 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
             return Lists.mutable.with(this.pureGrammarExtension.getExtension().errorResult(e, "Cannot generate an execution plan for given expression.  Likely the expression is not supported yet...", "notebook_cell", section.getDocumentState().getTextLocation()));
         }
 
-        GenericType lambdaReturnType = planGenerationResult.getLambdaFunction()._expressionSequence().getLast()._genericType()._typeArguments().getFirst();
-        if (lambdaReturnType != null && lambdaReturnType._rawType() instanceof RelationType)
+        boolean enableDatacube = Boolean.parseBoolean(executableArgs.getOrDefault("enableDatacube", "false"));
+        if (enableDatacube)
         {
-            try
+            GenericType lambdaReturnType = planGenerationResult.getLambdaFunction()._expressionSequence().getLast()._genericType()._typeArguments().getFirst();
+            if (lambdaReturnType != null && lambdaReturnType._rawType() instanceof RelationType)
             {
-                return List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, objectMapper.writeValueAsString(planGenerationResult.getLambda()), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters, "application/legend-datacube"));
-            }
-            catch (JsonProcessingException e)
-            {
-                return List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.errorResult(e, e.getMessage(), "notebook_cell", section.getDocumentState().getTextLocation()));
+                try
+                {
+                    return List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, objectMapper.writeValueAsString(planGenerationResult.getLambda()), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters, "application/legend-datacube"));
+                }
+                catch (JsonProcessingException e)
+                {
+                    return List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.errorResult(e, e.getMessage(), "notebook_cell", section.getDocumentState().getTextLocation()));
+                }
             }
         }
 
