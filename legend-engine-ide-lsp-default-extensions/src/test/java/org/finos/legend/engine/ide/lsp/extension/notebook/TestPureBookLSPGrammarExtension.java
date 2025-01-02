@@ -21,6 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.eclipse.collections.api.factory.Maps;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.StateForTestFactory;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
@@ -161,12 +165,10 @@ public class TestPureBookLSPGrammarExtension
         );
     }
 
-    @Test
-    void relationRendering()
+    private MutableMap<String, String> getCodeFilesThatParseCompile()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
-        GlobalState gs = notebook.getDocumentState().getGlobalState();
-        stateForTestFactory.newSectionState(gs, "database.pure",
+        MutableMap<String, String> codeFiles = Maps.mutable.empty();
+        codeFiles.put("database.pure",
                 "###Relational\n" +
                         "Database test::h2Store\n" +
                         "(\n" +
@@ -184,7 +186,7 @@ public class TestPureBookLSPGrammarExtension
                         "    )\n" +
                         ")");
 
-        stateForTestFactory.newSectionState(gs, "connection.pure",
+        codeFiles.put("connection.pure",
                 "###Connection\n" +
                         "RelationalDatabaseConnection test::h2Conn\n" +
                         "{\n" +
@@ -197,7 +199,7 @@ public class TestPureBookLSPGrammarExtension
                         "    auth: DefaultH2;\n" +
                         "}");
 
-        stateForTestFactory.newSectionState(gs, "runtime.pure",
+        codeFiles.put("runtime.pure",
                 "###Runtime\n" +
                         "Runtime  test::h2Runtime\n" +
                         "{\n" +
@@ -207,22 +209,63 @@ public class TestPureBookLSPGrammarExtension
                         "        test::h2Conn: [ test::h2Store ]\n" +
                         "    ];\n" +
                         "}");
+        return codeFiles;
+    }
+
+    @Test
+    void relationRendering()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
 
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS,
                         "+--------------+--------------+--------------+\n" +
-                        "|   fullName   |   firmName   | addressName  |\n" +
-                        "| VARCHAR(100) | VARCHAR(100) | VARCHAR(100) |\n" +
-                        "+--------------+--------------+--------------+\n" +
-                        "|      P1      |      F1      |      A1      |\n" +
-                        "|      P2      |      F2      |      A2      |\n" +
-                        "|      P3      |              |              |\n" +
-                        "|      P4      |              |      A3      |\n" +
-                        "|      P5      |      F1      |      A1      |\n" +
-                        "+--------------+--------------+--------------+\n" +
-                        "5 rows -- 3 columns", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
+                                "|   fullName   |   firmName   | addressName  |\n" +
+                                "| VARCHAR(100) | VARCHAR(100) | VARCHAR(100) |\n" +
+                                "+--------------+--------------+--------------+\n" +
+                                "|      P1      |      F1      |      A1      |\n" +
+                                "|      P2      |      F2      |      A2      |\n" +
+                                "|      P3      |              |              |\n" +
+                                "|      P4      |              |      A3      |\n" +
+                                "|      P5      |      F1      |      A1      |\n" +
+                                "+--------------+--------------+--------------+\n" +
+                                "5 rows -- 3 columns", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
                 this.extension.execute(notebook, "notebook", "executeCell", Map.of("requestId", "123456"), Map.of(), notebook.getDocumentState().getGlobalState().cancellationToken("test"))
         );
+    }
+
+    @Test
+    void relationExecuteCellReturnsLambdaWhenFlagIsTrue()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
+
+        String expectedMessage = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"func\",\"function\":\"from\"," +
+                "\"parameters\":[{\"_type\":\"func\",\"function\":\"select\"," +
+                "\"parameters\":[{\"_type\":\"classInstance\",\"sourceInformation\":{\"endColumn\":30,\"endLine\":1," +
+                "\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1},\"type\":\">\"," +
+                "\"value\":{\"path\":[\"test::h2Store\",\"personTable\"],\"sourceInformation\":{\"endColumn\":30," +
+                "\"endLine\":1,\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1}}}]," +
+                "\"sourceInformation\":{\"endColumn\":38,\"endLine\":1,\"sourceId\":\"notebook.purebook\"," +
+                "\"startColumn\":33,\"startLine\":1}},{\"_type\":\"packageableElementPtr\"," +
+                "\"fullPath\":\"test::h2Runtime\",\"sourceInformation\":{\"endColumn\":62,\"endLine\":1," +
+                "\"sourceId\":\"notebook.purebook\",\"startColumn\":48,\"startLine\":1}}]," +
+                "\"sourceInformation\":{\"endColumn\":46,\"endLine\":1,\"sourceId\":\"notebook.purebook\"," +
+                "\"startColumn\":43,\"startLine\":1}}],\"parameters\":[],\"sourceInformation\":{\"endColumn\":63," +
+                "\"endLine\":1,\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1}}";
+        Iterable<? extends LegendExecutionResult> actual = this.extension.execute(notebook, "notebook", "executeCell",
+                Map.of("requestId", "123456", "enableDataCube", "true"), Map.of(),
+                notebook.getDocumentState().getGlobalState().cancellationToken("test"));
+
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expectedMessage, result.getMessage());
     }
 
     @Test
@@ -230,47 +273,8 @@ public class TestPureBookLSPGrammarExtension
     {
         SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
-        stateForTestFactory.newSectionState(gs, "database.pure",
-                "###Relational\n" +
-                        "Database test::h2Store\n" +
-                        "(\n" +
-                        "    Table personTable\n" +
-                        "    (\n" +
-                        "     fullName VARCHAR(100),\n" +
-                        "     firmName VARCHAR(100),\n" +
-                        "     addressName VARCHAR(100)\n" +
-                        "    )\n" +
-                        "    Table anotherPersonTable\n" +
-                        "    (\n" +
-                        "     fullName VARCHAR(100),\n" +
-                        "     firmName VARCHAR(100),\n" +
-                        "     addressName VARCHAR(100)\n" +
-                        "    )\n" +
-                        ")");
-
-        stateForTestFactory.newSectionState(gs, "connection.pure",
-                "###Connection\n" +
-                        "RelationalDatabaseConnection test::h2Conn\n" +
-                        "{\n" +
-                        "    store: test::h2Store; \n" +
-                        "    type: H2;\n" +
-                        "    specification: LocalH2\n" +
-                        "    {\n" +
-                        "        testDataSetupCSV: 'default\\npersonTable\\nfullName,firmName,addressName\\nP1,F1,A1\\nP2,F2,A2\\nP3,,\\nP4,,A3\\nP5,F1,A1\\n---';\n" +
-                        "    };\n" +
-                        "    auth: DefaultH2;\n" +
-                        "}");
-
-        stateForTestFactory.newSectionState(gs, "runtime.pure",
-                "###Runtime\n" +
-                        "Runtime  test::h2Runtime\n" +
-                        "{\n" +
-                        "    mappings: [];\n" +
-                        "    connectionStores:\n" +
-                        "    [\n" +
-                        "        test::h2Conn: [ test::h2Store ]\n" +
-                        "    ];\n" +
-                        "}");
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
 
         Iterable<? extends LegendCompletion> storeCompletions = this.extension.getCompletions(notebook, TextPosition.newPosition(0, 2));
         Assertions.assertEquals(
@@ -291,51 +295,41 @@ public class TestPureBookLSPGrammarExtension
     }
 
     @Test
+    void queryTypeahead()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
+        Map<String, String> executableArgs = Map.of(
+                "code", "->extend(~col_e4751a0c_6b6d_49ff_a929_2b2e0d13ff51:x|$x.",
+                "baseQuery", "{\"_type\":\"lambda"
+                        + "\",\"body\":[{\"_type\":\"func\",\"function\":\"from\"," +
+                        "\"parameters\":[{\"_type\":\"func\"," + "\"function\":\"select\"," +
+                        "\"parameters\":[{\"_type\":\"classInstance\"," + "\"multiplicity\":{\"lowerBound\":1," +
+                        "\"upperBound\":1},\"type\":\">\"," + "\"value\":{\"path\":[\"test::h2Store\"," +
+                        "\"personTable\"]}}]},{\"_type\":\"packageableElementPtr\"," + "\"fullPath\":\"test" +
+                        "::h2Runtime\"}]}],\"parameters\":[]}"
+        );
+
+        String expectedMessage = "{\"completion\":[{\"completion\":\"fullName\",\"display\":\"fullName\"}," +
+                "{\"completion\":\"firmName\",\"display\":\"firmName\"},{\"completion\":\"addressName\"," +
+                "\"display\":\"addressName\"}]}";
+        Iterable<? extends LegendExecutionResult> actual = this.extension.execute(notebook, "notebook", "legend.query.typeahead",
+                executableArgs, Map.of(), notebook.getDocumentState().getGlobalState().cancellationToken("test"));
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        LegendExecutionResult result = actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(expectedMessage, result.getMessage());
+    }
+
+    @Test
     void cancel()
     {
         SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
-        stateForTestFactory.newSectionState(gs, "database.pure",
-                "###Relational\n" +
-                        "Database test::h2Store\n" +
-                        "(\n" +
-                        "    Table personTable\n" +
-                        "    (\n" +
-                        "     fullName VARCHAR(100),\n" +
-                        "     firmName VARCHAR(100),\n" +
-                        "     addressName VARCHAR(100)\n" +
-                        "    )\n" +
-                        "    Table anotherPersonTable\n" +
-                        "    (\n" +
-                        "     fullName VARCHAR(100),\n" +
-                        "     firmName VARCHAR(100),\n" +
-                        "     addressName VARCHAR(100)\n" +
-                        "    )\n" +
-                        ")");
-
-        stateForTestFactory.newSectionState(gs, "connection.pure",
-                "###Connection\n" +
-                        "RelationalDatabaseConnection test::h2Conn\n" +
-                        "{\n" +
-                        "    store: test::h2Store; \n" +
-                        "    type: H2;\n" +
-                        "    specification: LocalH2\n" +
-                        "    {\n" +
-                        "        testDataSetupCSV: 'default\\npersonTable\\nfullName,firmName,addressName\\nP1,F1,A1\\nP2,F2,A2\\nP3,,\\nP4,,A3\\nP5,F1,A1\\n---';\n" +
-                        "    };\n" +
-                        "    auth: DefaultH2;\n" +
-                        "}");
-
-        stateForTestFactory.newSectionState(gs, "runtime.pure",
-                "###Runtime\n" +
-                        "Runtime  test::h2Runtime\n" +
-                        "{\n" +
-                        "    mappings: [];\n" +
-                        "    connectionStores:\n" +
-                        "    [\n" +
-                        "        test::h2Conn: [ test::h2Store ]\n" +
-                        "    ];\n" +
-                        "}");
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
 
         // it's hard to test the cancel,
         // hence we will trigger the cancellation 1st

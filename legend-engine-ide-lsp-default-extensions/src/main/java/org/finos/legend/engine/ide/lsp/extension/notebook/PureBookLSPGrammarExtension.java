@@ -16,26 +16,14 @@
 
 package org.finos.legend.engine.ide.lsp.extension.notebook;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.tuple.Pair;
 import org.eclipse.collections.impl.tuple.Tuples;
-import org.finos.legend.engine.ide.lsp.extension.CompileResult;
-import org.finos.legend.engine.ide.lsp.extension.Constants;
-import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
-import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
+import org.finos.legend.engine.ide.lsp.extension.*;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
-import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExpressionNavigator;
 import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
@@ -43,10 +31,7 @@ import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.repl.extension.LegendREPLExtensionFeature;
-import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
-import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
-import org.finos.legend.engine.ide.lsp.extension.state.NotebookDocumentState;
-import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.state.*;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
@@ -54,6 +39,7 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
+import org.finos.legend.engine.language.pure.grammar.to.DEPRECATED_PureGrammarComposerCore;
 import org.finos.legend.engine.plan.execution.PlanExecutionContext;
 import org.finos.legend.engine.plan.execution.result.Result;
 import org.finos.legend.engine.plan.execution.result.serialization.SerializationFormat;
@@ -65,11 +51,25 @@ import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
 import org.finos.legend.engine.repl.core.ReplExtension;
+import org.finos.legend.engine.shared.core.ObjectMapperFactory;
+import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.LambdaFunction;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.RelationType;
+import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.generics.GenericType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
 {
@@ -82,6 +82,8 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private PureLSPGrammarExtension pureGrammarExtension;
     private MutableList<ReplExtension> replExtensions;
     private MutableList<CompleterExtension> completerExtensions;
+    ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
+
 
     @Override
     public String getName()
@@ -153,14 +155,14 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
-    private CompletableFuture<? extends LambdaFunction<?>> compile(SectionState sectionState)
+    private CompletableFuture<Pair<LambdaFunction<?>, Lambda>> compile(SectionState sectionState)
     {
         DocumentState documentState = sectionState.getDocumentState();
         GlobalState globalState = documentState.getGlobalState();
         return globalState.getProperty(documentState.getDocumentId() + COMPILE_RESULT_KEY, () -> tryCompile(sectionState));
     }
 
-    private CompletableFuture<? extends LambdaFunction<?>> tryCompile(SectionState sectionState)
+    private CompletableFuture<Pair<LambdaFunction<?>, Lambda>> tryCompile(SectionState sectionState)
     {
         return this.parse(sectionState).thenApply(x ->
                 {
@@ -170,7 +172,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
                     {
                         throw compileResult.getEngineException();
                     }
-                    return HelperValueSpecificationBuilder.buildLambda(x, pureModel.getContext());
+                    return Tuples.<LambdaFunction<?>, Lambda>pair(HelperValueSpecificationBuilder.buildLambda(x, pureModel.getContext()), x);
                 }
                 // when we complete compiling, trigger plan generation on the background to improve user experience...
         ).whenCompleteAsync((l, e) -> this.generatePlan(sectionState), sectionState.getDocumentState().getGlobalState().getForkJoinPool());
@@ -230,10 +232,10 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     @Override
     public Stream<LegendReference> getLegendReferences(SectionState sectionState)
     {
-        CompletableFuture<? extends LambdaFunction<?>> compiled = this.compile(sectionState);
+        CompletableFuture<Pair<LambdaFunction<?>, Lambda>> compiled = this.compile(sectionState);
         try
         {
-            LambdaFunction<?> lambdaFunction = compiled.get(30, TimeUnit.SECONDS);
+            LambdaFunction<?> lambdaFunction = compiled.get(30, TimeUnit.SECONDS).getOne();
             PureModel pureModel = this.pureGrammarExtension.getCompileResult(sectionState).getPureModel();
             return LegendReferenceResolver.toLegendReference(
                     sectionState,
@@ -254,26 +256,28 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         switch (commandId)
         {
             case "executeCell":
-                return this.executeCell(section, inputParameters, requestId);
+                return this.executeCell(section, executableArgs, inputParameters, requestId);
+            case "legend.query.typeahead":
+                return this.getQueryTypeahead(section, entityPath, executableArgs, inputParameters);
             default:
-                throw new UnsupportedOperationException("Command not supported by purebook: " + commandId);
+                return FunctionExecutionSupport.execute(this.pureGrammarExtension, section, entityPath, commandId, executableArgs, inputParameters, requestId);
         }
     }
 
-    private Iterable<? extends LegendExecutionResult> executeCell(SectionState section, Map<String, Object> inputParameters, CancellationToken requestId)
+    private Iterable<? extends LegendExecutionResult> executeCell(SectionState section, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
         if (section.getSection().getFullText().isEmpty())
         {
             return List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "[]", "Nothing to execute!", section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
         }
 
-        Pair<SingleExecutionPlan, PlanExecutionContext> planExecutionContextPair;
+        PlanGenerationResult planGenerationResult;
 
         try
         {
             try
             {
-                planExecutionContextPair = this.generatePlan(section).get(30, TimeUnit.SECONDS);
+                planGenerationResult = this.generatePlan(section).get(30, TimeUnit.SECONDS);
             }
             catch (CompletionException | ExecutionException e)
             {
@@ -289,7 +293,24 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
             return Lists.mutable.with(this.pureGrammarExtension.getExtension().errorResult(e, "Cannot generate an execution plan for given expression.  Likely the expression is not supported yet...", "notebook_cell", section.getDocumentState().getTextLocation()));
         }
 
-        return this.executePlan(section, planExecutionContextPair, inputParameters, requestId);
+        boolean enableDataCube = Boolean.parseBoolean(executableArgs.getOrDefault("enableDataCube", "false"));
+        if (enableDataCube)
+        {
+            GenericType lambdaReturnType = planGenerationResult.getLambdaFunction()._expressionSequence().getLast()._genericType()._typeArguments().getFirst();
+            if (lambdaReturnType != null && lambdaReturnType._rawType() instanceof RelationType)
+            {
+                try
+                {
+                    return List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, objectMapper.writeValueAsString(planGenerationResult.getLambda()), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters, "application/legend-datacube"));
+                }
+                catch (JsonProcessingException e)
+                {
+                    return List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.errorResult(e, e.getMessage(), "notebook_cell", section.getDocumentState().getTextLocation()));
+                }
+            }
+        }
+
+        return this.executePlan(section, Tuples.pair(planGenerationResult.getSingleExecutionPlan(), planGenerationResult.getPlanExecutionContext()), inputParameters, requestId);
     }
 
     private MutableList<LegendExecutionResult> executePlan(SectionState section, Pair<SingleExecutionPlan, PlanExecutionContext> planContext, Map<String, Object> inputParameters, CancellationToken requestId)
@@ -321,23 +342,23 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
-    private CompletableFuture<Pair<SingleExecutionPlan, PlanExecutionContext>> generatePlan(SectionState sectionState)
+    private CompletableFuture<PlanGenerationResult> generatePlan(SectionState sectionState)
     {
         DocumentState documentState = sectionState.getDocumentState();
         GlobalState globalState = documentState.getGlobalState();
         return globalState.getProperty(documentState.getDocumentId() + PLAN_EXEC_CONTEXT_KEY, () -> tryGeneratePlan(sectionState));
     }
 
-    private CompletableFuture<Pair<SingleExecutionPlan, PlanExecutionContext>> tryGeneratePlan(SectionState sectionState)
+    private CompletableFuture<PlanGenerationResult> tryGeneratePlan(SectionState sectionState)
     {
-        return this.compile(sectionState).thenApplyAsync(lambdaFunction ->
+        return this.compile(sectionState).thenApplyAsync(lambdaFunctionAndLambda ->
         {
             try
             {
                 PureModel pureModel = this.pureGrammarExtension.getCompileResult(sectionState).getPureModel();
                 GlobalState globalState = sectionState.getDocumentState().getGlobalState();
-                SingleExecutionPlan singleExecutionPlan = FunctionExecutionSupport.generateSingleExecutionPlan(pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION), lambdaFunction);
-                return Tuples.pair(singleExecutionPlan, new PlanExecutionContext(singleExecutionPlan, List.of()));
+                SingleExecutionPlan singleExecutionPlan = FunctionExecutionSupport.generateSingleExecutionPlan(pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION), lambdaFunctionAndLambda.getOne());
+                return new PlanGenerationResult(singleExecutionPlan, new PlanExecutionContext(singleExecutionPlan, List.of()), lambdaFunctionAndLambda.getOne(), lambdaFunctionAndLambda.getTwo());
             }
             catch (JavaCompileException e)
             {
@@ -362,6 +383,65 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         {
             LOGGER.error("Error fetching autocompletion results", e);
             return List.of();
+        }
+    }
+
+    Iterable<? extends LegendExecutionResult> getQueryTypeahead(SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        PureModel pureModel = this.pureGrammarExtension.getCompileResult(section).getPureModel();
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+
+        try
+        {
+            String code = executableArgs.get("code");
+            Lambda baseQuery = objectMapper.readValue(executableArgs.get("baseQuery"), Lambda.class);
+            String baseQueryCode = baseQuery != null ? baseQuery.body.get(0).accept(DEPRECATED_PureGrammarComposerCore.Builder.newInstance().withRenderStyle(RenderStyle.STANDARD).build()) : null;
+            String queryCode = (baseQueryCode != null ? baseQueryCode : "") + code;
+            Completer completer = new Completer(pureModel, this.completerExtensions);
+            CompletionResult result = completer.complete(queryCode);
+            results.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
+                objectMapper.writeValueAsString(result), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
+        }
+        catch (Exception e)
+        {
+            results.add(this.pureGrammarExtension.errorResult(e, entityPath));
+        }
+        return results;
+    }
+
+    private static class PlanGenerationResult
+    {
+        private final SingleExecutionPlan singleExecutionPlan;
+        private final PlanExecutionContext planExecutionContext;
+        private final LambdaFunction<?> lambdaFunction;
+        private final Lambda lambda;
+
+        public PlanGenerationResult(SingleExecutionPlan singleExecutionPlan, PlanExecutionContext planExecutionContext, LambdaFunction<?> lambdaFunction, Lambda lambda)
+        {
+            this.singleExecutionPlan = singleExecutionPlan;
+            this.planExecutionContext = planExecutionContext;
+            this.lambdaFunction = lambdaFunction;
+            this.lambda = lambda;
+        }
+
+        public SingleExecutionPlan getSingleExecutionPlan()
+        {
+            return singleExecutionPlan;
+        }
+
+        public PlanExecutionContext getPlanExecutionContext()
+        {
+            return planExecutionContext;
+        }
+
+        public LambdaFunction<?> getLambdaFunction()
+        {
+            return lambdaFunction;
+        }
+
+        public Lambda getLambda()
+        {
+            return lambda;
         }
     }
 }
