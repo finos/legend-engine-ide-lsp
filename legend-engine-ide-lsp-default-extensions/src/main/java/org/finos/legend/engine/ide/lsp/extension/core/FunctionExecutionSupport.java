@@ -24,11 +24,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.type.CollectionType;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.function.Consumer;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.list.MutableList;
@@ -51,6 +46,7 @@ import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
+import org.finos.legend.engine.ide.lsp.extension.repl.extension.LegendREPLExtensionFeature;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -88,6 +84,9 @@ import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variabl
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
+import org.finos.legend.engine.repl.autocomplete.Completer;
+import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
+import org.finos.legend.engine.repl.autocomplete.CompletionResult;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.shared.core.api.grammar.GrammarAPI;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
@@ -102,6 +101,13 @@ import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.Functi
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
 public interface FunctionExecutionSupport
 {
     Logger LOGGER = LoggerFactory.getLogger(FunctionExecutionSupport.class);
@@ -109,6 +115,7 @@ public interface FunctionExecutionSupport
     String EXECUTE_COMMAND_ID = "legend.function.execute";
     String EXECUTE_COMMAND_TITLE = "Execute";
     String EXECUTE_QUERY_ID = "legend.query.execute";
+    String GET_QUERY_TYPEAHEAD = "legend.query.typeahead";
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
     String GRAMMAR_TO_JSON_LAMBDA_BATCH_ID = "legend.grammarToJson.lambda.batch";
     String JSON_TO_GRAMMAR_LAMBDA_BATCH_ID = "legend.jsonToGrammar.lambda.batch";
@@ -140,6 +147,10 @@ public interface FunctionExecutionSupport
             case FunctionExecutionSupport.EXECUTE_QUERY_ID:
             {
                 return FunctionExecutionSupport.executeQuery(executionSupport, section, entityPath, executableArgs, inputParameters, requestId);
+            }
+            case FunctionExecutionSupport.GET_QUERY_TYPEAHEAD:
+            {
+                return FunctionExecutionSupport.getQueryTypeahead(executionSupport, section, entityPath, executableArgs, inputParameters);
             }
             case FunctionExecutionSupport.GENERATE_EXECUTION_PLAN_ID:
             {
@@ -417,6 +428,43 @@ public interface FunctionExecutionSupport
                             inputParameters
                     )
             );
+        }
+        catch (Exception e)
+        {
+            results.add(extension.errorResult(e, entityPath));
+        }
+        return results;
+    }
+
+    static Iterable<? extends LegendExecutionResult> getQueryTypeahead(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        CompileResult compileResult = extension.getCompileResult(section);
+        if (compileResult.hasEngineException())
+        {
+            return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
+        }
+
+        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
+
+        try
+        {
+            PureModel pureModel = compileResult.getPureModel();
+            MutableList<CompleterExtension> completerExtensions = section.getDocumentState().getGlobalState()
+                    .findFeatureThatImplements(LegendREPLExtensionFeature.class)
+                    .map(LegendREPLExtensionFeature::getCompleterExtensions)
+                    .flatMap(List::stream)
+                    .collect(Collectors.toCollection(Lists.mutable::empty));
+
+            String code = executableArgs.get("code");
+            Lambda baseQuery = objectMapper.readValue(executableArgs.get("baseQuery"), Lambda.class);
+            String baseQueryCode = baseQuery != null ? baseQuery.body.get(0).accept(DEPRECATED_PureGrammarComposerCore.Builder.newInstance().withRenderStyle(RenderStyle.STANDARD).build()) : null;
+            String queryCode = (baseQueryCode != null ? baseQueryCode : "") + code;
+            Completer completer = new Completer(pureModel, completerExtensions);
+            CompletionResult result = completer.complete(queryCode);
+            results.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
+                    objectMapper.writeValueAsString(result), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
         }
         catch (Exception e)
         {

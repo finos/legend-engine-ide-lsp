@@ -39,7 +39,6 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
-import org.finos.legend.engine.language.pure.grammar.to.DEPRECATED_PureGrammarComposerCore;
 import org.finos.legend.engine.plan.execution.PlanExecutionContext;
 import org.finos.legend.engine.plan.execution.result.Result;
 import org.finos.legend.engine.plan.execution.result.serialization.SerializationFormat;
@@ -52,7 +51,6 @@ import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
 import org.finos.legend.engine.repl.core.ReplExtension;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
-import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.LambdaFunction;
@@ -257,8 +255,6 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         {
             case "executeCell":
                 return this.executeCell(section, executableArgs, inputParameters, requestId);
-            case "legend.query.typeahead":
-                return this.getQueryTypeahead(section, entityPath, executableArgs, inputParameters);
             default:
                 return FunctionExecutionSupport.execute(this.pureGrammarExtension, section, entityPath, commandId, executableArgs, inputParameters, requestId);
         }
@@ -384,29 +380,6 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
             LOGGER.error("Error fetching autocompletion results", e);
             return List.of();
         }
-    }
-
-    Iterable<? extends LegendExecutionResult> getQueryTypeahead(SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
-    {
-        PureModel pureModel = this.pureGrammarExtension.getCompileResult(section).getPureModel();
-        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-
-        try
-        {
-            String code = executableArgs.get("code");
-            Lambda baseQuery = objectMapper.readValue(executableArgs.get("baseQuery"), Lambda.class);
-            String baseQueryCode = baseQuery != null ? baseQuery.body.get(0).accept(DEPRECATED_PureGrammarComposerCore.Builder.newInstance().withRenderStyle(RenderStyle.STANDARD).build()) : null;
-            String queryCode = (baseQueryCode != null ? baseQueryCode : "") + code;
-            Completer completer = new Completer(pureModel, this.completerExtensions);
-            CompletionResult result = completer.complete(queryCode);
-            results.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
-                objectMapper.writeValueAsString(result), null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
-        }
-        catch (Exception e)
-        {
-            results.add(this.pureGrammarExtension.errorResult(e, entityPath));
-        }
-        return results;
     }
 
     private static class PlanGenerationResult
