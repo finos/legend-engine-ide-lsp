@@ -446,11 +446,11 @@ public interface FunctionExecutionSupport
             return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
         }
 
-        PureModel pureModel = compileResult.getPureModel();
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
 
         try
         {
+            PureModel pureModel = compileResult.getPureModel();
             MutableList<CompleterExtension> completerExtensions = section.getDocumentState().getGlobalState()
                     .findFeatureThatImplements(LegendREPLExtensionFeature.class)
                     .map(LegendREPLExtensionFeature::getCompleterExtensions)
