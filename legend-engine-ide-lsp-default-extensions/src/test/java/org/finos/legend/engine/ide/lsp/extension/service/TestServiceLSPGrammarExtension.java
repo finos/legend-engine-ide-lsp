@@ -1242,9 +1242,9 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Map<String, String> executableArgs = Map.of("input", "{\"code1\": {\"value\": \"" + grammar1 + "\", \"returnSourceInformation\": false}," +
                 "\"code2\": {\"value\": \"" + grammar2 + "\", \"returnSourceInformation\": false}}");
 
-        String expected = "{\"code1\":{\"body\":[{\"_type\":\"property\",\"parameters\":[{\"_type\":\"var\"," +
+        String expected = "{\"code1\":{\"_type\":\"lambda\",\"body\":[{\"_type\":\"property\",\"parameters\":[{\"_type\":\"var\"," +
                 "\"name\":\"x\"}],\"property\":\"hireType\"}],\"parameters\":[{\"_type\":\"var\",\"name\":\"x\"}]}," +
-                "\"code2\":{\"body\":[{\"_type\":\"integer\",\"value\":5}],\"parameters\":[{\"_type\":\"var\"," +
+                "\"code2\":{\"_type\":\"lambda\",\"body\":[{\"_type\":\"integer\",\"value\":5}],\"parameters\":[{\"_type\":\"var\"," +
                 "\"name\":\"x\"}]}}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2", GRAMMAR_TO_JSON_LAMBDA_BATCH_ID, executableArgs);
 
