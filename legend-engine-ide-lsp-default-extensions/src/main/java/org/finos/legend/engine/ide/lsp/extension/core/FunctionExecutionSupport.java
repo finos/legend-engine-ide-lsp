@@ -30,7 +30,6 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.tuple.Pair;
 import org.eclipse.collections.impl.map.mutable.MapAdapter;
-import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.LazyIterate;
@@ -481,7 +480,7 @@ public interface FunctionExecutionSupport
         try
         {
             Map<String, GrammarAPI.ParserInput> input = objectMapper.readValue(executableArgs.get("input"), new TypeReference<>() {});
-            TypedMapLambda result = new TypedMapLambda();
+            Map<String, Lambda> result = org.eclipse.collections.api.factory.Maps.mutable.empty();
 
             MapAdapter.adapt(input).forEachKeyValue((key, value) -> result.put(key,
                     PureGrammarParser.newInstance().parseLambda(
@@ -495,7 +494,7 @@ public interface FunctionExecutionSupport
 
             results.add(FunctionLegendExecutionResult.newResult(entityPath,
                     LegendExecutionResult.Type.SUCCESS,
-                    objectMapper.writeValueAsString(result),
+                    objectMapper.writerFor(new TypeReference<Map<String,Lambda>>() {}).writeValueAsString(result),
                     null,
                     section.getDocumentState().getDocumentId(),
                     section.getSectionNumber(),
@@ -858,13 +857,5 @@ public interface FunctionExecutionSupport
         MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
         MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
         return PlanGenerator.generateExecutionPlan(functionDefinition, null, null, null, pureModel, clientVersion, PlanPlatform.JAVA, null, routerExtensions, planTransformers);
-    }
-
-    // Required so that Jackson properly includes _type for the top level element
-    class TypedMapLambda extends UnifiedMap<String, Lambda>
-    {
-        public TypedMapLambda()
-        {
-        }
     }
 }
