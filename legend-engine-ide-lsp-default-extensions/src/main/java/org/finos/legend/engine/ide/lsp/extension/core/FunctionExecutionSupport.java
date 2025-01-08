@@ -30,7 +30,6 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.api.tuple.Pair;
 import org.eclipse.collections.impl.map.mutable.MapAdapter;
-import org.eclipse.collections.impl.map.mutable.UnifiedMap;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.eclipse.collections.impl.utility.Iterate;
 import org.eclipse.collections.impl.utility.LazyIterate;
@@ -481,7 +480,7 @@ public interface FunctionExecutionSupport
         try
         {
             Map<String, GrammarAPI.ParserInput> input = objectMapper.readValue(executableArgs.get("input"), new TypeReference<>() {});
-            Map<String, Lambda> result = new UnifiedMap<>();
+            Map<String, Lambda> result = org.eclipse.collections.api.factory.Maps.mutable.empty();
 
             MapAdapter.adapt(input).forEachKeyValue((key, value) -> result.put(key,
                     PureGrammarParser.newInstance().parseLambda(
@@ -495,7 +494,7 @@ public interface FunctionExecutionSupport
 
             results.add(FunctionLegendExecutionResult.newResult(entityPath,
                     LegendExecutionResult.Type.SUCCESS,
-                    objectMapper.writeValueAsString(result),
+                    objectMapper.writerFor(new TypeReference<Map<String,Lambda>>() {}).writeValueAsString(result),
                     null,
                     section.getDocumentState().getDocumentId(),
                     section.getSectionNumber(),
