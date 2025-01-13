@@ -36,7 +36,7 @@ import org.finos.legend.engine.protocol.functionActivator.metamodel.FunctionActi
 import org.finos.legend.engine.protocol.pure.v1.ProtocolToClassifierPathLoader;
 import org.finos.legend.engine.protocol.pure.v1.extension.PureProtocolExtensionLoader;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.Store;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.shared.core.api.grammar.RenderStyle;
