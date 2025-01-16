@@ -20,7 +20,7 @@
     <parent>
         <groupId>org.finos.legend.engine.ide.lsp</groupId>
         <artifactId>legend-engine-ide-lsp</artifactId>
-        <version>0.15.3</version>
+        <version>0.15.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>legend-engine-ide-lsp-server-shaded</artifactId>
