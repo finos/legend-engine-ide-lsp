@@ -1451,7 +1451,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "}\n";
         Map<String, String> executableArgs = Map.of("lambda", lambdaString);
 
-        String expected = "{\"relationType\":{\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\"},{\"name\":\"First Name\",\"type\":\"String\"}]},\"returnType\":\"meta::pure::metamodel::relation::Relation\"}";
+        String expected = "{\"relationType\":{\"columns\":[{\"genericType\":{\"multiplicityArguments\":[],\"rawType\":{\"_type\":\"packageableType\",\"fullPath\":\"Integer\"},\"typeArguments\":[],\"typeVariableValues\":[]},\"multiplicity\":{\"lowerBound\":1,\"upperBound\":1},\"name\":\"ID\"},{\"genericType\":{\"multiplicityArguments\":[],\"rawType\":{\"_type\":\"packageableType\",\"fullPath\":\"String\"},\"typeArguments\":[],\"typeVariableValues\":[]},\"multiplicity\":{\"lowerBound\":1,\"upperBound\":1},\"name\":\"First Name\"}]},\"returnType\":\"meta::pure::metamodel::relation::Relation\"}";
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
                 GET_LAMBDA_RETURN_TYPE_ID, executableArgs);
 
