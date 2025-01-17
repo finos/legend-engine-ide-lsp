@@ -17,7 +17,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import org.finos.legend.engine.language.pure.grammar.from.DEPRECATED_SectionGrammarParser;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.SectionSourceCode;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
 
 import java.util.function.Consumer;
 
