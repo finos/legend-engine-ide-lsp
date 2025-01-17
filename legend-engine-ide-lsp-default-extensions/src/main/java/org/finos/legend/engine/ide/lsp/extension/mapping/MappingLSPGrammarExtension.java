@@ -47,7 +47,7 @@ import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.protocol.analytics.model.MappedEntity;
 import org.finos.legend.engine.protocol.analytics.model.MappingModelCoverageAnalysisResult;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.*;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.aggregationAware.AggregationAwareClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.aggregationAware.AggregationAwarePropertyMapping;
@@ -60,6 +60,8 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.mapping.PureInstanceClassMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.modelToModel.mapping.PurePropertyMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.test.AtomicTest;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.relationFunction.RelationFunctionClassMapping;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.relationFunction.RelationFunctionPropertyMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
@@ -407,6 +409,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             {
                 return Stream.empty();
             }
+
+            @Override
+            public Stream<Optional<LegendReferenceResolver>> visit(RelationFunctionClassMapping relationFunctionClassMapping)
+            {
+                return Stream.empty();
+            }
         });
 
         return Stream.concat(Stream.of(legendReferenceResolver), otherReferences);
@@ -462,6 +470,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
 
             @Override
             public Stream<Optional<LegendReferenceResolver>> visit(AggregationAwarePropertyMapping aggregationAwarePropertyMapping)
+            {
+                return Stream.empty();
+            }
+
+            @Override
+            public Stream<Optional<LegendReferenceResolver>> visit(RelationFunctionPropertyMapping aggregationAwarePropertyMapping)
             {
                 return Stream.empty();
             }
