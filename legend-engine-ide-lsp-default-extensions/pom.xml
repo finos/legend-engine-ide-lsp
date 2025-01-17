@@ -20,7 +20,7 @@
     <parent>
         <groupId>org.finos.legend.engine.ide.lsp</groupId>
         <artifactId>legend-engine-ide-lsp</artifactId>
-        <version>0.15.4-SNAPSHOT</version>
+        <version>0.16.0</version>
     </parent>
 
     <artifactId>legend-engine-ide-lsp-default-extensions</artifactId>
