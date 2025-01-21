@@ -358,8 +358,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "    execution : Single\n" +
                         "    {\n" +
                         "        query : testParam: String[1]|vscodelsp::test::EmployeeRelational.all()->project(\n" +
-                        "                  [ x|$x.firstName ],\n" +
-                        "                  [ 'First Name' ]\n" +
+                        "                  [ x|$x.id, x|$x.firstName ],\n" +
+                        "                  [ 'ID', 'First Name' ]\n" +
                         "        );\n" +
                         "        mapping : vscodelsp::test::EmployeeRelationalMapping;\n" +
                         "        runtime : vscodelsp::test::H2RuntimeRelational;\n" +
@@ -1067,10 +1067,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
         Assertions.assertEquals("testValue", result.getInputParameters().get("testParam"));
-        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"First Name\"," +
-                "\"type\":\"String\",\"relationalType\":\"VARCHAR(200)\"}]}"));
-        Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"First Name\"], \"rows\" : " +
-                "[{\"values\": [\"Doe\"]}]}"));
+        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\",\"relationalType\":\"INTEGER\"},{\"name\":\"First Name\",\"type\":\"String\",\"relationalType\":\"VARCHAR(200)\"}]}"));
+        Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"ID\",\"First Name\"], \"rows\" : [{\"values\": [1,\"Doe\"]}]}"));
     }
 
     @Test
@@ -1270,7 +1268,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         try (BufferedReader buffer = new BufferedReader(new InputStreamReader(new FileInputStream(tempDir.resolve("result.csv").toFile()))))
         {
             String actualFileContent = buffer.lines().collect(Collectors.joining("\n"));
-            Assertions.assertEquals(actualFileContent, "First Name\nDoe");
+            Assertions.assertEquals(actualFileContent, "ID,First Name\n1,Doe");
         }
         catch (IOException e)
         {
