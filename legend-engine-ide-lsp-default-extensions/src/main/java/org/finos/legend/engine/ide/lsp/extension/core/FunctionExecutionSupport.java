@@ -70,12 +70,12 @@ import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
-import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContext;
-import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
-import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContext;
 import org.finos.legend.engine.protocol.pure.v1.model.domain.Enumeration;
 import org.finos.legend.engine.protocol.pure.v1.model.domain.Multiplicity;
+import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
+import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.type.PackageableType;
 import org.finos.legend.engine.protocol.pure.v1.model.type.relationType.RelationType;
@@ -100,8 +100,7 @@ import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.Functi
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Consumer;
@@ -114,6 +113,7 @@ public interface FunctionExecutionSupport
     String EXECUTE_COMMAND_ID = "legend.function.execute";
     String EXECUTE_COMMAND_TITLE = "Execute";
     String EXECUTE_QUERY_ID = "legend.query.execute";
+    String EXPORT_DATA_ID = "legend.query.exportData";
     String GET_QUERY_TYPEAHEAD = "legend.query.typeahead";
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
     String GRAMMAR_TO_JSON_LAMBDA_BATCH_ID = "legend.grammarToJson.lambda.batch";
@@ -146,6 +146,10 @@ public interface FunctionExecutionSupport
             case FunctionExecutionSupport.EXECUTE_QUERY_ID:
             {
                 return FunctionExecutionSupport.executeQuery(executionSupport, section, entityPath, executableArgs, inputParameters, requestId);
+            }
+            case FunctionExecutionSupport.EXPORT_DATA_ID:
+            {
+                return FunctionExecutionSupport.exportData(executionSupport, section, entityPath, executableArgs, inputParameters, requestId);
             }
             case FunctionExecutionSupport.GET_QUERY_TYPEAHEAD:
             {
@@ -387,6 +391,34 @@ public interface FunctionExecutionSupport
         requestId.listener(() -> StoreExecutableManager.INSTANCE.cancelExecutablesOnSession(requestId.getId()));
 
         return planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context, requestContext);
+    }
+
+    static Iterable<? extends LegendExecutionResult> exportData(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
+    {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        String filePath = executableArgs.get("filePath");
+
+        if (filePath == null || filePath.isBlank())
+        {
+            throw new IllegalArgumentException("Must provide valid filePath for export");
+        }
+
+        MutableList<LegendExecutionResult> exportResults = Lists.mutable.empty();
+        Iterable<? extends LegendExecutionResult> queryResults = executeQuery(executionSupport, section, entityPath, executableArgs, inputParameters, requestId);
+
+        try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath))))
+        {
+            out.write(queryResults.iterator().next().getMessage());
+            exportResults.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
+                    filePath, null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
+        }
+        catch (Exception e)
+        {
+            exportResults.add(extension.errorResult(e, entityPath));
+        }
+
+        return exportResults;
     }
 
     static Iterable<? extends LegendExecutionResult> generateExecutionPlan(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
