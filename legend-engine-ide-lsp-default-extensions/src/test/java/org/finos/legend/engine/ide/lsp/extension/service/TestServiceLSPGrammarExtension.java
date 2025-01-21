@@ -1248,21 +1248,21 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         RuntimePointer runtime = new RuntimePointer();
         runtime.runtime = "vscodelsp::test::H2RuntimeRelational";
         ExecutionContext context = new BaseExecutionContext();
-        String filePath = tempDir.resolve("result.csv").toString();
+        String exportFilePath = tempDir.resolve("result.csv").toString();
         Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
                 "vscodelsp::test::EmployeeRelationalMapping", "runtime", objectMapper.writeValueAsString(runtime),
                 "context", objectMapper.writeValueAsString(context), "serializationFormat", "CSV",
-                "filePath", filePath);
+                "exportFilePath", exportFilePath);
         Map<String, Object> inputParameters = Map.of("testParam", "testValue");
 
         Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
-                EXPORT_DATA_ID, executableArgs, inputParameters);
+                EXECUTE_QUERY_ID, executableArgs, inputParameters);
 
         // Check that expected result is returned
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
-        Assertions.assertEquals(result.getMessage(), tempDir.resolve("result.csv").toString());
+        Assertions.assertEquals(result.getMessage(), exportFilePath);
 
         // Check that expected data is written to file
         try (BufferedReader buffer = new BufferedReader(new InputStreamReader(new FileInputStream(tempDir.resolve("result.csv").toFile()))))

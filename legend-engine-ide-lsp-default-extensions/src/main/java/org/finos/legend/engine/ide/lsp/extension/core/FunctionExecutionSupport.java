@@ -113,7 +113,6 @@ public interface FunctionExecutionSupport
     String EXECUTE_COMMAND_ID = "legend.function.execute";
     String EXECUTE_COMMAND_TITLE = "Execute";
     String EXECUTE_QUERY_ID = "legend.query.execute";
-    String EXPORT_DATA_ID = "legend.query.exportData";
     String GET_QUERY_TYPEAHEAD = "legend.query.typeahead";
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
     String GRAMMAR_TO_JSON_LAMBDA_BATCH_ID = "legend.grammarToJson.lambda.batch";
@@ -146,10 +145,6 @@ public interface FunctionExecutionSupport
             case FunctionExecutionSupport.EXECUTE_QUERY_ID:
             {
                 return FunctionExecutionSupport.executeQuery(executionSupport, section, entityPath, executableArgs, inputParameters, requestId);
-            }
-            case FunctionExecutionSupport.EXPORT_DATA_ID:
-            {
-                return FunctionExecutionSupport.exportData(executionSupport, section, entityPath, executableArgs, inputParameters, requestId);
             }
             case FunctionExecutionSupport.GET_QUERY_TYPEAHEAD:
             {
@@ -392,34 +387,6 @@ public interface FunctionExecutionSupport
         requestId.listener(() -> StoreExecutableManager.INSTANCE.cancelExecutablesOnSession(requestId.getId()));
 
         return planExecutor.execute(executionPlan, parametersToConstantResult, identity.getName(), identity, context, requestContext);
-    }
-
-    static Iterable<? extends LegendExecutionResult> exportData(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
-    {
-        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
-
-        String filePath = executableArgs.get("filePath");
-
-        if (filePath == null || filePath.isBlank())
-        {
-            throw new IllegalArgumentException("Must provide valid filePath for export");
-        }
-
-        MutableList<LegendExecutionResult> exportResults = Lists.mutable.empty();
-        Iterable<? extends LegendExecutionResult> queryResults = executeQuery(executionSupport, section, entityPath, executableArgs, inputParameters, requestId);
-
-        try (BufferedWriter out = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath))))
-        {
-            out.write(queryResults.iterator().next().getMessage());
-            exportResults.add(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS,
-                    filePath, null, section.getDocumentState().getDocumentId(), section.getSectionNumber(), inputParameters));
-        }
-        catch (Exception e)
-        {
-            exportResults.add(extension.errorResult(e, entityPath));
-        }
-
-        return exportResults;
     }
 
     static Iterable<? extends LegendExecutionResult> generateExecutionPlan(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, String> executableArgs, Map<String, Object> inputParameters)
@@ -716,32 +683,18 @@ public interface FunctionExecutionSupport
         }
         if (result instanceof StreamingResult)
         {
-            if (exportFilePath != null)
+            try (OutputStream outputStream = exportFilePath != null ? new FileOutputStream(exportFilePath) : new ByteArrayOutputStream(1024))
             {
-                try (FileOutputStream fileOutputStream = new FileOutputStream(exportFilePath))
-                {
-                    ((StreamingResult) result).getSerializer(format).stream(fileOutputStream);
-                }
-                catch (IOException e)
-                {
-                    consumer.accept(extension.errorResult(e, entityPath));
-                    return;
-                }
-                consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, exportFilePath, null, docId, secNum, inputParameters));
+                ((StreamingResult) result).getSerializer(format).stream(outputStream);
+                String message = outputStream instanceof ByteArrayOutputStream
+                                 ? ((ByteArrayOutputStream) outputStream).toString(StandardCharsets.UTF_8)
+                                 : exportFilePath;
+                consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, message, null, docId, secNum, inputParameters));
             }
-            else
+            catch (IOException e)
             {
-                ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1024);
-                try
-                {
-                    ((StreamingResult) result).getSerializer(format).stream(byteStream);
-                }
-                catch (IOException e)
-                {
-                    consumer.accept(extension.errorResult(e, entityPath));
-                    return;
-                }
-                consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8), null, docId, secNum, inputParameters));
+                consumer.accept(extension.errorResult(e, entityPath));
+                return;
             }
             return;
         }
