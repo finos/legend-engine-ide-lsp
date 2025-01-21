@@ -322,6 +322,7 @@ public interface FunctionExecutionSupport
             PureModel pureModel = compileResult.getPureModel();
             String clientVersion = globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION);
             SingleExecutionPlan executionPlan = FunctionExecutionSupport.getExecutionPlan(lambda, mappingPath, runtime, context, pureModel, clientVersion);
+            String exportFilePath = executableArgs.get("exportFilePath");
 
             PlanExecutionContext planExecutionContext = null;
             try
@@ -332,7 +333,7 @@ public interface FunctionExecutionSupport
             {
                 LOGGER.warn("Failed to compile plan");
             }
-            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, planExecutionContext, entityPath, inputParameters, format, results, requestId);
+            executePlan(globalState, executionSupport, section.getDocumentState().getDocumentId(), section.getSectionNumber(), executionPlan, planExecutionContext, entityPath, inputParameters, format, exportFilePath, results, requestId);
         }
         catch (Exception e)
         {
@@ -343,10 +344,10 @@ public interface FunctionExecutionSupport
 
     static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, MutableList<LegendExecutionResult> results, CancellationToken requestId)
     {
-        executePlan(globalState, executionSupport, docId, sectionNum, executionPlan, context, entityPath, inputParameters, SerializationFormat.DEFAULT, results, requestId);
+        executePlan(globalState, executionSupport, docId, sectionNum, executionPlan, context, entityPath, inputParameters, SerializationFormat.DEFAULT, null, results, requestId);
     }
 
-    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, SerializationFormat format, MutableList<LegendExecutionResult> results, CancellationToken requestId)
+    static void executePlan(GlobalState globalState, FunctionExecutionSupport executionSupport, String docId, int sectionNum, SingleExecutionPlan executionPlan, PlanExecutionContext context, String entityPath, Map<String, Object> inputParameters, SerializationFormat format, String exportFilePath, MutableList<LegendExecutionResult> results, CancellationToken requestId)
     {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
@@ -369,7 +370,7 @@ public interface FunctionExecutionSupport
                 try (Result result = executePlan(executionPlan, context, inputParameters, extension, requestId))
                 {
                     requestId.listener(result::close);
-                    collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, format, results::add);
+                    collectResults(executionSupport, entityPath, result, docId, sectionNum, inputParameters, format, results::add, exportFilePath);
                 }
             }
         }
@@ -694,6 +695,11 @@ public interface FunctionExecutionSupport
 
     static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, SerializationFormat format, Consumer<? super LegendExecutionResult> consumer)
     {
+        collectResults(executionSupport, entityPath, result, docId, secNum, inputParameters, format, consumer, null);
+    }
+
+    static void collectResults(FunctionExecutionSupport executionSupport, String entityPath, org.finos.legend.engine.plan.execution.result.Result result, String docId, int secNum, Map<String, Object> inputParameters, SerializationFormat format, Consumer<? super LegendExecutionResult> consumer, String exportFilePath)
+    {
         AbstractLSPGrammarExtension extension = executionSupport.getExtension();
 
         // TODO also collect results from activities
@@ -710,17 +716,33 @@ public interface FunctionExecutionSupport
         }
         if (result instanceof StreamingResult)
         {
-            ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1024);
-            try
+            if (exportFilePath != null)
             {
-                ((StreamingResult) result).getSerializer(format).stream(byteStream);
+                try (FileOutputStream fileOutputStream = new FileOutputStream(exportFilePath))
+                {
+                    ((StreamingResult) result).getSerializer(format).stream(fileOutputStream);
+                }
+                catch (IOException e)
+                {
+                    consumer.accept(extension.errorResult(e, entityPath));
+                    return;
+                }
+                consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, exportFilePath, null, docId, secNum, inputParameters));
             }
-            catch (IOException e)
+            else
             {
-                consumer.accept(extension.errorResult(e, entityPath));
-                return;
+                ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1024);
+                try
+                {
+                    ((StreamingResult) result).getSerializer(format).stream(byteStream);
+                }
+                catch (IOException e)
+                {
+                    consumer.accept(extension.errorResult(e, entityPath));
+                    return;
+                }
+                consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8), null, docId, secNum, inputParameters));
             }
-            consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, byteStream.toString(StandardCharsets.UTF_8), null, docId, secNum, inputParameters));
             return;
         }
         consumer.accept(FunctionLegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.WARNING, "Unhandled result type: " + result.getClass().getName(), null, docId, secNum, inputParameters));
