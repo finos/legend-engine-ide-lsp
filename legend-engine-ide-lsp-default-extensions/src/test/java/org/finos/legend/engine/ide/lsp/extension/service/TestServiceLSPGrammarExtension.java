@@ -51,7 +51,13 @@ import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.exe
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -1077,10 +1083,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         extension.startup(globalState);
         SectionState sectionState =
                 sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
-        CompileResult compileResult = extension.getCompileResult(sectionState);
-        PackageableElement serviceElement =
-                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
-                        "vscodelsp::test::TestService2")).findFirst().orElseThrow();
         String lambda =
                 "{\n" +
                         "  \"_type\": \"lambda\",\n" +
@@ -1228,6 +1230,52 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\"},{\"name\":\"First Name\",\"type\":\"String\"}]"));
         Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"ID\",\"First Name\"], \"rows\" : " +
                 "[{\"values\": [1,\"Doe\"]}]}"));
+    }
+
+    @Test
+    public void testExportData(@TempDir Path tempDir) throws Exception
+    {
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
+        // Call extension.startup so the planExecutor is initialized
+        GlobalState globalState = sectionStates.stream().findFirst().orElseThrow().getDocumentState().getGlobalState();
+        extension.startup(globalState);
+        SectionState sectionState =
+                sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
+        CompileResult compileResult = extension.getCompileResult(sectionState);
+        PackageableElement serviceElement =
+                compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
+                        "vscodelsp::test::TestService2")).findFirst().orElseThrow();
+        Lambda lambda = extension.getLambda(serviceElement);
+        RuntimePointer runtime = new RuntimePointer();
+        runtime.runtime = "vscodelsp::test::H2RuntimeRelational";
+        ExecutionContext context = new BaseExecutionContext();
+        String filePath = tempDir.resolve("result.csv").toString();
+        Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
+                "vscodelsp::test::EmployeeRelationalMapping", "runtime", objectMapper.writeValueAsString(runtime),
+                "context", objectMapper.writeValueAsString(context), "serializationFormat", "CSV",
+                "filePath", filePath);
+        Map<String, Object> inputParameters = Map.of("testParam", "testValue");
+
+        Iterable<? extends LegendExecutionResult> actual = testCommand(sectionState, "vscodelsp::test::TestService2",
+                EXPORT_DATA_ID, executableArgs, inputParameters);
+
+        // Check that expected result is returned
+        Assertions.assertEquals(1, Iterate.sizeOf(actual));
+        FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
+        Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
+        Assertions.assertEquals(result.getMessage(), tempDir.resolve("result.csv").toString());
+
+        // Check that expected data is written to file
+        try (BufferedReader buffer = new BufferedReader(new InputStreamReader(new FileInputStream(tempDir.resolve("result.csv").toFile()))))
+        {
+            String actualFileContent = buffer.lines().collect(Collectors.joining("\n"));
+            Assertions.assertEquals(actualFileContent, "First Name\nDoe");
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
