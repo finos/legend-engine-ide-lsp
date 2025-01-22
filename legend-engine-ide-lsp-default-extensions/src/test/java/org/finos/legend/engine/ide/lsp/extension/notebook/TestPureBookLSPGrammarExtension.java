@@ -186,6 +186,28 @@ public class TestPureBookLSPGrammarExtension
                         "    )\n" +
                         ")");
 
+        codeFiles.put("database2.pure",
+                "###Relational\n" +
+                        "Database test::anotherH2Store\n" +
+                        "(\n" +
+                        "    Schema exampleSchema\n" +
+                        "    (\n" +
+                        "       Table personTable\n" +
+                        "       (\n" +
+                        "           fullName VARCHAR(100),\n" +
+                        "           firmName VARCHAR(100),\n" +
+                        "           addressName VARCHAR(100),\n" +
+                        "           id INT PRIMARY KEY\n" +
+                        "       )\n" +
+                        "    )\n" +
+                        "    Table anotherPersonTable\n" +
+                        "    (\n" +
+                        "     fullName VARCHAR(100),\n" +
+                        "     firmName VARCHAR(100),\n" +
+                        "     addressName VARCHAR(100)\n" +
+                        "    )\n" +
+                        ")");
+
         codeFiles.put("connection.pure",
                 "###Connection\n" +
                         "RelationalDatabaseConnection test::h2Conn\n" +
@@ -199,6 +221,19 @@ public class TestPureBookLSPGrammarExtension
                         "    auth: DefaultH2;\n" +
                         "}");
 
+        codeFiles.put("connection2.pure",
+                "###Connection\n" +
+                        "RelationalDatabaseConnection test::anotherH2Conn\n" +
+                        "{\n" +
+                        "    store: test::anotherH2Store; \n" +
+                        "    type: H2;\n" +
+                        "    specification: LocalH2\n" +
+                        "    {\n" +
+                        "        testDataSetupCSV: 'default\\npersonTable\\nfullName,firmName,addressName,id\\nP1,F1,A1,1\\nP2,F2,A2,2\\nP3,,,\\nP4,,A3,4\\nP5,F1,A1,5\\n---';\n" +
+                        "    };\n" +
+                        "    auth: DefaultH2;\n" +
+                        "}");
+
         codeFiles.put("runtime.pure",
                 "###Runtime\n" +
                         "Runtime  test::h2Runtime\n" +
@@ -207,6 +242,17 @@ public class TestPureBookLSPGrammarExtension
                         "    connectionStores:\n" +
                         "    [\n" +
                         "        test::h2Conn: [ test::h2Store ]\n" +
+                        "    ];\n" +
+                        "}");
+
+        codeFiles.put("runtime2.pure",
+                "###Runtime\n" +
+                        "Runtime  test::anotherH2Runtime\n" +
+                        "{\n" +
+                        "    mappings: [];\n" +
+                        "    connectionStores:\n" +
+                        "    [\n" +
+                        "        test::anotherH2Conn: [ test::anotherH2Store ]\n" +
                         "    ];\n" +
                         "}");
         return codeFiles;
@@ -276,9 +322,11 @@ public class TestPureBookLSPGrammarExtension
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
 
-        Iterable<? extends LegendCompletion> storeCompletions = this.extension.getCompletions(notebook, TextPosition.newPosition(0, 2));
+        Set<LegendCompletion> storeCompletions = new HashSet<>();
+        this.extension.getCompletions(notebook, TextPosition.newPosition(0, 2)).forEach(storeCompletions::add);
         Assertions.assertEquals(
-                List.of(new LegendCompletion("test::h2Store", ">{test::h2Store.")),
+                Set.of(new LegendCompletion("test::h2Store", ">{test::h2Store."),
+                        new LegendCompletion("test::anotherH2Store", ">{test::anotherH2Store.")),
                 storeCompletions
         );
 
@@ -338,5 +386,75 @@ public class TestPureBookLSPGrammarExtension
         requestId.cancel();
         RuntimeException runtimeException = Assertions.assertThrows(RuntimeException.class, () -> this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of(), requestId));
         Assertions.assertTrue(runtimeException.toString().contains("The object is already closed [90007-214]"));
+    }
+
+    @Test
+    void testWriteUsingDifferentRuntimes()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::anotherH2Store.anotherPersonTable}#->select(~[fullName])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
+        Iterable<? extends LegendDiagnostic> noDiagnostics = this.extension.getDiagnostics(notebook);
+        Assertions.assertEquals(
+                List.of(),
+                noDiagnostics
+        );
+    }
+
+    @Test
+    void testWriteUsingDifferentRuntimesAndSchemasSpecified()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::anotherH2Store.exampleSchema.personTable}#->select()->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
+        Iterable<? extends LegendDiagnostic> noDiagnostics = this.extension.getDiagnostics(notebook);
+        Assertions.assertEquals(
+                List.of(),
+                noDiagnostics
+        );
+    }
+
+    @Test
+    void testWriteUsingDifferentRuntimesAndFilteredColumns()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::anotherH2Store.exampleSchema.personTable}#->select(~[fullName, id])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
+        Iterable<? extends LegendDiagnostic> noDiagnostics = this.extension.getDiagnostics(notebook);
+        Assertions.assertEquals(
+                List.of(),
+                noDiagnostics
+        );
+    }
+
+    @Test
+    void testWriteWithWrongValueSpecificationAsParam()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("compile_problem.purebook", "#>{test::anotherH2Store.exampleSchema.personTable}#->select(~[fullName])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(local::DuckDuckDatabase.MYSCHEMA.MYTABLE)->from(local::DuckDuckRuntime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
+        Iterable<? extends LegendDiagnostic> compileDiagnostics = this.extension.getDiagnostics(notebook);
+        Assertions.assertEquals(
+                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("compile_problem.purebook", 0, 0, 0, 205), "Second parameter of write() should be ClassInstance, but found class org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedProperty", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
+                compileDiagnostics
+        );
+    }
+
+    @Test
+    void testWriteWithMissingTargetTable()
+    {
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("compile_problem.purebook", "#>{test::anotherH2Store.exampleSchema.personTable}#->select(~[fullName])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase}#)->from(local::DuckDuckRuntime)");
+        GlobalState gs = notebook.getDocumentState().getGlobalState();
+        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
+        stateForTestFactory.newSectionStates(gs, codeFiles);
+        Iterable<? extends LegendDiagnostic> compileDiagnostics = this.extension.getDiagnostics(notebook);
+        Assertions.assertEquals(
+                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("compile_problem.purebook", 0, 0, 0, 193), "Target database and table must be provided!", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
+                compileDiagnostics
+        );
     }
 }
