@@ -41,9 +41,9 @@ import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.result.DataTypeResultType;
-import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.RuntimePointer;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.BaseExecutionContext;
@@ -53,10 +53,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
@@ -1265,15 +1263,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals(result.getMessage(), exportFilePath);
 
         // Check that expected data is written to file
-        try (BufferedReader buffer = new BufferedReader(new InputStreamReader(new FileInputStream(tempDir.resolve("result.csv").toFile()))))
-        {
-            String actualFileContent = buffer.lines().collect(Collectors.joining("\n"));
-            Assertions.assertEquals(actualFileContent, "ID,First Name\n1,Doe");
-        }
-        catch (IOException e)
-        {
-            throw new RuntimeException(e);
-        }
+        String actualFileContent = Files.readString(tempDir.resolve("result.csv"), StandardCharsets.UTF_8);
+        Assertions.assertEquals("ID,First Name\r\n1,Doe\r\n", actualFileContent);
     }
 
     @Test
