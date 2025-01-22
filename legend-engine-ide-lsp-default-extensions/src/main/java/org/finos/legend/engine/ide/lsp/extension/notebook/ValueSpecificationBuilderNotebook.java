@@ -31,26 +31,13 @@ import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Column;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Schema;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.BigInt;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Binary;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Bit;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Char;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.DataType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Date;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Decimal;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Double;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Float;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Integer;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Json;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Numeric;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Other;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Real;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.SemiStructured;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.SmallInt;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Timestamp;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.TinyInt;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.VarChar;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Varbinary;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecificationVisitor;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedFunction;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.ClassInstance;
@@ -87,90 +74,21 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
         {
             return new Integer();
         }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Decimal)
-        {
-            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Decimal decimal = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Decimal) dataType;
-            Decimal transformedDecimal = new Decimal();
-            transformedDecimal.precision = decimal._precision();
-            transformedDecimal.scale = decimal._scale();
-            return transformedDecimal;
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Numeric)
-        {
-            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Numeric numeric = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Numeric) dataType;
-            Numeric transformedNumeric = new Numeric();
-            transformedNumeric.precision = numeric._precision();
-            transformedNumeric.scale = numeric._scale();
-            return transformedNumeric;
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.BigInt)
-        {
-            return new BigInt();
-        }
         else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Bit)
         {
             return new Bit();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Char)
-        {
-            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Char _char = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Char) dataType;
-            Char transformedChar = new Char();
-            transformedChar.size = _char._size();
-            return transformedChar;
         }
         else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Date)
         {
             return new Date();
         }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Double)
-        {
-            return new Double();
-        }
         else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Float)
         {
             return new Float();
         }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Real)
-        {
-            return new Real();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.SmallInt)
-        {
-            return new SmallInt();
-        }
         else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Timestamp)
         {
             return new Timestamp();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.TinyInt)
-        {
-            return new TinyInt();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Varbinary)
-        {
-            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Varbinary varbinary = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Varbinary) dataType;
-            Varbinary transformedVarbinary = new Varbinary();
-            transformedVarbinary.size = varbinary._size();
-            return transformedVarbinary;
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Binary)
-        {
-            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Binary binary = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Binary) dataType;
-            Binary transformedBinary = new Binary();
-            transformedBinary.size = binary._size();
-            return transformedBinary;
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Other)
-        {
-            return new Other();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.SemiStructured)
-        {
-            return new SemiStructured();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Json)
-        {
-            return new Json();
         }
         throw new UnsupportedOperationException();
     }
