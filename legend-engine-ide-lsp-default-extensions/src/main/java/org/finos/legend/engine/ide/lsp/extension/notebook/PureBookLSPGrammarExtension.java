@@ -117,7 +117,6 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         this.pureGrammarExtension = globalState.findGrammarExtensionThatImplements(PureLSPGrammarExtension.class)
                 .findAny()
                 .orElseThrow(() -> new UnsupportedOperationException("Notebook requires pure grammar extension"));
-        this.pmcdWithdefaultDuckDBElements = createPMCDWithDefaultDuckDBElements();
 
         List<LegendREPLExtensionFeature> replFeatures = globalState
                 .findFeatureThatImplements(LegendREPLExtensionFeature.class)
@@ -158,7 +157,8 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         defaultDuckDBConnection.name = DUCKDB_LOCAL_CONNECTION_BASE_NAME + "Connection";
         defaultDuckDBConnection._package = LOCAL_DUCKDB_PACKAGE;
         DuckDBDatasourceSpecification duckDBDatasourceSpecification = new DuckDBDatasourceSpecification();
-        duckDBDatasourceSpecification.path = System.getProperty("storagePath") + "/duck_db_file";
+        String storagePath = System.getProperty("storagePath");
+        duckDBDatasourceSpecification.path = (storagePath == null) ? "" : storagePath + "/duck_db_file";
         RelationalDatabaseConnection duckDBConnectionValue = new RelationalDatabaseConnection(duckDBDatasourceSpecification, new TestDatabaseAuthenticationStrategy(), DatabaseType.DuckDB);
         duckDBConnectionValue.type = DatabaseType.DuckDB;
         defaultDuckDBConnection.connectionValue = duckDBConnectionValue;
@@ -219,6 +219,10 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private CompileResult tryNotebookCompile(SectionState sectionState)
     {
+        if (this.pmcdWithdefaultDuckDBElements == null)
+        {
+            this.pmcdWithdefaultDuckDBElements = createPMCDWithDefaultDuckDBElements();
+        }
         PureModelContextData pmcd = this.pureGrammarExtension.getCompileResult(sectionState).getPureModelContextData();
         PureModelContextData combinedPmcd = pmcd.combine(this.pmcdWithdefaultDuckDBElements);
         PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(sectionState.getDocumentState().getGlobalState().getForkJoinPool()).build();

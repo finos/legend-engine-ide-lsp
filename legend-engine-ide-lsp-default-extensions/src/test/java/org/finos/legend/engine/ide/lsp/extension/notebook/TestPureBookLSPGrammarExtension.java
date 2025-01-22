@@ -443,18 +443,4 @@ public class TestPureBookLSPGrammarExtension
                 compileDiagnostics
         );
     }
-
-    @Test
-    void testWriteWithMissingTargetTable()
-    {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("compile_problem.purebook", "#>{test::anotherH2Store.exampleSchema.personTable}#->select(~[fullName])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase}#)->from(local::DuckDuckRuntime)");
-        GlobalState gs = notebook.getDocumentState().getGlobalState();
-        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
-        stateForTestFactory.newSectionStates(gs, codeFiles);
-        Iterable<? extends LegendDiagnostic> compileDiagnostics = this.extension.getDiagnostics(notebook);
-        Assertions.assertEquals(
-                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("compile_problem.purebook", 0, 0, 0, 193), "Target database and table must be provided!", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
-                compileDiagnostics
-        );
-    }
 }

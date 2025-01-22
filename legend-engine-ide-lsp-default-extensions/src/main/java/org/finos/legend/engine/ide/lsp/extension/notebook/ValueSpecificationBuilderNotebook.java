@@ -31,23 +31,23 @@ import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Column;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Schema;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Bit;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.DataType;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Date;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Float;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Integer;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.Timestamp;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.datatype.VarChar;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecificationVisitor;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedFunction;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.ClassInstance;
+import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
+import org.finos.legend.pure.generated.Root_meta_protocols_pure_vX_X_X_metamodel_store_relational_DataType;
+import org.finos.legend.pure.generated.core_pure_protocol_protocol;
+import org.finos.legend.pure.generated.core_relational_relational_protocols_pure_vX_X_X_transfers_metamodel_relational;
 import org.finos.legend.pure.generated.core_relational_relational_transform_fromPure_pureToRelational;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.RelationType;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.Type;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.valuespecification.ValueSpecification;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.relation.Table;
+import org.finos.legend.pure.m3.execution.ExecutionSupport;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,34 +63,17 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
 
     private DataType transformDatabaseDataType(org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType dataType)
     {
-        if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Varchar)
+        ExecutionSupport executionSupport = getContext().getExecutionSupport();
+        Root_meta_protocols_pure_vX_X_X_metamodel_store_relational_DataType transformedDataType = core_relational_relational_protocols_pure_vX_X_X_transfers_metamodel_relational.Root_meta_protocols_pure_vX_X_X_transformation_fromPureGraph_store_relational_pureDataTypeToAlloyDataType_DataType_1__DataType_1_(dataType, executionSupport);
+        String json = core_pure_protocol_protocol.Root_meta_alloy_metadataServer_alloyToJSON_Any_1__String_1_(transformedDataType, executionSupport);
+        try
         {
-            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Varchar varChar = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Varchar) dataType;
-            VarChar transformedVarChar = new VarChar();
-            transformedVarChar.size = varChar._size();
-            return transformedVarChar;
+            return ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports().readValue(json, DataType.class);
         }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Integer)
+        catch (IOException e)
         {
-            return new Integer();
+            throw new UnsupportedOperationException(e);
         }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Bit)
-        {
-            return new Bit();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Date)
-        {
-            return new Date();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Float)
-        {
-            return new Float();
-        }
-        else if (dataType instanceof org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.Timestamp)
-        {
-            return new Timestamp();
-        }
-        throw new UnsupportedOperationException();
     }
 
     private void processDatabase(Database parsedTargetDuckDBDatabase, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase, MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs, String targetSchemaName, String targetTableName)
@@ -158,18 +141,6 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
     {
         if (appliedFunction.function.equals("write"))
         {
-            // Process first parameter of write()
-            org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeFirstParameter = appliedFunction.parameters.get(0);
-            ValueSpecification compiledParameter = writeFirstParameter.accept(this);
-            RelationType relationType = (RelationType) compiledParameter._genericType()._typeArguments().getFirst()._rawType();
-            MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs = relationType._columns().collect(c ->
-            {
-                org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column column = (org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column) c;
-                Type type = column._classifierGenericType()._typeArguments().getLast()._rawType();
-                org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType dataType = core_relational_relational_transform_fromPure_pureToRelational.Root_meta_relational_transform_fromPure_pureTypeToDataType_Type_1__DataType_$0_1$_(type, getContext().getExecutionSupport());
-                return Tuples.pair(column._name(), dataType);
-            }).toList();
-
             // Process second parameter of write()
             org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeSecondParameter = appliedFunction.parameters.get(1);
             if (!(writeSecondParameter instanceof ClassInstance))
@@ -184,17 +155,28 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
             }
             org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.classInstance.relation.RelationStoreAccessor targetRelationStoreAccessor = (org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.classInstance.relation.RelationStoreAccessor) value;
             List<String> paths = targetRelationStoreAccessor.path;
-            if (paths.size() < 2)
+            String targetDatabasePath = paths.get(0);
+            if (paths.size() > 1 && targetDatabasePath.equals("local::DuckDuckDatabase"))
             {
-                throw new EngineException("Target database and table must be provided!", EngineErrorType.COMPILATION);
-            }
-            String targetDuckDBDatabasePath = paths.get(0);
-            String targetSchemaName = (paths.size() == 3) ? paths.get(1) : "default";
-            String targetTableName = paths.get(paths.size() - 1);
+                String targetSchemaName = (paths.size() == 3) ? paths.get(1) : "default";
+                String targetTableName = paths.get(paths.size() - 1);
 
-            // Process database (Add new parsed/compiled schema/table/columns if not present)
-            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database) (getContext().pureModel.getStore(targetDuckDBDatabasePath));
-            processDatabase(this.parsedTargetDuckDBDatabase, compiledTargetDuckDBDatabase, columnNameDataTypePairs, targetSchemaName, targetTableName);
+                // Process first parameter of write()
+                org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeFirstParameter = appliedFunction.parameters.get(0);
+                ValueSpecification compiledParameter = writeFirstParameter.accept(this);
+                RelationType relationType = (RelationType) compiledParameter._genericType()._typeArguments().getFirst()._rawType();
+                MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs = relationType._columns().collect(c ->
+                {
+                    org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column column = (org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column) c;
+                    Type type = column._classifierGenericType()._typeArguments().getLast()._rawType();
+                    org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType dataType = core_relational_relational_transform_fromPure_pureToRelational.Root_meta_relational_transform_fromPure_pureTypeToDataType_Type_1__DataType_$0_1$_(type, getContext().getExecutionSupport());
+                    return Tuples.pair(column._name(), dataType);
+                }).toList();
+
+                // Process database (Add new parsed/compiled schema/table/columns if not present)
+                org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database) (getContext().pureModel.getStore(targetDatabasePath));
+                processDatabase(this.parsedTargetDuckDBDatabase, compiledTargetDuckDBDatabase, columnNameDataTypePairs, targetSchemaName, targetTableName);
+            }
         }
 
         return super.visit(appliedFunction);
