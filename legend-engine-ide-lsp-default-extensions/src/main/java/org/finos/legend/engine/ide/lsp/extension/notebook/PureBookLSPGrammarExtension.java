@@ -90,7 +90,6 @@ import java.util.stream.Stream;
 public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
 {
     private static final String COMPILE_RESULT_KEY = "_COMPILE_RESULT";
-    private static final String NOTEBOOK_COMPILE_RESULT_KEY = "_NOTEBOOK_COMPILE_RESULT";
     private static final String PLAN_EXEC_CONTEXT_KEY = "_PLAN_EXEC_CONTEXT";
     private static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
     private static final Logger LOGGER = LoggerFactory.getLogger(PureBookLSPGrammarExtension.class);
@@ -101,7 +100,6 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private MutableList<CompleterExtension> completerExtensions;
     private PureModelContextData pmcdWithdefaultDuckDBElements;
     ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
-
 
     @Override
     public String getName()
@@ -145,7 +143,6 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         DocumentState documentState = section.getDocumentState();
         GlobalState globalState = documentState.getGlobalState();
         globalState.removeProperty(documentState.getDocumentId() + COMPILE_RESULT_KEY);
-        globalState.removeProperty(documentState.getDocumentId() + NOTEBOOK_COMPILE_RESULT_KEY);
         globalState.removeProperty(documentState.getDocumentId() + PLAN_EXEC_CONTEXT_KEY);
     }
 
@@ -212,18 +209,8 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
 
     private CompileResult notebookCompile(SectionState sectionState)
     {
-        DocumentState documentState = sectionState.getDocumentState();
-        GlobalState globalState = documentState.getGlobalState();
-        return globalState.getProperty(NOTEBOOK_COMPILE_RESULT_KEY, () -> tryNotebookCompile(sectionState));
-    }
-
-    private CompileResult tryNotebookCompile(SectionState sectionState)
-    {
-        if (this.pmcdWithdefaultDuckDBElements == null)
-        {
-            this.pmcdWithdefaultDuckDBElements = createPMCDWithDefaultDuckDBElements();
-        }
         PureModelContextData pmcd = this.pureGrammarExtension.getCompileResult(sectionState).getPureModelContextData();
+        this.pmcdWithdefaultDuckDBElements = createPMCDWithDefaultDuckDBElements();
         PureModelContextData combinedPmcd = pmcd.combine(this.pmcdWithdefaultDuckDBElements);
         PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(sectionState.getDocumentState().getGlobalState().getForkJoinPool()).build();
         PureModel pureModel = Compiler.compile(combinedPmcd, DeploymentMode.PROD, "", null, pureModelProcessParameter);
@@ -247,9 +234,9 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
                     {
                         throw compileResult.getEngineException();
                     }
-                    Database defaultDuckDBDatbase = this.pmcdWithdefaultDuckDBElements.getElementsOfType(Database.class).get(0);
+                    Database defaultDuckDBDatabase = this.pmcdWithdefaultDuckDBElements.getElementsOfType(Database.class).get(0);
                     return Tuples.<LambdaFunction<?>, Lambda>pair(HelperValueSpecificationBuilder.buildLambdaWithContext("", x.body, x.parameters, pureModel.getContext(), new ProcessingContext("build Lambda"),
-                                    ((compileContext, openVariables, processingContext) -> new ValueSpecificationBuilderNotebook(compileContext, openVariables, processingContext, defaultDuckDBDatbase))), x);
+                                    ((compileContext, openVariables, processingContext) -> new ValueSpecificationBuilderNotebook(compileContext, openVariables, processingContext, defaultDuckDBDatabase))), x);
                 }
                 // when we complete compiling, trigger plan generation on the background to improve user experience...
         ).whenCompleteAsync((l, e) -> this.generatePlan(sectionState), sectionState.getDocumentState().getGlobalState().getForkJoinPool());

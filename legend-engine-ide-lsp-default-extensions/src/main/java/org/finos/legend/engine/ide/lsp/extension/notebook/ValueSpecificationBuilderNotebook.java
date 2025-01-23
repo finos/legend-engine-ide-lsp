@@ -89,7 +89,6 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
                 throw new EngineException("Error: a new table should have been created!", EngineErrorType.COMPILATION);
             }
             targetSchema.tables = Lists.mutable.with(optionalTable.get());
-            parsedTargetDuckDBDatabase.schemas = Lists.mutable.with(targetSchema);
             compiledTargetDuckDBDatabase._schemasAdd(HelperRelationalBuilder.processDatabaseSchema(targetSchema, getContext(), compiledTargetDuckDBDatabase));
         }
         else
@@ -99,8 +98,6 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
             if (optionalTable.isPresent())
             {
                 org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table targetTable = optionalTable.get();
-                targetSchema.tables.removeIf(t -> t.name.equals(targetTable.name));
-                targetSchema.tables = Lists.mutable.withAll(targetSchema.tables).with(targetTable);
                 org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Schema compiledTargetSchema = compiledTargetDuckDBDatabase._schemas().select(s -> s._name().equals(targetSchemaName)).getOnly();
                 Table compiledTargetTable = compiledTargetSchema._tables().select(t -> t._name().equals(targetTableName)).getOnly();
                 compiledTargetSchema._tablesRemove(compiledTargetTable)._tablesAdd(HelperRelationalBuilder.processDatabaseTable(targetTable, getContext(), compiledTargetSchema));
