@@ -16,12 +16,16 @@
 
 package org.finos.legend.engine.ide.lsp.extension.notebook;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.io.FileUtils;
 import org.eclipse.collections.api.factory.Maps;
 import org.eclipse.collections.api.map.MutableMap;
 import org.eclipse.collections.impl.utility.Iterate;
@@ -36,6 +40,7 @@ import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,17 +50,41 @@ public class TestPureBookLSPGrammarExtension
 {
     private static StateForTestFactory stateForTestFactory;
     private final PureBookLSPGrammarExtension extension = new PureBookLSPGrammarExtension();
+    private static Path workspaceStoragePath;
 
     @BeforeEach
     public void loadExtensionToUse()
     {
         this.extension.startup(stateForTestFactory.newGlobalState());
+        try
+        {
+            workspaceStoragePath = Files.createTempDirectory("legend-purebook-storage");
+            System.setProperty("storagePath", workspaceStoragePath.toString());
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     @BeforeAll
     static void beforeAll()
     {
         stateForTestFactory = new StateForTestFactory();
+    }
+
+    @AfterEach
+    void afterEach()
+    {
+        try
+        {
+            System.clearProperty("storagePath");
+            FileUtils.deleteDirectory(workspaceStoragePath.toFile());
+        }
+        catch (IOException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     @Test
@@ -439,7 +468,7 @@ public class TestPureBookLSPGrammarExtension
         stateForTestFactory.newSectionStates(gs, codeFiles);
         Iterable<? extends LegendDiagnostic> compileDiagnostics = this.extension.getDiagnostics(notebook);
         Assertions.assertEquals(
-                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("compile_problem.purebook", 0, 0, 0, 205), "Second parameter of write() should be ClassInstance, but found class org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedProperty", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
+                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("compile_problem.purebook", 0, 158, 0, 165), "Can't find property 'MYSCHEMA' in class 'meta::relational::metamodel::Database'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
                 compileDiagnostics
         );
     }

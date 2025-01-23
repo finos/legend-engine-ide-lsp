@@ -79,6 +79,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -153,8 +154,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         defaultDuckDBConnection.name = DUCKDB_LOCAL_CONNECTION_BASE_NAME + "Connection";
         defaultDuckDBConnection._package = LOCAL_DUCKDB_PACKAGE;
         DuckDBDatasourceSpecification duckDBDatasourceSpecification = new DuckDBDatasourceSpecification();
-        String storagePath = System.getProperty("storagePath");
-        duckDBDatasourceSpecification.path = (storagePath == null) ? "" : storagePath + "/duck_db_file";
+        duckDBDatasourceSpecification.path = Objects.requireNonNull(System.getProperty("storagePath"), "DuckDB file path cannot be null!") + "/purebook_duckdb";
         RelationalDatabaseConnection duckDBConnectionValue = new RelationalDatabaseConnection(duckDBDatasourceSpecification, new TestDatabaseAuthenticationStrategy(), DatabaseType.DuckDB);
         duckDBConnectionValue.type = DatabaseType.DuckDB;
         defaultDuckDBConnection.connectionValue = duckDBConnectionValue;
@@ -232,7 +232,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
                     {
                         throw compileResult.getEngineException();
                     }
-                    Database defaultDuckDBDatabase = compileResult.getPureModelContextData().getElementsOfType(Database.class).stream().filter(d -> d.getPath().equals("local::DuckDuckDatabase")).findFirst().orElseThrow();
+                    Database defaultDuckDBDatabase = (Database) compileResult.getPureModelContextData().getElements().stream().filter(element -> element.getPath().equals("local::DuckDuckDatabase")).findFirst().orElseThrow();
                     return Tuples.<LambdaFunction<?>, Lambda>pair(HelperValueSpecificationBuilder.buildLambdaWithContext("", x.body, x.parameters, pureModel.getContext(), new ProcessingContext("build Lambda"),
                                     ((compileContext, openVariables, processingContext) -> new ValueSpecificationBuilderNotebook(compileContext, openVariables, processingContext, defaultDuckDBDatabase))), x);
                 }

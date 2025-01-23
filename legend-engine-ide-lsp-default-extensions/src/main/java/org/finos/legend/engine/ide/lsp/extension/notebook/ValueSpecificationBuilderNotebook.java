@@ -35,6 +35,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.r
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecificationVisitor;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedFunction;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.ClassInstance;
+import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.classInstance.relation.RelationStoreAccessor;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.pure.generated.Root_meta_protocols_pure_vX_X_X_metamodel_store_relational_DataType;
@@ -140,39 +141,40 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
         {
             // Process second parameter of write()
             org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeSecondParameter = appliedFunction.parameters.get(1);
-            if (!(writeSecondParameter instanceof ClassInstance))
+            if (writeSecondParameter instanceof ClassInstance)
             {
-                throw new EngineException("Second parameter of write() should be ClassInstance, but found " + writeSecondParameter.getClass(), EngineErrorType.COMPILATION);
-            }
-            ClassInstance classInstance = (ClassInstance) writeSecondParameter;
-            Object value = classInstance.value;
-            if (!(value instanceof org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.classInstance.relation.RelationStoreAccessor))
-            {
-                throw new EngineException("Notebook currently only supports expressions with RelationStoreAccessor, but found " + value.getClass(), EngineErrorType.COMPILATION);
-            }
-            org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.classInstance.relation.RelationStoreAccessor targetRelationStoreAccessor = (org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.classInstance.relation.RelationStoreAccessor) value;
-            List<String> paths = targetRelationStoreAccessor.path;
-            String targetDatabasePath = paths.get(0);
-            if (paths.size() > 1 && targetDatabasePath.equals("local::DuckDuckDatabase"))
-            {
-                String targetSchemaName = (paths.size() == 3) ? paths.get(1) : "default";
-                String targetTableName = paths.get(paths.size() - 1);
-
-                // Process first parameter of write()
-                org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeFirstParameter = appliedFunction.parameters.get(0);
-                ValueSpecification compiledParameter = writeFirstParameter.accept(this);
-                RelationType relationType = (RelationType) compiledParameter._genericType()._typeArguments().getFirst()._rawType();
-                MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs = relationType._columns().collect(c ->
+                ClassInstance classInstance = (ClassInstance) writeSecondParameter;
+                Object value = classInstance.value;
+                if (value instanceof RelationStoreAccessor)
                 {
-                    org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column column = (org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column) c;
-                    Type type = column._classifierGenericType()._typeArguments().getLast()._rawType();
-                    org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType dataType = core_relational_relational_transform_fromPure_pureToRelational.Root_meta_relational_transform_fromPure_pureTypeToDataType_Type_1__DataType_$0_1$_(type, getContext().getExecutionSupport());
-                    return Tuples.pair(column._name(), dataType);
-                }).toList();
+                    RelationStoreAccessor relationStoreAccessor = (RelationStoreAccessor) value;
+                    List<String> paths = relationStoreAccessor.path;
+                    if (paths.size() >= 2)
+                    {
+                        String targetDatabasePath = paths.get(0);
+                        if (targetDatabasePath.equals("local::DuckDuckDatabase"))
+                        {
+                            String targetSchemaName = (paths.size() == 3) ? paths.get(1) : "default";
+                            String targetTableName = paths.get(paths.size() - 1);
 
-                // Process database (Add new parsed/compiled schema/table/columns if not present)
-                org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database) (getContext().pureModel.getStore(targetDatabasePath));
-                processDatabase(this.parsedTargetDuckDBDatabase, compiledTargetDuckDBDatabase, columnNameDataTypePairs, targetSchemaName, targetTableName);
+                            // Process first parameter of write()
+                            org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeFirstParameter = appliedFunction.parameters.get(0);
+                            ValueSpecification compiledParameter = writeFirstParameter.accept(this);
+                            RelationType relationType = (RelationType) compiledParameter._genericType()._typeArguments().getFirst()._rawType();
+                            MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs = relationType._columns().collect(c ->
+                            {
+                                org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column column = (org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column) c;
+                                Type type = column._classifierGenericType()._typeArguments().getLast()._rawType();
+                                org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType dataType = core_relational_relational_transform_fromPure_pureToRelational.Root_meta_relational_transform_fromPure_pureTypeToDataType_Type_1__DataType_$0_1$_(type, getContext().getExecutionSupport());
+                                return Tuples.pair(column._name(), dataType);
+                            }).toList();
+
+                            // Process database (Add new compiled schema/table/columns if not present)
+                            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database) (getContext().pureModel.getStore(targetDatabasePath));
+                            processDatabase(this.parsedTargetDuckDBDatabase, compiledTargetDuckDBDatabase, columnNameDataTypePairs, targetSchemaName, targetTableName);
+                        }
+                    }
+                }
             }
         }
 
