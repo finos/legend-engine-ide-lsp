@@ -79,12 +79,11 @@ public class TestPureBookLSPGrammarExtension
         try
         {
             System.clearProperty("storagePath");
-            FileUtils.cleanDirectory(workspaceStoragePath.toFile());
-            FileUtils.delete(workspaceStoragePath.toFile());
+            FileUtils.deleteDirectory(workspaceStoragePath.toFile());
         }
         catch (IOException e)
         {
-            throw new RuntimeException(e);
+            // Ignoring IOException, as it's not critical if the file isn't deleted from temp directory 
         }
     }
 
