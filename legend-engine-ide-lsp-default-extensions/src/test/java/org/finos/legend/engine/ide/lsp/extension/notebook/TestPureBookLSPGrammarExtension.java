@@ -79,6 +79,7 @@ public class TestPureBookLSPGrammarExtension
         try
         {
             System.clearProperty("storagePath");
+            Files.deleteIfExists(workspaceStoragePath.resolve("purebook_duckdb"));
             FileUtils.deleteDirectory(workspaceStoragePath.toFile());
         }
         catch (IOException e)
