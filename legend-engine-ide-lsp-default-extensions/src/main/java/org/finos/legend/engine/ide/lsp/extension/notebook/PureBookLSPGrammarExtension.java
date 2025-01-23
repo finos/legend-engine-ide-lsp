@@ -98,7 +98,6 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private PureLSPGrammarExtension pureGrammarExtension;
     private MutableList<ReplExtension> replExtensions;
     private MutableList<CompleterExtension> completerExtensions;
-    private PureModelContextData pmcdWithdefaultDuckDBElements;
     ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
 
     @Override
@@ -210,8 +209,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private CompileResult notebookCompile(SectionState sectionState)
     {
         PureModelContextData pmcd = this.pureGrammarExtension.getCompileResult(sectionState).getPureModelContextData();
-        this.pmcdWithdefaultDuckDBElements = createPMCDWithDefaultDuckDBElements();
-        PureModelContextData combinedPmcd = pmcd.combine(this.pmcdWithdefaultDuckDBElements);
+        PureModelContextData combinedPmcd = pmcd.combine(createPMCDWithDefaultDuckDBElements());
         PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(sectionState.getDocumentState().getGlobalState().getForkJoinPool()).build();
         PureModel pureModel = Compiler.compile(combinedPmcd, DeploymentMode.PROD, "", null, pureModelProcessParameter);
         return new CompileResult(pureModel, combinedPmcd);
@@ -234,7 +232,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
                     {
                         throw compileResult.getEngineException();
                     }
-                    Database defaultDuckDBDatabase = this.pmcdWithdefaultDuckDBElements.getElementsOfType(Database.class).get(0);
+                    Database defaultDuckDBDatabase = compileResult.getPureModelContextData().getElementsOfType(Database.class).stream().filter(d -> d.getPath().equals("local::DuckDuckDatabase")).findFirst().orElseThrow();
                     return Tuples.<LambdaFunction<?>, Lambda>pair(HelperValueSpecificationBuilder.buildLambdaWithContext("", x.body, x.parameters, pureModel.getContext(), new ProcessingContext("build Lambda"),
                                     ((compileContext, openVariables, processingContext) -> new ValueSpecificationBuilderNotebook(compileContext, openVariables, processingContext, defaultDuckDBDatabase))), x);
                 }
