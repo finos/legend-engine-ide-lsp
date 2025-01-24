@@ -151,7 +151,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         globalState.removeProperty(documentState.getDocumentId() + PLAN_EXEC_CONTEXT_KEY);
     }
 
-    private PureModelContextData createPMCDWithDefaultDuckDBElements(String encodedDocumentId)
+    private PureModelContextData createPMCDWithDefaultDuckDBElements(String documentId)
     {
         final String LOCAL_DUCKDB_PACKAGE = "local";
         final String DUCKDB_LOCAL_CONNECTION_BASE_NAME = "DuckDuck";
@@ -159,6 +159,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         defaultDuckDBConnection.name = DUCKDB_LOCAL_CONNECTION_BASE_NAME + "Connection";
         defaultDuckDBConnection._package = LOCAL_DUCKDB_PACKAGE;
         DuckDBDatasourceSpecification duckDBDatasourceSpecification = new DuckDBDatasourceSpecification();
+        String encodedDocumentId = URLEncoder.encode(documentId, StandardCharsets.UTF_8);
         duckDBDatasourceSpecification.path = Objects.requireNonNull(System.getProperty("storagePath"), "DuckDB storage path cannot be null!") + "/"  + encodedDocumentId + "_duckdb";
         RelationalDatabaseConnection duckDBConnectionValue = new RelationalDatabaseConnection(duckDBDatasourceSpecification, new TestDatabaseAuthenticationStrategy(), DatabaseType.DuckDB);
         duckDBConnectionValue.type = DatabaseType.DuckDB;
@@ -214,9 +215,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private CompileResult notebookCompile(SectionState sectionState)
     {
         PureModelContextData pmcd = this.pureGrammarExtension.getCompileResult(sectionState).getPureModelContextData();
-        String documentId = sectionState.getDocumentState().getDocumentId();
-        String encodedDocumentId = URLEncoder.encode(documentId, StandardCharsets.UTF_8);
-        PureModelContextData defaultDuckDBElements = defaultDuckDBElementsIndex.getIfAbsentPut(encodedDocumentId, this::createPMCDWithDefaultDuckDBElements);
+        PureModelContextData defaultDuckDBElements = defaultDuckDBElementsIndex.getIfAbsentPut(sectionState.getDocumentState().getDocumentId(), this::createPMCDWithDefaultDuckDBElements);
         PureModelContextData combinedPmcd = pmcd.combine(defaultDuckDBElements);
         PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(sectionState.getDocumentState().getGlobalState().getForkJoinPool()).build();
         PureModel pureModel = Compiler.compile(combinedPmcd, DeploymentMode.PROD, "", null, pureModelProcessParameter);
