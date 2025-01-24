@@ -27,7 +27,6 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.CompileContext
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRelationalBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.ProcessingContext;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.ValueSpecificationBuilder;
-import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Column;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Schema;
@@ -37,7 +36,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.applica
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.ClassInstance;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.classInstance.relation.RelationStoreAccessor;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
-import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.pure.generated.Root_meta_protocols_pure_vX_X_X_metamodel_store_relational_DataType;
 import org.finos.legend.pure.generated.core_pure_protocol_protocol;
 import org.finos.legend.pure.generated.core_relational_relational_protocols_pure_vX_X_X_transfers_metamodel_relational;
@@ -49,17 +47,22 @@ import org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.relation.
 import org.finos.legend.pure.m3.execution.ExecutionSupport;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder implements ValueSpecificationVisitor<ValueSpecification>
+public class PureBookValueSpecificationBuilder extends ValueSpecificationBuilder implements ValueSpecificationVisitor<ValueSpecification>
 {
     private final Database parsedTargetDuckDBDatabase;
+    private final Connection connection;
 
-    public ValueSpecificationBuilderNotebook(CompileContext context, MutableList<String> openVariables, ProcessingContext processingContext, Database database)
+    public PureBookValueSpecificationBuilder(CompileContext context, MutableList<String> openVariables, ProcessingContext processingContext, Database database, Connection connection)
     {
         super(context, openVariables, processingContext);
         this.parsedTargetDuckDBDatabase = database;
+        this.connection = connection;
     }
 
     private DataType transformDatabaseDataType(org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType dataType)
@@ -77,32 +80,66 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
         }
     }
 
-    private void processDatabase(Database parsedTargetDuckDBDatabase, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase, MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs, String targetSchemaName, String targetTableName)
+    private String escapeIfReservedSchemaName(String schemaName)
     {
-        Optional<Schema> optionalSchema = ListIterate.select(parsedTargetDuckDBDatabase.schemas, s -> s.name.equals(targetSchemaName)).getFirstOptional();
-        if (optionalSchema.isEmpty())
+        return (schemaName.equals("default")) ? "\"default\"" : schemaName;
+    }
+
+    private String safeCreateSchema(String schemaName)
+    {
+        String safeSchemaName = escapeIfReservedSchemaName(schemaName);
+        return "DROP SCHEMA IF EXISTS " + safeSchemaName + "; CREATE SCHEMA " + safeSchemaName + ";";
+    }
+
+    private String safeCreateTableWithColumns(String schemaName, String tableName, List<Column> columns)
+    {
+        String columnNamesAndTypes = columns.stream().map(c -> String.format("%s %s", c.name, c.type.getClass().getSimpleName().toUpperCase())).collect(Collectors.joining(", ", "(", ")"));
+        return "CREATE OR REPLACE TABLE " + escapeIfReservedSchemaName(schemaName) + "." + tableName + " " + columnNamesAndTypes + ";";
+    }
+
+    private String safeAlterTableWithColumn(String schemaName, String tableName, Column column)
+    {
+        return "ALTER TABLE " + escapeIfReservedSchemaName(schemaName) + "." + tableName + " ADD COLUMN IF NOT EXISTS " + column.name + " " + column.type.getClass().getSimpleName().toUpperCase() + ";";
+    }
+
+    private void processDatabase(org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase, MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs, String targetSchemaName, String targetTableName)
+    {
+        try (Statement statement = this.connection.createStatement())
         {
-            Schema targetSchema = new Schema();
-            targetSchema.name = targetSchemaName;
-            Optional<org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table> optionalTable = getTableIfModified(columnNameDataTypePairs, targetSchema, targetTableName);
-            if (optionalTable.isEmpty())
+            Optional<Schema> optionalSchema = ListIterate.select(this.parsedTargetDuckDBDatabase.schemas, s -> s.name.equals(targetSchemaName)).getFirstOptional();
+            if (optionalSchema.isEmpty())
             {
-                throw new EngineException("Error: a new table should have been created!", EngineErrorType.COMPILATION);
+                Schema targetSchema = new Schema();
+                targetSchema.name = targetSchemaName;
+                org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table targetTable = getTableIfModified(columnNameDataTypePairs, targetSchema, targetTableName).orElseThrow();
+                targetSchema.tables = Lists.mutable.with(targetTable);
+                this.parsedTargetDuckDBDatabase.schemas = Lists.mutable.with(targetSchema);
+                compiledTargetDuckDBDatabase._schemasAdd(HelperRelationalBuilder.processDatabaseSchema(targetSchema, getContext(), compiledTargetDuckDBDatabase));
+                statement.executeUpdate(safeCreateSchema(targetSchemaName));
+                statement.executeUpdate(safeCreateTableWithColumns(targetSchemaName, targetTableName, targetTable.columns));
             }
-            targetSchema.tables = Lists.mutable.with(optionalTable.get());
-            compiledTargetDuckDBDatabase._schemasAdd(HelperRelationalBuilder.processDatabaseSchema(targetSchema, getContext(), compiledTargetDuckDBDatabase));
+            else
+            {
+                Schema targetSchema = optionalSchema.get();
+                Optional<org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table> optionalTable = getTableIfModified(columnNameDataTypePairs, targetSchema, targetTableName);
+                if (optionalTable.isPresent())
+                {
+                    org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table targetTable = optionalTable.get();
+                    targetSchema.tables.removeIf(t -> t.name.equals(targetTable.name));
+                    targetSchema.tables = Lists.mutable.withAll(targetSchema.tables).with(targetTable);
+                    org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Schema compiledTargetSchema = compiledTargetDuckDBDatabase._schemas().select(s -> s._name().equals(targetSchemaName)).getOnly();
+                    Table compiledTargetTable = compiledTargetSchema._tables().select(t -> t._name().equals(targetTableName)).getOnly();
+                    compiledTargetSchema._tablesRemove(compiledTargetTable)._tablesAdd(HelperRelationalBuilder.processDatabaseTable(targetTable, getContext(), compiledTargetSchema));
+                    for (Column column : targetTable.columns)
+                    {
+                        statement.executeUpdate(safeAlterTableWithColumn(targetSchemaName, targetTableName, column));
+                    }
+                }
+            }
         }
-        else
+        catch (Exception e)
         {
-            Schema targetSchema = optionalSchema.get();
-            Optional<org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table> optionalTable = getTableIfModified(columnNameDataTypePairs, targetSchema, targetTableName);
-            if (optionalTable.isPresent())
-            {
-                org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Table targetTable = optionalTable.get();
-                org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Schema compiledTargetSchema = compiledTargetDuckDBDatabase._schemas().select(s -> s._name().equals(targetSchemaName)).getOnly();
-                Table compiledTargetTable = compiledTargetSchema._tables().select(t -> t._name().equals(targetTableName)).getOnly();
-                compiledTargetSchema._tablesRemove(compiledTargetTable)._tablesAdd(HelperRelationalBuilder.processDatabaseTable(targetTable, getContext(), compiledTargetSchema));
-            }
+            throw new RuntimeException(e);
         }
     }
 
@@ -171,7 +208,7 @@ public class ValueSpecificationBuilderNotebook extends ValueSpecificationBuilder
 
                             // Process database (Add new compiled schema/table/columns if not present)
                             org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database) (getContext().pureModel.getStore(targetDatabasePath));
-                            processDatabase(this.parsedTargetDuckDBDatabase, compiledTargetDuckDBDatabase, columnNameDataTypePairs, targetSchemaName, targetTableName);
+                            processDatabase(compiledTargetDuckDBDatabase, columnNameDataTypePairs, targetSchemaName, targetTableName);
                         }
                     }
                 }
