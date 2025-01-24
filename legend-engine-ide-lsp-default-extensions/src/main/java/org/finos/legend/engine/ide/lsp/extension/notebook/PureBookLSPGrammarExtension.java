@@ -34,8 +34,11 @@ import org.finos.legend.engine.ide.lsp.extension.repl.extension.LegendREPLExtens
 import org.finos.legend.engine.ide.lsp.extension.state.*;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
+import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.ProcessingContext;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
+import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModelProcessParameter;
 import org.finos.legend.engine.language.pure.grammar.from.PureGrammarParserContext;
 import org.finos.legend.engine.language.pure.grammar.from.domain.DomainParser;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtensions;
@@ -44,13 +47,28 @@ import org.finos.legend.engine.plan.execution.result.Result;
 import org.finos.legend.engine.plan.execution.result.serialization.SerializationFormat;
 import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementPointer;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementType;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.EngineRuntime;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.IdentifiedConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.PackageableRuntime;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.StoreConnections;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.DatabaseType;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.authentication.TestDatabaseAuthenticationStrategy;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.specification.DuckDBDatasourceSpecification;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
 import org.finos.legend.engine.repl.core.ReplExtension;
+import org.finos.legend.engine.repl.relational.shared.ConnectionHelper;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
+import org.finos.legend.engine.shared.core.deployment.DeploymentMode;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
 import org.finos.legend.engine.shared.javaCompiler.JavaCompileException;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.function.LambdaFunction;
@@ -61,6 +79,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -81,7 +100,6 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private MutableList<ReplExtension> replExtensions;
     private MutableList<CompleterExtension> completerExtensions;
     ObjectMapper objectMapper = ObjectMapperFactory.getNewStandardObjectMapperWithPureProtocolExtensionSupports();
-
 
     @Override
     public String getName()
@@ -128,6 +146,41 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         globalState.removeProperty(documentState.getDocumentId() + PLAN_EXEC_CONTEXT_KEY);
     }
 
+    private PureModelContextData createPMCDWithDefaultDuckDBElements()
+    {
+        final String LOCAL_DUCKDB_PACKAGE = "local";
+        final String DUCKDB_LOCAL_CONNECTION_BASE_NAME = "DuckDuck";
+        PackageableConnection defaultDuckDBConnection = new PackageableConnection();
+        defaultDuckDBConnection.name = DUCKDB_LOCAL_CONNECTION_BASE_NAME + "Connection";
+        defaultDuckDBConnection._package = LOCAL_DUCKDB_PACKAGE;
+        DuckDBDatasourceSpecification duckDBDatasourceSpecification = new DuckDBDatasourceSpecification();
+        duckDBDatasourceSpecification.path = Objects.requireNonNull(System.getProperty("storagePath"), "DuckDB file path cannot be null!") + "/purebook_duckdb";
+        RelationalDatabaseConnection duckDBConnectionValue = new RelationalDatabaseConnection(duckDBDatasourceSpecification, new TestDatabaseAuthenticationStrategy(), DatabaseType.DuckDB);
+        duckDBConnectionValue.type = DatabaseType.DuckDB;
+        defaultDuckDBConnection.connectionValue = duckDBConnectionValue;
+
+        Database defaultDuckDBDatabase = ConnectionHelper.getDatabase(duckDBConnectionValue, LOCAL_DUCKDB_PACKAGE, DUCKDB_LOCAL_CONNECTION_BASE_NAME + "Database", this.pureGrammarExtension.getPlanExecutor());
+
+        PackageableRuntime defaultDuckDBRuntime = new PackageableRuntime();
+        EngineRuntime engineRuntime = new EngineRuntime();
+        StoreConnections storeConnections = new StoreConnections();
+        PackageableElementPointer storePointer = new PackageableElementPointer();
+        IdentifiedConnection identifiedConnection = new IdentifiedConnection();
+
+        defaultDuckDBRuntime.name = DUCKDB_LOCAL_CONNECTION_BASE_NAME + "Runtime";
+        defaultDuckDBRuntime._package = LOCAL_DUCKDB_PACKAGE;
+        defaultDuckDBRuntime.runtimeValue = engineRuntime;
+        engineRuntime.connections = Lists.fixedSize.of(storeConnections);
+        storePointer.type = PackageableElementType.STORE;
+        storePointer.path = LOCAL_DUCKDB_PACKAGE + "::" + DUCKDB_LOCAL_CONNECTION_BASE_NAME + "Database";
+        storeConnections.store = storePointer;
+        identifiedConnection.id = defaultDuckDBConnection.getPath();
+        identifiedConnection.connection = duckDBConnectionValue;
+        storeConnections.storeConnections = Lists.fixedSize.of(identifiedConnection);
+
+        return new PureModelContextData.Builder().withElements(Lists.fixedSize.of(defaultDuckDBConnection, defaultDuckDBDatabase, defaultDuckDBRuntime)).build();
+    }
+
     private CompletableFuture<Lambda> parse(SectionState sectionState)
     {
         return sectionState.getProperty("PARSE_RESULT", () -> tryParse(sectionState));
@@ -153,6 +206,15 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         }
     }
 
+    private CompileResult notebookCompile(SectionState sectionState)
+    {
+        PureModelContextData pmcd = this.pureGrammarExtension.getCompileResult(sectionState).getPureModelContextData();
+        PureModelContextData combinedPmcd = pmcd.combine(createPMCDWithDefaultDuckDBElements());
+        PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(sectionState.getDocumentState().getGlobalState().getForkJoinPool()).build();
+        PureModel pureModel = Compiler.compile(combinedPmcd, DeploymentMode.PROD, "", null, pureModelProcessParameter);
+        return new CompileResult(pureModel, combinedPmcd);
+    }
+
     private CompletableFuture<Pair<LambdaFunction<?>, Lambda>> compile(SectionState sectionState)
     {
         DocumentState documentState = sectionState.getDocumentState();
@@ -164,13 +226,15 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     {
         return this.parse(sectionState).thenApply(x ->
                 {
-                    CompileResult compileResult = this.pureGrammarExtension.getCompileResult(sectionState);
+                    CompileResult compileResult = notebookCompile(sectionState);
                     PureModel pureModel = compileResult.getPureModel();
                     if (pureModel == null)
                     {
                         throw compileResult.getEngineException();
                     }
-                    return Tuples.<LambdaFunction<?>, Lambda>pair(HelperValueSpecificationBuilder.buildLambda(x, pureModel.getContext()), x);
+                    Database defaultDuckDBDatabase = (Database) compileResult.getPureModelContextData().getElements().stream().filter(element -> element.getPath().equals("local::DuckDuckDatabase")).findFirst().orElseThrow();
+                    return Tuples.<LambdaFunction<?>, Lambda>pair(HelperValueSpecificationBuilder.buildLambdaWithContext("", x.body, x.parameters, pureModel.getContext(), new ProcessingContext("build Lambda"),
+                                    ((compileContext, openVariables, processingContext) -> new ValueSpecificationBuilderNotebook(compileContext, openVariables, processingContext, defaultDuckDBDatabase))), x);
                 }
                 // when we complete compiling, trigger plan generation on the background to improve user experience...
         ).whenCompleteAsync((l, e) -> this.generatePlan(sectionState), sectionState.getDocumentState().getGlobalState().getForkJoinPool());
@@ -351,7 +415,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         {
             try
             {
-                PureModel pureModel = this.pureGrammarExtension.getCompileResult(sectionState).getPureModel();
+                PureModel pureModel = notebookCompile(sectionState).getPureModel();
                 GlobalState globalState = sectionState.getDocumentState().getGlobalState();
                 SingleExecutionPlan singleExecutionPlan = FunctionExecutionSupport.generateSingleExecutionPlan(pureModel, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION), lambdaFunctionAndLambda.getOne());
                 return new PlanGenerationResult(singleExecutionPlan, new PlanExecutionContext(singleExecutionPlan, List.of()), lambdaFunctionAndLambda.getOne(), lambdaFunctionAndLambda.getTwo());

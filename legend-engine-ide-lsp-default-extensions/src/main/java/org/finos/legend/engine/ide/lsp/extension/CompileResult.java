@@ -27,7 +27,7 @@ public class CompileResult extends AbstractLSPGrammarExtension.Result<PureModel>
     private final PureModelContextData pureModelContextData;
     private final ImmutableList<EngineException> engineExceptions;
 
-    CompileResult(PureModel pureModel, PureModelContextData pureModelContextData)
+    public CompileResult(PureModel pureModel, PureModelContextData pureModelContextData)
     {
         super(pureModel, null);
         this.pureModelContextData = pureModelContextData;
