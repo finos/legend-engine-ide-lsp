@@ -38,6 +38,7 @@ import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.cla
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.pure.generated.Root_meta_protocols_pure_vX_X_X_metamodel_store_relational_DataType;
 import org.finos.legend.pure.generated.core_pure_protocol_protocol;
+import org.finos.legend.pure.generated.core_relational_duckdb_relational_sqlQueryToString_duckdbExtension;
 import org.finos.legend.pure.generated.core_relational_relational_protocols_pure_vX_X_X_transfers_metamodel_relational;
 import org.finos.legend.pure.generated.core_relational_relational_transform_fromPure_pureToRelational;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.RelationType;
@@ -91,15 +92,21 @@ public class PureBookValueSpecificationBuilder extends ValueSpecificationBuilder
         return "DROP SCHEMA IF EXISTS " + safeSchemaName + "; CREATE SCHEMA " + safeSchemaName + ";";
     }
 
-    private String safeCreateTableWithColumns(String schemaName, String tableName, List<Column> columns)
+    private String safeCreateTableWithColumns(String schemaName, String tableName, MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs)
     {
-        String columnNamesAndTypes = columns.stream().map(c -> String.format("%s %s", c.name, c.type.getClass().getSimpleName().toUpperCase())).collect(Collectors.joining(", ", "(", ")"));
+        String columnNamesAndTypes = columnNameDataTypePairs.stream()
+                .map(pair -> String.format("%s %s",
+                        pair.getOne(),
+                        core_relational_duckdb_relational_sqlQueryToString_duckdbExtension.Root_meta_relational_functions_sqlQueryToString_duckDB_dataTypeToSqlTextDuckDB_DataType_1__String_1_(pair.getTwo(), getContext().getExecutionSupport())))
+                .collect(Collectors.joining(", ", "(", ")"));
         return "CREATE OR REPLACE TABLE " + escapeIfReservedSchemaName(schemaName) + "." + tableName + " " + columnNamesAndTypes + ";";
     }
 
-    private String safeAlterTableWithColumn(String schemaName, String tableName, Column column)
+    private String safeAlterTableWithColumn(String schemaName, String tableName, Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType> columnNameDataTypePair)
     {
-        return "ALTER TABLE " + escapeIfReservedSchemaName(schemaName) + "." + tableName + " ADD COLUMN IF NOT EXISTS " + column.name + " " + column.type.getClass().getSimpleName().toUpperCase() + ";";
+        String columnName = columnNameDataTypePair.getOne();
+        String columnType = core_relational_duckdb_relational_sqlQueryToString_duckdbExtension.Root_meta_relational_functions_sqlQueryToString_duckDB_dataTypeToSqlTextDuckDB_DataType_1__String_1_(columnNameDataTypePair.getTwo(), getContext().getExecutionSupport());
+        return "ALTER TABLE " + escapeIfReservedSchemaName(schemaName) + "." + tableName + " ADD COLUMN IF NOT EXISTS " + columnName + " " + columnType + ";";
     }
 
     private void processDatabase(org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database compiledTargetDuckDBDatabase, MutableList<Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType>> columnNameDataTypePairs, String targetSchemaName, String targetTableName)
@@ -116,7 +123,7 @@ public class PureBookValueSpecificationBuilder extends ValueSpecificationBuilder
                 this.parsedTargetDuckDBDatabase.schemas = Lists.mutable.with(targetSchema);
                 compiledTargetDuckDBDatabase._schemasAdd(HelperRelationalBuilder.processDatabaseSchema(targetSchema, getContext(), compiledTargetDuckDBDatabase));
                 statement.executeUpdate(safeCreateSchema(targetSchemaName));
-                statement.executeUpdate(safeCreateTableWithColumns(targetSchemaName, targetTableName, targetTable.columns));
+                statement.executeUpdate(safeCreateTableWithColumns(targetSchemaName, targetTableName, columnNameDataTypePairs));
             }
             else
             {
@@ -130,9 +137,9 @@ public class PureBookValueSpecificationBuilder extends ValueSpecificationBuilder
                     org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Schema compiledTargetSchema = compiledTargetDuckDBDatabase._schemas().select(s -> s._name().equals(targetSchemaName)).getOnly();
                     Table compiledTargetTable = compiledTargetSchema._tables().select(t -> t._name().equals(targetTableName)).getOnly();
                     compiledTargetSchema._tablesRemove(compiledTargetTable)._tablesAdd(HelperRelationalBuilder.processDatabaseTable(targetTable, getContext(), compiledTargetSchema));
-                    for (Column column : targetTable.columns)
+                    for (Pair<String, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.datatype.DataType> columnNameDataTypePair : columnNameDataTypePairs)
                     {
-                        statement.executeUpdate(safeAlterTableWithColumn(targetSchemaName, targetTableName, column));
+                        statement.executeUpdate(safeAlterTableWithColumn(targetSchemaName, targetTableName, columnNameDataTypePair));
                     }
                 }
             }
