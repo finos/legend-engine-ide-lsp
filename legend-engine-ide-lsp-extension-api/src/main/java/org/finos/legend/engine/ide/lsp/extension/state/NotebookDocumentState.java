@@ -18,5 +18,10 @@ package org.finos.legend.engine.ide.lsp.extension.state;
 
 public interface NotebookDocumentState extends DocumentState
 {
-
+    /**
+     * Get the uri of the notebook document.
+     *
+     * @return notebook document uri
+     */
+    String getNotebookDocumentId();
 }

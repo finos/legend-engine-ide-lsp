@@ -132,6 +132,11 @@
             <artifactId>legend-pure-runtime-java-engine-compiled</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.finos.legend.pure</groupId>
+            <artifactId>legend-pure-runtime-java-extension-compiled-store-relational</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!-- LEGEND PURE -->
 
         <!-- LEGEND ENGINE -->

@@ -215,9 +215,10 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private CompileResult notebookCompile(SectionState sectionState)
     {
         PureModelContextData pmcd = this.pureGrammarExtension.getCompileResult(sectionState).getPureModelContextData();
-        PureModelContextData defaultDuckDBElements = defaultDuckDBElementsIndex.getIfAbsentPut(sectionState.getDocumentState().getDocumentId(), this::createPMCDWithDefaultDuckDBElements);
+        NotebookDocumentState documentState = (NotebookDocumentState) sectionState.getDocumentState();
+        PureModelContextData defaultDuckDBElements = defaultDuckDBElementsIndex.getIfAbsentPut(documentState.getNotebookDocumentId(), this::createPMCDWithDefaultDuckDBElements);
         PureModelContextData combinedPmcd = pmcd.combine(defaultDuckDBElements);
-        PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(sectionState.getDocumentState().getGlobalState().getForkJoinPool()).build();
+        PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(documentState.getGlobalState().getForkJoinPool()).build();
         PureModel pureModel = Compiler.compile(combinedPmcd, DeploymentMode.PROD, "", null, pureModelProcessParameter);
         return new CompileResult(pureModel, combinedPmcd);
     }

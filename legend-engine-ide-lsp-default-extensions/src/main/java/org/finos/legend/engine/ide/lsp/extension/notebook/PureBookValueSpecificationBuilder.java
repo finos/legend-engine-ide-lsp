@@ -196,7 +196,7 @@ public class PureBookValueSpecificationBuilder extends ValueSpecificationBuilder
                             org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeFirstParameter = appliedFunction.parameters.get(0);
                             ValueSpecification compiledParameter = writeFirstParameter.accept(this);
                             RelationType relationType = (RelationType) compiledParameter._genericType()._typeArguments().getFirst()._rawType();
-                            MutableList incomingColumns = relationType._columns().collect(c ->
+                            MutableList<org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Column> incomingColumns = relationType._columns().collect(c ->
                             {
                                 org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column pureColumn = (org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.Column) c;
                                 Type type = pureColumn._classifierGenericType()._typeArguments().getLast()._rawType();

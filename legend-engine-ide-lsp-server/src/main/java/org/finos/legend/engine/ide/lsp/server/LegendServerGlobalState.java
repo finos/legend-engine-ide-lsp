@@ -99,9 +99,9 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
         return this.docs.computeIfAbsent(uri, k -> new LegendServerDocumentState(this, uri));
     }
 
-    public LegendServerDocumentState getOrCreateNotebookDocState(String uri)
+    public LegendServerDocumentState getOrCreateNotebookDocState(String notebookDocumentUri, String notebookCellUri)
     {
-        return this.docs.computeIfAbsent(uri, k -> new LegendServerNotebookDocumentState(this, uri));
+        return this.docs.computeIfAbsent(notebookCellUri, k -> new LegendServerNotebookDocumentState(this, notebookDocumentUri, notebookCellUri));
     }
 
     synchronized void deleteDocState(String uri)
@@ -497,15 +497,24 @@ public class LegendServerGlobalState extends AbstractState implements GlobalStat
 
     private static class LegendServerNotebookDocumentState extends LegendServerDocumentState implements NotebookDocumentState
     {
-        public LegendServerNotebookDocumentState(LegendServerGlobalState globalState, String uri)
+        private final String notebookDocumentUri;
+
+        public LegendServerNotebookDocumentState(LegendServerGlobalState globalState, String notebookDocumentUri, String notebookCellUri)
         {
-            super(globalState, uri);
+            super(globalState, notebookCellUri);
+            this.notebookDocumentUri = notebookDocumentUri;
         }
 
         @Override
         GrammarSectionIndex parse(LineIndexedText newText)
         {
             return GrammarSectionIndex.parse(newText, "purebook");
+        }
+
+        @Override
+        public String getNotebookDocumentId()
+        {
+            return this.notebookDocumentUri;
         }
     }
 }
