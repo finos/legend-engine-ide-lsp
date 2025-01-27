@@ -113,20 +113,20 @@ public class StateForTestFactory
         return sectionState;
     }
 
-    public SectionState newPureBookSectionState(String docId, String text)
+    public SectionState newPureBookSectionState(String notebookDocumentUri, String notebookCellUri, String text)
     {
         TestGlobalState globalState = new TestGlobalState();
-        return this.newPureBookSectionState(globalState, docId, text);
+        return this.newPureBookSectionState(globalState, notebookDocumentUri, notebookCellUri, text);
     }
 
-    public SectionState newPureBookSectionState(GlobalState gs, String docId, String text)
+    public SectionState newPureBookSectionState(GlobalState gs, String notebookDocumentUri, String notebookCellUri, String text)
     {
         TestGlobalState globalState = (TestGlobalState) gs;
         LineIndexedText indexedText = LineIndexedText.index(text);
-        TestDocumentState docState = new TestPureBookDocumentState(globalState, docId, indexedText);
+        TestDocumentState docState = new TestPureBookDocumentState(globalState, notebookDocumentUri, notebookCellUri, indexedText);
         TestSectionState sectionState = new TestSectionState(docState, 0, newGrammarSection(indexedText, "purebook"));
 
-        globalState.docStates.put(docId, docState);
+        globalState.docStates.put(notebookCellUri, docState);
         docState.sectionStates.add(sectionState);
         gs.clearProperties();
 
@@ -364,9 +364,18 @@ public class StateForTestFactory
 
     private static class TestPureBookDocumentState extends TestDocumentState implements NotebookDocumentState
     {
-        private TestPureBookDocumentState(GlobalState globalState, String id, LineIndexedText text)
+        private final String notebookDocumentUri;
+
+        private TestPureBookDocumentState(GlobalState globalState, String notebookDocumentUri, String notebookCellUri, LineIndexedText text)
         {
-            super(globalState, id, text);
+            super(globalState, notebookCellUri, text);
+            this.notebookDocumentUri = notebookDocumentUri;
+        }
+
+        @Override
+        public String getNotebookDocumentId()
+        {
+            return this.notebookDocumentUri;
         }
     }
 

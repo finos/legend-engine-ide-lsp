@@ -45,12 +45,13 @@ public class LegendNotebookDocumentService implements NotebookDocumentService
     @Override
     public void didOpen(DidOpenNotebookDocumentParams params)
     {
-        params.getCellTextDocuments().forEach(this::openNotebookDocument);
+        String notebookDocumentUri = params.getNotebookDocument().getUri();
+        params.getCellTextDocuments().forEach(x -> openNotebookDocument(notebookDocumentUri, x));
     }
 
-    private void openNotebookDocument(TextDocumentItem textDocumentItem)
+    private void openNotebookDocument(String notebookDocumentUri, TextDocumentItem textDocumentItem)
     {
-        LegendServerGlobalState.LegendServerDocumentState docState = this.server.getGlobalState().getOrCreateNotebookDocState(textDocumentItem.getUri());
+        LegendServerGlobalState.LegendServerDocumentState docState = this.server.getGlobalState().getOrCreateNotebookDocState(notebookDocumentUri, textDocumentItem.getUri());
         docState.change(textDocumentItem.getVersion(), LineIndexedText.index(textDocumentItem.getText()));
     }
 
@@ -62,7 +63,7 @@ public class LegendNotebookDocumentService implements NotebookDocumentService
         if (structure != null)
         {
             // new cells
-            structure.getDidOpen().forEach(this::openNotebookDocument);
+            structure.getDidOpen().forEach(x -> openNotebookDocument(params.getNotebookDocument().getUri(), x));
             // removed cells
             structure.getDidClose().forEach(this::closeNotebookDocument);
         }

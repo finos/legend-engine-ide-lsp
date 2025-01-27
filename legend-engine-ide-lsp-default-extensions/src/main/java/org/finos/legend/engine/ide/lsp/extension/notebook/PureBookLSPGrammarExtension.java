@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.map.mutable.ConcurrentHashMap;
 import org.eclipse.collections.impl.tuple.Tuples;
 import org.finos.legend.engine.ide.lsp.extension.*;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
@@ -77,6 +78,9 @@ import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.generics.G
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,6 +98,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private static final String PLAN_EXEC_CONTEXT_KEY = "_PLAN_EXEC_CONTEXT";
     private static final FunctionExpressionNavigator FUNCTION_EXPRESSION_NAVIGATOR = new FunctionExpressionNavigator();
     private static final Logger LOGGER = LoggerFactory.getLogger(PureBookLSPGrammarExtension.class);
+    private static final ConcurrentHashMap<String, PureModelContextData> defaultDuckDBElementsIndex = new ConcurrentHashMap<>();
     private DomainParser domainParser;
     private PureGrammarParserContext parserContext;
     private PureLSPGrammarExtension pureGrammarExtension;
@@ -146,7 +151,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         globalState.removeProperty(documentState.getDocumentId() + PLAN_EXEC_CONTEXT_KEY);
     }
 
-    private PureModelContextData createPMCDWithDefaultDuckDBElements()
+    private PureModelContextData createPMCDWithDefaultDuckDBElements(String documentId)
     {
         final String LOCAL_DUCKDB_PACKAGE = "local";
         final String DUCKDB_LOCAL_CONNECTION_BASE_NAME = "DuckDuck";
@@ -154,7 +159,8 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         defaultDuckDBConnection.name = DUCKDB_LOCAL_CONNECTION_BASE_NAME + "Connection";
         defaultDuckDBConnection._package = LOCAL_DUCKDB_PACKAGE;
         DuckDBDatasourceSpecification duckDBDatasourceSpecification = new DuckDBDatasourceSpecification();
-        duckDBDatasourceSpecification.path = Objects.requireNonNull(System.getProperty("storagePath"), "DuckDB file path cannot be null!") + "/purebook_duckdb";
+        String encodedDocumentId = URLEncoder.encode(documentId, StandardCharsets.UTF_8);
+        duckDBDatasourceSpecification.path = Objects.requireNonNull(System.getProperty("storagePath"), "DuckDB storage path cannot be null!") + "/"  + encodedDocumentId + "_duckdb";
         RelationalDatabaseConnection duckDBConnectionValue = new RelationalDatabaseConnection(duckDBDatasourceSpecification, new TestDatabaseAuthenticationStrategy(), DatabaseType.DuckDB);
         duckDBConnectionValue.type = DatabaseType.DuckDB;
         defaultDuckDBConnection.connectionValue = duckDBConnectionValue;
@@ -209,8 +215,10 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     private CompileResult notebookCompile(SectionState sectionState)
     {
         PureModelContextData pmcd = this.pureGrammarExtension.getCompileResult(sectionState).getPureModelContextData();
-        PureModelContextData combinedPmcd = pmcd.combine(createPMCDWithDefaultDuckDBElements());
-        PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(sectionState.getDocumentState().getGlobalState().getForkJoinPool()).build();
+        NotebookDocumentState documentState = (NotebookDocumentState) sectionState.getDocumentState();
+        PureModelContextData defaultDuckDBElements = defaultDuckDBElementsIndex.getIfAbsentPut(documentState.getNotebookDocumentId(), this::createPMCDWithDefaultDuckDBElements);
+        PureModelContextData combinedPmcd = pmcd.combine(defaultDuckDBElements);
+        PureModelProcessParameter pureModelProcessParameter = PureModelProcessParameter.newBuilder().withEnablePartialCompilation(true).withForkJoinPool(documentState.getGlobalState().getForkJoinPool()).build();
         PureModel pureModel = Compiler.compile(combinedPmcd, DeploymentMode.PROD, "", null, pureModelProcessParameter);
         return new CompileResult(pureModel, combinedPmcd);
     }
@@ -232,9 +240,12 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
                     {
                         throw compileResult.getEngineException();
                     }
-                    Database defaultDuckDBDatabase = (Database) compileResult.getPureModelContextData().getElements().stream().filter(element -> element.getPath().equals("local::DuckDuckDatabase")).findFirst().orElseThrow();
+                    PureModelContextData pureModelContextData = compileResult.getPureModelContextData();
+                    Database defaultDuckDBDatabase = (Database) pureModelContextData.getElements().stream().filter(element -> element.getPath().equals("local::DuckDuckDatabase")).findFirst().orElseThrow();
+                    RelationalDatabaseConnection databaseConnection = ConnectionHelper.getDatabaseConnection(pureModelContextData, "local::DuckDuckConnection");
+                    Connection connection = ConnectionHelper.getConnection(databaseConnection, this.pureGrammarExtension.getPlanExecutor());
                     return Tuples.<LambdaFunction<?>, Lambda>pair(HelperValueSpecificationBuilder.buildLambdaWithContext("", x.body, x.parameters, pureModel.getContext(), new ProcessingContext("build Lambda"),
-                                    ((compileContext, openVariables, processingContext) -> new ValueSpecificationBuilderNotebook(compileContext, openVariables, processingContext, defaultDuckDBDatabase))), x);
+                                    ((compileContext, openVariables, processingContext) -> new PureBookValueSpecificationBuilder(compileContext, openVariables, processingContext, defaultDuckDBDatabase, connection))), x);
                 }
                 // when we complete compiling, trigger plan generation on the background to improve user experience...
         ).whenCompleteAsync((l, e) -> this.generatePlan(sectionState), sectionState.getDocumentState().getGlobalState().getForkJoinPool());

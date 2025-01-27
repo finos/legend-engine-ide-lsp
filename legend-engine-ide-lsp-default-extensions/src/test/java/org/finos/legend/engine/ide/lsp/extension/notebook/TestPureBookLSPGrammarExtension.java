@@ -96,7 +96,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void diagnostics()
     {
-        SectionState goodSection = stateForTestFactory.newPureBookSectionState("good.purebook", "1 + 1");
+        SectionState goodSection = stateForTestFactory.newPureBookSectionState("good.purebook", "purebook_cell1", "1 + 1");
         Iterable<? extends LegendDiagnostic> noDiagnostics = this.extension.getDiagnostics(goodSection);
 
         Assertions.assertEquals(
@@ -104,23 +104,23 @@ public class TestPureBookLSPGrammarExtension
                 noDiagnostics
         );
 
-        SectionState parseFailure = stateForTestFactory.newPureBookSectionState("parse_problem.purebook", "1 +");
+        SectionState parseFailure = stateForTestFactory.newPureBookSectionState("parse_problem.purebook", "purebook_cell1", "1 +");
         Iterable<? extends LegendDiagnostic> parseDiagnostics = this.extension.getDiagnostics(parseFailure);
 
         Assertions.assertEquals(
-                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("parse_problem.purebook", 0, 2, 0, 2), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)),
+                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("purebook_cell1", 0, 2, 0, 2), "Unexpected token", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Parser)),
                 parseDiagnostics
         );
 
-        SectionState compileFailure = stateForTestFactory.newPureBookSectionState("compile_problem.purebook", "does::not::exists()");
+        SectionState compileFailure = stateForTestFactory.newPureBookSectionState("compile_problem.purebook", "purebook_cell1", "does::not::exists()");
         Iterable<? extends LegendDiagnostic> compileDiagnostics = this.extension.getDiagnostics(compileFailure);
 
         Assertions.assertEquals(
-                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("compile_problem.purebook", 0, 0, 0, 16), "Can't resolve the builder for function 'does::not::exists' - stack:[build Lambda, new lambda, Applying does::not::exists]", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
+                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("purebook_cell1", 0, 0, 0, 16), "Can't resolve the builder for function 'does::not::exists' - stack:[build Lambda, new lambda, Applying does::not::exists]", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
                 compileDiagnostics
         );
 
-        SectionState wrongUsageOfPureBook = stateForTestFactory.newSectionState("wrongUsageOfPureBook.pure", "###purebook\n1 + 1");
+        SectionState wrongUsageOfPureBook = stateForTestFactory.newSectionState("wrongUsageOfPureBook.pure",  "###purebook\n1 + 1");
         Iterable<? extends LegendDiagnostic> wrongUsageOfPureBookDiagnostic = this.extension.getDiagnostics(wrongUsageOfPureBook);
 
         Assertions.assertEquals(
@@ -133,13 +133,13 @@ public class TestPureBookLSPGrammarExtension
     void references()
     {
         SectionState pureCode = stateForTestFactory.newSectionState("func.pure", "function hello::world():Any[1]{ 1 + 1 }");
-        SectionState notebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "hello::world()");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "purebook_cell1", "hello::world()");
 
         List<LegendReference> references = this.extension.getLegendReferences(notebook).collect(Collectors.toList());
 
         Assertions.assertEquals(
                 List.of(LegendReference.builder()
-                        .withLocation("notebook.purebook", 0, 0, 0, 11)
+                        .withLocation("purebook_cell1", 0, 0, 0, 11)
                         .withDeclarationLocation(TextLocation.newTextSource("func.pure", 0, 0, 0, 38))
                         .build()
                 ),
@@ -151,7 +151,7 @@ public class TestPureBookLSPGrammarExtension
     void executeCell()
     {
         SectionState pureCode = stateForTestFactory.newSectionState("func.pure", "function hello::world():Any[1]{ 1 + 1 }");
-        SectionState notebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "hello::world()");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "purebook_cell1", "hello::world()");
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "2", null, notebook.getDocumentState().getDocumentId(), 0, Map.of())),
                 this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test"))
@@ -165,13 +165,13 @@ public class TestPureBookLSPGrammarExtension
                 this.extension.execute(notebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test"))
         );
 
-        SectionState emptyNotebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "");
+        SectionState emptyNotebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell2", "");
         Assertions.assertEquals(
                 List.of(FunctionExecutionSupport.FunctionLegendExecutionResult.newResult("notebook_cell", LegendExecutionResult.Type.SUCCESS, "[]", "Nothing to execute!", emptyNotebook.getDocumentState().getDocumentId(), 0, Map.of())),
                 this.extension.execute(emptyNotebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test"))
         );
 
-        SectionState cannotCompileNotebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "1 + 1 +");
+        SectionState cannotCompileNotebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell3", "1 + 1 +");
         LegendExecutionResult compileFailure = this.extension.execute(cannotCompileNotebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test")).iterator().next();
         Assertions.assertEquals(
                 LegendExecutionResult.Type.ERROR,
@@ -182,7 +182,7 @@ public class TestPureBookLSPGrammarExtension
                 compileFailure.getMessage()
         );
 
-        SectionState failExecNotebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "let a = hello::world();\nlet b = hello::world();");
+        SectionState failExecNotebook = stateForTestFactory.newPureBookSectionState(pureCode.getDocumentState().getGlobalState(), "notebook.purebook", "purebook_cell4", "let a = hello::world();\nlet b = hello::world();");
         LegendExecutionResult planGenFailure = this.extension.execute(failExecNotebook, "notebook", "executeCell", Map.of(), Map.of(), pureCode.getDocumentState().getGlobalState().cancellationToken("test")).iterator().next();
         Assertions.assertEquals(
                 LegendExecutionResult.Type.ERROR,
@@ -290,7 +290,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void relationRendering()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell1", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
@@ -315,7 +315,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void relationExecuteCellReturnsLambdaWhenFlagIsTrue()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell1", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
@@ -323,16 +323,16 @@ public class TestPureBookLSPGrammarExtension
         String expectedMessage = "{\"_type\":\"lambda\",\"body\":[{\"_type\":\"func\",\"function\":\"from\"," +
                 "\"parameters\":[{\"_type\":\"func\",\"function\":\"select\"," +
                 "\"parameters\":[{\"_type\":\"classInstance\",\"sourceInformation\":{\"endColumn\":30,\"endLine\":1," +
-                "\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1},\"type\":\">\"," +
+                "\"sourceId\":\"purebook_cell1\",\"startColumn\":1,\"startLine\":1},\"type\":\">\"," +
                 "\"value\":{\"path\":[\"test::h2Store\",\"personTable\"],\"sourceInformation\":{\"endColumn\":30," +
-                "\"endLine\":1,\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1}}}]," +
-                "\"sourceInformation\":{\"endColumn\":38,\"endLine\":1,\"sourceId\":\"notebook.purebook\"," +
+                "\"endLine\":1,\"sourceId\":\"purebook_cell1\",\"startColumn\":1,\"startLine\":1}}}]," +
+                "\"sourceInformation\":{\"endColumn\":38,\"endLine\":1,\"sourceId\":\"purebook_cell1\"," +
                 "\"startColumn\":33,\"startLine\":1}},{\"_type\":\"packageableElementPtr\"," +
                 "\"fullPath\":\"test::h2Runtime\",\"sourceInformation\":{\"endColumn\":62,\"endLine\":1," +
-                "\"sourceId\":\"notebook.purebook\",\"startColumn\":48,\"startLine\":1}}]," +
-                "\"sourceInformation\":{\"endColumn\":46,\"endLine\":1,\"sourceId\":\"notebook.purebook\"," +
+                "\"sourceId\":\"purebook_cell1\",\"startColumn\":48,\"startLine\":1}}]," +
+                "\"sourceInformation\":{\"endColumn\":46,\"endLine\":1,\"sourceId\":\"purebook_cell1\"," +
                 "\"startColumn\":43,\"startLine\":1}}],\"parameters\":[],\"sourceInformation\":{\"endColumn\":63," +
-                "\"endLine\":1,\"sourceId\":\"notebook.purebook\",\"startColumn\":1,\"startLine\":1}}";
+                "\"endLine\":1,\"sourceId\":\"purebook_cell1\",\"startColumn\":1,\"startLine\":1}}";
         Iterable<? extends LegendExecutionResult> actual = this.extension.execute(notebook, "notebook", "executeCell",
                 Map.of("requestId", "123456", "enableDataCube", "true"), Map.of(),
                 notebook.getDocumentState().getGlobalState().cancellationToken("test"));
@@ -346,7 +346,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void completions()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell1", "#>");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
@@ -359,7 +359,7 @@ public class TestPureBookLSPGrammarExtension
                 storeCompletions
         );
 
-        notebook = stateForTestFactory.newPureBookSectionState(gs, "notebook.purebook", "#>{test::h2Store.");
+        notebook = stateForTestFactory.newPureBookSectionState(gs, "notebook.purebook","purebook_cell2", "#>{test::h2Store.");
 
         Set<LegendCompletion> tableCompletions = new HashSet<>();
         this.extension.getCompletions(notebook, TextPosition.newPosition(0, 17)).forEach(tableCompletions::add);
@@ -374,7 +374,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void queryTypeahead()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell1", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
@@ -403,7 +403,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void cancel()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell1", "#>{test::h2Store.personTable}#->select()->from(test::h2Runtime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
@@ -420,7 +420,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void testWriteUsingDifferentRuntimes()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::anotherH2Store.anotherPersonTable}#->select(~[fullName])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell1", "#>{test::anotherH2Store.anotherPersonTable}#->select(~[fullName])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
@@ -434,7 +434,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void testWriteUsingDifferentRuntimesAndSchemasSpecified()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::anotherH2Store.exampleSchema.personTable}#->select()->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell1", "#>{test::anotherH2Store.exampleSchema.personTable}#->select()->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
@@ -448,7 +448,7 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void testWriteUsingDifferentRuntimesAndFilteredColumns()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "#>{test::anotherH2Store.exampleSchema.personTable}#->select(~[fullName, id])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("notebook.purebook", "purebook_cell1", "#>{test::anotherH2Store.exampleSchema.personTable}#->select(~[fullName, id])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(#>{local::DuckDuckDatabase.MYTABLE}#)->from(local::DuckDuckRuntime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
@@ -462,13 +462,13 @@ public class TestPureBookLSPGrammarExtension
     @Test
     void testWriteWithWrongValueSpecificationAsParam()
     {
-        SectionState notebook = stateForTestFactory.newPureBookSectionState("compile_problem.purebook", "#>{test::anotherH2Store.exampleSchema.personTable}#->select(~[fullName])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(local::DuckDuckDatabase.MYSCHEMA.MYTABLE)->from(local::DuckDuckRuntime)");
+        SectionState notebook = stateForTestFactory.newPureBookSectionState("compile_problem.purebook", "purebook_cell1", "#>{test::anotherH2Store.exampleSchema.personTable}#->select(~[fullName])->filter(n|$n == 'John')->from(test::anotherH2Runtime)->write(local::DuckDuckDatabase.MYSCHEMA.MYTABLE)->from(local::DuckDuckRuntime)");
         GlobalState gs = notebook.getDocumentState().getGlobalState();
         MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
         stateForTestFactory.newSectionStates(gs, codeFiles);
         Iterable<? extends LegendDiagnostic> compileDiagnostics = this.extension.getDiagnostics(notebook);
         Assertions.assertEquals(
-                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("compile_problem.purebook", 0, 158, 0, 165), "Can't find property 'MYSCHEMA' in class 'meta::relational::metamodel::Database'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
+                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("purebook_cell1", 0, 158, 0, 165), "Can't find property 'MYSCHEMA' in class 'meta::relational::metamodel::Database'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
                 compileDiagnostics
         );
     }
