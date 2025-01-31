@@ -26,11 +26,11 @@ import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRelation
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.ProcessingContext;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.SourceInformationHelper;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.ValueSpecificationBuilder;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.AppliedFunction;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.ValueSpecificationVisitor;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Column;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Schema;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecificationVisitor;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedFunction;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.ClassInstance;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.classInstance.relation.RelationStoreAccessor;
 import org.finos.legend.engine.shared.core.ObjectMapperFactory;
@@ -175,7 +175,7 @@ public class PureBookValueSpecificationBuilder extends ValueSpecificationBuilder
         if (appliedFunction.function.equals("write"))
         {
             // Process second parameter of write()
-            org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeSecondParameter = appliedFunction.parameters.get(1);
+            org.finos.legend.engine.protocol.pure.m3.valuespecification.ValueSpecification writeSecondParameter = appliedFunction.parameters.get(1);
             if (writeSecondParameter instanceof ClassInstance)
             {
                 ClassInstance classInstance = (ClassInstance) writeSecondParameter;
@@ -193,7 +193,7 @@ public class PureBookValueSpecificationBuilder extends ValueSpecificationBuilder
                             String targetTableName = paths.get(paths.size() - 1);
 
                             // Process first parameter of write()
-                            org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification writeFirstParameter = appliedFunction.parameters.get(0);
+                            org.finos.legend.engine.protocol.pure.m3.valuespecification.ValueSpecification writeFirstParameter = appliedFunction.parameters.get(0);
                             ValueSpecification compiledParameter = writeFirstParameter.accept(this);
                             RelationType relationType = (RelationType) compiledParameter._genericType()._typeArguments().getFirst()._rawType();
                             MutableList<org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Column> incomingColumns = relationType._columns().collect(c ->

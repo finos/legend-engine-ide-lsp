@@ -21,7 +21,7 @@ import java.util.Set;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
-import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
 
 interface CommandsSupport
 {

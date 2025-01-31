@@ -29,9 +29,9 @@ import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.protocol.functionActivator.metamodel.FunctionActivator;
+import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContext;
-import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

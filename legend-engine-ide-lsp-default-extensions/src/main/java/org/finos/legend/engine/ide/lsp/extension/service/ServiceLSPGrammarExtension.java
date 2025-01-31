@@ -71,6 +71,9 @@ import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
 import org.finos.legend.engine.protocol.Protocol;
 import org.finos.legend.engine.protocol.pure.PureClientVersions;
+import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.multiplicity.Multiplicity;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.context.AlloySDLC;
 import org.finos.legend.engine.protocol.pure.v1.model.context.EngineErrorType;
@@ -79,8 +82,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElement
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
-import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.domain.Multiplicity;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.Execution;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.KeyedExecutionParameter;
@@ -92,7 +93,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.service.ServiceTestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.test.AtomicTest;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;

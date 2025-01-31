@@ -41,7 +41,7 @@ import org.finos.legend.engine.ide.lsp.extension.test.LegendTestExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
-import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.result.DataTypeResultType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.RuntimePointer;

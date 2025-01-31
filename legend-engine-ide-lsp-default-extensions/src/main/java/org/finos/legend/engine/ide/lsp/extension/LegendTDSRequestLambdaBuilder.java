@@ -27,11 +27,11 @@ import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSAggregation;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
-import org.finos.legend.engine.protocol.pure.v1.model.domain.Multiplicity;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.ValueSpecification;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.Variable;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedFunction;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.application.AppliedProperty;
+import org.finos.legend.engine.protocol.pure.m3.multiplicity.Multiplicity;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.AppliedFunction;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.AppliedProperty;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.ValueSpecification;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.Variable;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Collection;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CBoolean;
@@ -42,7 +42,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.dat
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CStrictDate;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CString;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.PrimitiveValueSpecification;
-
 
 public class LegendTDSRequestLambdaBuilder 
 {
