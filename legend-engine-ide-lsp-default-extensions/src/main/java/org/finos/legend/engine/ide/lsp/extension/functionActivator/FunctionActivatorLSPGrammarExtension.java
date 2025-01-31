@@ -24,8 +24,8 @@ import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.grammar.from.extension.PureGrammarParserExtension;
 import org.finos.legend.engine.protocol.functionActivator.metamodel.FunctionActivator;
-import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.domain.Function;
+import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.function.Function;
 import org.finos.legend.pure.generated.Root_meta_external_function_activator_FunctionActivator;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 

@@ -20,8 +20,8 @@ import java.util.List;
 import org.finos.legend.engine.language.hostedService.grammar.from.HostedServiceGrammarParserExtension;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperModelBuilder;
 import org.finos.legend.engine.language.pure.grammar.to.HelperValueSpecificationGrammarComposer;
-import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.domain.Function;
+import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.function.Function;
 
 public class HostedServiceLSPGrammarExtension extends FunctionActivatorLSPGrammarExtension
 {

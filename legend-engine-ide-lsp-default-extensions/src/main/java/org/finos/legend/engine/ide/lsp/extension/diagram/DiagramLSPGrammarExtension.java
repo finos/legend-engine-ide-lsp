@@ -21,7 +21,7 @@ import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.grammar.from.DiagramParserExtension;
-import org.finos.legend.engine.protocol.pure.v1.model.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.diagram.Diagram;
 
 public class DiagramLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension
