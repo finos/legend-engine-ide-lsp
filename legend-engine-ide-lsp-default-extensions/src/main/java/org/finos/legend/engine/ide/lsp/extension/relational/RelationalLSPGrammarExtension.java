@@ -16,9 +16,7 @@
 
 package org.finos.legend.engine.ide.lsp.extension.relational;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -28,26 +26,19 @@ import org.eclipse.collections.api.factory.Lists;
 import org.eclipse.collections.api.list.ImmutableList;
 import org.eclipse.collections.impl.block.factory.Functions;
 import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
-import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.connection.ConnectionLSPGrammarProvider;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.mapping.MappingLSPGrammarProvider;
-import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
-import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRelationalBuilder;
-import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.language.pure.grammar.from.RelationalGrammarParserExtension;
 import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
-import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.Connection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.AssociationMapping;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.mapping.ClassMapping;
@@ -72,7 +63,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.r
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.JoinPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.RelationalOperationElement;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.operation.TableAliasColumn;
-import org.finos.legend.pure.generated.core_relational_relational_autogeneration_relationalToPure;
 import org.finos.legend.pure.m2.relational.M2RelationalPaths;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.mapping.SetImplementation;
 import org.finos.legend.pure.m3.coreinstance.meta.relational.mapping.RelationalInstanceSetImplementation;
@@ -85,9 +75,6 @@ import org.slf4j.LoggerFactory;
 public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension implements MappingLSPGrammarProvider, ConnectionLSPGrammarProvider
 {
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationalLSPGrammarExtension.class);
-
-    static final String GENERATE_MODEL_MAPPING_COMMAND_ID = "legend.service.generateModel";
-    private static final String GENERATE_MODEL_MAPPING_COMMAND_TITLE = "Generate sample models";
 
     private static final List<String> KEYWORDS = List.of("Database", "Schema", "Table", "View", "include", "Join", "Filter");
 
@@ -190,59 +177,6 @@ public class RelationalLSPGrammarExtension extends AbstractSectionParserLSPGramm
     public Iterable<? extends String> getKeywords()
     {
         return KEYWORDS;
-    }
-
-    @Override
-    protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
-    {
-        super.collectCommands(sectionState, element, consumer);
-        if (element instanceof Database)
-        {
-            Database database = (Database) element;
-            consumer.accept(GENERATE_MODEL_MAPPING_COMMAND_ID, GENERATE_MODEL_MAPPING_COMMAND_TITLE, database.sourceInformation);
-        }
-    }
-
-    @Override
-    public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParams, CancellationToken requestId)
-    {
-        return GENERATE_MODEL_MAPPING_COMMAND_ID.equals(commandId) ? generateModelsFromDatabaseSpecification(section, entityPath) : super.execute(section, entityPath, commandId, executableArgs, Map.of(), requestId);
-    }
-
-    private Iterable<? extends LegendExecutionResult> generateModelsFromDatabaseSpecification(SectionState section, String entityPath)
-    {
-        PackageableElement element = getParseResult(section).getElement(entityPath);
-        TextLocation location = SourceInformationUtil.toLocation(element.sourceInformation);
-        if (!(element instanceof Database))
-        {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.ERROR, "Unable to find database " + entityPath, location));
-        }
-
-        CompileResult compileResult = getCompileResult(section);
-        if (compileResult.hasEngineException())
-        {
-            return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
-        }
-
-        try
-        {
-            PureModel pureModel = compileResult.getPureModel();
-            org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database database = (org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Database) pureModel.getStore(entityPath);
-            String targetPackage = element._package;
-            String result = core_relational_relational_autogeneration_relationalToPure.Root_meta_relational_transform_autogen_classesAssociationsAndMappingFromDatabase_Database_1__String_1__String_1_(database, targetPackage, pureModel.getExecutionSupport());
-            PureModelContextData pmcd = deserializePMCD(result);
-            String code = toGrammar(pmcd);
-            String warning = "***WARNING***\n" +
-                    "These models and mappings are intended only as examples.\n" +
-                    "They should not be considered a replacement for thoughtful modeling.\n" +
-                    "Please review carefully before making any use of them.\n" +
-                    "***WARNING***\n\n\n";
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, warning + code, location));
-        }
-        catch (Exception e)
-        {
-            return Collections.singletonList(errorResult(e, entityPath));
-        }
     }
 
     @Override

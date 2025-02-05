@@ -64,7 +64,7 @@ import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendClientCommand;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCodeLensCommand;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.DocumentState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -551,7 +551,7 @@ public class LegendTextDocumentService implements TextDocumentService
             }
             extension.getCommands(sectionState).forEach(c ->
             {
-                Command command = new Command(c.getTitle(), c instanceof LegendClientCommand ? LegendLanguageServer.LEGEND_CLIENT_COMMAND_ID : LegendCommandExecutionHandler.LEGEND_COMMAND_ID, List.of(uri, sectionState.getSectionNumber(), c.getEntity(), c.getId(), c.getExecutableArgs(), c.getInputParameters()));
+                Command command = new Command(c.getTitle(), c instanceof LegendCodeLensCommand ? LegendLanguageServer.LEGEND_CODELENS_COMMAND_ID : LegendCommandExecutionHandler.LEGEND_COMMAND_ID, List.of(uri, sectionState.getSectionNumber(), c.getEntity(), c.getId(), c.getExecutableArgs(), c.getInputParameters()));
                 codeLenses.add(new CodeLens(LegendToLSPUtilities.toRange(c.getLocation().getTextInterval()), command, null));
             });
         });

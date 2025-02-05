@@ -71,7 +71,6 @@ import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.NotebookDocumentSyncRegistrationOptions;
 import org.eclipse.lsp4j.NotebookSelector;
 import org.eclipse.lsp4j.NotebookSelectorCell;
-import org.eclipse.lsp4j.ProgressParams;
 import org.eclipse.lsp4j.SemanticTokenTypes;
 import org.eclipse.lsp4j.SemanticTokensLegend;
 import org.eclipse.lsp4j.SemanticTokensWithRegistrationOptions;
@@ -79,16 +78,11 @@ import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.SetTraceParams;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
-import org.eclipse.lsp4j.WorkDoneProgressBegin;
-import org.eclipse.lsp4j.WorkDoneProgressEnd;
-import org.eclipse.lsp4j.WorkDoneProgressNotification;
-import org.eclipse.lsp4j.WorkDoneProgressReport;
 import org.eclipse.lsp4j.WorkspaceFolder;
 import org.eclipse.lsp4j.WorkspaceFoldersOptions;
 import org.eclipse.lsp4j.WorkspaceServerCapabilities;
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 import org.eclipse.lsp4j.jsonrpc.ResponseErrorException;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseError;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.launch.LSPLauncher;
@@ -102,7 +96,6 @@ import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPFeature;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarLibrary;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.features.LegendUsageEventConsumer;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.server.request.LegendJsonToPureRequest;
@@ -118,7 +111,7 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private static final Logger LOGGER = LoggerFactory.getLogger(LegendLanguageServer.class);
     private static final Logger LOGGER_CLIENT = LoggerFactory.getLogger(LegendLanguageServer.class.getName() + ".client");
 
-    public static final String LEGEND_CLIENT_COMMAND_ID = "legend.client.command";
+    public static final String LEGEND_CODELENS_COMMAND_ID = "legend.codelens.command";
 
     private static final int UNINITIALIZED = 0;
     private static final int INITIALIZING = 1;
@@ -139,7 +132,6 @@ public class LegendLanguageServer implements LegendLanguageServerContract
     private final Executor executor;
     private final boolean async;
     private final LegendServerGlobalState globalState = new LegendServerGlobalState(this);
-    private final AtomicInteger progressId = new AtomicInteger();
     private final Gson gson = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
     final Set<String> rootFolders = Collections.synchronizedSet(new HashSet<>());
     private final Map<String, String> settings = new ConcurrentHashMap<>();
@@ -825,88 +817,6 @@ public class LegendLanguageServer implements LegendLanguageServerContract
         if (client != null)
         {
             client.showMessage(new MessageParams(messageType, message));
-        }
-    }
-
-    Either<String, Integer> newProgressToken()
-    {
-        return Either.forRight(this.progressId.getAndIncrement());
-    }
-
-    public Either<String, Integer> possiblyNewProgressToken(Either<String, Integer> token)
-    {
-        return (token == null) ? newProgressToken() : token;
-    }
-
-    void notifyBegin(Either<String, Integer> token)
-    {
-        notifyBegin(token, null);
-    }
-
-    public void notifyBegin(Either<String, Integer> token, String message)
-    {
-        notifyBegin(token, message, message);
-    }
-
-    void notifyBegin(Either<String, Integer> token, String message, String title)
-    {
-        WorkDoneProgressBegin begin = new WorkDoneProgressBegin();
-        if (message != null)
-        {
-            begin.setMessage(message);
-        }
-        if (title != null)
-        {
-            begin.setTitle(title);
-        }
-        notifyProgress(token, begin);
-    }
-
-    public void notifyProgress(Either<String, Integer> token, String message)
-    {
-        WorkDoneProgressReport report = new WorkDoneProgressReport();
-        if (message != null)
-        {
-            report.setMessage(message);
-        }
-        notifyProgress(token, report);
-    }
-
-    void notifyResult(Either<String, Integer> token, LegendExecutionResult result)
-    {
-        notifyResults(token, Collections.singletonList(result));
-    }
-
-    void notifyResults(Either<String, Integer> token, Iterable<? extends LegendExecutionResult> results)
-    {
-        LanguageClient client = this.languageClient.get();
-        if (client != null)
-        {
-            client.notifyProgress(new ProgressParams(token, Either.forRight(results)));
-        }
-    }
-
-    void notifyEnd(Either<String, Integer> token)
-    {
-        notifyEnd(token, null);
-    }
-
-    void notifyEnd(Either<String, Integer> token, String message)
-    {
-        WorkDoneProgressEnd end = new WorkDoneProgressEnd();
-        if (message != null)
-        {
-            end.setMessage(message);
-        }
-        notifyProgress(token, end);
-    }
-
-    private void notifyProgress(Either<String, Integer> token, WorkDoneProgressNotification progress)
-    {
-        LanguageClient client = this.languageClient.get();
-        if (client != null)
-        {
-            client.notifyProgress(new ProgressParams(token, Either.forLeft(progress)));
         }
     }
 

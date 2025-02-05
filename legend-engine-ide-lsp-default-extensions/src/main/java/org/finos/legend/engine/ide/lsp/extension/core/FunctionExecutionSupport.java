@@ -39,16 +39,16 @@ import org.finos.legend.engine.entitlement.services.EntitlementModelObjectMapper
 import org.finos.legend.engine.entitlement.services.EntitlementServiceExtension;
 import org.finos.legend.engine.entitlement.services.EntitlementServiceExtensionLoader;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.Constants;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
+import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendInputParameter;
 import org.finos.legend.engine.ide.lsp.extension.repl.extension.LegendREPLExtensionFeature;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
+import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.language.pure.compiler.Compiler;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperRuntimeBuilder;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperValueSpecificationBuilder;
@@ -109,8 +109,8 @@ public interface FunctionExecutionSupport
 {
     Logger LOGGER = LoggerFactory.getLogger(FunctionExecutionSupport.class);
 
+    String GET_EXECUTE_FUNCTION_DESCRIPTION_ID = "legend.function.execute.description";
     String EXECUTE_COMMAND_ID = "legend.function.execute";
-    String EXECUTE_COMMAND_TITLE = "Execute";
     String EXECUTE_QUERY_ID = "legend.query.execute";
     String GET_QUERY_TYPEAHEAD = "legend.query.typeahead";
     String GENERATE_EXECUTION_PLAN_ID = "legend.executionPlan.generate";
@@ -137,6 +137,10 @@ public interface FunctionExecutionSupport
     {
         switch (commandId)
         {
+            case FunctionExecutionSupport.GET_EXECUTE_FUNCTION_DESCRIPTION_ID:
+            {
+                return FunctionExecutionSupport.getExecuteFunctionDescription(executionSupport, section, entityPath);
+            }
             case FunctionExecutionSupport.EXECUTE_COMMAND_ID:
             {
                 return FunctionExecutionSupport.executeFunction(executionSupport, section, entityPath, inputParameters, requestId);
@@ -226,10 +230,21 @@ public interface FunctionExecutionSupport
         );
     }
 
-    static void collectFunctionExecutionCommand(FunctionExecutionSupport executionSupport, PackageableElement element, CompileResult compileResult, CommandConsumer consumer)
+    List<Variable> getParameters(PackageableElement element);
+
+    static Iterable<? extends LegendExecutionResult> getExecuteFunctionDescription(FunctionExecutionSupport executionSupport, SectionState section, String entityPath)
     {
+        AbstractLSPGrammarExtension extension = executionSupport.getExtension();
+
+        CompileResult compileResult = extension.getCompileResult(section);
+        if (compileResult.hasEngineException())
+        {
+            return Collections.singletonList(extension.errorResult(compileResult.getCompileErrorResult(), entityPath));
+        }
+
         List<PackageableElement> elements = compileResult.getPureModelContextData().getElements();
-        Map<String, LegendInputParameter> parameters = Maps.mutable.empty();
+        PackageableElement element = elements.stream().filter(x -> x.getPath().equals(entityPath)).findFirst().orElseThrow(() -> new IllegalArgumentException("Element " + entityPath + " not found"));
+        Map<String, Object> parameters = Maps.mutable.empty();
         List<Variable> funcParameters = executionSupport.getParameters(element);
         if (funcParameters != null && !funcParameters.isEmpty())
         {
@@ -246,10 +261,21 @@ public interface FunctionExecutionSupport
                 }
             });
         }
-        consumer.accept(EXECUTE_COMMAND_ID, EXECUTE_COMMAND_TITLE, element.sourceInformation, Collections.emptyMap(), parameters, LegendCommandType.CLIENT);
-    }
+        String uri = section.getDocumentState().getDocumentId();
+        int sectionNumber = section.getSectionNumber();
+        TextLocation textLocation = SourceInformationUtil.toLocation(element.sourceInformation);
+        List<Object> executeFunctionDescription = List.of(uri, sectionNumber, entityPath, EXECUTE_COMMAND_ID, Collections.emptyMap(), parameters);
 
-    List<Variable> getParameters(PackageableElement element);
+        try
+        {
+            String result = objectMapper.writeValueAsString(executeFunctionDescription);
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, result, textLocation));
+        }
+        catch (Exception e)
+        {
+            return Collections.singletonList(extension.errorResult(e, null, entityPath, textLocation));
+        }
+    }
 
     static Iterable<? extends LegendExecutionResult> executeFunction(FunctionExecutionSupport executionSupport, SectionState section, String entityPath, Map<String, Object> inputParameters, CancellationToken requestId)
     {

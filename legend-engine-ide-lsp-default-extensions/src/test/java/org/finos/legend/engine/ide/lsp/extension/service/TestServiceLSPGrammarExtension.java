@@ -490,27 +490,6 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
     }
 
     @Test
-    public void testCommands()
-    {
-        MutableMap<String, String> codeFiles = this.getCodeFilesThatParseCompile();
-        MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
-        SectionState sectionState = sectionStates.select(x -> x.getExtension() instanceof ServiceLSPGrammarExtension).getOnly();
-
-        List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionState))
-                .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
-        Set<String> expectedCommands = Set.of(FunctionExecutionSupport.EXECUTE_COMMAND_ID, ServiceLSPGrammarExtension.RUN_LEGACY_TESTS_COMMAND_ID);
-        Set<String> actualCommands = Sets.mutable.empty();
-        commands.forEach(c -> actualCommands.add(c.getId()));
-        Assertions.assertEquals(expectedCommands, actualCommands);
-
-        LegendCommand singleServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("vscodelsp::test::TestService1")).findAny().orElseThrow();
-        LegendCommand multiServiceCommand = commands.stream().filter(x -> x.getId().equals(FunctionExecutionSupport.EXECUTE_COMMAND_ID) && x.getEntity().equals("test::service")).findAny().orElseThrow();
-
-        Assertions.assertEquals(Set.of("src"), singleServiceCommand.getInputParameters().keySet());
-        Assertions.assertEquals(Set.of("env", "src"), multiServiceCommand.getInputParameters().keySet());
-    }
-
-    @Test
     void serviceTestsExecution()
     {
         String data =

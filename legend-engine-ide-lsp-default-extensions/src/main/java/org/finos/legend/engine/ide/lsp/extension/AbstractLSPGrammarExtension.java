@@ -43,7 +43,7 @@ import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExpressionNavigator;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendClientCommand;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCodeLensCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
@@ -764,9 +764,9 @@ public abstract class AbstractLSPGrammarExtension implements LegendLSPGrammarExt
     {
         public static LegendCommand newCommand(LegendCommandType type, String path, String id, String title, TextLocation textLocation, Map<String, String> arguments, Map<String, LegendInputParameter> inputParameters)
         {
-            if (type.equals(LegendCommandType.CLIENT))
+            if (type.equals(LegendCommandType.CODELENS))
             {
-                return LegendClientCommand.newCommand(path, id, title, textLocation, arguments, inputParameters);
+                return LegendCodeLensCommand.newCommand(path, id, title, textLocation, arguments, inputParameters);
             }
             return LegendCommand.newCommand(path, id, title, textLocation, arguments, inputParameters);
         }

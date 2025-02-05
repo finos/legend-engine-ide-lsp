@@ -22,8 +22,6 @@ import com.fasterxml.jackson.core.StreamWriteFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,12 +44,12 @@ import org.eclipse.collections.impl.utility.Iterate;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractSectionParserLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
-import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.core.FunctionExecutionSupport;
 import org.finos.legend.engine.ide.lsp.extension.core.PureLSPGrammarExtension;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult.Type;
 import org.finos.legend.engine.ide.lsp.extension.runtime.RuntimeLSPGrammarExtension;
@@ -96,9 +94,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.shared.core.operational.errorManagement.EngineException;
-import org.finos.legend.engine.test.runner.service.RichServiceTestResult;
-import org.finos.legend.engine.test.runner.service.ServiceTestRunner;
-import org.finos.legend.engine.test.runner.shared.TestResult;
 import org.finos.legend.pure.generated.Root_meta_legend_service_metamodel_Execution;
 import org.finos.legend.pure.generated.Root_meta_legend_service_metamodel_PostValidation;
 import org.finos.legend.pure.generated.Root_meta_legend_service_metamodel_PostValidationAssertion;
@@ -113,9 +108,6 @@ import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarExtension implements FunctionExecutionSupport
 {
     private static final List<String> KEYWORDS = List.of("Service", "import");
-
-    static final String RUN_LEGACY_TESTS_COMMAND_ID = "legend.service.runLegacyTests";
-    private static final String RUN_LEGACY_TESTS_COMMAND_TITLE = "Run legacy tests";
 
     static final String REGISTER_SERVICE_COMMAND_ID = "legend.service.registerService";
     private static final String REGISTER_SERVICE_COMMAND_TITLE = "Register service";
@@ -267,26 +259,11 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         if (element instanceof Service)
         {
             Service service = (Service) element;
-            this.collectExecCommand(service, this.getCompileResult(sectionState), consumer);
             if (isEngineServerConfigured())
             {
-                consumer.accept(REGISTER_SERVICE_COMMAND_ID, REGISTER_SERVICE_COMMAND_TITLE, service.sourceInformation);
-            }
-            if (service.test != null)
-            {
-                consumer.accept(RUN_LEGACY_TESTS_COMMAND_ID, RUN_LEGACY_TESTS_COMMAND_TITLE, service.sourceInformation);
+                consumer.accept(REGISTER_SERVICE_COMMAND_ID, REGISTER_SERVICE_COMMAND_TITLE, service.sourceInformation, LegendCommandType.CODELENS);
             }
         }
-    }
-
-    private void collectExecCommand(Service service, CompileResult compileResult, CommandConsumer consumer)
-    {
-        FunctionExecutionSupport.collectFunctionExecutionCommand(
-                this,
-                service,
-                compileResult,
-                consumer
-        );
     }
 
     @Override
@@ -294,10 +271,6 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
     {
         switch (commandId)
         {
-            case RUN_LEGACY_TESTS_COMMAND_ID:
-            {
-                return runLegacyServiceTest(section, entityPath);
-            }
             case REGISTER_SERVICE_COMMAND_ID:
             {
                 return registerService(section, entityPath);
@@ -373,89 +346,6 @@ public class ServiceLSPGrammarExtension extends AbstractSectionParserLSPGrammarE
         Service service = (Service) element;
         PureExecution execution = (PureExecution) service.execution;
         return execution.func;
-    }
-
-    private List<? extends LegendExecutionResult> runLegacyServiceTest(SectionState section, String entityPath)
-    {
-        PackageableElement element = getParseResult(section).getElement(entityPath);
-        if (!(element instanceof Service))
-        {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find service " + entityPath, null));
-        }
-        Service service = (Service) element;
-        TextLocation location = SourceInformationUtil.toLocation(service.sourceInformation);
-        if (service.test == null)
-        {
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, Type.ERROR, "Unable to find legacy test for service " + entityPath, location));
-        }
-
-        CompileResult compileResult = getCompileResult(section);
-        if (compileResult.hasEngineException())
-        {
-            return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
-        }
-
-        PureModel pureModel = compileResult.getPureModel();
-        MutableList<? extends Root_meta_pure_extension_Extension> routerExtensions = PureCoreExtensionLoader.extensions().flatCollect(e -> e.extraPureCoreExtensions(pureModel.getExecutionSupport()));
-        MutableList<PlanTransformer> planTransformers = Iterate.flatCollect(ServiceLoader.load(PlanGeneratorExtension.class), PlanGeneratorExtension::getExtraPlanTransformers, Lists.mutable.empty());
-        ServiceTestRunner testRunner = new ServiceTestRunner(service, null, compileResult.getPureModelContextData(), pureModel, null, getPlanExecutor(), routerExtensions, planTransformers, null);
-
-        List<RichServiceTestResult> richServiceTestResults;
-        try
-        {
-            richServiceTestResults = testRunner.executeTests();
-        }
-        catch (Exception e)
-        {
-            return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
-        }
-
-        MutableList<LegendExecutionResult> results = Lists.mutable.empty();
-        richServiceTestResults.forEach(run ->
-        {
-            Map<String, TestResult> runResults = run.getResults();
-            Map<String, Exception> runExceptions = run.getAssertExceptions();
-            if (runResults != null)
-            {
-                runResults.forEach((key, result) ->
-                {
-                    StringWriter writer = new StringWriter().append(entityPath).append('.').append(key).append(": ").append(result.name());
-                    Exception e = runExceptions.get(key);
-                    if (e != null)
-                    {
-                        try (PrintWriter pw = new PrintWriter(writer.append("\n")))
-                        {
-                            e.printStackTrace(pw);
-                        }
-                    }
-                    results.add(LegendExecutionResult.newResult(Lists.mutable.of(entityPath, result.name()), toResultType(result), writer.toString(), location));
-                });
-            }
-        });
-        return results;
-    }
-
-    private Type toResultType(TestResult testResult)
-    {
-        switch (testResult)
-        {
-            case SUCCESS:
-            {
-                return Type.SUCCESS;
-            }
-            case FAILURE:
-            {
-                return Type.FAILURE;
-            }
-            case ERROR:
-            {
-                return Type.ERROR;
-            }
-            default:
-            {
-                return Type.WARNING;
-            }
-        }
     }
 
     private Iterable<? extends LegendExecutionResult> registerService(SectionState section, String entityPath)

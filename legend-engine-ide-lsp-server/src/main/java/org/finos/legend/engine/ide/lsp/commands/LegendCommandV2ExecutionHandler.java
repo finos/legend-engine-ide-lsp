@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.eclipse.lsp4j.ExecuteCommandParams;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
@@ -56,21 +55,21 @@ public class LegendCommandV2ExecutionHandler implements CommandExecutionHandler
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params, CancellationToken cancellationToken)
+    public Iterable<? extends LegendExecutionResult> executeCommand(ExecuteCommandParams params, CancellationToken cancellationToken)
     {
         List<Object> args = params.getArguments();
 
         if (args.get(1) instanceof JsonObject)
         {
-            return this.executeCommandWithTextLocation(progressToken, args, cancellationToken);
+            return this.executeCommandWithTextLocation(args, cancellationToken);
         }
         else
         {
-            return this.executeCommandWithDocumentAndSection(progressToken, args, cancellationToken);
+            return this.executeCommandWithDocumentAndSection(args, cancellationToken);
         }
     }
 
-    private Iterable<? extends LegendExecutionResult> executeCommandWithDocumentAndSection(Either<String, Integer> progressToken, List<Object> args, CancellationToken cancellationToken)
+    private Iterable<? extends LegendExecutionResult> executeCommandWithDocumentAndSection(List<Object> args, CancellationToken cancellationToken)
     {
         String uri = this.server.extractValueAs(args.get(1), String.class);
         int section = this.server.extractValueAs(args.get(2), Integer.class);
@@ -82,8 +81,6 @@ public class LegendCommandV2ExecutionHandler implements CommandExecutionHandler
         return this.server.runAndFireEvent(id, () ->
         {
             Iterable<? extends LegendExecutionResult> results;
-
-            this.server.notifyBegin(progressToken, entity);
 
             GlobalState globalState = this.server.getGlobalState();
             DocumentState docState = globalState.getDocumentState(uri);
@@ -113,7 +110,7 @@ public class LegendCommandV2ExecutionHandler implements CommandExecutionHandler
         });
     }
 
-    private Iterable<? extends LegendExecutionResult> executeCommandWithTextLocation(Either<String, Integer> progressToken, List<Object> args, CancellationToken cancellationToken)
+    private Iterable<? extends LegendExecutionResult> executeCommandWithTextLocation(List<Object> args, CancellationToken cancellationToken)
     {
         TextLocation textLocation = this.server.extractValueAs(args.get(1), TextLocation.class);
         String id = this.server.extractValueAs(args.get(2), String.class);
@@ -142,8 +139,6 @@ public class LegendCommandV2ExecutionHandler implements CommandExecutionHandler
             }
 
             String entity = extension.getDeclaration(sectionState, start).orElseThrow(() -> new RuntimeException("Could not execute command " + id + " @ " + textLocation + ": no entity found")).getIdentifier();
-
-            this.server.notifyBegin(progressToken, entity);
 
             try
             {
