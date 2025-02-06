@@ -133,7 +133,7 @@ public class LegendWorkspaceService implements WorkspaceService
                         if (handler.getCommandId().equals(LegendLanguageServer.LEGEND_CODELENS_COMMAND_ID))
                         {
                             String actualCodeLensCommandId = this.server.extractValueAs(params.getArguments().get(4), String.class);
-                            this.server.showInfoToClient("Execution of " + actualCodeLensCommandId + " succeeded: " + result.getMessage());
+                            this.server.showInfoToClient("Execution of " + actualCodeLensCommandId + " succeeded!\n" + result.getMessage());
                         }
                         break;
                     case FAILURE:
@@ -145,7 +145,13 @@ public class LegendWorkspaceService implements WorkspaceService
                     }
                     case ERROR:
                     {
-                        this.server.showErrorToClient(result.getMessage());
+                        String messagePrefix = "";
+                        if (handler.getCommandId().equals(LegendLanguageServer.LEGEND_CODELENS_COMMAND_ID))
+                        {
+                            String actualCodeLensCommandId = this.server.extractValueAs(params.getArguments().get(4), String.class);
+                            messagePrefix = "Execution of " + actualCodeLensCommandId + " failed!\n";
+                        }
+                        this.server.showErrorToClient(messagePrefix + result.getMessage());
                         this.server.logErrorToClient(result.getLogMessage(true));
                         break;
                     }

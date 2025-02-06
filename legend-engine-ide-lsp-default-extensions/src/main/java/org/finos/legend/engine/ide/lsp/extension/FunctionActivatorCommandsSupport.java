@@ -19,9 +19,12 @@ package org.finos.legend.engine.ide.lsp.extension;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.StreamWriteFeature;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
@@ -94,12 +97,29 @@ public final class FunctionActivatorCommandsSupport implements CommandsSupport
                 case LEGEND_FUNCTION_ACTIVATOR_VALIDATE:
                 {
                     api = "/functionActivator/validate";
-                    break;
+                    String result = this.extension.postEngineServer(
+                            api,
+                            new FunctionActivatorInput(entityPath, compileResult.getPureModelContextData()),
+                            x -> this.resultMapper.writeValueAsString(this.resultMapper.readTree(x))
+                    );
+                    List<Object> functionActivatorErrors = this.resultMapper.readValue(result, new TypeReference<>(){});
+                    return (functionActivatorErrors.isEmpty()) ?
+                            Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, "", location)) :
+                            Collections.singletonList(this.extension.errorResult(new Throwable(result), entityPath, location));
                 }
                 case LEGEND_FUNCTION_ACTIVATOR_PUBLISH_SANDBOX:
                 {
                     api = "/functionActivator/publishToSandbox";
-                    break;
+                    String result = this.extension.postEngineServer(
+                            api,
+                            new FunctionActivatorInput(entityPath, compileResult.getPureModelContextData()),
+                            x -> this.resultMapper.writeValueAsString(this.resultMapper.readTree(x))
+                    );
+                    HashMap<Object, Object> deploymentResult = this.resultMapper.readValue(result, new TypeReference<>(){});
+                    Boolean deploymentSuccessful = (Boolean) deploymentResult.getOrDefault("successful", false);
+                    return (deploymentSuccessful) ?
+                            Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, result, location)) :
+                            Collections.singletonList(this.extension.errorResult(new Throwable(result), entityPath, location));
                 }
                 default:
                 {
@@ -107,14 +127,6 @@ public final class FunctionActivatorCommandsSupport implements CommandsSupport
                     return Collections.emptyList();
                 }
             }
-
-            String result = this.extension.postEngineServer(
-                    api,
-                    new FunctionActivatorInput(entityPath, compileResult.getPureModelContextData()),
-                    x -> this.resultMapper.writeValueAsString(this.resultMapper.readTree(x))
-            );
-
-            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, result, location));
         }
         catch (Exception e)
         {
