@@ -298,7 +298,8 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
 
         List<PackageableElement> elements = compileResult.getPureModelContextData().getElements();
         PackageableElement element = elements.stream().filter(x -> x.getPath().equals(entityPath)).findFirst().orElseThrow(() -> new IllegalArgumentException("Element " + entityPath + " not found"));
-        Map<String, String> snippets = section.getDocumentState().getGlobalState().findGrammarExtensionThatImplements(FunctionActivatorLSPGrammarExtension.class).collect(Collectors.toMap(LegendLSPExtension::getName, x -> x.getSnippet((Function) element, compileResult.getPureModelContextData().getElements())));
+        Function function = (Function) element;
+        Map<String, String> snippets = section.getDocumentState().getGlobalState().findGrammarExtensionThatImplements(FunctionActivatorLSPGrammarExtension.class).collect(Collectors.toMap(LegendLSPExtension::getName, x -> x.getSnippet(function, elements)));
         TextLocation textLocation = SourceInformationUtil.toLocation(element.sourceInformation);
         try
         {
