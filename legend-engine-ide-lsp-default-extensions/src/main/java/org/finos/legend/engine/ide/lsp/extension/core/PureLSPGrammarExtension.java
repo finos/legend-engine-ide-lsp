@@ -36,7 +36,6 @@ import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.impl.lazy.CompositeIterable;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLegacyParserLSPGrammarExtension;
-import org.finos.legend.engine.ide.lsp.extension.CommandConsumer;
 import org.finos.legend.engine.ide.lsp.extension.CompileResult;
 import org.finos.legend.engine.ide.lsp.extension.Constants;
 import org.finos.legend.engine.ide.lsp.extension.LegendLSPExtension;
@@ -44,7 +43,6 @@ import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.SourceInformationUtil;
 import org.finos.legend.engine.ide.lsp.extension.completion.LegendCompletion;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.functionActivator.FunctionActivatorLSPGrammarExtension;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
@@ -131,8 +129,7 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
                     "   attributeName: attributeType [attributeMultiplicity];\n" +
                     "}\n");
 
-    protected static final String ACTIVATE_FUNCTION_ID = "legend.pure.activateFunction";
-    private static final String ACTIVATE_FUNCTION_TITLE = "Activate";
+    protected static final String GET_FUNCTION_ACTIVATOR_SNIPPETS_ID = "legend.pure.functionActivator.snippets";
 
     public PureLSPGrammarExtension()
     {
@@ -143,31 +140,6 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
     public Iterable<? extends String> getKeywords()
     {
         return KEYWORDS;
-    }
-
-    @Override
-    protected void collectCommands(SectionState sectionState, PackageableElement element, CommandConsumer consumer)
-    {
-        super.collectCommands(sectionState, element, consumer);
-        if (element instanceof Function)
-        {
-            CompileResult compileResult = getCompileResult(sectionState);
-            if (!compileResult.hasEngineException())
-            {
-                Function function = (Function) element;
-                SourceInformation sourceInformation = function.sourceInformation;
-
-                FunctionExecutionSupport.collectFunctionExecutionCommand(
-                        this,
-                        function,
-                        compileResult,
-                        consumer
-                );
-
-                Map<String, String> arguments = sectionState.getDocumentState().getGlobalState().findGrammarExtensionThatImplements(FunctionActivatorLSPGrammarExtension.class).collect(Collectors.toMap(LegendLSPExtension::getName, x -> x.getSnippet((Function) element, compileResult.getPureModelContextData().getElements())));
-                consumer.accept(ACTIVATE_FUNCTION_ID, ACTIVATE_FUNCTION_TITLE, sourceInformation, arguments, Collections.emptyMap(), LegendCommandType.CLIENT);
-            }
-        }
     }
 
     @Override
@@ -316,10 +288,43 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return Stream.concat(functionDefinitionReference, messageFunctionReference);
     }
 
+    protected Iterable<? extends LegendExecutionResult> getFunctionActivatorSnippets(SectionState section, String entityPath)
+    {
+        CompileResult compileResult = this.getCompileResult(section);
+        if (compileResult.hasEngineException())
+        {
+            return Collections.singletonList(errorResult(compileResult.getCompileErrorResult(), entityPath));
+        }
+
+        List<PackageableElement> elements = compileResult.getPureModelContextData().getElements();
+        PackageableElement element = elements.stream().filter(x -> x.getPath().equals(entityPath)).findFirst().orElseThrow(() -> new IllegalArgumentException("Element " + entityPath + " not found"));
+        Map<String, String> snippets = section.getDocumentState().getGlobalState().findGrammarExtensionThatImplements(FunctionActivatorLSPGrammarExtension.class).collect(Collectors.toMap(LegendLSPExtension::getName, x -> x.getSnippet((Function) element, compileResult.getPureModelContextData().getElements())));
+        TextLocation textLocation = SourceInformationUtil.toLocation(element.sourceInformation);
+        try
+        {
+            String result = objectMapper.writeValueAsString(snippets);
+            return Collections.singletonList(LegendExecutionResult.newResult(entityPath, LegendExecutionResult.Type.SUCCESS, result, textLocation));
+        }
+        catch (Exception e)
+        {
+            return Collections.singletonList(errorResult(e, null, entityPath, textLocation));
+        }
+    }
+
     @Override
     public Iterable<? extends LegendExecutionResult> execute(SectionState section, String entityPath, String commandId, Map<String, String> executableArgs, Map<String, Object> inputParameters, CancellationToken requestId)
     {
-        return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParameters, requestId);
+        switch (commandId)
+        {
+            case GET_FUNCTION_ACTIVATOR_SNIPPETS_ID:
+            {
+                return getFunctionActivatorSnippets(section, entityPath);
+            }
+            default:
+            {
+                return FunctionExecutionSupport.execute(this, section, entityPath, commandId, executableArgs, inputParameters, requestId);
+            }
+        }
     }
 
     @Override

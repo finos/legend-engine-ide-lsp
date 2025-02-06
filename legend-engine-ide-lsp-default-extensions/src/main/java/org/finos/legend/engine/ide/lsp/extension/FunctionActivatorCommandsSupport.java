@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommandType;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
@@ -68,8 +69,8 @@ public final class FunctionActivatorCommandsSupport implements CommandsSupport
     {
         if (element instanceof FunctionActivator && this.extension.isEngineServerConfigured())
         {
-            consumer.accept(LEGEND_FUNCTION_ACTIVATOR_VALIDATE, "Validate", element.sourceInformation);
-            consumer.accept(LEGEND_FUNCTION_ACTIVATOR_PUBLISH_SANDBOX, "Publish to Sandbox", element.sourceInformation);
+            consumer.accept(LEGEND_FUNCTION_ACTIVATOR_VALIDATE, "Validate", element.sourceInformation, LegendCommandType.CODELENS);
+            consumer.accept(LEGEND_FUNCTION_ACTIVATOR_PUBLISH_SANDBOX, "Publish to Sandbox", element.sourceInformation, LegendCommandType.CODELENS);
         }
     }
 

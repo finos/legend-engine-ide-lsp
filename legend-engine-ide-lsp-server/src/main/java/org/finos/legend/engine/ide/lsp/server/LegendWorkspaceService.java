@@ -48,6 +48,7 @@ import org.eclipse.lsp4j.jsonrpc.messages.ResponseErrorCode;
 import org.eclipse.lsp4j.services.WorkspaceService;
 import org.finos.legend.engine.ide.lsp.commands.CommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.commands.LegendCancelCommandExecutionHandler;
+import org.finos.legend.engine.ide.lsp.commands.LegendCodeLensCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.commands.LegendCommandExecutionHandler;
 import org.finos.legend.engine.ide.lsp.commands.LegendCommandV2ExecutionHandler;
 import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
@@ -71,6 +72,7 @@ public class LegendWorkspaceService implements WorkspaceService
         this.server = server;
         this.addCommandExecutionHandler(new LegendCommandExecutionHandler(server));
         this.addCommandExecutionHandler(new LegendCommandV2ExecutionHandler(server));
+        this.addCommandExecutionHandler(new LegendCodeLensCommandExecutionHandler(server));
         this.addCommandExecutionHandler(new LegendCancelCommandExecutionHandler(server));
     }
 
@@ -116,20 +118,23 @@ public class LegendWorkspaceService implements WorkspaceService
     private Object doExecuteCommand(ExecuteCommandParams params, CancellationToken cancellationToken)
     {
         String command = params.getCommand();
-        Either<String, Integer> progressToken = this.server.possiblyNewProgressToken(params.getWorkDoneToken());
         Iterable<? extends LegendExecutionResult> results;
         try
         {
             this.server.logInfoToClient("Execute command: " + command);
 
             CommandExecutionHandler handler = this.commandExecutionHandlers.get(command);
-            results = handler.executeCommand(progressToken, params, cancellationToken);
-            this.server.notifyResults(progressToken, results);
+            results = handler.executeCommand(params, cancellationToken);
             results.forEach(result ->
             {
                 switch (result.getType())
                 {
                     case SUCCESS:
+                        if (handler.getCommandId().equals(LegendLanguageServer.LEGEND_CODELENS_COMMAND_ID))
+                        {
+                            String actualCodeLensCommandId = this.server.extractValueAs(params.getArguments().get(4), String.class);
+                            this.server.showInfoToClient("Execution of " + actualCodeLensCommandId + " succeeded: " + result.getMessage());
+                        }
                         break;
                     case FAILURE:
                     case WARNING:
@@ -161,7 +166,6 @@ public class LegendWorkspaceService implements WorkspaceService
         finally
         {
             this.server.logInfoToClient("Execute command finished: " + command);
-            this.server.notifyEnd(progressToken);
         }
         return results;
     }

@@ -23,9 +23,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.eclipse.collections.api.factory.Lists;
+import java.util.stream.StreamSupport;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.collections.api.factory.Maps;
-import org.eclipse.collections.api.factory.Sets;
 import org.eclipse.collections.api.list.MutableList;
 import org.eclipse.collections.api.map.MutableMap;
 import org.finos.legend.engine.ide.lsp.extension.AbstractLSPGrammarExtensionTest;
@@ -34,7 +37,7 @@ import org.finos.legend.engine.ide.lsp.extension.declaration.LegendDeclaration;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Kind;
 import org.finos.legend.engine.ide.lsp.extension.diagnostic.LegendDiagnostic.Source;
-import org.finos.legend.engine.ide.lsp.extension.execution.LegendCommand;
+import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.reference.LegendReference;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.ide.lsp.extension.test.LegendTest;
@@ -457,12 +460,6 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                         "}\n";
 
         SectionState sectionState = newSectionState("docId", code);
-        List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionState))
-                .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
-        Set<String> expectedCommands = Set.of(FunctionExecutionSupport.EXECUTE_COMMAND_ID, PureLSPGrammarExtension.ACTIVATE_FUNCTION_ID);
-        Set<String> actualCommands = Sets.mutable.empty();
-        commands.forEach(c -> actualCommands.add(c.getId()));
-        Assertions.assertEquals(expectedCommands, actualCommands);
 
         List<LegendTest> legendTests = this.extension.testCases(sectionState);
         Assertions.assertEquals(1, legendTests.size());
@@ -488,7 +485,7 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
     }
 
     @Test
-    void activateFunction()
+    void activateFunction() throws JsonProcessingException
     {
         MutableMap<String, String> codeFiles = Maps.mutable.empty();
         codeFiles.put("Relational",
@@ -552,10 +549,12 @@ public class TestPureLSPGrammarExtension extends AbstractLSPGrammarExtensionTest
                 "  #>{showcase::model::Test.FirmTable}#->filter(x | $x.id == 1);\n" +
                 "}");
         MutableList<SectionState> sectionStates = newSectionStates(codeFiles);
-        List<? extends LegendCommand> commands = Lists.mutable.ofAll(this.extension.getCommands(sectionStates.get(2)))
-                .sortThis(Comparator.comparing(LegendCommand::getId).thenComparing(x -> x.getLocation().getTextInterval().getStart().getLine()));
-        LegendCommand legendCommand = commands.stream().filter(c -> c.getId().equals(PureLSPGrammarExtension.ACTIVATE_FUNCTION_ID)).findAny().orElseThrow();
-        Map<String, String> functionActivatorSnippets = legendCommand.getExecutableArgs();
+        SectionState sectionContainingFunction = sectionStates.get(2);
+        Iterable<? extends LegendExecutionResult> results = this.extension.getFunctionActivatorSnippets(sectionContainingFunction, "showcase::model::testFunction_String_1__Boolean_MANY__RelationStoreAccessor_MANY_");
+        List<? extends LegendExecutionResult> resultList = StreamSupport.stream(results.spliterator(), false).collect(Collectors.toList());
+        Assertions.assertEquals(1, resultList.size());
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, String> functionActivatorSnippets = objectMapper.readValue(resultList.get(0).getMessage(), new TypeReference<>() {});
         String expectedSnowflakeSnippet = "\n" +
                 "\n" +
                 "###Snowflake\n" +

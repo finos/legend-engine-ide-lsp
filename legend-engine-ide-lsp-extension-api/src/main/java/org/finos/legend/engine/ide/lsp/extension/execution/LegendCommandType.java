@@ -16,6 +16,6 @@ package org.finos.legend.engine.ide.lsp.extension.execution;
 
 public enum LegendCommandType
 {
-    CLIENT,
+    CODELENS,
     SERVER;
 }

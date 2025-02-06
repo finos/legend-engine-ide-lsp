@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Goldman Sachs
+ * Copyright 2025 Goldman Sachs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,34 +16,30 @@
 
 package org.finos.legend.engine.ide.lsp.commands;
 
-import java.util.List;
 import org.eclipse.lsp4j.ExecuteCommandParams;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
 
-public class LegendCancelCommandExecutionHandler implements CommandExecutionHandler
+public class LegendCodeLensCommandExecutionHandler implements CommandExecutionHandler
 {
-    public static final String LEGEND_CANCEL_COMMAND_ID = "legend.cancel.command";
+    private final LegendCommandV2ExecutionHandler impl;
 
-    private final LegendLanguageServer server;
-
-    public LegendCancelCommandExecutionHandler(LegendLanguageServer server)
+    public LegendCodeLensCommandExecutionHandler(LegendLanguageServer server)
     {
-        this.server = server;
+        this.impl = new LegendCommandV2ExecutionHandler(server);
     }
 
     @Override
     public String getCommandId()
     {
-        return LEGEND_CANCEL_COMMAND_ID;
+        return LegendLanguageServer.LEGEND_CODELENS_COMMAND_ID;
     }
 
     @Override
     public Iterable<? extends LegendExecutionResult> executeCommand(ExecuteCommandParams params, CancellationToken cancellationToken)
     {
-        String requestId = this.server.extractValueAs(params.getArguments().get(0), String.class);
-        this.server.getGlobalState().cancellationToken(requestId).cancel();
-        return List.of();
+        params.getArguments().add(0, cancellationToken.getId());
+        return this.impl.executeCommand(params, cancellationToken);
     }
 }

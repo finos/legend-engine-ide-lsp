@@ -17,7 +17,6 @@
 package org.finos.legend.engine.ide.lsp.commands;
 
 import org.eclipse.lsp4j.ExecuteCommandParams;
-import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.finos.legend.engine.ide.lsp.extension.execution.LegendExecutionResult;
 import org.finos.legend.engine.ide.lsp.extension.state.CancellationToken;
 import org.finos.legend.engine.ide.lsp.server.LegendLanguageServer;
@@ -40,9 +39,9 @@ public class LegendCommandExecutionHandler implements CommandExecutionHandler
     }
 
     @Override
-    public Iterable<? extends LegendExecutionResult> executeCommand(Either<String, Integer> progressToken, ExecuteCommandParams params, CancellationToken cancellationToken)
+    public Iterable<? extends LegendExecutionResult> executeCommand(ExecuteCommandParams params, CancellationToken cancellationToken)
     {
         params.getArguments().add(0, cancellationToken.getId());
-        return this.impl.executeCommand(progressToken, params, cancellationToken);
+        return this.impl.executeCommand(params, cancellationToken);
     }
 }
