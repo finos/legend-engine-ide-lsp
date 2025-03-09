@@ -62,7 +62,6 @@ import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.r
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.authentication.TestDatabaseAuthenticationStrategy;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.specification.DuckDBDatasourceSpecification;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.model.Database;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompleterExtension;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
@@ -187,16 +186,16 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         return new PureModelContextData.Builder().withElements(Lists.fixedSize.of(defaultDuckDBConnection, defaultDuckDBDatabase, defaultDuckDBRuntime)).build();
     }
 
-    private CompletableFuture<Lambda> parse(SectionState sectionState)
+    private CompletableFuture<org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction> parse(SectionState sectionState)
     {
         return sectionState.getProperty("PARSE_RESULT", () -> tryParse(sectionState));
     }
 
-    private CompletableFuture<Lambda> tryParse(SectionState sectionState)
+    private CompletableFuture<org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction> tryParse(SectionState sectionState)
     {
         try
         {
-            Lambda lambda = this.domainParser.parseLambda(
+            org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction lambda = this.domainParser.parseLambda(
                     sectionState.getSection().getText(true),
                     this.parserContext,
                     sectionState.getDocumentState().getDocumentId(),
@@ -223,14 +222,14 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         return new CompileResult(pureModel, combinedPmcd);
     }
 
-    private CompletableFuture<Pair<LambdaFunction<?>, Lambda>> compile(SectionState sectionState)
+    private CompletableFuture<Pair<LambdaFunction<?>, org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction>> compile(SectionState sectionState)
     {
         DocumentState documentState = sectionState.getDocumentState();
         GlobalState globalState = documentState.getGlobalState();
         return globalState.getProperty(documentState.getDocumentId() + COMPILE_RESULT_KEY, () -> tryCompile(sectionState));
     }
 
-    private CompletableFuture<Pair<LambdaFunction<?>, Lambda>> tryCompile(SectionState sectionState)
+    private CompletableFuture<Pair<LambdaFunction<?>, org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction>> tryCompile(SectionState sectionState)
     {
         return this.parse(sectionState).thenApply(x ->
                 {
@@ -244,7 +243,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
                     Database defaultDuckDBDatabase = (Database) pureModelContextData.getElements().stream().filter(element -> element.getPath().equals("local::DuckDuckDatabase")).findFirst().orElseThrow();
                     RelationalDatabaseConnection databaseConnection = ConnectionHelper.getDatabaseConnection(pureModelContextData, "local::DuckDuckConnection");
                     Connection connection = ConnectionHelper.getConnection(databaseConnection, this.pureGrammarExtension.getPlanExecutor());
-                    return Tuples.<LambdaFunction<?>, Lambda>pair(HelperValueSpecificationBuilder.buildLambdaWithContext("", x.body, x.parameters, pureModel.getContext(), new ProcessingContext("build Lambda"),
+                    return Tuples.<LambdaFunction<?>, org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction>pair(HelperValueSpecificationBuilder.buildLambdaWithContext("", x.body, x.parameters, pureModel.getContext(), new ProcessingContext("build Lambda"),
                                     ((compileContext, openVariables, processingContext) -> new PureBookValueSpecificationBuilder(compileContext, openVariables, processingContext, defaultDuckDBDatabase, connection))), x);
                 }
                 // when we complete compiling, trigger plan generation on the background to improve user experience...
@@ -305,7 +304,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
     @Override
     public Stream<LegendReference> getLegendReferences(SectionState sectionState)
     {
-        CompletableFuture<Pair<LambdaFunction<?>, Lambda>> compiled = this.compile(sectionState);
+        CompletableFuture<Pair<LambdaFunction<?>, org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction>> compiled = this.compile(sectionState);
         try
         {
             LambdaFunction<?> lambdaFunction = compiled.get(30, TimeUnit.SECONDS).getOne();
@@ -462,9 +461,9 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
         private final SingleExecutionPlan singleExecutionPlan;
         private final PlanExecutionContext planExecutionContext;
         private final LambdaFunction<?> lambdaFunction;
-        private final Lambda lambda;
+        private final org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction lambda;
 
-        public PlanGenerationResult(SingleExecutionPlan singleExecutionPlan, PlanExecutionContext planExecutionContext, LambdaFunction<?> lambdaFunction, Lambda lambda)
+        public PlanGenerationResult(SingleExecutionPlan singleExecutionPlan, PlanExecutionContext planExecutionContext, LambdaFunction<?> lambdaFunction, org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction lambda)
         {
             this.singleExecutionPlan = singleExecutionPlan;
             this.planExecutionContext = planExecutionContext;
@@ -487,7 +486,7 @@ public class PureBookLSPGrammarExtension implements LegendLSPGrammarExtension
             return lambdaFunction;
         }
 
-        public Lambda getLambda()
+        public org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction getLambda()
         {
             return lambda;
         }
