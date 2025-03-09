@@ -36,8 +36,8 @@ import org.finos.legend.engine.ide.lsp.extension.state.GlobalState;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.PureModel;
 import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 
 public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
 {
@@ -67,7 +67,7 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
         PureModel pureModel = compileResult.getPureModel();
 
         PackageableElement packageableElement = compileResult.getPureModelContextData().getElements().stream().filter(e -> e.getPath().equals(entityPath)).collect(Collectors.toList()).get(0);
-        Lambda lambda = functionExecutionSupport.getLambda(packageableElement);
+        LambdaFunction lambda = functionExecutionSupport.getLambda(packageableElement);
 
         try
         {
@@ -78,7 +78,7 @@ public class LegendTDSRequestHandlerImpl implements LegendTDSRequestHandler
                 request.getFilter().add(groupFilter);
             }
 
-            Lambda newLambda = new Lambda();
+            LambdaFunction newLambda = new LambdaFunction();
             newLambda.body = LegendTDSRequestLambdaBuilder.buildLambdaExpressions(lambda.body, request);
             newLambda.parameters = lambda.parameters;
 

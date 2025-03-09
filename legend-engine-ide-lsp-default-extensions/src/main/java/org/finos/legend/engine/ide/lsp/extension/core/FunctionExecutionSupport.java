@@ -70,16 +70,16 @@ import org.finos.legend.engine.plan.generation.extension.PlanGeneratorExtension;
 import org.finos.legend.engine.plan.generation.transformers.PlanTransformer;
 import org.finos.legend.engine.plan.platform.PlanPlatform;
 import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction;
 import org.finos.legend.engine.protocol.pure.m3.multiplicity.Multiplicity;
 import org.finos.legend.engine.protocol.pure.m3.relation.RelationType;
 import org.finos.legend.engine.protocol.pure.m3.valuespecification.Variable;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.PackageableType;
 import org.finos.legend.engine.protocol.pure.v1.PureProtocolObjectMapperFactory;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContext;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.ExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.Runtime;
-import org.finos.legend.engine.protocol.pure.v1.model.type.PackageableType;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
 import org.finos.legend.engine.pure.code.core.PureCoreExtensionLoader;
 import org.finos.legend.engine.repl.autocomplete.Completer;
@@ -125,7 +125,7 @@ public interface FunctionExecutionSupport
 
     AbstractLSPGrammarExtension getExtension();
 
-    Lambda getLambda(PackageableElement element);
+    LambdaFunction getLambda(PackageableElement element);
 
     @Deprecated
     default String getExecutionKey(PackageableElement element, Map<String, Object> args)
@@ -184,9 +184,9 @@ public interface FunctionExecutionSupport
         }
     }
 
-    SingleExecutionPlan getExecutionPlan(PackageableElement element, Lambda lambda, PureModel pureModel, Map<String, Object> args, String clientVersion);
+    SingleExecutionPlan getExecutionPlan(PackageableElement element, LambdaFunction  lambda, PureModel pureModel, Map<String, Object> args, String clientVersion);
 
-    static SingleExecutionPlan getExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
+    static SingleExecutionPlan getExecutionPlan(LambdaFunction  lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
     {
         FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
         Mapping mapping = mappingPath == null ? null : pureModel.getMapping(mappingPath);
@@ -208,7 +208,7 @@ public interface FunctionExecutionSupport
         );
     }
 
-    static PlanWithDebug debugExecutionPlan(Lambda lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
+    static PlanWithDebug debugExecutionPlan(LambdaFunction  lambda, String mappingPath, Runtime runtime, ExecutionContext context, PureModel pureModel, String clientVersion)
     {
         FunctionDefinition<?> functionDefinition = HelperValueSpecificationBuilder.buildLambda(lambda.body, lambda.parameters, pureModel.getContext());
         Mapping mapping = pureModel.getMapping(mappingPath);
@@ -296,7 +296,7 @@ public interface FunctionExecutionSupport
 
             Pair<SingleExecutionPlan, PlanExecutionContext> executionPlanAndContext = globalState.getProperty(EXECUTE_COMMAND_ID + ":" + entityPath + ":" + executionKey, () ->
             {
-                Lambda lambda = executionSupport.getLambda(element);
+                LambdaFunction  lambda = executionSupport.getLambda(element);
                 PureModel pureModel = compileResult.getPureModel();
                 SingleExecutionPlan executionPlan = executionSupport.getExecutionPlan(element, lambda, pureModel, inputParameters, globalState.getSetting(Constants.LEGEND_PROTOCOL_VERSION));
                 PlanExecutionContext planExecutionContext = null;
@@ -334,7 +334,7 @@ public interface FunctionExecutionSupport
         try
         {
             GlobalState globalState = section.getDocumentState().getGlobalState();
-            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            LambdaFunction  lambda = objectMapper.readValue(executableArgs.get("lambda"), LambdaFunction.class);
             String mappingPath = executableArgs.get("mapping");
             Runtime runtime = executableArgs.get("runtime") != null ? objectMapper.readValue(executableArgs.get("runtime"), Runtime.class) : null;
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
@@ -429,7 +429,7 @@ public interface FunctionExecutionSupport
         {
             GlobalState globalState = section.getDocumentState().getGlobalState();
 
-            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            LambdaFunction  lambda = objectMapper.readValue(executableArgs.get("lambda"), LambdaFunction.class);
             String mappingPath = executableArgs.get("mapping");
             Runtime runtime = objectMapper.readValue(executableArgs.get("runtime"), Runtime.class);
             ExecutionContext context = objectMapper.readValue(executableArgs.get("context"), ExecutionContext.class);
@@ -482,7 +482,7 @@ public interface FunctionExecutionSupport
                     .collect(Collectors.toCollection(Lists.mutable::empty));
 
             String code = executableArgs.get("code");
-            Lambda baseQuery = objectMapper.readValue(executableArgs.get("baseQuery"), Lambda.class);
+            LambdaFunction  baseQuery = objectMapper.readValue(executableArgs.get("baseQuery"), LambdaFunction.class);
             String baseQueryCode = baseQuery != null ? baseQuery.body.get(0).accept(DEPRECATED_PureGrammarComposerCore.Builder.newInstance().withRenderStyle(RenderStyle.STANDARD).build()) : null;
             String queryCode = (baseQueryCode != null ? baseQueryCode : "") + code;
             Completer completer = new Completer(pureModel, completerExtensions);
@@ -505,7 +505,7 @@ public interface FunctionExecutionSupport
         try
         {
             Map<String, GrammarAPI.ParserInput> input = objectMapper.readValue(executableArgs.get("input"), new TypeReference<>() {});
-            Map<String, Lambda> result = org.eclipse.collections.api.factory.Maps.mutable.empty();
+            Map<String, LambdaFunction> result = org.eclipse.collections.api.factory.Maps.mutable.empty();
 
             MapAdapter.adapt(input).forEachKeyValue((key, value) -> result.put(key,
                     PureGrammarParser.newInstance().parseLambda(
@@ -519,7 +519,7 @@ public interface FunctionExecutionSupport
 
             results.add(FunctionLegendExecutionResult.newResult(entityPath,
                     LegendExecutionResult.Type.SUCCESS,
-                    objectMapper.writerFor(new TypeReference<Map<String,Lambda>>() {}).writeValueAsString(result),
+                    objectMapper.writerFor(new TypeReference<Map<String,LambdaFunction>>() {}).writeValueAsString(result),
                     null,
                     section.getDocumentState().getDocumentId(),
                     section.getSectionNumber(),
@@ -540,7 +540,7 @@ public interface FunctionExecutionSupport
         MutableList<LegendExecutionResult> results = Lists.mutable.empty();
         try
         {
-            Map<String, Lambda> lambdas = objectMapper.readValue(executableArgs.get("lambdas"), new TypeReference<>() {});
+            Map<String, LambdaFunction> lambdas = objectMapper.readValue(executableArgs.get("lambdas"), new TypeReference<>() {});
             RenderStyle renderStyle = RenderStyle.valueOf(executableArgs.get("renderStyle"));
             Map<String, Object> result = org.eclipse.collections.api.factory.Maps.mutable.empty();
             MapAdapter.adapt(lambdas).forEachKeyValue((key, value) ->
@@ -578,7 +578,7 @@ public interface FunctionExecutionSupport
         try
         {
             PureModel pureModel = compileResult.getPureModel();
-            Lambda lambda = objectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            LambdaFunction  lambda = objectMapper.readValue(executableArgs.get("lambda"), LambdaFunction.class);
             String typeName = Compiler.getLambdaReturnType(lambda, pureModel);
             Map<String, Object> result = new HashMap<>();
             result.put("returnType", typeName);
@@ -622,7 +622,7 @@ public interface FunctionExecutionSupport
             Mapping mapping = pureModel.getMapping(mappingPath);
             String runtimePath = executableArgs.get("runtime");
             Root_meta_core_runtime_Runtime runtime = pureModel.getRuntime(runtimePath);
-            Lambda query = entitlementModelObjectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            LambdaFunction  query = entitlementModelObjectMapper.readValue(executableArgs.get("lambda"), LambdaFunction.class);
             List<DatasetSpecification> datasets = LazyIterate.flatCollect(entitlementServiceExtensions,
                     entitlementExtension -> entitlementExtension.generateDatasetSpecifications(query, runtimePath,
                             runtime, mappingPath, mapping, pureModelContext, pureModel)).toList();
@@ -655,7 +655,7 @@ public interface FunctionExecutionSupport
             Mapping mapping = pureModel.getMapping(mappingPath);
             String runtimePath = executableArgs.get("runtime");
             Root_meta_core_runtime_Runtime runtime = pureModel.getRuntime(runtimePath);
-            Lambda query = entitlementModelObjectMapper.readValue(executableArgs.get("lambda"), Lambda.class);
+            LambdaFunction  query = entitlementModelObjectMapper.readValue(executableArgs.get("lambda"), LambdaFunction.class);
             List<DatasetSpecification> reports = entitlementModelObjectMapper.readValue(executableArgs.get("reports"), new TypeReference<>() {});
             List<DatasetEntitlementReport> result = LazyIterate.flatCollect(entitlementServiceExtensions,
                     entitlementExtension -> entitlementExtension.generateDatasetEntitlementReports(reports, query,

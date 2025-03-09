@@ -42,10 +42,10 @@ import org.finos.legend.engine.ide.lsp.extension.text.TextInterval;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.ide.lsp.extension.text.TextPosition;
 import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
+import org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.result.DataTypeResultType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.runtime.RuntimePointer;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.BaseExecutionContext;
 import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.executionContext.ExecutionContext;
 import org.junit.jupiter.api.Assertions;
@@ -963,7 +963,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         PackageableElement serviceElement =
                 compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
                         "vscodelsp::test::TestService1")).findFirst().orElseThrow();
-        Lambda lambda = extension.getLambda(serviceElement);
+        LambdaFunction lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
         runtime.runtime = "vscodelsp::test::H2Runtime";
         ExecutionContext context = new BaseExecutionContext();
@@ -992,7 +992,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         PackageableElement serviceElement =
                 compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
                         "vscodelsp::test::TestService1")).findFirst().orElseThrow();
-        Lambda lambda = extension.getLambda(serviceElement);
+        LambdaFunction lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
         runtime.runtime = "vscodelsp::test::H2Runtime";
         ExecutionContext context = new BaseExecutionContext();
@@ -1028,7 +1028,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         PackageableElement serviceElement =
                 compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
                         "vscodelsp::test::TestService2")).findFirst().orElseThrow();
-        Lambda lambda = extension.getLambda(serviceElement);
+        LambdaFunction lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
         runtime.runtime = "vscodelsp::test::H2RuntimeRelational";
         ExecutionContext context = new BaseExecutionContext();
@@ -1202,7 +1202,8 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         Assertions.assertEquals(1, Iterate.sizeOf(actual));
         FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
-        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\"},{\"name\":\"First Name\",\"type\":\"String\"}]"));
+        System.out.println(result.getMessage());
+        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\",\"relationalType\":\"INTEGER\"},{\"name\":\"First Name\",\"type\":\"String\",\"relationalType\":\"VARCHAR(1024)\"}]"));
         Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"ID\",\"First Name\"], \"rows\" : " +
                 "[{\"values\": [1,\"Doe\"]}]}"));
     }
@@ -1221,7 +1222,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         PackageableElement serviceElement =
                 compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
                         "vscodelsp::test::TestService2")).findFirst().orElseThrow();
-        Lambda lambda = extension.getLambda(serviceElement);
+        LambdaFunction lambda = extension.getLambda(serviceElement);
         RuntimePointer runtime = new RuntimePointer();
         runtime.runtime = "vscodelsp::test::H2RuntimeRelational";
         ExecutionContext context = new BaseExecutionContext();
@@ -1488,7 +1489,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         PackageableElement serviceElement =
                 compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
                         "vscodelsp::test::TestService2")).findFirst().orElseThrow();
-        Lambda lambda = extension.getLambda(serviceElement);
+        LambdaFunction lambda = extension.getLambda(serviceElement);
         Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
                 "vscodelsp::test::EmployeeRelationalMapping", "runtime", "vscodelsp::test::H2RuntimeRelational");
 
@@ -1514,7 +1515,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         PackageableElement serviceElement =
                 compileResult.getPureModelContextData().getElements().stream().filter(x -> x.getPath().equals(
                         "vscodelsp::test::TestService2")).findFirst().orElseThrow();
-        Lambda lambda = extension.getLambda(serviceElement);
+        LambdaFunction lambda = extension.getLambda(serviceElement);
         Map<String, String> executableArgs = Map.of("lambda", objectMapper.writeValueAsString(lambda), "mapping",
                 "vscodelsp::test::EmployeeRelationalMapping", "runtime", "vscodelsp::test::H2RuntimeRelational",
                 "reports", "[{\"_type\":\"relationalDatabaseTable\",\"name\":\"default.PersonTable\"," + "\"type" +

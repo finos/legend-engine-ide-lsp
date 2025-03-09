@@ -19,6 +19,7 @@ package org.finos.legend.engine.ide.lsp.extension;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import org.eclipse.collections.api.factory.Lists;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.ColumnType;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.Filter;
@@ -27,21 +28,21 @@ import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSAggregation;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSGroupBy;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSRequest;
 import org.finos.legend.engine.ide.lsp.extension.agGrid.TDSSort;
+import org.finos.legend.engine.protocol.pure.m3.function.LambdaFunction;
 import org.finos.legend.engine.protocol.pure.m3.multiplicity.Multiplicity;
 import org.finos.legend.engine.protocol.pure.m3.valuespecification.AppliedFunction;
 import org.finos.legend.engine.protocol.pure.m3.valuespecification.AppliedProperty;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.Collection;
 import org.finos.legend.engine.protocol.pure.m3.valuespecification.ValueSpecification;
 import org.finos.legend.engine.protocol.pure.m3.valuespecification.Variable;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Collection;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.Lambda;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CBoolean;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CDateTime;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CDecimal;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CFloat;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CInteger;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CStrictDate;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.CString;
-import org.finos.legend.engine.protocol.pure.v1.model.valueSpecification.raw.datatype.PrimitiveValueSpecification;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.datatype.primitive.CBoolean;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.datatype.primitive.CDateTime;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.datatype.primitive.CDecimal;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.datatype.primitive.CFloat;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.datatype.primitive.CInteger;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.datatype.primitive.CStrictDate;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.datatype.primitive.CString;
+import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.datatype.primitive.PrimitiveValueSpecification;
 
 public class LegendTDSRequestLambdaBuilder 
 {
@@ -121,7 +122,7 @@ public class LegendTDSRequestLambdaBuilder
         {
             return;
         }
-        Lambda filterLambda = new Lambda();
+        LambdaFunction filterLambda = new LambdaFunction();
         filterLambda.body = Lists.mutable.empty();
         filterLambda.multiplicity = filters.size() == 1 ? Multiplicity.PURE_ONE : Multiplicity.PURE_MANY;
         filters.forEach(filterValue ->
@@ -241,7 +242,7 @@ public class LegendTDSRequestLambdaBuilder
             func.multiplicity = Multiplicity.PURE_ONE;
             func.parameters.add(new CString(agg.getColumn()));
 
-            Lambda aggLamda = new Lambda();
+            LambdaFunction aggLamda = new LambdaFunction();
             aggLamda.body = Lists.mutable.empty();
             aggLamda.multiplicity = Multiplicity.PURE_ONE;
             AppliedProperty property = new AppliedProperty();
@@ -255,7 +256,7 @@ public class LegendTDSRequestLambdaBuilder
             aggLamda.parameters.add(x);
             func.parameters.add(aggLamda);
 
-            Lambda funcLambda = new Lambda();
+            LambdaFunction funcLambda = new LambdaFunction();
             funcLambda.body = Lists.mutable.empty();
             funcLambda.parameters = Lists.mutable.empty();
             funcLambda.multiplicity = Multiplicity.PURE_ONE;
