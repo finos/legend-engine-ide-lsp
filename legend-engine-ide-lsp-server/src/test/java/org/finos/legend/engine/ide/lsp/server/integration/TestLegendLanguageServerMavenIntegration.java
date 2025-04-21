@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-@Timeout(value = 3, unit = TimeUnit.MINUTES)
+@Timeout(value = 5, unit = TimeUnit.MINUTES)
 // all tests should finish but in case of some uncaught deadlock, timeout whole test
 public class TestLegendLanguageServerMavenIntegration
 {

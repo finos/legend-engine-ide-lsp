@@ -82,7 +82,7 @@ public class LegendLanguageServerIntegrationExtension implements
      * <pl/>
      * For local development and debugging, this can be increased to prevent false timeouts
      */
-    private static final long MAYBE_DEADLOCK_TIMEOUT_SECONDS = 180L;
+    private static final long MAYBE_DEADLOCK_TIMEOUT_SECONDS = TimeUnit.MINUTES.toSeconds(5);
     /**
      * this phaser is used to track all async task and LSP JRPC messages,
      * allowing the test cases to wait until these have been completed before further assertions

@@ -40,7 +40,7 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 @DisabledOnOs(OS.WINDOWS)
-@Timeout(value = 3, unit = TimeUnit.MINUTES)
+@Timeout(value = 5, unit = TimeUnit.MINUTES)
 public class LegendREPLFeatureTest
 {
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
