@@ -26,7 +26,7 @@ import org.finos.legend.engine.ide.lsp.extension.text.Locatable;
 import org.finos.legend.engine.ide.lsp.extension.text.TextLocation;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.CompileContext;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.SourceInformationHelper;
-import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
+import org.finos.legend.engine.protocol.pure.m3.SourceInformation;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
