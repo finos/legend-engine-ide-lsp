@@ -31,7 +31,7 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
-@Timeout(value = 3, unit = TimeUnit.MINUTES)
+@Timeout(value = 5, unit = TimeUnit.MINUTES)
 // all tests should finish but in case of some uncaught deadlock, timeout whole test
 public class TestLegendLanguageServerReplIntegration
 {

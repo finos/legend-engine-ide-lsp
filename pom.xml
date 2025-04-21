@@ -49,8 +49,8 @@
     </modules>
 
     <properties>
-        <legend.engine.version>4.73.1</legend.engine.version>
-        <legend.sdlc.version>0.186.0</legend.sdlc.version>
+        <legend.engine.version>4.78.1</legend.engine.version>
+        <legend.sdlc.version>0.188.1</legend.sdlc.version>
 
         <logback.version>1.4.14</logback.version>
 
@@ -164,8 +164,8 @@
                             <maven.repo.local>${maven.repo.local}</maven.repo.local>
                             <test.maven.settings.path>${test.maven.settings.path}</test.maven.settings.path>
                         </systemPropertyVariables>
-                        <forkCount>1C</forkCount>
-                        <reuseForks>true</reuseForks>
+                        <forkCount>2</forkCount>
+                        <reuseForks>false</reuseForks>
                     </configuration>
                 </plugin>
                 <plugin>

@@ -74,7 +74,7 @@ import org.finos.legend.engine.protocol.pure.m3.type.Class;
 import org.finos.legend.engine.protocol.pure.m3.type.Enumeration;
 import org.finos.legend.engine.protocol.pure.m3.valuespecification.Variable;
 import org.finos.legend.engine.protocol.pure.m3.valuespecification.constant.PackageableType;
-import org.finos.legend.engine.protocol.pure.v1.model.SourceInformation;
+import org.finos.legend.engine.protocol.pure.m3.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
