@@ -24,21 +24,21 @@ import org.finos.legend.engine.ide.lsp.extension.LegendReferenceResolver;
 import org.finos.legend.engine.ide.lsp.extension.state.SectionState;
 import org.finos.legend.engine.language.pure.compiler.toPureGraph.HelperModelBuilder;
 import org.finos.legend.engine.language.pure.grammar.to.HelperValueSpecificationGrammarComposer;
-import org.finos.legend.engine.language.snowflakeApp.grammar.from.SnowflakeAppGrammarParserExtension;
+import org.finos.legend.engine.language.snowflake.grammar.from.SnowflakeGrammarParserExtension;
 import org.finos.legend.engine.protocol.pure.m3.PackageableElement;
 import org.finos.legend.engine.protocol.pure.m3.function.Function;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.connection.PackageableConnection;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.DatabaseType;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.store.relational.connection.RelationalDatabaseConnection;
-import org.finos.legend.engine.protocol.snowflakeApp.metamodel.SnowflakeApp;
-import org.finos.legend.engine.protocol.snowflakeApp.metamodel.SnowflakeAppDeploymentConfiguration;
+import org.finos.legend.engine.protocol.snowflake.snowflakeApp.metamodel.SnowflakeApp;
+import org.finos.legend.engine.protocol.snowflake.snowflakeApp.metamodel.SnowflakeAppDeploymentConfiguration;
 import org.finos.legend.pure.m4.coreinstance.CoreInstance;
 
 public class SnowflakeLSPGrammarExtension extends FunctionActivatorLSPGrammarExtension
 {
     public SnowflakeLSPGrammarExtension()
     {
-        super(SnowflakeAppGrammarParserExtension.NAME, new SnowflakeAppGrammarParserExtension());
+        super(SnowflakeGrammarParserExtension.NAME, new SnowflakeGrammarParserExtension());
     }
 
     @Override
