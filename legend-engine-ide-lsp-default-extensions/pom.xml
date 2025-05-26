@@ -287,17 +287,17 @@
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-xt-snowflakeApp-protocol</artifactId>
+            <artifactId>legend-engine-xt-snowflake-protocol</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-xt-snowflakeApp-grammar</artifactId>
+            <artifactId>legend-engine-xt-snowflake-grammar</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.finos.legend.engine</groupId>
-            <artifactId>legend-engine-xt-snowflakeApp-compiler</artifactId>
+            <artifactId>legend-engine-xt-snowflake-compiler</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
