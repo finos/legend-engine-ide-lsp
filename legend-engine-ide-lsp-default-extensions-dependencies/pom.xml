@@ -24,6 +24,7 @@
     </parent>
 
     <artifactId>legend-engine-ide-lsp-default-extensions-dependencies</artifactId>
+    <name>Default Extensions Dependencies</name>
     <packaging>pom</packaging>
 
     <build>
