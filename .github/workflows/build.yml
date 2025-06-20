@@ -52,7 +52,7 @@ jobs:
           distribution: 'temurin'
           java-version: 21
           java-package: jdk
-          server-id: ossrh
+          server-id: central
           server-username: CI_DEPLOYMENT_USERNAME
           server-password: CI_DEPLOYMENT_PASSWORD
 
