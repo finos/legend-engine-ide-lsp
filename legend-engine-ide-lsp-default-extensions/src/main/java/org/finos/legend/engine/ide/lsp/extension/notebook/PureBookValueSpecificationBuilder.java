@@ -37,7 +37,6 @@ import org.finos.legend.engine.shared.core.ObjectMapperFactory;
 import org.finos.legend.pure.generated.Root_meta_protocols_pure_vX_X_X_metamodel_store_relational_Column;
 import org.finos.legend.pure.generated.Root_meta_relational_metamodel_Column_Impl;
 import org.finos.legend.pure.generated.core_pure_protocol_protocol;
-import org.finos.legend.pure.generated.core_relational_duckdb_relational_sqlQueryToString_duckdbExtension;
 import org.finos.legend.pure.generated.core_relational_relational_protocols_pure_vX_X_X_transfers_metamodel_relational;
 import org.finos.legend.pure.generated.core_relational_relational_transform_fromPure_pureToRelational;
 import org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.relation.RelationType;
@@ -81,14 +80,14 @@ public class PureBookValueSpecificationBuilder extends ValueSpecificationBuilder
         String columnNamesAndTypes = columns.stream()
                 .map(c -> String.format("%s %s",
                         c._name(),
-                        core_relational_duckdb_relational_sqlQueryToString_duckdbExtension.Root_meta_relational_functions_sqlQueryToString_duckDB_dataTypeToSqlTextDuckDB_DataType_1__String_1_(c._type(), getContext().getExecutionSupport())))
+                        org.finos.legend.pure.generated.core_relational_duckdb_relational_typeConversion.Root_meta_relational_functions_typeConversion_duckDB_dataTypeToSqlTextDuckDB_DataType_1__String_1_(c._type(), getContext().getExecutionSupport())))
                 .collect(Collectors.joining(", ", "(", ")"));
         return "CREATE OR REPLACE TABLE " + getConcatenatedSchemaAndTableName(schemaName, tableName) + " " + columnNamesAndTypes + ";";
     }
 
     private String safeAlterTableWithColumn(String schemaName, String tableName, org.finos.legend.pure.m3.coreinstance.meta.relational.metamodel.Column column)
     {
-        String columnType = core_relational_duckdb_relational_sqlQueryToString_duckdbExtension.Root_meta_relational_functions_sqlQueryToString_duckDB_dataTypeToSqlTextDuckDB_DataType_1__String_1_(column._type(), getContext().getExecutionSupport());
+        String columnType = org.finos.legend.pure.generated.core_relational_duckdb_relational_typeConversion.Root_meta_relational_functions_typeConversion_duckDB_dataTypeToSqlTextDuckDB_DataType_1__String_1_(column._type(), getContext().getExecutionSupport());
         return "ALTER TABLE " + getConcatenatedSchemaAndTableName(schemaName, tableName) + " ADD COLUMN IF NOT EXISTS " + column._name() + " " + columnType + ";";
     }
 
