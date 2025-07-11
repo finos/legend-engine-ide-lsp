@@ -49,7 +49,7 @@
     </modules>
 
     <properties>
-        <legend.engine.version>4.89.2</legend.engine.version>
+        <legend.engine.version>4.90.0</legend.engine.version>
         <legend.sdlc.version>0.197.1</legend.sdlc.version>
 
         <logback.version>1.4.14</logback.version>
