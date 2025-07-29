@@ -116,7 +116,7 @@ public class TestPureBookLSPGrammarExtension
         Iterable<? extends LegendDiagnostic> compileDiagnostics = this.extension.getDiagnostics(compileFailure);
 
         Assertions.assertEquals(
-                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("purebook_cell1", 0, 0, 0, 16), "Can't resolve the builder for function 'does::not::exists' - stack:[build Lambda, new lambda, Applying does::not::exists]", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
+                List.of(LegendDiagnostic.newDiagnostic(TextLocation.newTextSource("purebook_cell1", 0, 0, 0, 16), "Function does not exist 'does::not::exists()'", LegendDiagnostic.Kind.Error, LegendDiagnostic.Source.Compiler)),
                 compileDiagnostics
         );
 
