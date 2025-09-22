@@ -49,8 +49,8 @@
     </modules>
 
     <properties>
-        <legend.engine.version>4.97.2</legend.engine.version>
-        <legend.sdlc.version>0.202.1</legend.sdlc.version>
+        <legend.engine.version>4.100.0</legend.engine.version>
+        <legend.sdlc.version>0.205.0</legend.sdlc.version>
 
         <logback.version>1.4.14</logback.version>
 
