@@ -78,7 +78,7 @@ import org.finos.legend.engine.protocol.pure.m3.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.StoreTestData;
+import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestData;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
@@ -251,10 +251,10 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return functionTestSuite.testData.stream().flatMap(this::toReferences);
     }
 
-    private Stream<Optional<LegendReferenceResolver>> toReferences(StoreTestData storeTestData)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(FunctionTestData functionTestData)
     {
-        Optional<LegendReferenceResolver> storeReference = LegendReferenceResolver.newReferenceResolver(storeTestData.store.sourceInformation, x -> x.resolveStore(storeTestData.store.path, storeTestData.store.sourceInformation));
-        return Stream.of(storeReference);
+        Optional<LegendReferenceResolver> elementReference = LegendReferenceResolver.newReferenceResolver(functionTestData.packageableElementPointer.sourceInformation, x -> x.resolveStore(functionTestData.packageableElementPointer.path, functionTestData.packageableElementPointer.sourceInformation));
+        return Stream.of(elementReference);
     }
 
     private Stream<Optional<LegendReferenceResolver>> toReferences(org.finos.legend.pure.m3.coreinstance.meta.pure.metamodel.type.Class clazz)
