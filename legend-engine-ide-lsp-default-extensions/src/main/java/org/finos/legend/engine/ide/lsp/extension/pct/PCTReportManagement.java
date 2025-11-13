@@ -34,10 +34,18 @@ public final class PCTReportManagement implements LegendVirtualFileSystemContent
 
     public static List<LegendVirtualFile> loadDependenciesVirtualFiles()
     {
-        return List.of(
-                LegendVirtualFileSystemContentInitializer.newVirtualFile(Path.of("PCT_Report_Compatibility.md"), PCT_to_SimpleMarkdown.buildCompatibilityMD()),
-                LegendVirtualFileSystemContentInitializer.newVirtualFile(Path.of("PCT_Report_Documentation.md"), PCT_to_SimpleMarkdown.buildDocumentationMD())
-        );
+        try
+        {
+            return List.of(
+                    LegendVirtualFileSystemContentInitializer.newVirtualFile(Path.of("PCT_Report_Compatibility.md"), PCT_to_SimpleMarkdown.buildCompatibilityMD()),
+                    LegendVirtualFileSystemContentInitializer.newVirtualFile(Path.of("PCT_Report_Documentation.md"), PCT_to_SimpleMarkdown.buildDocumentationMD())
+            );
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     public List<LegendVirtualFile> getVirtualFilePureGrammars()

@@ -53,7 +53,7 @@ public class PCT_to_SimpleMarkdown
         orderedAdapters.add(orderedAdapters.remove(0));
 
         // Organize by source
-        MutableListMultimap<String, FunctionDocumentation> ordered = Lists.mutable.withAll(doc.functionsDocumentation)
+        MutableListMultimap<String, FunctionDocumentation> ordered = Lists.mutable.withAll(doc.functionsDocumentation).select(x -> x.functionDefinition.name != null)
                 .groupBy(x ->
                 {
                     String id = x.functionDefinition.sourceId;
@@ -120,7 +120,7 @@ public class PCT_to_SimpleMarkdown
             Documentation doc = DocumentationGeneration.buildDocumentation();
 
             // Organize by source
-            MutableListMultimap<String, FunctionDocumentation> ordered = Lists.mutable.withAll(doc.functionsDocumentation)
+            MutableListMultimap<String, FunctionDocumentation> ordered = Lists.mutable.withAll(doc.functionsDocumentation).select(x -> x.functionDefinition.name != null)
                     .groupBy(x ->
                     {
                         String id = x.functionDefinition.sourceId;
