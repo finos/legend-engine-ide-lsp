@@ -1203,7 +1203,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
         FunctionLegendExecutionResult result = (FunctionLegendExecutionResult) actual.iterator().next();
         Assertions.assertEquals(LegendExecutionResult.Type.SUCCESS, result.getType(), result.getMessage());
         System.out.println(result.getMessage());
-        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\",\"relationalType\":\"INTEGER\"},{\"name\":\"First Name\",\"type\":\"String\",\"relationalType\":\"VARCHAR(1024)\"}]"));
+        Assertions.assertTrue(result.getMessage().contains("\"columns\":[{\"name\":\"ID\",\"type\":\"Integer\",\"relationalType\":\"INTEGER\"},{\"name\":\"First Name\",\"type\":\"String\",\"relationalType\":\"VARCHAR(200)\"}]"));
         Assertions.assertTrue(result.getMessage().contains("\"result\" : {\"columns\" : [\"ID\",\"First Name\"], \"rows\" : " +
                 "[{\"values\": [1,\"Doe\"]}]}"));
     }
