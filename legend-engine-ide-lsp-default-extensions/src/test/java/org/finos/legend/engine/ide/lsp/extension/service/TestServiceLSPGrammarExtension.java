@@ -137,6 +137,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "Service test::services::TestService\n" +
                         "{\r\n" +
                         "    pattern : 'test';\n" +
+                        "    title : 'test';\n" +
                         "    documentation : 'service for testing';\r\n" +
                         "    execution : Single\n" +
                         "    {\n" +
@@ -150,7 +151,7 @@ public class TestServiceLSPGrammarExtension extends AbstractLSPGrammarExtensionT
                         "        asserts : [];\n" +
                         "    }\r\n" +
                         "}\n",
-                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 10, 18, 10, 44), "Can't find mapping 'test::mappings::TestMapping'", Kind.Error, Source.Compiler)
+                LegendDiagnostic.newDiagnostic(TextLocation.newTextSource(DOC_ID_FOR_TEXT, 11, 18, 11, 44), "Can't find mapping 'test::mappings::TestMapping'", Kind.Error, Source.Compiler)
         );
     }
 
