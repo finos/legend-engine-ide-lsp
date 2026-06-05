@@ -334,6 +334,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             }
 
             @Override
+            public Stream<Optional<LegendReferenceResolver>> visit(ModelJoinPropertyMapping modelJoinPropertyMapping)
+            {
+                return Stream.empty();
+            }
+
+            @Override
             public Stream<Optional<LegendReferenceResolver>> visit(AggregationAwarePropertyMapping aggregationAwarePropertyMapping)
             {
                 return Stream.empty();
