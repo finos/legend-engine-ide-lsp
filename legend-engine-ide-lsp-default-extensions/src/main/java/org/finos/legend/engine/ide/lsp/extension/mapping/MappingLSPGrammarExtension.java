@@ -282,12 +282,6 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
             {
                 return Stream.empty();
             }
-
-            @Override
-            public Stream<Optional<LegendReferenceResolver>> visit(RelationFunctionEmbeddedPropertyMapping relationFunctionEmbeddedPropertyMapping)
-            {
-                return Stream.empty();
-            }
         });
 
         return Stream.concat(Stream.of(legendReferenceResolver), otherReferences);
@@ -355,6 +349,12 @@ public class MappingLSPGrammarExtension extends AbstractLegacyParserLSPGrammarEx
 
             @Override
             public Stream<Optional<LegendReferenceResolver>> visit(RelationFunctionPropertyMapping relationFunctionPropertyMapping)
+            {
+                return Stream.empty();
+            }
+            
+            @Override
+            public Stream<Optional<LegendReferenceResolver>> visit(RelationFunctionEmbeddedPropertyMapping relationFunctionEmbeddedPropertyMapping)
             {
                 return Stream.empty();
             }
