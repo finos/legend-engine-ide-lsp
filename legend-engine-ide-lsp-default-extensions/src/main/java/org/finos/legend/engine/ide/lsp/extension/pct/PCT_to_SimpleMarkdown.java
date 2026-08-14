@@ -79,7 +79,7 @@ public class PCT_to_SimpleMarkdown
                                 row.add(printFuncName(d));
                                 if (!d.functionDefinition.signatures.isEmpty() && d.functionDefinition.signatures.get(0).platformOnly)
                                 {
-                                    row.add("          <div style='color:#00C72B' class='hover-text'>" + d.functionDefinition.testCount + "<div class='tooltip-text' id='top'>Executed outside of PCT</div></div>");
+                                    row.add("          <div style='color:#00C72B' class='hover-text'>" + d.functionDefinition.getTestCount() + "<div class='tooltip-text' id='top'>Executed outside of PCT</div></div>");
                                     for (int i = 0; i < orderedAdapters.size() - 1; i++)
                                     {
                                         // Should not have any tests...
