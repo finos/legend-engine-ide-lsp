@@ -78,7 +78,10 @@ import org.finos.legend.engine.protocol.pure.m3.SourceInformation;
 import org.finos.legend.engine.protocol.pure.v1.model.context.PureModelContextData;
 import org.finos.legend.engine.protocol.pure.v1.model.executionPlan.SingleExecutionPlan;
 import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestSuite;
-import org.finos.legend.engine.protocol.pure.v1.model.packageableElement.function.FunctionTestData;
+import org.finos.legend.engine.protocol.pure.v1.model.data.BaseDataResolver;
+import org.finos.legend.engine.protocol.pure.v1.model.data.DataResolver;
+import org.finos.legend.engine.protocol.pure.v1.model.data.ReferenceDataResolver;
+import org.finos.legend.engine.protocol.pure.v1.model.context.PackageableElementPointer;
 import org.finos.legend.engine.protocol.pure.v1.model.test.TestSuite;
 import org.finos.legend.engine.repl.autocomplete.Completer;
 import org.finos.legend.engine.repl.autocomplete.CompletionResult;
@@ -251,9 +254,18 @@ public class PureLSPGrammarExtension extends AbstractLegacyParserLSPGrammarExten
         return functionTestSuite.testData.stream().flatMap(this::toReferences);
     }
 
-    private Stream<Optional<LegendReferenceResolver>> toReferences(FunctionTestData functionTestData)
+    private Stream<Optional<LegendReferenceResolver>> toReferences(DataResolver dataResolver)
     {
-        Optional<LegendReferenceResolver> elementReference = LegendReferenceResolver.newReferenceResolver(functionTestData.packageableElementPointer.sourceInformation, x -> x.resolveStore(functionTestData.packageableElementPointer.path, functionTestData.packageableElementPointer.sourceInformation));
+        PackageableElementPointer elementPointer = dataResolver instanceof BaseDataResolver
+                ? ((BaseDataResolver) dataResolver).elementPointer
+                : dataResolver instanceof ReferenceDataResolver
+                ? ((ReferenceDataResolver) dataResolver).elementPointer
+                : null;
+        if (elementPointer == null)
+        {
+            return Stream.empty();
+        }
+        Optional<LegendReferenceResolver> elementReference = LegendReferenceResolver.newReferenceResolver(elementPointer.sourceInformation, x -> x.resolveStore(elementPointer.path, elementPointer.sourceInformation));
         return Stream.of(elementReference);
     }
 
